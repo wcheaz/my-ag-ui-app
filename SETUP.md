@@ -21,7 +21,7 @@ Open the `.env` file in the project root and replace the placeholder:
 ```bash
 # OpenAI-compatible API Configuration
 OPENAI_API_KEY=sk-your-actual-deepseek-api-key-here
-OPENAI_BASE_URL=https://api.deepseek.com/v1
+OPENAI_BASE_URL=https://api.deepseek.com
 OPENAI_MODEL=deepseek-chat
 ```
 
@@ -30,7 +30,7 @@ OPENAI_MODEL=deepseek-chat
 For zsh (default on macOS):
 ```bash
 echo 'export OPENAI_API_KEY="sk-your-actual-deepseek-api-key-here"' >> ~/.zshrc
-echo 'export OPENAI_BASE_URL="https://api.deepseek.com/v1"' >> ~/.zshrc
+echo 'export OPENAI_BASE_URL="https://api.deepseek.com"' >> ~/.zshrc
 echo 'export OPENAI_MODEL="deepseek-chat"' >> ~/.zshrc
 source ~/.zshrc
 ```
@@ -38,18 +38,80 @@ source ~/.zshrc
 For bash:
 ```bash
 echo 'export OPENAI_API_KEY="sk-your-actual-deepseek-api-key-here"' >> ~/.bashrc
-echo 'export OPENAI_BASE_URL="https://api.deepseek.com/v1"' >> ~/.bashrc
+echo 'export OPENAI_BASE_URL="https://api.deepseek.com"' >> ~/.bashrc
 echo 'export OPENAI_MODEL="deepseek-chat"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-## Step 3: Run the Application
+## Step 3: Install Dependencies
 
-After setting up your environment variables, run:
+### Option A: Automated Setup (Recommended)
+
+Run the automated setup script that handles all dependency installation:
+
+```bash
+./setup.sh
+```
+
+This script will:
+- Check for Node.js 20+ and Python 3.12+ prerequisites
+- Install pnpm if not present
+- Install uv (Python package installer) if not present
+- Install all Node.js dependencies
+- Update Next.js to fix security vulnerability
+- Install Python dependencies
+
+### Option B: Manual Setup
+
+#### Prerequisites
+
+Make sure you have the following installed:
+- Node.js 20+
+- Python 3.12+
+- `uv` (Python package installer) - optional but recommended
+
+#### Install uv (Recommended)
+
+First, install `uv` which is a fast Python package installer:
+
+```bash
+# On Linux/macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or using pip
+pip install uv
+
+# After installation, you may need to restart your terminal or run:
+source ~/.bashrc  # or ~/.zshrc depending on your shell
+```
+
+#### Install Project Dependencies
+
+```bash
+pnpm install
+```
+
+This will install both the Node.js and Python dependencies.
+
+#### Update Next.js (Security Fix)
+
+To address a security vulnerability, update Next.js to a patched version:
+
+```bash
+pnpm add next@16.1.0
+```
+
+Or manually update the version in `package.json` to `16.1.0` or later, then run `pnpm install`.
+
+## Step 4: Run the Application
+
+After setting up your environment variables and installing dependencies, run:
 
 ```bash
 pnpm dev
 ```
+
+This will start both the UI (on http://localhost:3000) and the agent (on http://localhost:8000) servers.
 
 ## Available Models
 
@@ -80,6 +142,16 @@ echo $OPENAI_MODEL
 ```
 
 Each should display the configured value.
+
+### Additional Troubleshooting
+
+If you still encounter issues:
+
+1. **Port conflicts**: Make sure ports 3000 and 8000 are not in use
+2. **Python version**: Ensure you have Python 3.12+ installed
+3. **Node.js version**: Ensure you have Node.js 20+ installed
+4. **Missing dependencies**: Make sure `concurrently` is installed (included with `pnpm install`)
+5. **uv not found**: If you don't want to install uv, you can use pip instead (see SETUP-FIX.md for alternative scripts)
 
 ## Security Notes
 

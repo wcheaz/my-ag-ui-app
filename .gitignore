@@ -56,3 +56,6 @@ __pycache__
 
 # hidden folder
 hidden/
+
+# setup fix file
+SETUP-FIX.md

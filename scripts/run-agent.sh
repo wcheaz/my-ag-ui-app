@@ -3,5 +3,33 @@
 # Navigate to the agent directory
 cd "$(dirname "$0")/../agent" || exit 1
 
-# Run the agent using uv
-uv run src/main.py
+# Try to find uv in various locations
+UV_CMD=""
+if command -v uv &> /dev/null; then
+    UV_CMD="uv"
+elif [ -f "$HOME/.cargo/bin/uv" ]; then
+    UV_CMD="$HOME/.cargo/bin/uv"
+elif [ -f "$HOME/snap/code/current/.local/bin/uv" ]; then
+    UV_CMD="$HOME/snap/code/current/.local/bin/uv"
+elif [ -f "$HOME/snap/code/217/.local/bin/uv" ]; then
+    UV_CMD="$HOME/snap/code/217/.local/bin/uv"
+fi
+
+# Run the agent using uv if found, otherwise fall back to pip
+if [ -n "$UV_CMD" ]; then
+    echo "Running agent using uv..."
+    $UV_CMD run src/main.py
+else
+    echo "uv not found, falling back to pip..."
+    
+    # Activate virtual environment if it exists
+    if [ -d "venv" ]; then
+        source venv/bin/activate
+    else
+        echo "Error: Virtual environment not found. Please run setup-agent.sh first."
+        exit 1
+    fi
+    
+    # Run the agent
+    python src/main.py
+fi
