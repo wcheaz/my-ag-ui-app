@@ -4,6 +4,7 @@ import { ProcurementCodes } from "@/components/procurement-codes";
 import { AgentState } from "@/lib/types";
 import {
   useCoAgent,
+  useCopilotReadable,
   useFrontendTool,
 } from "@copilotkit/react-core";
 import { CopilotKitCSSProperties, CopilotSidebar } from "@copilotkit/react-ui";
@@ -64,6 +65,11 @@ function YourMainContent({ themeColor }: { themeColor: string }) {
     initialState: {
       procurement_codes: [],
     },
+  });
+
+  useCopilotReadable({
+    description: "The list of generated procurement codes",
+    value: state.procurement_codes,
   });
 
   return (
