@@ -6,10 +6,10 @@ from pydantic_ai import Agent, RunContext
 from pydantic_ai.ag_ui import StateDeps
 from ag_ui.core import EventType, StateSnapshotEvent
 
-# from src.rag.index import get_index
-# from src.rag.settings import init_settings
-# from src.rag.citation import enable_citation, CITATION_SYSTEM_PROMPT
-# from src.rag.query import get_query_engine_tool
+from src.rag.index import get_index
+from src.rag.settings import init_settings
+from src.rag.citation import enable_citation, CITATION_SYSTEM_PROMPT
+from src.rag.query import get_query_engine_tool
 
 # LOAD ENVIRONMENT VARIABLES manually since init_settings is disabled
 import os
@@ -45,6 +45,7 @@ class ProcurementState(BaseModel):
     # Placeholder for message history or other state tracking
     conversation_id: Optional[str] = None
     procurement_codes: List[ProcurementCode] = Field(default_factory=list)
+    citation_sources: List[str] = Field(default_factory=list)  # Accumulated citation sources
 
 def read_code_generation_file(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
     """
@@ -89,39 +90,75 @@ def read_code_generation_file(ctx: RunContext[StateDeps[ProcurementState]]) -> s
     except Exception as e:
         return f"Error reading CODE_GENERATION.md file: {str(e)}"
 
-# def get_rag_tool():
-#     """
-#     Initialize and return the RAG query tool.
-#     In PydanticAI, we might wrap this, but for now we initialize the LlamaIndex components.
-#     """
-#     init_settings()
-#     index = get_index()
-#     if index is None:
-#         return None
-#         
-#     query_tool = enable_citation(get_query_engine_tool(
-#         index=index,
-#         description="CITATIONS ONLY: Use this tool ONLY to get citations for information you've already obtained from the document reading tool. This tool is NOT for information gathering - it only provides citations for facts you already know from the document. Do NOT use this tool to learn about procurement codes or rules."
-#     ))
-#     return query_tool
+def get_rag_tool():
+    """
+    Initialize and return the RAG query tool.
+    In PydanticAI, we might wrap this, but for now we initialize the LlamaIndex components.
+    """
+    init_settings()
+    index = get_index()
+    if index is None:
+        return None
+        
+    query_tool = enable_citation(get_query_engine_tool(
+        index=index,
+        description="CITATIONS ONLY: Use this tool ONLY to get citations for information you've already obtained from the document reading tool. This tool is NOT for information gathering - it only provides citations for facts you already know from the document. Do NOT use this tool to learn about procurement codes or rules."
+    ))
+    return query_tool
 
-# # Initialize the RAG tool instance to be used by the agent wrapper
-# rag_engine_tool = get_rag_tool()
+# Initialize the RAG tool instance to be used by the agent wrapper
+rag_engine_tool = get_rag_tool()
 
-# def query_rag_system(ctx: RunContext[StateDeps[ProcurementState]], query: str) -> str:
-#     """
-#     CITATIONS ONLY: Use this tool ONLY to get citations for information you've already obtained from the document reading tool.
-#     This tool is NOT for information gathering - it only provides citations for facts you already know from the document.
-#     Do NOT use this tool to learn about procurement codes or rules.
-#     """
-#     if rag_engine_tool is None:
-#         return "RAG system not initialized (Index not found)."
-#     
-#     try:
-#         response = rag_engine_tool.query_engine.query(query)
-#         return str(response)
-#     except Exception as e:
-#         return f"Error querying RAG system: {str(e)}"
+def query_rag_system(ctx: RunContext[StateDeps[ProcurementState]], query: str) -> str:
+    """
+    CITATIONS ONLY: Use this tool ONLY to get citations for information you've already obtained from the document reading tool.
+    This tool is NOT for information gathering - it only provides citations for facts you already know from the document.
+    Do NOT use this tool to learn about procurement codes or rules.
+    """
+    if rag_engine_tool is None:
+        return "RAG system not initialized (Index not found)."
+    
+    try:
+        response = rag_engine_tool.query_engine.query(query)
+        
+        # Get the current citation count (how many sources we've accumulated so far)
+        current_count = len(ctx.deps.state.citation_sources)
+        citation_num = current_count + 1
+        
+        # Build the response text
+        result = str(response)
+        
+        # Store the most relevant source from this RAG call
+        if hasattr(response, 'source_nodes') and response.source_nodes:
+            # Take the first (most relevant) source node
+            node = response.source_nodes[0]
+            source_text = node.node.text if hasattr(node.node, 'text') and node.node.text else node.node.get_content()
+            # Reduced preview to 150 characters (about 15 words)
+            preview = source_text[:150] + "..." if len(source_text) > 150 else source_text
+            ctx.deps.state.citation_sources.append(preview)
+            
+            # Replace all citation markers in the response with the single citation number
+            # This handles cases where the RAG response has [1], [2], [3], etc.
+            for i in range(1, 10):  # Handle up to 9 citations in RAG response
+                result = result.replace(f"[{i}]", f"[{citation_num}]")
+        
+        return result
+    except Exception as e:
+        return f"Error querying RAG system: {str(e)}"
+
+def get_citation_sources(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
+    """
+    Get all accumulated citation sources to display to the user.
+    Call this at the end of your response to show what each citation number refers to.
+    """
+    if not ctx.deps.state.citation_sources:
+        return "No citation sources available."
+    
+    result = "--- Citation Sources ---\n"
+    for idx, source in enumerate(ctx.deps.state.citation_sources, start=1):
+        result += f"\n[{idx}] {source}\n"
+    
+    return result
 
 def reset_conversation(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
     """
@@ -169,6 +206,8 @@ def reset_conversation(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
              new_history.append(last_msg)
              
              ctx.messages[:] = new_history
+             # Clear accumulated citation sources for the new request
+             ctx.deps.state.citation_sources.clear()
              return "Conversation history has been reset. Proceed with the new request."
         
         # Fallback: If we can't find a user message (rare), keeping just the last message 
@@ -206,6 +245,7 @@ STATIC_SYSTEM_PROMPT = """You are a helpful assistant answering questions from a
         -   You cannot rely on memory. You must read the file fresh for every request.
         -   After reading, start your response with: "I have now read the document and will proceed with analysis based on this information."
 
+
     3.  **GENERATE CODE**:
         -   Verify EACH component (A, B, C, MM, QQ, S) against the `read_code_generation_file` content.
         -   Use the current date (YY[D]) if not specified (Year: 26).
@@ -215,9 +255,14 @@ STATIC_SYSTEM_PROMPT = """You are a helpful assistant answering questions from a
         -   Use `save_procurement_code` to save the valid code.
         -   **CRITICAL**: The generated code MUST be the VERY LAST line of your response.
 
+
     RULES:
     -   **NO GUESSING**: If a component isn't in the knowledge base, ask the user. Do not invent codes.
+    -   **CONFLICTS**: Information from `read_code_generation_file` is authoritative.
 """
+
+# Citation-related system prompt - commented out (see agent/hidden/RAG-REMOVAL-EXPLANATION.md)
+# + CITATION_SYSTEM_PROMPT
 
 # Instantiate the Agent
 
@@ -340,7 +385,8 @@ model = LoggingOpenAIModel(
 agent = Agent(
     model, 
     deps_type=StateDeps[ProcurementState],
-    tools=[read_code_generation_file, reset_conversation, save_procurement_code],
+    # Tools list - citation tools commented out (see agent/hidden/RAG-REMOVAL-EXPLANATION.md)
+    tools=[read_code_generation_file, reset_conversation, save_procurement_code],  # query_rag_system, get_citation_sources removed
     system_prompt=STATIC_SYSTEM_PROMPT,
 )
 

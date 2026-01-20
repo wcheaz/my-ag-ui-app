@@ -4,25 +4,18 @@
 TBD - created by archiving change implement-procurement-agent. Update Purpose after archive.
 ## Requirements
 ### Requirement: Enforce Procurement Workflow
-The agent MUST strictly follow a defined workflow to ensure accurate procurement code generation.
+The agent MUST strictly follow a defined workflow to ensure accurate procurement code generation and use all required tools.
 
 #### Scenario: Agent Initialization
-- **Given** the agent starts up
-- **Then** it must load the necessary tools (`read_code_generation_file`, `rag_query`).
-- **And** it must have the specific System Prompt from `create-llama-test` loaded.
+Given the agent starts up
+Then it must load the necessary tools (`read_code_generation_file`, `query_rag_system`, `save_procurement_code`, `reset_conversation`).
+And it must have the specific System Prompt from `create-llama-test` loaded.
 
-#### Scenario: Mandatory Guidebook Reading
-- **Given** a user asks for a procurement code
-- **Then** the agent MUST call `read_code_generation_file` before providing any code.
-- **And** the agent must confirm "I have now read the document..." before proceeding.
+### Requirement: Tool Availability
+The `query_rag_system` tool MUST be available to the agent for citation purposes.
 
-#### Scenario: Context Reset
-- **Given** a user has just received a procurement code
-- **When** the user asks for a *new* procurement code
-- **Then** the agent must behave as if it is a fresh request, re-reading the guidebook.
-- **And** it must not hallucinate based on the previous code's specific details.
-
-#### Scenario: Citation formatting
-- **Given** the agent provides information from the RAG tool
-- **Then** it must include inline citations in the format `[citation:id]`.
+#### Scenario: Calling RAG Tool
+Given the agent is initialized
+When the agent needs to verify a fact
+Then it can call `query_rag_system` with a query string
 

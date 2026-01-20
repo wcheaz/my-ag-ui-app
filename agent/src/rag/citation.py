@@ -26,25 +26,25 @@ Answer the following query with citations:
 
 ## Citation format
 
-[citation:id]
+[id]
 
 Where:
-- [citation:] is a matching pattern which is required for all citations.
 - `id` is the `citation_id` provided in the context or previous response.
 
 Example:
 ```
-    The Technology industry uses code T [citation:90ca859f-4f32-40ca-8cd0-edfad4fb298b]. 
-    For manufacturing methods, Assembly uses code A [citation:17b2cc9a-27ae-4b6d-bede-5ca60fc00ff4]. 
-    Material type for steel is 01 [citation:1c606612-e75f-490e-8374-44e79f818d19].
+    The Technology industry uses code T [1]. 
+    For manufacturing methods, Assembly uses code A [2]. 
+    Material type for steel is 01 [3].
 ```
 
 CRITICAL: Each piece of information MUST have its citation immediately after it, not at the end of the paragraph.
 
 ## Requirements:
-1. Always include citations for every fact from the context information in your response. 
-2. Make sure that the citation_id is correct with the context, don't mix up the citation_id with other information.
-3. CRITICAL: Include in-line citations [citation:id] immediately after each piece of information in your response text. Do NOT just list citations at the end.
+1. ONLY cite sources that contain information you actually use in your response. 
+2. If a chunk doesn't contain relevant information for the query, do NOT cite it.
+3. Make sure that the citation_id is correct with the context, don't mix up the citation_id with other information.
+4. CRITICAL: Include in-line citations [id] immediately after each piece of information in your response text. Do NOT just list citations at the end.
 
 Now, you answer the query with citations:
 """
@@ -61,8 +61,30 @@ class NodeCitationProcessor(BaseNodePostprocessor):
         nodes: List[NodeWithScore],
         query_bundle: Optional[QueryBundle] = None,
     ) -> List[NodeWithScore]:
-        for node_score in nodes:
-            node_score.node.metadata["citation_id"] = node_score.node.node_id
+        for idx, node_score in enumerate(nodes, start=1):
+            # DEBUG: Log metadata to hidden/METADATAOUTPUT.md
+            try:
+                import os
+                import json
+                log_path = os.path.join(os.getcwd(), "hidden", "METADATAOUTPUT.md")
+                os.makedirs(os.path.dirname(log_path), exist_ok=True)
+                with open(log_path, "a", encoding="utf-8") as f:
+                    f.write(f"\n--- Processing Node {node_score.node.node_id} ---\n")
+                    f.write(json.dumps(node_score.node.metadata, indent=2))
+                    f.write("\n")
+                    f.write(f"Content Preview: {node_score.node.get_content()[:200]}...\n")
+            except Exception as e:
+                print(f"Failed to log metadata: {e}")
+
+            # Use sequential numbering for human-readable citations
+            citation_id = str(idx)
+            node_score.node.metadata["citation_id"] = citation_id
+            
+            # Prepend source label with filename if available
+            original_text = node_score.node.get_content()
+            file_name = node_score.node.metadata.get("file_name", "Unknown Source")
+            node_score.node.text = f"Source {idx} ({file_name}):\n{original_text}\n"
+            
         return nodes
 
 
@@ -85,10 +107,10 @@ CITATION_SYSTEM_PROMPT = (
     "\nWhen using the query tool (RAG system), answer the user question using ONLY the response from the query tool. "
     "It's important to respect the citation information in the response. "
     "Don't mix up the citation_id, keep them at the correct fact. "
-    "The query tool provides citations in the format [citation:id] for each chunk of information. "
-    "CRITICAL: You MUST include these in-line citations [citation:id] in your actual response text, immediately after each piece of information you reference. "
+    "The query tool provides citations in the format [id] for each chunk of information. "
+    "CRITICAL: You MUST include these in-line citations [id] in your actual response text, immediately after each piece of information you reference. "
     "Do NOT just list citations at the end - they must be embedded within your response text. "
-    "EXAMPLE: Write 'The Technology industry uses code T [citation:abc123]' not 'The Technology industry uses code T. Sources: [citation:abc123]'. "
+    "EXAMPLE: Write 'The Technology industry uses code T [1]' not 'The Technology industry uses code T. Sources: [1]'. "
     "If the query tool returns no relevant information, respond with 'I cannot find information about this topic in the provided knowledge base.'"
 )
 
@@ -110,5 +132,5 @@ def enable_citation(query_engine_tool: QueryEngineTool) -> QueryEngineTool:
     query_engine_tool._query_engine = query_engine
 
     # Update tool metadata
-    query_engine_tool.metadata.description += "\nThe output will include citations with the format [citation:id] for each chunk of information in the knowledge base."
+    query_engine_tool.metadata.description += "\nThe output will include citations with the format [id] for each chunk of information in the knowledge base."
     return query_engine_tool

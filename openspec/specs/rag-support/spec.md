@@ -16,3 +16,16 @@ The system MUST provide a robust RAG infrastructure to support the agent's knowl
 - **Then** it must return chunks with specific `citation_id` metadata.
 - **And** the `citation_system_prompt` must be enforced to ensure accurate citation usage.
 
+### Requirement: Robust Index Loading
+The system MUST attempt to load the RAG index from multiple potential locations to support various execution contexts.
+
+#### Scenario: Running from Project Root
+Given the agent is executed from the project root
+When the RAG system initializes
+Then it should successfully locate the index in `agent/data/storage`
+
+#### Scenario: Running from Agent Directory
+Given the agent is executed from the `agent/` directory
+When the RAG system initializes
+Then it should successfully locate the index in `../agent/data/storage` or `data/storage`
+

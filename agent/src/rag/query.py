@@ -14,7 +14,7 @@ def create_query_engine(index: BaseIndex, **kwargs: Any) -> BaseQueryEngine:
         index: The index to create a query engine for.
         params (optional): Additional parameters for the query engine, e.g: similarity_top_k
     """
-    top_k = int(os.getenv("TOP_K", 1))  # Default to 5 if not set
+    top_k = int(os.getenv("TOP_K", 5))  # Default to 5 for better retrieval quality
     # Only set similarity_top_k if not already specified in kwargs
     if "similarity_top_k" not in kwargs and top_k > 0:
         kwargs["similarity_top_k"] = top_k
