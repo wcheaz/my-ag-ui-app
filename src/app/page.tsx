@@ -11,7 +11,7 @@ import { CopilotKitCSSProperties, CopilotSidebar } from "@copilotkit/react-ui";
 import { useState } from "react";
 
 export default function CopilotKitPage() {
-  const [themeColor, setThemeColor] = useState("#6366f1");
+  const [themeColor, setThemeColor] = useState("#363636ff");
 
   // 🪁 Frontend Actions: https://docs.copilotkit.ai/pydantic-ai/frontend-actions
   useFrontendTool({
@@ -35,6 +35,7 @@ export default function CopilotKitPage() {
       }
     >
       <CopilotSidebar
+        defaultOpen={true}
         disableSystemMessage={true}
         clickOutsideToClose={false}
         labels={{
@@ -43,12 +44,8 @@ export default function CopilotKitPage() {
         }}
         suggestions={[
           {
-            title: "Generate Code",
-            message: "I need a code for a steel beam.",
-          },
-          {
-            title: "Explain Code",
-            message: "What does code S01 mean?",
+            title: "Explain Code Generation",
+            message: "How can I generate a procurement code?",
           },
         ]}
       >
@@ -74,7 +71,7 @@ function YourMainContent({ themeColor }: { themeColor: string }) {
 
   return (
     <div
-      style={{ backgroundColor: themeColor }}
+      style={{}}
       className="h-screen flex justify-center items-center flex-col transition-colors duration-300"
     >
       <ProcurementCodes state={state} setState={setState} />
