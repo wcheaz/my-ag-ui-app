@@ -1,4 +1,5 @@
 pyproject.toml
+src/__init__.py
 src/agent.py
 src/main.py
 src/agent.egg-info/PKG-INFO

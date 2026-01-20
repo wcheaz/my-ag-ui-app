@@ -12,7 +12,7 @@ dependencies = [
     "uvicorn",
     "fastapi",
     "pydantic-ai",
-
+    "logfire>=4.19.0",
 ]
 
 [tool.uv]

@@ -24,6 +24,7 @@ dependencies = [
     { name = "llama-index-embeddings-huggingface" },
     { name = "llama-index-llms-deepseek" },
     { name = "llama-index-readers-file" },
+    { name = "logfire" },
     { name = "pydantic-ai" },
     { name = "uvicorn" },
 ]
@@ -35,6 +36,7 @@ requires-dist = [
     { name = "llama-index-embeddings-huggingface" },
     { name = "llama-index-llms-deepseek" },
     { name = "llama-index-readers-file" },
+    { name = "logfire", specifier = ">=4.19.0" },
     { name = "pydantic-ai" },
     { name = "uvicorn" },
 ]

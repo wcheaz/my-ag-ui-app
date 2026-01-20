@@ -11,3 +11,4 @@ Requires-Dist: llama-index-llms-deepseek
 Requires-Dist: uvicorn
 Requires-Dist: fastapi
 Requires-Dist: pydantic-ai
+Requires-Dist: logfire>=4.19.0

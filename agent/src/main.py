@@ -1,4 +1,8 @@
 from src.agent import ProcurementState, StateDeps, agent
+import logfire
+
+logfire.configure()
+logfire.instrument_pydantic_ai()
 
 app = agent.to_ag_ui(deps=StateDeps(state=ProcurementState()))
 
