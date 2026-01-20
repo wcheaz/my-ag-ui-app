@@ -3,6 +3,8 @@ import re
 from pydantic import BaseModel, Field
 from typing import List, Optional, Any
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.ag_ui import StateDeps
+from ag_ui.core import EventType, StateSnapshotEvent
 
 from src.rag.index import get_index
 from src.rag.settings import init_settings
@@ -22,10 +24,7 @@ class ProcurementState(BaseModel):
     conversation_id: Optional[str] = None
     procurement_codes: List[ProcurementCode] = Field(default_factory=list)
 
-class StateDeps(BaseModel):
-    state: ProcurementState
-
-def read_code_generation_file(ctx: RunContext[StateDeps]) -> str:
+def read_code_generation_file(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
     """
     Read the contents of the CODE_GENERATION.md file which contains the procurement code generation template.
     
@@ -74,7 +73,7 @@ def get_rag_tool():
 # Initialize the RAG tool instance to be used by the agent wrapper
 rag_engine_tool = get_rag_tool()
 
-def query_rag_system(ctx: RunContext[StateDeps], query: str) -> str:
+def query_rag_system(ctx: RunContext[StateDeps[ProcurementState]], query: str) -> str:
     """
     CITATIONS ONLY: Use this tool ONLY to get citations for information you've already obtained from the document reading tool.
     This tool is NOT for information gathering - it only provides citations for facts you already know from the document.
@@ -89,7 +88,7 @@ def query_rag_system(ctx: RunContext[StateDeps], query: str) -> str:
     except Exception as e:
         return f"Error querying RAG system: {str(e)}"
 
-def reset_conversation(ctx: RunContext[StateDeps]) -> str:
+def reset_conversation(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
     """
     Resets the conversation history. 
     Use this tool IMMEDIATELY when the user makes a request for a NEW procurement code that is unrelated to the previous one.
@@ -100,6 +99,24 @@ def reset_conversation(ctx: RunContext[StateDeps]) -> str:
         ctx.message_history.clear()
         return "Conversation history has been reset. Proceed with the new request."
     return "Failed to reset history (context not mutable)."
+
+async def save_procurement_code(ctx: RunContext[StateDeps[ProcurementState]], code: str, description: str) -> StateSnapshotEvent:
+    """
+    Saves a generated procurement code to the application state using the specific format required by the UI.
+    
+    Args:
+        code: The generated procurement code (e.g., "CFR01067261").
+        description: A brief description of the item (e.g., "Steel I-beam for office building construction").
+        
+    Returns:
+        A success message indicating the code has been saved.
+    """
+    new_code = ProcurementCode(code=code, description=description)
+    ctx.deps.state.procurement_codes.append(new_code)
+    return StateSnapshotEvent(
+        type=EventType.STATE_SNAPSHOT,
+        snapshot=ctx.deps.state,
+    )
 
 # Defined as a constant string for use in the dynamic system prompt function
 STATIC_SYSTEM_PROMPT = """You are a helpful assistant that answers questions using information from the provided knowledge base.
@@ -155,17 +172,18 @@ WARNING: The system will monitor whether you actually use the read_code_generati
 - Always cite your sources using the citation format provided when using the query tool.
 - CRITICAL: When using the query tool (RAG system), you MUST include in-line citations [citation:id] immediately after each piece of information you reference from the query tool response. Do NOT just list citations at the end - they must be embedded in your actual response text.
 - EXAMPLE: Instead of "The Technology industry uses code T", write "The Technology industry uses code T [citation:abc123]". Each fact needs its own citation immediately after it.
-- When you have successfully generated a complete and valid procurement code, always print the generated code on a separate line at the very end of your response. This should only be done when the code is fully valid and complete.""" + CITATION_SYSTEM_PROMPT
+- When you have successfully generated a complete and valid procurement code, you MUST use the `save_procurement_code` tool to save it to the state. This will automatically update the UI for the user.
+- AFTER saving the code with the tool, print the generated code on a separate line at the very end of your response.""" + CITATION_SYSTEM_PROMPT
 
 # Instantiate the Agent
 agent = Agent(
     'openai:deepseek-chat', # PydanticAI model name for DeepSeek via OpenAI compatible interface
-    deps_type=StateDeps,
-    tools=[read_code_generation_file, query_rag_system, reset_conversation],
+    deps_type=StateDeps[ProcurementState],
+    tools=[read_code_generation_file, query_rag_system, reset_conversation, save_procurement_code],
 )
 
 @agent.system_prompt
-def system_prompt_factory(ctx: RunContext[StateDeps]) -> str:
+def system_prompt_factory(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
     """
     Dynamically generate the system prompt.
     """
