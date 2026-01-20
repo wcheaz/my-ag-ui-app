@@ -62,3 +62,7 @@ SETUP-FIX.md
 
 # /openspec/*
 agent/data/storage/*
+
+
+# .vscode
+.vscode/*

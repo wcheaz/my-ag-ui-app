@@ -1,6 +1,6 @@
-from agent import ProverbsState, StateDeps, agent
+from src.agent import ProcurementState, StateDeps, agent
 
-app = agent.to_ag_ui(deps=StateDeps(ProverbsState()))
+app = agent.to_ag_ui(deps=StateDeps(state=ProcurementState()))
 
 if __name__ == "__main__":
     # run the app

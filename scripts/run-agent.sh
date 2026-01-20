@@ -17,8 +17,11 @@ fi
 
 # Run the agent using uv if found, otherwise fall back to pip
 if [ -n "$UV_CMD" ]; then
+    # Kill any process running on port 8000
+    fuser -k 8000/tcp || true
+    
     echo "Running agent using uv..."
-    $UV_CMD run src/main.py
+    $UV_CMD run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 else
     echo "uv not found, falling back to pip..."
     

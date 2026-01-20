@@ -28,25 +28,25 @@
     4.6. [x] Edit `agent/src/rag/settings.py`: Adapt to use `OPENAI_` environment variables from `my-ag-ui-app/.env`.
 
 5.  **Agent Implementation** <!-- id: 4 -->
-    5.1. [ ] Create `ProcurementState` class definition in `agent/src/agent.py`.
-    5.2. [ ] Implement `read_code_generation_file` tool function in `agent/src/agent.py`.
-    5.3. [ ] Import RAG modules (`get_index`, `init_settings`, `enable_citation`, `get_query_engine_tool`) in `agent/src/agent.py`.
-    5.4. [ ] Implement `get_rag_tool` function to initialize the QueryEngineTool.
-    5.5. [ ] Retrieve the strict System Prompt from `create-llama-test/src/workflow_with_embeddings.py`.
-    5.6. [ ] Replace the existing `SystemPrompt` in `agent/src/agent.py` with the retrieved prompt.
-    5.7. [ ] Instantiate the `ProcuementCodeSuggestorAgent` with the tools and system prompt.
+    5.1. [x] Create `ProcurementState` class definition in `agent/src/agent.py`.
+    5.2. [x] Implement `read_code_generation_file` tool function in `agent/src/agent.py`.
+    5.3. [x] Import RAG modules (`get_index`, `init_settings`, `enable_citation`, `get_query_engine_tool`) in `agent/src/agent.py`.
+    5.4. [x] Implement `get_rag_tool` function to initialize the QueryEngineTool.
+    5.5. [x] Retrieve the strict System Prompt from `create-llama-test/src/workflow_with_embeddings.py`.
+    5.6. [x] Replace the existing `SystemPrompt` in `agent/src/agent.py` with the retrieved prompt.
+    5.7. [x] Instantiate the `ProcuementCodeSuggestorAgent` with the tools and system prompt.
 
 6.  **Automatic Context Reset Logic** <!-- id: 5 -->
-    6.1. [ ] Implement logic in `agent/src/agent.py` to detect "new request" intent (e.g., regex for "code", "procurement", or purely new session).
-    6.2. [ ] Add mechanism to clear `ctx.message_history` or equivalent when a new request is detected.
-    6.3. [ ] Verify that context reset happens invisibly to the user (no UI interaction required).
+    6.1. [x] Implement logic in `agent/src/agent.py` to detect "new request" intent (e.g., regex for "code", "procurement", or purely new session).
+    6.2. [x] Add mechanism to clear `ctx.message_history` or equivalent when a new request is detected.
+    6.3. [x] Verify that context reset happens invisibly to the user (no UI interaction required).
 
 7.  **Verification** <!-- id: 6 -->
-    7.1. [ ] Start the application: `./manage_app.sh start`.
-    7.2. [ ] Open web UI.
-    7.3. [ ] Submit query: "I need a code for a steel pipe".
-    7.4. [ ] Check output for "Document content preview: ..." (Tool Usage).
-    7.5. [ ] Check output for inline citations `[citation:...]`.
-    7.6. [ ] Submit follow-up: "actually, make it copper". (Should result in context usage).
-    7.7. [ ] Submit NEW request: "I need a code for a plastic toy".
-    7.8. [ ] Verify that the previous "steel pipe" context is ignored/cleared.
+    7.1. [x] Start the application: `./manage_app.sh start`.
+    7.2. [x] Open web UI.
+    7.3. [x] Submit query: "I need a code for a steel pipe".
+    7.4. [x] Check output for "Document content preview: ..." (Tool Usage).
+    7.5. [x] Check output for inline citations `[citation:...]`.
+    7.6. [x] Submit follow-up: "actually, make it copper". (Should result in context usage).
+    7.7. [x] Submit NEW request: "I need a code for a plastic toy".
+    7.8. [x] Verify that the previous "steel pipe" context is ignored/cleared.

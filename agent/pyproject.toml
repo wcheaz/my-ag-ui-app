@@ -9,6 +9,10 @@ dependencies = [
     "llama-index-readers-file",
     "llama-index-embeddings-huggingface",
     "llama-index-llms-deepseek",
+    "uvicorn",
+    "fastapi",
+    "pydantic-ai",
+
 ]
 
 [tool.uv]
