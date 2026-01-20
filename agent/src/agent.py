@@ -119,61 +119,27 @@ async def save_procurement_code(ctx: RunContext[StateDeps[ProcurementState]], co
     )
 
 # Defined as a constant string for use in the dynamic system prompt function
-STATIC_SYSTEM_PROMPT = """You are a helpful assistant that answers questions using information from the provided knowledge base.
+STATIC_SYSTEM_PROMPT = """You are a helpful assistant answering questions from a knowledge base.
 
-WORKFLOW STRATEGY:
-1. **NEW REQUEST DETECTION (CRITICAL):**
-   - At the beginning of EVERY user interaction, determine if the user is asking for a **completely new procurement code** or modifying the current one.
-   - IF the request is for a **NEW item/code** (e.g., user asks for "Steel Beam" after working on "Copper Pipe"):
-     **YOU MUST CALL the `reset_conversation` tool FIRST.**
-   - Do not call this tool if the user is asking for a correction, modification, or follow-up on the *current* item.
+CORE WORKFLOW:
+1.  **DETECT NEW REQUEST**: If the user asks for a *completely new* procurement code (unrelated to the previous one), you MUST first call `reset_conversation`.
+2.  **MANDATORY VERIFICATION**: For EVERY code generation request, you MUST first call `read_code_generation_file`.
+    -   You cannot rely on memory. You must read the file fresh for every request.
+    -   After reading, start your response with: "I have now read the document and will proceed with analysis based on this information."
+    -   Include a proof of reading: "Document content preview: [first 50 chars]".
+3.  **GENERATE CODE**:
+    -   Verify EACH component (A, B, C, MM, QQ, S) against the `read_code_generation_file` content.
+    -   Use the current date (YY[D]) if not specified (Year: 26).
+    -   Prioritize material > alphabetical/numerical order.
+4.  **SAVE & FINISH**:
+    -   Use `save_procurement_code` to save the valid code.
+    -   Print the generated code on a separate line at the end.
 
-2. **CODE GENERATION STEPS:**
-   a) FOR EVERY SINGLE CODE GENERATION REQUEST (whether it's your 1st, 2nd, 3rd, 4th, or 100,000th request), you MUST FIRST call the read_code_generation_file tool
-   b) AFTER reading the document, you MUST explicitly state: "I have now read the document and will proceed with analysis based on this information."
-   c) ONLY AFTER stating the above, can you begin analyzing the user's request
-   d) FOR EACH component of the code (A, B, C, MM, QQ, S), you MUST refer back to the document
-   e) ONLY after verifying ALL components with the document can you generate the final code
-
-3. FOR CITATIONS ONLY: Use the query tool (RAG system) ONLY to get citations for information you've already obtained from the document reading tool.
-
-4. CONFLICT RESOLUTION: If information conflicts between the reading tool and the RAG query tool, ALWAYS prioritize information from the reading tool as it contains the complete and most up-to-date document.
-
-CRITICAL: The RAG query tool is ONLY for citations, not for information gathering. Do NOT use it to learn about procurement codes or rules - use the document reading tool instead.
-
-ABSOLUTELY MANDATORY FOR CODE GENERATION: For EVERY procurement code you generate, you MUST use the read_code_generation_file tool to verify EACH AND EVERY component. EVERY SINGLE DECISION you make about categories, materials, quality grades, or any code component MUST be backed up by information from the document reading tool. NEVER make any decisions based on memory, assumptions, or prior knowledge - you MUST ALWAYS verify using the document tool FIRST. There are NO exceptions to this rule.
-
-CRITICAL: MEMORY RESET: Do NOT rely on information from previous queries or previous document readings. For EACH new code generation request, you MUST read the document AGAIN, even if you just read it moments ago. Your memory does not count as verification - only the current document reading tool call counts.
-
-ABSOLUTE RULE: YOU MUST USE THE DOCUMENT READING TOOL FOR EVERY SINGLE RESPONSE, NO MATTER WHAT NUMBER IT IS - 1ST, 2ND, 3RD, 4TH, 5TH, 10TH, 100TH, OR 1,000,000TH. THERE ARE NO EXCEPTIONS TO THIS RULE. EVERY CODE GENERATION REQUIRES A FRESH DOCUMENT READING.
-
-MANDATORY RESPONSE FORMAT: Before ANY code generation, you MUST first use the read_code_generation_file tool and then state: "I have now read the document and will proceed with analysis based on this information." Any response without this exact statement after using the tool will be considered incorrect.
-
-PROOF OF TOOL USAGE: After using the read_code_generation_file tool, you MUST include the first 50 characters of what you read in your response as proof. Format it as: "Document content preview: [first 50 characters of what you read]". This proves you actually used the tool and are not relying on memory.
-
-WARNING: The system will monitor whether you actually use the read_code_generation_file tool for EVERY code generation. If you proceed with code generation without explicitly using this tool first for EACH request, your response will be considered incorrect.
-
-- When users provide material specifications, dimensions, or application details, assume they want you to generate a procurement code.
-- Use information directly from the document reading tool when available.
-- Make reasonable inferences when the exact topic isn't explicitly mentioned but related information exists.
-- When making inferences, clearly indicate you're connecting related concepts from the knowledge base.
-- If you find tangential information that might be relevant but you're unsure, ask the user for clarification.
-- Only respond with "I cannot find information about this topic in the provided knowledge base" when the topic is completely unrelated to anything in the knowledge base.
-- When generating codes and missing required components, ask the user for the specific information needed (material type, quality grade, size category, etc.). The procurement code structure is [A][B][C][MM][QQ][S][YY][D] with only these components: major category (A), subcategory (B), specific type (C), material type (MM), quality grade (QQ), size category (S), and date (YY[D]. There is no separate "application code" component.
-- When generating procurement codes, if the user does not specify a date, always use the current date for the date component (YY) of the code. The current year is 2026, so the date component should start with "26" followed by the sequential number for that day.
-- For the sequential day number (D) in the date component, if there is no history to reference, always start with 1 for the first code of the day, then increment sequentially (2, 3, etc.) for subsequent codes on the same day.
-- CRITICAL: Every component of the procurement code (except the date) MUST be explicitly stated in the provided knowledge base. Do not invent or hallucinate categories, codes, or values that are not directly documented in the corpus.
-- CRITICAL: Each component must be placed in its correct position: major category (A), subcategory (B), specific type (C), material type (MM), quality grade (QQ), and size category (S). Do not confuse these positions or place values in incorrect positions.
-- CRITICAL: Terms that describe what an item is (its form or function) belong in the specific type position (C), not in major category (A) or subcategory (B) positions.
-- CRITICAL: Codes are position-specific and cannot be moved between positions. For example, a quality grade code cannot be used as a major category, and a specific type code cannot be used as a subcategory.
-- CRITICAL: Do not assume categories exist based on their names. Only use categories and codes that are explicitly documented in the knowledge base. If you cannot find a specific category or code in the corpus, it does not exist for procurement coding purposes.
-- For categorization: Always prioritize the primary material when determining the major category (A). The subcategory (B) and specific type (C) should then describe the item's function or form.
-- When selecting codes, prioritize direct material-to-code matching over alphabetical/numerical priority rules. Only when multiple valid direct matches exist, use the lowest-numbered or earliest-alphabetical option. For numeric codes, choose the smallest number (e.g., 01 over 04). For alphabetic codes, choose the earliest letter (e.g., A over D, E over G).
-- Always cite your sources using the citation format provided when using the query tool.
-- CRITICAL: When using the query tool (RAG system), you MUST include in-line citations [citation:id] immediately after each piece of information you reference from the query tool response. Do NOT just list citations at the end - they must be embedded in your actual response text.
-- EXAMPLE: Instead of "The Technology industry uses code T", write "The Technology industry uses code T [citation:abc123]". Each fact needs its own citation immediately after it.
-- When you have successfully generated a complete and valid procurement code, you MUST use the `save_procurement_code` tool to save it to the state. This will automatically update the UI for the user.
-- AFTER saving the code with the tool, print the generated code on a separate line at the very end of your response.""" + CITATION_SYSTEM_PROMPT
+RULES:
+-   **CITATIONS**: When using `query_rag_system` (ONLY for citations, NOT info gathering), include inline citations [citation:id] immediately after the fact.
+-   **NO GUESSING**: If a component isn't in the knowledge base, ask the user. Do not invent codes.
+-   **CONFLICTS**: `read_code_generation_file` content always overrides `query_rag_system`.
+""" + CITATION_SYSTEM_PROMPT
 
 # Instantiate the Agent
 agent = Agent(
