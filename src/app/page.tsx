@@ -1,6 +1,6 @@
 "use client";
 
-import { ProverbsCard } from "@/components/proverbs";
+import { ProcurementCodes } from "@/components/procurement-codes";
 import { AgentState } from "@/lib/types";
 import {
   useCoAgent,
@@ -37,26 +37,17 @@ export default function CopilotKitPage() {
         disableSystemMessage={true}
         clickOutsideToClose={false}
         labels={{
-          title: "Popup Assistant",
-          initial: "👋 Hi, there! You're chatting with an agent.",
+          title: "Procurement Assistant",
+          initial: "👋 Hi! I can help you generate procurement codes.",
         }}
         suggestions={[
           {
-            title: "Frontend Tools",
-            message: "Set the theme to green.",
+            title: "Generate Code",
+            message: "I need a code for a steel beam.",
           },
           {
-            title: "Write Agent State",
-            message: "Add a proverb about AI.",
-          },
-          {
-            title: "Update Agent State",
-            message:
-              "Please remove 1 random proverb from the list if there are any.",
-          },
-          {
-            title: "Read Agent State",
-            message: "What are the proverbs?",
+            title: "Explain Code",
+            message: "What does code S01 mean?",
           },
         ]}
       >
@@ -71,9 +62,7 @@ function YourMainContent({ themeColor }: { themeColor: string }) {
   const { state, setState } = useCoAgent<AgentState>({
     name: "my_agent",
     initialState: {
-      proverbs: [
-        "CopilotKit may be new, but its the best thing since sliced bread.",
-      ],
+      procurement_codes: [],
     },
   });
 
@@ -82,7 +71,7 @@ function YourMainContent({ themeColor }: { themeColor: string }) {
       style={{ backgroundColor: themeColor }}
       className="h-screen flex justify-center items-center flex-col transition-colors duration-300"
     >
-      <ProverbsCard state={state} setState={setState} />
+      <ProcurementCodes state={state} setState={setState} />
     </div>
   );
 }
