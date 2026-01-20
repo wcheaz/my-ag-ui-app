@@ -1,31 +1,31 @@
 # Tasks
 
 1.  **Environment Setup** <!-- id: 0 -->
-    1.1. [ ] Read `create-llama-test/.env` to identify required variables (`LLM_MAX_TOKENS`, `EMBEDDING_MODEL`).
-    1.2. [ ] Check `my-ag-ui-app/.env` for existing variables.
-    1.3. [ ] Append missing variables to `my-ag-ui-app/.env`.
-    1.4. [ ] Verify `OPENAI_API_KEY` and `OPENAI_BASE_URL` are set correctly for DeepSeek.
+    1.1. [x] Read `create-llama-test/.env` to identify required variables (`LLM_MAX_TOKENS`, `EMBEDDING_MODEL`).
+    1.2. [x] Check `my-ag-ui-app/.env` for existing variables.
+    1.3. [x] Append missing variables to `my-ag-ui-app/.env`.
+    1.4. [x] Verify `OPENAI_API_KEY` and `OPENAI_BASE_URL` are set correctly for DeepSeek.
 
 2.  **Data Migration** <!-- id: 1 -->
-    2.1. [ ] Create directory `agent/data/`.
-    2.2. [ ] Copy `create-llama-test/ui/data/CODE_GENERATION.md` to `agent/data/CODE_GENERATION.md`.
-    2.3. [ ] Create directory `agent/data/storage/`.
-    2.4. [ ] Copy contents of `create-llama-test/src/storage/` to `agent/data/storage/`.
+    2.1. [x] Create directory `agent/data/`.
+    2.2. [x] Copy `create-llama-test/ui/data/CODE_GENERATION.md` to `agent/data/CODE_GENERATION.md`.
+    2.3. [x] Create directory `agent/data/storage/`.
+    2.4. [x] Copy contents of `create-llama-test/src/storage/` to `agent/data/storage/`.
 
 3.  **Dependencies** <!-- id: 2 -->
-    3.1. [ ] Add `llama-index-core` to `agent/pyproject.toml`.
-    3.2. [ ] Add `llama-index-readers-file` to `agent/pyproject.toml`.
-    3.3. [ ] Add `llama-index-embeddings-openai` to `agent/pyproject.toml`.
-    3.4. [ ] Add `llama-index-llms-openai` to `agent/pyproject.toml`.
-    3.5. [ ] Run `uv sync` to install dependencies.
+    3.1. [x] Add `llama-index-core` to `agent/pyproject.toml`.
+    3.2. [x] Add `llama-index-readers-file` to `agent/pyproject.toml`.
+    3.3. [x] Add `llama-index-embeddings-huggingface` to `agent/pyproject.toml`.
+    3.4. [x] Add `llama-index-llms-deepseek` to `agent/pyproject.toml`.
+    3.5. [x] Run `uv sync` to install dependencies.
 
 4.  **RAG Infrastructure Porting** <!-- id: 3 -->
-    4.1. [ ] Create directory `agent/src/rag/`.
-    4.2. [ ] Copy `create-llama-test/src/index.py` into `agent/src/rag/`.
-    4.3. [ ] Edit `agent/src/rag/index.py`: Update `STORAGE_DIR` to point to `agent/data/storage`.
-    4.4. [ ] Copy `create-llama-test/src/citation.py` into `agent/src/rag/`.
-    4.5. [ ] Copy `create-llama-test/src/settings.py` into `agent/src/rag/`.
-    4.6. [ ] Edit `agent/src/rag/settings.py`: Adapt to use `OPENAI_` environment variables from `my-ag-ui-app/.env`.
+    4.1. [x] Create directory `agent/src/rag/`.
+    4.2. [x] Copy `create-llama-test/src/index.py` into `agent/src/rag/`.
+    4.3. [x] Edit `agent/src/rag/index.py`: Update `STORAGE_DIR` to point to `agent/data/storage`.
+    4.4. [x] Copy `create-llama-test/src/citation.py` into `agent/src/rag/`.
+    4.5. [x] Copy `create-llama-test/src/settings.py` into `agent/src/rag/`.
+    4.6. [x] Edit `agent/src/rag/settings.py`: Adapt to use `OPENAI_` environment variables from `my-ag-ui-app/.env`.
 
 5.  **Agent Implementation** <!-- id: 4 -->
     5.1. [ ] Create `ProcurementState` class definition in `agent/src/agent.py`.

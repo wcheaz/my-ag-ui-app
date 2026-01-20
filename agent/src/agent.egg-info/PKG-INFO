@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: agent
+Version: 0.1.0
+Summary: Procurement Agent
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: llama-index-core
+Requires-Dist: llama-index-readers-file
+Requires-Dist: llama-index-embeddings-huggingface
+Requires-Dist: llama-index-llms-deepseek

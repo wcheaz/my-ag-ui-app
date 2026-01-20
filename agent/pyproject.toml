@@ -1,0 +1,15 @@
+[project]
+name = "agent"
+version = "0.1.0"
+description = "Procurement Agent"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "llama-index-core",
+    "llama-index-readers-file",
+    "llama-index-embeddings-huggingface",
+    "llama-index-llms-deepseek",
+]
+
+[tool.uv]
+package = true
