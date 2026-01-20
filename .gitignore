@@ -21,8 +21,8 @@
 /build
 
 # misc
-.DS_Store
 *.pem
+.DS_Store
 
 # debug
 npm-debug.log*
@@ -61,3 +61,4 @@ hidden/
 SETUP-FIX.md
 
 # /openspec/*
+agent/data/storage/*
