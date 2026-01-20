@@ -54,22 +54,9 @@ def read_code_generation_file(ctx: RunContext[StateDeps[ProcurementState]]) -> s
         The contents of the CODE_GENERATION.md file as a string
     """
     try:
-        # DEBUG: Log context messages
-        try:
-            with open(os.path.join(os.getcwd(), "hidden", "debug_context.txt"), "a") as f:
-                f.write(f"\nCTX MESSAGES AT {datetime.datetime.now()}:\n")
-                if hasattr(ctx, 'messages'):
-                    for i, m in enumerate(ctx.messages):
-                        f.write(f"MSG {i}: Type={type(m).__name__}, Parts={len(m.parts) if hasattr(m, 'parts') else 'N/A'}\n")
-                        if hasattr(m, 'parts'):
-                            for p in m.parts:
-                                f.write(f"  PART: {type(p).__name__}\n")
-        except Exception as deb_e:
-            print(f"Debug log failed: {deb_e}")
-
         # Try finding the file relative to CWD
         paths_to_check = [
-            os.path.join(os.getcwd(), "agent", "data", "CODE_GENERATION.md"), # From project root
+            os.path.join("agent", "data", "CODE_GENERATION.md"), # From project root
             os.path.join("data", "CODE_GENERATION.md"), # From agent dir
             os.path.join("..", "data", "CODE_GENERATION.md"), # From src dir
         ]
@@ -135,14 +122,6 @@ def reset_conversation(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
         
         last_msg = ctx.messages[-1]
         target_user_msg = None
-        system_msg = None
-
-        # Check for SystemPromptPart in the first message
-        if ctx.messages and hasattr(ctx.messages[0], 'parts'):
-            for part in ctx.messages[0].parts:
-                if type(part).__name__ == 'SystemPromptPart':
-                    system_msg = ctx.messages[0]
-                    break
         
         # Iterate backwards looking for the last UserPromptPart
         # We search from the second-to-last message
@@ -161,14 +140,8 @@ def reset_conversation(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
                 break
         
         if target_user_msg:
-             # Reset history to [SystemPrompt, UserRequest, AssistantCall]
-             new_history = []
-             if system_msg:
-                 new_history.append(system_msg)
-             new_history.append(target_user_msg)
-             new_history.append(last_msg)
-             
-             ctx.messages[:] = new_history
+             # Reset history to [UserRequest, AssistantCall]
+             ctx.messages[:] = [target_user_msg, last_msg]
              return "Conversation history has been reset. Proceed with the new request."
         
         # Fallback: If we can't find a user message (rare), keeping just the last message 
@@ -199,30 +172,30 @@ async def save_procurement_code(ctx: RunContext[StateDeps[ProcurementState]], co
 # Defined as a constant string for use in the dynamic system prompt function
 STATIC_SYSTEM_PROMPT = """You are a helpful assistant answering questions from a knowledge base.
 
-    CORE WORKFLOW:
-    1.  **DETECT NEW REQUEST**: If the user asks for a *completely new* procurement code (unrelated to the previous one), you MUST first call `reset_conversation`. Do NOT state that you are resetting memory. Just do it silently.
+CORE WORKFLOW:
+1.  **DETECT NEW REQUEST**: If the user asks for a *completely new* procurement code (unrelated to the previous one), you MUST first call `reset_conversation`. Do NOT state that you are resetting memory. Just do it silently.
 
-    2.  **MANDATORY VERIFICATION**: For EVERY code generation request, you MUST first call `read_code_generation_file`.
-        -   You cannot rely on memory. You must read the file fresh for every request.
-        -   After reading, start your response with: "I have now read the document and will proceed with analysis based on this information."
+2.  **MANDATORY VERIFICATION**: For EVERY code generation request, you MUST first call `read_code_generation_file`.
+    -   You cannot rely on memory. You must read the file fresh for every request.
+    -   After reading, start your response with: "I have now read the document and will proceed with analysis based on this information."
 
-    3.  **GENERATE CODE**:
-        -   Verify EACH component (A, B, C, MM, QQ, S) against the `read_code_generation_file` content.
-        -   Use the current date (YY[D]) if not specified (Year: 26).
-        -   Prioritize material > alphabetical/numerical order.
-    4.  **SAVE & FINISH**:
-        -   Do NOT state that you are saving a code to application state. Just do it silently.
-        -   Use `save_procurement_code` to save the valid code.
-        -   **CRITICAL**: The generated code MUST be the VERY LAST line of your response.
+3.  **GENERATE CODE**:
+    -   Verify EACH component (A, B, C, MM, QQ, S) against the `read_code_generation_file` content.
+    -   Use the current date (YY[D]) if not specified (Year: 26).
+    -   Prioritize material > alphabetical/numerical order.
+4.  **SAVE & FINISH**:
+    -   Do NOT state that you are saving a code to application state. Just do it silently.
+    -   Use `save_procurement_code` to save the valid code.
+    -   **CRITICAL**: The generated code MUST be the VERY LAST line of your response.
 
-    RULES:
-    -   **NO GUESSING**: If a component isn't in the knowledge base, ask the user. Do not invent codes.
+RULES:
+-   **NO GUESSING**: If a component isn't in the knowledge base, ask the user. Do not invent codes.
 """
 
 # Instantiate the Agent
 
 from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.messages import ModelMessage, ModelRequest, SystemPromptPart
+from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models import ModelRequestParameters, ModelSettings, ModelResponse, StreamedResponse
 from collections.abc import AsyncIterator
 from typing import Any
@@ -286,19 +259,6 @@ class LoggingOpenAIModel(OpenAIModel):
         model_settings: ModelSettings | None, 
         model_request_parameters: ModelRequestParameters
     ) -> ModelResponse:
-        # Check and inject System Prompt if missing
-        has_system = False
-        if messages and isinstance(messages[0], ModelRequest):
-             for part in messages[0].parts:
-                 if isinstance(part, SystemPromptPart):
-                     has_system = True
-                     break
-        
-        if not has_system:
-             # Create a new ModelRequest with system prompt
-             sys_req = ModelRequest(parts=[SystemPromptPart(content=STATIC_SYSTEM_PROMPT)])
-             messages.insert(0, sys_req)
-
         self._log_messages(messages)
         return await super().request(messages, model_settings, model_request_parameters)
 
@@ -310,19 +270,6 @@ class LoggingOpenAIModel(OpenAIModel):
         model_request_parameters: ModelRequestParameters,
         run_context: Any | None = None
     ) -> AsyncIterator[StreamedResponse]:
-        # Check and inject System Prompt if missing
-        has_system = False
-        if messages and isinstance(messages[0], ModelRequest):
-             for part in messages[0].parts:
-                 if isinstance(part, SystemPromptPart):
-                     has_system = True
-                     break
-        
-        if not has_system:
-             # Create a new ModelRequest with system prompt
-             sys_req = ModelRequest(parts=[SystemPromptPart(content=STATIC_SYSTEM_PROMPT)])
-             messages.insert(0, sys_req)
-             
         self._log_messages(messages)
         async with super().request_stream(messages, model_settings, model_request_parameters, run_context) as stream:
             yield stream
@@ -341,7 +288,11 @@ agent = Agent(
     model, 
     deps_type=StateDeps[ProcurementState],
     tools=[read_code_generation_file, reset_conversation, save_procurement_code],
-    system_prompt=STATIC_SYSTEM_PROMPT,
 )
 
-
+@agent.system_prompt
+def system_prompt_factory(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
+    """
+    Dynamically generate the system prompt.
+    """
+    return STATIC_SYSTEM_PROMPT

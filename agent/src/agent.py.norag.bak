@@ -1,0 +1,216 @@
+import os
+import re
+from pydantic import BaseModel, Field
+from typing import List, Optional, Any
+from pydantic_ai import Agent, RunContext
+from pydantic_ai.ag_ui import StateDeps
+from ag_ui.core import EventType, StateSnapshotEvent
+
+# from src.rag.index import get_index
+# from src.rag.settings import init_settings
+# from src.rag.citation import enable_citation, CITATION_SYSTEM_PROMPT
+# from src.rag.query import get_query_engine_tool
+
+# LOAD ENVIRONMENT VARIABLES manually since init_settings is disabled
+import os
+def load_env():
+    # Try finding .env file
+    paths = [
+        os.path.join(os.getcwd(), ".env"),
+        os.path.join(os.getcwd(), "..", ".env"),
+        os.path.join(os.path.dirname(__file__), "..", ".env"),
+        os.path.join(os.path.dirname(__file__), "..", "..", ".env"),
+    ]
+    for p in paths:
+        if os.path.exists(p):
+            with open(p, "r") as f:
+                for line in f:
+                    if "=" in line and not line.strip().startswith("#"):
+                        key, val = line.strip().split("=", 1)
+                        if not os.environ.get(key):
+                            os.environ[key] = val.strip().strip("'").strip('"')
+            break
+
+load_env()
+
+class ProcurementCode(BaseModel):
+    code: str
+    description: str
+
+class ProcurementState(BaseModel):
+    """
+    State for the Procurement Agent.
+    Maintains conversation history and other session-specific data.
+    """
+    # Placeholder for message history or other state tracking
+    conversation_id: Optional[str] = None
+    procurement_codes: List[ProcurementCode] = Field(default_factory=list)
+
+def read_code_generation_file(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
+    """
+    Read the contents of the CODE_GENERATION.md file which contains the procurement code generation template.
+    
+    Returns:
+        The contents of the CODE_GENERATION.md file as a string
+    """
+    try:
+        # Try finding the file relative to CWD
+        paths_to_check = [
+            os.path.join("agent", "data", "CODE_GENERATION.md"), # From project root
+            os.path.join("data", "CODE_GENERATION.md"), # From agent dir
+            os.path.join("..", "data", "CODE_GENERATION.md"), # From src dir
+        ]
+        
+        file_path = None
+        for path in paths_to_check:
+            if os.path.exists(path):
+                file_path = path
+                break
+        
+        if not file_path:
+             return "Error: CODE_GENERATION.md file not found in expected locations."
+
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return content
+    except Exception as e:
+        return f"Error reading CODE_GENERATION.md file: {str(e)}"
+
+# def get_rag_tool():
+#     """
+#     Initialize and return the RAG query tool.
+#     In PydanticAI, we might wrap this, but for now we initialize the LlamaIndex components.
+#     """
+#     init_settings()
+#     index = get_index()
+#     if index is None:
+#         return None
+#         
+#     query_tool = enable_citation(get_query_engine_tool(
+#         index=index,
+#         description="CITATIONS ONLY: Use this tool ONLY to get citations for information you've already obtained from the document reading tool. This tool is NOT for information gathering - it only provides citations for facts you already know from the document. Do NOT use this tool to learn about procurement codes or rules."
+#     ))
+#     return query_tool
+
+# # Initialize the RAG tool instance to be used by the agent wrapper
+# rag_engine_tool = get_rag_tool()
+
+# def query_rag_system(ctx: RunContext[StateDeps[ProcurementState]], query: str) -> str:
+#     """
+#     CITATIONS ONLY: Use this tool ONLY to get citations for information you've already obtained from the document reading tool.
+#     This tool is NOT for information gathering - it only provides citations for facts you already know from the document.
+#     Do NOT use this tool to learn about procurement codes or rules.
+#     """
+#     if rag_engine_tool is None:
+#         return "RAG system not initialized (Index not found)."
+#     
+#     try:
+#         response = rag_engine_tool.query_engine.query(query)
+#         return str(response)
+#     except Exception as e:
+#         return f"Error querying RAG system: {str(e)}"
+
+def reset_conversation(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
+    """
+    Resets the conversation history. Do this SILENTLY. Do NOT state that you are resetting memory. Just do it silently.
+    Use this tool IMMEDIATELY when the user makes a request for a NEW procurement code that is unrelated to the previous one.
+    This ensures that previous context does not interfere with the new code generation.
+    """
+    if hasattr(ctx, 'messages') and isinstance(ctx.messages, list):
+        # ERROR FIX: We must preserve the *last User Request* and the *current Assistant Tool Call*.
+        # Previous attempts to just slice [-2:] failed if the stack contained intermediate ToolReturns (orphaned).
+        
+        last_msg = ctx.messages[-1]
+        target_user_msg = None
+        
+        # Iterate backwards looking for the last UserPromptPart
+        # We search from the second-to-last message
+        for i in range(len(ctx.messages) - 2, -1, -1):
+            msg = ctx.messages[i]
+            # Check for UserPromptPart by name to avoid import dependencies
+            is_user = False
+            if hasattr(msg, 'parts'):
+                for part in msg.parts:
+                    if type(part).__name__ == 'UserPromptPart':
+                        is_user = True
+                        break
+            
+            if is_user:
+                target_user_msg = msg
+                break
+        
+        if target_user_msg:
+             # Reset history to [UserRequest, AssistantCall]
+             ctx.messages[:] = [target_user_msg, last_msg]
+             return "Conversation history has been reset. Proceed with the new request."
+        
+        # Fallback: If we can't find a user message (rare), keeping just the last message 
+        # might still be better than an invalid ToolReturn.
+        # But safest is to do nothing if structure is weird.
+        return "Conversation reset requested (Unable to isolate user prompt)."
+
+    return "Conversation reset signal sent (Note: internal history clearing not supported in this context)."
+
+async def save_procurement_code(ctx: RunContext[StateDeps[ProcurementState]], code: str, description: str) -> StateSnapshotEvent:
+    """
+    Saves a generated procurement code to the application state using the specific format required by the UI.
+    Do NOT state that you are saving a code to application state. Just do it silently.
+    Args:
+        code: The generated procurement code (e.g., "CFR01067261").
+        description: A brief description of the item (e.g., "Steel I-beam for office building construction").
+        
+    Returns:
+        A success message indicating the code has been saved.
+    """
+    new_code = ProcurementCode(code=code, description=description)
+    ctx.deps.state.procurement_codes.append(new_code)
+    return StateSnapshotEvent(
+        type=EventType.STATE_SNAPSHOT,
+        snapshot=ctx.deps.state,
+    )
+
+# Defined as a constant string for use in the dynamic system prompt function
+STATIC_SYSTEM_PROMPT = """You are a backend procurement engine. You are NOT a conversational assistant. You generate structured data only.
+    
+    CORE WORKFLOW:
+    1.  **CONTEXT CHECK**: If the request implies a new context, call `reset_conversation` silently.
+    2.  **DATA INGESTION**: Call `read_code_generation_file`.
+    3.  **GENERATION**: Compare user input against the file to generate components.
+    4.  **SAVE**: Call `save_procurement_code` with the valid code.
+
+    ***CRITICAL OUTPUT RULES***
+    1.  **NO CHATTER**: Do not use phrases like "Let me analyze," "I will now," "Based on," or "The code is saved."
+    2.  **NO TOOL LOGGING**: Do not mention tool usage. The act of returning the code implies the tools were used.
+    3.  **XML CONTAINER**: Your ENTIRE user-facing response must be wrapped inside <procurement_report> tags.
+    4.  **FINAL LINE**: The text inside the XML tags must end with the code.
+
+    ### REQUIRED RESPONSE TEMPLATE
+    You must strictly follow this structure. Do not output anything outside these tags.
+
+    <procurement_report>
+    I have now read the document and will proceed with analysis based on this information.
+
+    **Analysis Summary**
+    [Concise justification of the selected A, B, C, MM, QQ, S components]
+
+    **Code Breakdown**
+    * [Component]: [Value]
+    * [Component]: [Value]
+
+    **Final Code**
+    [THE_PROCUREMENT_CODE]
+    </procurement_report>
+"""
+# Instantiate the Agent
+agent = Agent(
+    'openai:deepseek-chat', # PydanticAI model name for DeepSeek via OpenAI compatible interface
+    deps_type=StateDeps[ProcurementState],
+    tools=[read_code_generation_file, reset_conversation, save_procurement_code],
+)
+
+@agent.system_prompt
+def system_prompt_factory(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
+    """
+    Dynamically generate the system prompt.
+    """
+    return STATIC_SYSTEM_PROMPT
