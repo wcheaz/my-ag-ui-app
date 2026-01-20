@@ -1,15 +1,10 @@
 "use client";
 
 import { ProverbsCard } from "@/components/proverbs";
-import { WeatherCard } from "@/components/weather";
-import { MoonCard } from "@/components/moon";
 import { AgentState } from "@/lib/types";
 import {
   useCoAgent,
-  useDefaultTool,
   useFrontendTool,
-  useHumanInTheLoop,
-  useRenderToolCall,
 } from "@copilotkit/react-core";
 import { CopilotKitCSSProperties, CopilotSidebar } from "@copilotkit/react-ui";
 import { useState } from "react";
@@ -47,16 +42,8 @@ export default function CopilotKitPage() {
         }}
         suggestions={[
           {
-            title: "Generative UI",
-            message: "Get the weather in San Francisco.",
-          },
-          {
             title: "Frontend Tools",
             message: "Set the theme to green.",
-          },
-          {
-            title: "Human In the Loop",
-            message: "Please go to the moon.",
           },
           {
             title: "Write Agent State",
@@ -89,33 +76,6 @@ function YourMainContent({ themeColor }: { themeColor: string }) {
       ],
     },
   });
-
-  //🪁 Generative UI: https://docs.copilotkit.ai/pydantic-ai/generative-ui
-  useRenderToolCall(
-    {
-      name: "get_weather",
-      description: "Get the weather for a given location.",
-      parameters: [{ name: "location", type: "string", required: true }],
-      render: ({ args, result }) => {
-        return <WeatherCard location={args.location} themeColor={themeColor} />;
-      },
-    },
-    [themeColor],
-  );
-
-  // 🪁 Human In the Loop: https://docs.copilotkit.ai/pydantic-ai/human-in-the-loop
-  useHumanInTheLoop(
-    {
-      name: "go_to_moon",
-      description: "Go to the moon on request.",
-      render: ({ respond, status }) => {
-        return (
-          <MoonCard themeColor={themeColor} status={status} respond={respond} />
-        );
-      },
-    },
-    [themeColor],
-  );
 
   return (
     <div
