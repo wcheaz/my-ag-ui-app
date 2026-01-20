@@ -94,11 +94,26 @@ def reset_conversation(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
     Use this tool IMMEDIATELY when the user makes a request for a NEW procurement code that is unrelated to the previous one.
     This ensures that previous context does not interfere with the new code generation.
     """
-    if hasattr(ctx, 'message_history') and isinstance(ctx.message_history, list):
-        # Clear the history list
-        ctx.message_history.clear()
-        return "Conversation history has been reset. Proceed with the new request."
-    return "Failed to reset history (context not mutable)."
+    # Pydantic AI uses 'messages' in RunContext
+    if hasattr(ctx, 'messages') and isinstance(ctx.messages, list):
+        # ERROR FIX: We cannot clear ALL messages, because we must preserve 
+        # the Assistant message that called this tool (and the User message that triggered it).
+        # Otherwise, the LLM API rejects the tool output as "orphaned" (HTTP 400).
+        
+        # Strategy: Keep the last 2 messages (User Request + Assistant Tool Call).
+        # This assumes the strict "New Request -> Reset" flow enforced by the prompt.
+        
+        if len(ctx.messages) >= 2:
+            # Keep only the last 2 messages in place
+            ctx.messages[:] = ctx.messages[-2:]
+            return "Conversation history has been reset. Proceed with the new request."
+        else:
+            # If less than 2 messages, we can't really "reset" safely without clearing the trigger,
+            # but clearing likely caused the error. In this edge case, do nothing 
+            return "Conversation history is already empty or too short to reset."
+
+    # Fallback to prevent crash if attribute is missing
+    return "Conversation reset signal sent (Note: internal history clearing not supported in this context)."
 
 async def save_procurement_code(ctx: RunContext[StateDeps[ProcurementState]], code: str, description: str) -> StateSnapshotEvent:
     """
