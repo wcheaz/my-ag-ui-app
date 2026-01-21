@@ -245,7 +245,6 @@ STATIC_SYSTEM_PROMPT = """You are a helpful assistant answering questions from a
         -   You cannot rely on memory. You must read the file fresh for every request.
         -   After reading, start your response with: "I have now read the document and will proceed with analysis based on this information."
 
-
     3.  **GENERATE CODE**:
         -   Verify EACH component (A, B, C, MM, QQ, S) against the `read_code_generation_file` content.
         -   Use the current date (YY[D]) if not specified (Year: 26).
@@ -253,8 +252,7 @@ STATIC_SYSTEM_PROMPT = """You are a helpful assistant answering questions from a
     4.  **SAVE & FINISH**:
         -   Do NOT state that you are saving a code to application state. Just do it silently.
         -   Use `save_procurement_code` to save the valid code.
-        -   **CRITICAL**: The generated code MUST be the VERY LAST line of your response.
-
+        -   **CRITICAL**: The generated code MUST be the VERY LAST line of your response. This code should be printed in BOLD. 
 
     RULES:
     -   **NO GUESSING**: If a component isn't in the knowledge base, ask the user. Do not invent codes.

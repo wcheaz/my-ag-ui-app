@@ -60,3 +60,7 @@ html {
     margin-right: 50vw !important;
   }
 }
+
+.copilotKitInput textarea {
+  color: black !important;
+}

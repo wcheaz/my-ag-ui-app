@@ -9,7 +9,7 @@ export function ProcurementCodes({ state, setState }: ProcurementCodesProps) {
     return (
         <div className="bg-white/20 backdrop-blur-md p-8 rounded-2xl shadow-xl max-w-2xl w-full">
             <h1 className="text-4xl font-bold text-white mb-2 text-center">Procurement Codes</h1>
-            <p className="text-gray-200 text-center italic mb-6">Generated procurement codes and descriptions.</p>
+            <p className="text-gray-200 text-center italic mb-6">Previously generated procurement codes and descriptions.</p>
             <hr className="border-white/20 my-6" />
             <div className="flex flex-col gap-3">
                 {state.procurement_codes?.map((item, index) => (
@@ -35,7 +35,7 @@ export function ProcurementCodes({ state, setState }: ProcurementCodesProps) {
                 ))}
             </div>
             {(state.procurement_codes?.length === 0 || !state.procurement_codes) && <p className="text-center text-white/80 italic my-8">
-                No procurement codes generated yet...
+                No previously generated procurement codes detected.
             </p>}
         </div>
     );

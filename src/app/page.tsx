@@ -40,7 +40,7 @@ export default function CopilotKitPage() {
         clickOutsideToClose={false}
         labels={{
           title: "Procurement Assistant",
-          initial: "👋 Hi! I can help you generate procurement codes.",
+          initial: "Hi! I can help you generate procurement codes given the description of an item.",
         }}
         suggestions={[
           {
@@ -72,7 +72,7 @@ function YourMainContent({ themeColor }: { themeColor: string }) {
   return (
     <div
       style={{}}
-      className="h-screen flex justify-center items-center flex-col transition-colors duration-300"
+      className="h-screen flex items-center pt-[10vh] flex-col transition-colors duration-300"
     >
       <ProcurementCodes state={state} setState={setState} />
     </div>
