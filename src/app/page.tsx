@@ -10,6 +10,8 @@ import {
 import { CopilotKitCSSProperties, CopilotSidebar, InputProps } from "@copilotkit/react-ui";
 import { CopilotTextarea } from "@copilotkit/react-textarea";
 import { useState, useRef, ChangeEvent } from "react";
+import Papa from "papaparse";
+import { read, utils } from "xlsx";
 
 export default function CopilotKitPage() {
   const [themeColor, setThemeColor] = useState("#363636ff");
@@ -84,24 +86,15 @@ function CustomInput(props: InputProps) {
         return;
       }
 
-      if (file.type !== "text/plain" && !file.name.endsWith(".txt")) {
-        processedCount++;
-        if (processedCount === files.length) finalizeUpload(newFiles);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-
+      const processFileContent = (name: string, content: string) => {
         // 2. Check cumulative Length
         const currentTotal = attachedFiles.reduce((sum, f) => sum + f.content.length, 0);
         const newTotal = newFiles.reduce((sum, f) => sum + f.content.length, 0);
 
         if (currentTotal + newTotal + content.length > MAX_TOTAL_CHARS) {
-          alert(`Upload limit reached! Adding "${file.name}" would exceed the maximum context size. Please upload files in smaller batches.`);
+          alert(`Upload limit reached! Adding "${name}" would exceed the maximum context size. Please upload files in smaller batches.`);
         } else {
-          newFiles.push({ name: file.name, content });
+          newFiles.push({ name: name, content });
         }
 
         processedCount++;
@@ -109,7 +102,66 @@ function CustomInput(props: InputProps) {
           finalizeUpload(newFiles);
         }
       };
-      reader.readAsText(file);
+
+      // Handle CSV files
+      if (file.type === "text/csv" || file.name.endsWith(".csv")) {
+        Papa.parse(file, {
+          complete: (results) => {
+            // Unparse back to string to ensure clean formatting
+            const csvString = Papa.unparse(results.data);
+            processFileContent(file.name, csvString);
+          },
+          error: (error) => {
+            console.error("CSV Parse Error:", error);
+            alert(`Failed to parse CSV file "${file.name}".`);
+            processedCount++;
+            if (processedCount === files.length) finalizeUpload(newFiles);
+          }
+        });
+        return;
+      }
+
+      // Handle Excel files
+      if (file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+        file.type === "application/vnd.ms-excel" ||
+        file.name.endsWith(".xlsx") ||
+        file.name.endsWith(".xls") ||
+        file.name.endsWith(".xml")) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = e.target?.result;
+            const workbook = read(data, { type: 'array' });
+            // Convert first sheet to CSV
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const csvContent = utils.sheet_to_csv(worksheet);
+            processFileContent(file.name, csvContent);
+          } catch (error) {
+            console.error("Excel Parse Error:", error);
+            alert(`Failed to parse Excel file "${file.name}".`);
+            processedCount++;
+            if (processedCount === files.length) finalizeUpload(newFiles);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+      }
+
+      // Handle Text files
+      if (file.type === "text/plain" || file.name.endsWith(".txt")) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const content = e.target?.result as string;
+          processFileContent(file.name, content);
+        };
+        reader.readAsText(file);
+        return;
+      }
+
+      // Fallback for unsupported types
+      processedCount++;
+      if (processedCount === files.length) finalizeUpload(newFiles);
     });
   };
 
@@ -131,7 +183,7 @@ function CustomInput(props: InputProps) {
     let messageContent = text;
 
     if (attachedFiles.length > 0) {
-      const fileContexts = attachedFiles.map(f => `[Context from uploaded file "${f.name}":]\n${f.content}`).join("\n\n");
+      const fileContexts = attachedFiles.map(f => `[Context from uploaded file "${f.name}"]:\n${f.content}`).join("\n\n");
       if (messageContent) {
         messageContent = `${messageContent}\n\n${fileContexts}`;
       } else {
@@ -219,7 +271,7 @@ function CustomInput(props: InputProps) {
         ref={fileInputRef}
         className="hidden"
         style={{ display: "none" }}
-        accept=".txt"
+        accept=".txt,.csv,.xlsx,.xls,.xml"
         multiple
         onChange={handleFileUpload}
       />
