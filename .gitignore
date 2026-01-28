@@ -44,7 +44,7 @@ next-env.d.ts
 .mastra/
 
 # lock files
-package-lock.json
+
 yarn.lock
 pnpm-lock.yaml
 bun.lockb
@@ -53,6 +53,13 @@ bun.lockb
 venv
 .venv
 __pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
 
 # hidden folder
 hidden/
