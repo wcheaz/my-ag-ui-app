@@ -73,3 +73,4 @@ agent/data/storage/*
 
 # .vscode
 .vscode/*
+agent/uv.lock
