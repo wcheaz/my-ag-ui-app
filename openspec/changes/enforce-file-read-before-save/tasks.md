@@ -24,11 +24,11 @@
 - [x] 4.1 Add validation check at the start of `save_procurement_code` function: `if not ctx.deps.state.rules_loaded_this_turn: return "ERROR: You must call read_code_generation_file before saving a code."`
 - [x] 4.2 Test that save is blocked when flag is False
 - [x] 4.3 Test that save succeeds when flag is True
-- [ ] 4.4 Verify error message is clear and actionable for the agent
+- [x] 4.4 Verify error message is clear and actionable for the agent
 
 ## 5. System Prompt Updates
 
-- [ ] 5.1 Update the `STATIC_SYSTEM_PROMPT` to indicate that the workflow is now enforced programmatically
+- [x] 5.1 Update the `STATIC_SYSTEM_PROMPT` to indicate that the workflow is now enforced programmatically
 - [ ] 5.2 Update the "MANDATORY VERIFICATION" section to mention enforcement
 - [ ] 5.3 Test that the agent understands the new enforced workflow from the prompt
 
