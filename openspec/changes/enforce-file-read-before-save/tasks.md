@@ -46,4 +46,4 @@
 - [x] 7.1 Update any relevant documentation to reflect the enforced workflow
 - [x] 7.2 Add comments to the code explaining the enforcement mechanism
 - [x] 7.3 Verify no debug code or .bak files are left in production (per suggestion #4 from SUGGESTIONS.md)
-- [ ] 7.4 Create deployment notes explaining the breaking change for agents that skip file-read
+- [x] 7.4 Create deployment notes explaining the breaking change for agents that skip file-read
