@@ -30,7 +30,7 @@
 
 - [x] 5.1 Update the `STATIC_SYSTEM_PROMPT` to indicate that the workflow is now enforced programmatically
 - [x] 5.2 Update the "MANDATORY VERIFICATION" section to mention enforcement
-- [ ] 5.3 Test that the agent understands the new enforced workflow from the prompt
+- [x] 5.3 Test that the agent understands the new enforced workflow from the prompt
 
 ## 6. Integration Testing
 
