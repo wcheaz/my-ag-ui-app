@@ -1,19 +1,33 @@
+# Standard library imports
 import os
 import re
 import datetime
-from pydantic import BaseModel, Field
+import json
 from typing import List, Optional, Any
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+# Third-party imports
+from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.ag_ui import StateDeps
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.messages import ModelMessage, ModelRequest, SystemPromptPart
+from pydantic_ai.models import (
+    ModelRequestParameters,
+    ModelSettings,
+    ModelResponse,
+    StreamedResponse,
+)
 from ag_ui.core import EventType, StateSnapshotEvent
 
+# Local application imports
 from src.rag.index import get_index
 from src.rag.settings import init_settings
 from src.rag.citation import enable_citation, CITATION_SYSTEM_PROMPT
 from src.rag.query import get_query_engine_tool
 
 # LOAD ENVIRONMENT VARIABLES manually since init_settings is disabled
-import os
 
 
 def load_env():
@@ -296,20 +310,6 @@ STATIC_SYSTEM_PROMPT = """You are a helpful assistant answering questions from a
 # + CITATION_SYSTEM_PROMPT
 
 # Instantiate the Agent
-
-from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.messages import ModelMessage, ModelRequest, SystemPromptPart
-from pydantic_ai.models import (
-    ModelRequestParameters,
-    ModelSettings,
-    ModelResponse,
-    StreamedResponse,
-)
-from collections.abc import AsyncIterator
-from typing import Any
-import json
-
-from contextlib import asynccontextmanager
 
 
 class LoggingOpenAIModel(OpenAIModel):
