@@ -15,7 +15,7 @@
 - [x] 3.1 Add `ctx.deps.state.rules_loaded_this_turn = True` immediately after successfully reading the file content (after line 88)
 - [x] 3.2 Replace the error string return at line 85 with `raise FileNotFoundError("CODE_GENERATION.md not found. Cannot generate codes without rules.")`
 - [x] 3.3 Replace the error string return at line 91 with `raise Exception(f"Error reading CODE_GENERATION.md file: {str(e)}")`
-- [ ] 3.4 Test that the flag is set correctly on successful file read
+- [x] 3.4 Test that the flag is set correctly on successful file read
 - [ ] 3.5 Test that exceptions are raised correctly when file is not found
 - [ ] 3.6 Test that exceptions are raised correctly when file read fails
 
