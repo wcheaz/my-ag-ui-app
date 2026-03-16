@@ -69,6 +69,7 @@ class ProcurementState(BaseModel):
     citation_sources: List[str] = Field(
         default_factory=list
     )  # Accumulated citation sources
+    rules_loaded_this_turn: bool = False
 
 
 def read_code_generation_file(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
