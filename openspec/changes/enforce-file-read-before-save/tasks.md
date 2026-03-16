@@ -34,7 +34,7 @@
 
 ## 6. Integration Testing
 
-- [ ] 6.1 Test complete workflow: read file → generate code → save code (should succeed)
+- [x] 6.1 Test complete workflow: read file → generate code → save code (should succeed)
 - [ ] 6.2 Test broken workflow: generate code → save code without reading (should fail with clear error)
 - [ ] 6.3 Test multi-request scenario: read and save in first request, verify flag resets for second request
 - [ ] 6.4 Test file not found scenario: agent attempts to read non-existent file (should raise exception)
