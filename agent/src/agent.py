@@ -69,6 +69,9 @@ class ProcurementState(BaseModel):
     citation_sources: List[str] = Field(
         default_factory=list
     )  # Accumulated citation sources
+    # ENFORCEMENT MECHANISM: Flag to track if rules file has been loaded this turn
+    # This flag enforces the workflow: read_code_generation_file MUST be called before save_procurement_code
+    # The flag defaults to False and is reset per request to prevent stale state
     rules_loaded_this_turn: bool = False
 
 
@@ -120,7 +123,9 @@ def read_code_generation_file(ctx: RunContext[StateDeps[ProcurementState]]) -> s
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Set flag to indicate rules were successfully loaded this turn
+        # ENFORCEMENT MECHANISM: Set flag to indicate rules were successfully loaded this turn
+        # This flag is used by save_procurement_code to validate that rules were loaded before saving
+        # The flag is set ONLY after successful file read to ensure atomic operation
         ctx.deps.state.rules_loaded_this_turn = True
         return content
     except FileNotFoundError:
@@ -283,7 +288,9 @@ async def save_procurement_code(
     Returns:
         A success message indicating the code has been saved.
     """
-    # Validate that rules were loaded this turn
+    # ENFORCEMENT MECHANISM: Validate that rules were loaded this turn before allowing save
+    # This enforces the workflow: read_code_generation_file MUST be called before save_procurement_code
+    # The check prevents agents from skipping the file-read step and ensures code accuracy
     if not ctx.deps.state.rules_loaded_this_turn:
         return "ERROR: You must call read_code_generation_file before saving a code."
 
