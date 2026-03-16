@@ -124,7 +124,7 @@ def read_code_generation_file(ctx: RunContext[StateDeps[ProcurementState]]) -> s
         ctx.deps.state.rules_loaded_this_turn = True
         return content
     except Exception as e:
-        return f"Error reading CODE_GENERATION.md file: {str(e)}"
+        raise Exception(f"Error reading CODE_GENERATION.md file: {str(e)}")
 
 
 def get_rag_tool():
