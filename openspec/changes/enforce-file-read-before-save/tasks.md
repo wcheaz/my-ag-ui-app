@@ -17,7 +17,7 @@
 - [x] 3.3 Replace the error string return at line 91 with `raise Exception(f"Error reading CODE_GENERATION.md file: {str(e)}")`
 - [x] 3.4 Test that the flag is set correctly on successful file read
 - [x] 3.5 Test that exceptions are raised correctly when file is not found
-- [ ] 3.6 Test that exceptions are raised correctly when file read fails
+- [x] 3.6 Test that exceptions are raised correctly when file read fails
 
 ## 4. Tool Modifications - save_procurement_code
 
