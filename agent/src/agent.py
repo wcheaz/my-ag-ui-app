@@ -117,6 +117,9 @@ def read_code_generation_file(ctx: RunContext[StateDeps[ProcurementState]]) -> s
 
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
+
+        # Set flag to indicate rules were successfully loaded this turn
+        ctx.deps.state.rules_loaded_this_turn = True
         return content
     except Exception as e:
         return f"Error reading CODE_GENERATION.md file: {str(e)}"
