@@ -36,7 +36,7 @@
 
 - [x] 6.1 Test complete workflow: read file → generate code → save code (should succeed)
 - [x] 6.2 Test broken workflow: generate code → save code without reading (should fail with clear error)
-- [ ] 6.3 Test multi-request scenario: read and save in first request, verify flag resets for second request
+- [x] 6.3 Test multi-request scenario: read and save in first request, verify flag resets for second request
 - [ ] 6.4 Test file not found scenario: agent attempts to read non-existent file (should raise exception)
 - [ ] 6.5 Test read error scenario: agent encounters read error (should raise exception with details)
 - [ ] 6.6 Verify that agents that already follow the workflow correctly continue to work without issues
