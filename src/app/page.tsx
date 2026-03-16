@@ -294,7 +294,7 @@ function YourMainContent({
 
   useCopilotReadable({
     description: "The list of generated procurement codes",
-    value: state.procurement_codes,
+    value: JSON.stringify(state.procurement_codes ?? []),
   });
 
   return (
