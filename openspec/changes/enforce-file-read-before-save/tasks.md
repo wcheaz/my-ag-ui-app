@@ -21,7 +21,7 @@
 
 ## 4. Tool Modifications - save_procurement_code
 
-- [ ] 4.1 Add validation check at the start of `save_procurement_code` function: `if not ctx.deps.state.rules_loaded_this_turn: return "ERROR: You must call read_code_generation_file before saving a code."`
+- [x] 4.1 Add validation check at the start of `save_procurement_code` function: `if not ctx.deps.state.rules_loaded_this_turn: return "ERROR: You must call read_code_generation_file before saving a code."`
 - [ ] 4.2 Test that save is blocked when flag is False
 - [ ] 4.3 Test that save succeeds when flag is True
 - [ ] 4.4 Verify error message is clear and actionable for the agent

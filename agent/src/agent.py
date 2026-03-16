@@ -280,6 +280,10 @@ async def save_procurement_code(
     Returns:
         A success message indicating the code has been saved.
     """
+    # Validate that rules were loaded this turn
+    if not ctx.deps.state.rules_loaded_this_turn:
+        return "ERROR: You must call read_code_generation_file before saving a code."
+
     new_code = ProcurementCode(code=code, description=description)
     ctx.deps.state.procurement_codes.append(new_code)
     return StateSnapshotEvent(
