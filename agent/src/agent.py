@@ -123,6 +123,9 @@ def read_code_generation_file(ctx: RunContext[StateDeps[ProcurementState]]) -> s
         # Set flag to indicate rules were successfully loaded this turn
         ctx.deps.state.rules_loaded_this_turn = True
         return content
+    except FileNotFoundError:
+        # Re-raise FileNotFoundError directly as per specification
+        raise
     except Exception as e:
         raise Exception(f"Error reading CODE_GENERATION.md file: {str(e)}")
 
