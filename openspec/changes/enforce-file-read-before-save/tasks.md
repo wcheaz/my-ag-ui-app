@@ -8,7 +8,7 @@
 
 - [x] 2.1 Add `rules_loaded_this_turn: bool = False` field to the `ProcurementState` class definition
 - [x] 2.2 Verify the new field is properly initialized and defaults to False
-- [ ] 2.3 Test that the flag resets correctly when new state instances are created
+- [x] 2.3 Test that the flag resets correctly when new state instances are created
 
 ## 3. Tool Modifications - read_code_generation_file
 
