@@ -113,7 +113,9 @@ def read_code_generation_file(ctx: RunContext[StateDeps[ProcurementState]]) -> s
                 break
 
         if not file_path:
-            return "Error: CODE_GENERATION.md file not found in expected locations."
+            raise FileNotFoundError(
+                "CODE_GENERATION.md not found. Cannot generate codes without rules."
+            )
 
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
