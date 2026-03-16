@@ -309,5 +309,20 @@
     "completedTasks": [
       "6.1 Test complete workflow: read file → generate code → save code (should succeed)"
     ]
+  },
+  {
+    "timestamp": "2026-03-16T22:38:07.274Z",
+    "iteration": 22,
+    "duration": 147745,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [
+      "openspec/changes/enforce-file-read-before-save/.ralph/ralph-loop.state.json"
+    ],
+    "exitCode": 0,
+    "completedTasks": [
+      "6.2 Test broken workflow: generate code → save code without reading (should fail with clear error)"
+    ]
   }
 ]
