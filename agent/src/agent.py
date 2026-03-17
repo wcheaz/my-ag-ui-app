@@ -792,14 +792,17 @@ def parse_code_generation_rules(content: str) -> dict:
     return rules
 
 
-def find_component_matches(description: str, component_rules: dict) -> list:
+def find_component_matches(
+    description: str, component_rules: dict, similarity_threshold: float = 0.3
+) -> list:
     """
     Find matches for a component based on user description using both keyword matching
-    and semantic similarity scoring.
+    and semantic similarity scoring. Filters out options that don't meet the similarity threshold.
 
     Args:
         description: User's description text
         component_rules: Dictionary of component rules
+        similarity_threshold: Minimum semantic similarity score (0.0-1.0) for a match to be included
 
     Returns:
         List of matching component options with their combined scores
@@ -829,6 +832,11 @@ def find_component_matches(description: str, component_rules: dict) -> list:
         component_text = f"{rule_info['name']} {rule_info['description']}"
         semantic_score = calculate_semantic_similarity(description, component_text)
 
+        # SIMILARITY THRESHOLD FILTERING: Only include matches that meet the minimum semantic similarity
+        # This filters out completely unrelated options from clarification prompts
+        if semantic_score < similarity_threshold:
+            continue  # Skip this match as it doesn't meet the similarity threshold
+
         # Convert semantic score to a 0-10 scale for combination with keyword score
         semantic_score_scaled = semantic_score * 10
 
@@ -836,6 +844,7 @@ def find_component_matches(description: str, component_rules: dict) -> list:
         # This gives semantic similarity more weight in the matching
         combined_score = keyword_score + semantic_score_scaled
 
+        # Only include matches with positive combined scores after threshold filtering
         if combined_score > 0:
             matches.append(
                 {
@@ -854,14 +863,18 @@ def find_component_matches(description: str, component_rules: dict) -> list:
 
 
 def extract_components_from_description(
-    user_description: str, code_generation_content: str
+    user_description: str,
+    code_generation_content: str,
+    similarity_threshold: float = 0.3,
 ) -> dict:
     """
     Extract component information from user description against CODE_GENERATION.md rules.
+    Uses similarity threshold to filter out unrelated options from clarification prompts.
 
     Args:
         user_description: The user's description text
         code_generation_content: Content of the CODE_GENERATION.md file
+        similarity_threshold: Minimum semantic similarity score (0.0-1.0) for matches to be included
 
     Returns:
         Dictionary with component extraction results including ambiguity information
@@ -893,7 +906,10 @@ def extract_components_from_description(
     component_matches = {}
 
     for component_key, component_name in components_to_check:
-        matches = find_component_matches(user_description, rules[component_key])
+        # Pass similarity threshold to filter out unrelated options
+        matches = find_component_matches(
+            user_description, rules[component_key], similarity_threshold
+        )
         component_matches[component_key] = {
             "name": component_name,
             "matches": matches,
@@ -905,10 +921,13 @@ def extract_components_from_description(
 
 
 def get_component_extraction_results(
-    user_description: str, code_generation_content: str
+    user_description: str,
+    code_generation_content: str,
+    similarity_threshold: float = 0.3,
 ) -> dict:
     """
     Get complete component extraction results with structured ambiguity information.
+    Uses similarity threshold to filter out unrelated options from clarification prompts.
 
     This function serves as the main entry point for component extraction logic,
     providing structured information about which components are ambiguous and
@@ -917,6 +936,7 @@ def get_component_extraction_results(
     Args:
         user_description: The user's description text
         code_generation_content: Content of the CODE_GENERATION.md file
+        similarity_threshold: Minimum semantic similarity score (0.0-1.0) for matches to be included
 
     Returns:
         Dictionary with:
@@ -926,7 +946,7 @@ def get_component_extraction_results(
         - component_details: Detailed information about each component
     """
     component_matches = extract_components_from_description(
-        user_description, code_generation_content
+        user_description, code_generation_content, similarity_threshold
     )
 
     ambiguous_components = []
@@ -1011,10 +1031,14 @@ def clarify_components(
         except Exception as e:
             raise RuntimeError(f"ERROR: Failed to read code generation file: {str(e)}")
 
-        # Get component extraction results with ambiguity detection
+        # Get component extraction results with ambiguity detection and similarity threshold filtering
         try:
             ambiguity_results = detect_component_ambiguity(
-                user_description, code_generation_content, ctx, user_description
+                user_description,
+                code_generation_content,
+                ctx,
+                user_description,
+                similarity_threshold=0.3,
             )
         except ValueError as e:
             # Handle state transition errors specifically
@@ -1040,10 +1064,10 @@ def clarify_components(
             "guess_notification": "",  # User notification when guesses are made
         }
 
-        # Get component extraction results for detailed processing
+        # Get component extraction results for detailed processing with similarity threshold filtering
         try:
             extraction_results = get_component_extraction_results(
-                user_description, code_generation_content
+                user_description, code_generation_content, similarity_threshold=0.3
             )
         except Exception as e:
             raise RuntimeError(f"ERROR: Component extraction failed: {str(e)}")
@@ -1311,9 +1335,11 @@ def detect_component_ambiguity(
     code_generation_content: str,
     ctx: RunContext[StateDeps[ProcurementState]],
     user_text: Optional[str] = None,
+    similarity_threshold: float = 0.3,
 ) -> dict:
     """
     Implement ambiguity detection logic to identify when a component has 2+ plausible matches.
+    Uses similarity threshold to filter out unrelated options from clarification prompts.
 
     This function analyzes component matches from user descriptions and creates AmbiguityInfo
     objects to track the ambiguity status in the ProcurementState. It integrates with the
@@ -1325,6 +1351,7 @@ def detect_component_ambiguity(
         code_generation_content: Content of the CODE_GENERATION.md file
         ctx: The run context containing the ProcurementState
         user_text: The user's current response text (for guess permission detection)
+        similarity_threshold: Minimum semantic similarity score (0.0-1.0) for matches to be included
 
     Returns:
         Dictionary containing:
@@ -1335,9 +1362,9 @@ def detect_component_ambiguity(
         - no_match_components: List of component names with no matches
         - ambiguity_details: Detailed AmbiguityInfo for each component
     """
-    # Get component extraction results
+    # Get component extraction results with similarity threshold filtering
     extraction_results = get_component_extraction_results(
-        user_description, code_generation_content
+        user_description, code_generation_content, similarity_threshold
     )
 
     # Detect if user gave explicit guess permission
