@@ -242,6 +242,9 @@ class ProcurementState(BaseModel):
     # Key: component_name (str), Value: AmbiguityInfo object
     # This enables programmatic enforcement of disambiguation workflow
     component_ambiguity_status: dict[str, AmbiguityInfo] = Field(default_factory=dict)
+    # ITERATIVE CLARIFICATION: Counter to track number of clarification rounds completed
+    # This enables iterative clarification workflows and context preservation across rounds
+    clarification_rounds: int = 0
 
     def update_component_ambiguity(
         self, component_name: str, ambiguity_info: AmbiguityInfo

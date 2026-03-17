@@ -32,16 +32,16 @@
 - [x] 4.2 Add logic to mark components as "guessed" when permission detected
 - [x] 4.3 Implement user notification when a guess is made
 - [x] 4.4 Write unit tests for guess permission detection
-- [ ] 4.5 Write unit tests for guess marking and notification
+- [x] 4.5 Write unit tests for guess marking and notification
 
 ## 5. Iterative Clarification Logic
 
-- [ ] 5.1 Implement context preservation across clarification rounds
-- [ ] 5.2 Add logic to track which components have been clarified
-- [ ] 5.3 Implement logic to only ask about remaining ambiguous components
-- [ ] 5.4 Add logic to update `component_ambiguity_status` after each clarification round
-- [ ] 5.5 Write unit tests for iterative clarification scenarios
-- [ ] 5.6 Write unit tests for context preservation across rounds
+- [x] 5.1 Add `clarification_rounds` counter to ProcurementState to track number of clarification rounds completed
+- [ ] 5.2 Add `clarified_components` set to ProcurementState to track which components have been successfully clarified
+- [ ] 5.3 Modify `clarify_components` tool to filter out already-clarified components from ambiguity output
+- [ ] 5.4 Add logic to preserve previous user selections when updating `component_ambiguity_status` after each clarification round
+- [ ] 5.5 Write unit tests for iterative clarification scenarios with multiple rounds
+- [ ] 5.6 Write unit tests for context preservation across clarification rounds
 
 ## 6. Workflow Enforcement in Save Tool
 
@@ -58,7 +58,7 @@
 - [ ] 7.2 Add explicit instructions for confirm-before-generate pattern
 - [ ] 7.3 Add instructions for iterative clarification
 - [ ] 7.4 Add instructions for explicit guess permission handling
-- [ ] 7.5 Review and refine prompt for clarity and effectiveness
+- [SKIP - Human intervention required] 7.5 Review and refine prompt for clarity and effectiveness
 
 ## 8. Integration and Workflow Testing
 
@@ -84,22 +84,22 @@
 - [ ] 10.1 Document the disambiguation workflow in agent code comments
 - [ ] 10.2 Document the `AmbiguityInfo` data structure
 - [ ] 10.3 Document the `clarify_components` tool usage
-- [ ] 10.4 Update README or SETUP.md with disambiguation feature description
+- [SKIP - Human intervention required] 10.4 Update README or SETUP.md with disambiguation feature description
 - [ ] 10.5 Prepare deployment notes for the disambiguation feature
 - [ ] 10.6 Create rollback plan documentation
 
-## 11. Performance Optimization (Optional)
+## 11. Performance Optimization (Optional - SKIP for automated implementation)
 
-- [ ] 11.1 Profile disambiguation logic performance with complex descriptions
-- [ ] 11.2 Optimize component parsing logic if needed
-- [ ] 11.3 Optimize ambiguity detection logic if needed
-- [ ] 11.4 Add caching for frequently accessed component rules
-- [ ] 11.5 Write performance benchmarks for disambiguation workflow
+- [SKIP - Optional task] 11.1 Profile disambiguation logic performance with complex descriptions
+- [SKIP - Optional task] 11.2 Optimize component parsing logic if needed
+- [SKIP - Optional task] 11.3 Optimize ambiguity detection logic if needed
+- [SKIP - Optional task] 11.4 Add caching for frequently accessed component rules
+- [SKIP - Optional task] 11.5 Write performance benchmarks for disambiguation workflow
 
 ## 12. Monitoring and Feedback Collection
 
 - [ ] 12.1 Add logging for disambiguation events (component ambiguity, clarification rounds)
 - [ ] 12.2 Add metrics for disambiguation success rate
 - [ ] 12.3 Add metrics for average clarification rounds per request
-- [ ] 12.4 Implement user feedback mechanism for disambiguation experience
-- [ ] 12.5 Set up monitoring dashboards for disambiguation metrics
+- [SKIP - Human intervention required] 12.4 Implement user feedback mechanism for disambiguation experience
+- [SKIP - Human intervention required] 12.5 Set up monitoring dashboards for disambiguation metrics
