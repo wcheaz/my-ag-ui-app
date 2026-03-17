@@ -1,0 +1,105 @@
+## 1. Data Model and State Management
+
+- [ ] 1.1 Create `AmbiguityInfo` data class to track component ambiguity status (status, options, selected value)
+- [ ] 1.2 Extend `ProcurementState` with `component_ambiguity_status` field (Dict[str, AmbiguityInfo])
+- [ ] 1.3 Add validation logic to ensure state transitions are valid (ambiguous → unambiguous)
+- [ ] 1.4 Write unit tests for state management and ambiguity tracking
+
+## 2. Component Parsing and Ambiguity Detection
+
+- [ ] 2.1 Implement component extraction logic to parse user descriptions against CODE_GENERATION.md rules
+- [ ] 2.2 Implement ambiguity detection logic to identify when a component has 2+ plausible matches
+- [ ] 2.3 Implement keyword-based matching for component options
+- [ ] 2.4 Implement semantic similarity scoring for component options (initial version)
+- [ ] 2.5 Add logic to handle "no matches found" scenario
+- [ ] 2.6 Write unit tests for component extraction with clear inputs
+- [ ] 2.7 Write unit tests for ambiguity detection with ambiguous inputs
+- [ ] 2.8 Write unit tests for edge cases (no matches, single match, multiple matches)
+
+## 3. Disambiguation Tool Implementation
+
+- [ ] 3.1 Implement `clarify_components` tool in `agent.py`
+- [ ] 3.2 Add tool to agent's available tools list
+- [ ] 3.3 Implement JSON output format for structured disambiguation options
+- [ ] 3.4 Add logic to filter and present only ambiguous components
+- [ ] 3.5 Add logic to include unambiguous components in output for context
+- [ ] 3.6 Write unit tests for `clarify_components` tool
+- [ ] 3.7 Write integration tests for tool with various input scenarios
+
+## 4. User Intent Detection for Guess Permission
+
+- [ ] 4.1 Implement phrase detection for explicit guess permission ("I don't know", "whatever", "you choose")
+- [ ] 4.2 Add logic to mark components as "guessed" when permission detected
+- [ ] 4.3 Implement user notification when a guess is made
+- [ ] 4.4 Write unit tests for guess permission detection
+- [ ] 4.5 Write unit tests for guess marking and notification
+
+## 5. Iterative Clarification Logic
+
+- [ ] 5.1 Implement context preservation across clarification rounds
+- [ ] 5.2 Add logic to track which components have been clarified
+- [ ] 5.3 Implement logic to only ask about remaining ambiguous components
+- [ ] 5.4 Add logic to update `component_ambiguity_status` after each clarification round
+- [ ] 5.5 Write unit tests for iterative clarification scenarios
+- [ ] 5.6 Write unit tests for context preservation across rounds
+
+## 6. Workflow Enforcement in Save Tool
+
+- [ ] 6.1 Modify `save_procurement_code` to check `component_ambiguity_status`
+- [ ] 6.2 Add validation to reject saves with ambiguous components
+- [ ] 6.3 Implement clear error message indicating which components need clarification
+- [ ] 6.4 Ensure existing `rules_loaded_this_turn` validation still works
+- [ ] 6.5 Write unit tests for save rejection with ambiguous components
+- [ ] 6.6 Write unit tests for save success with all unambiguous components
+
+## 7. System Prompt Enhancement
+
+- [ ] 7.1 Update system prompt to include disambiguation workflow instructions
+- [ ] 7.2 Add explicit instructions for confirm-before-generate pattern
+- [ ] 7.3 Add instructions for iterative clarification
+- [ ] 7.4 Add instructions for explicit guess permission handling
+- [ ] 7.5 Review and refine prompt for clarity and effectiveness
+
+## 8. Integration and Workflow Testing
+
+- [ ] 8.1 Run existing test suite to ensure no regressions
+- [ ] 8.2 Write integration test for complete disambiguation workflow (clear input)
+- [ ] 8.3 Write integration test for single ambiguous component scenario
+- [ ] 8.4 Write integration test for multiple ambiguous components scenario
+- [ ] 8.5 Write integration test for iterative clarification (multiple rounds)
+- [ ] 8.6 Write integration test for explicit guess permission scenario
+- [ ] 8.7 Write integration test for save rejection with ambiguous components
+- [ ] 8.8 Write integration test for successful save after disambiguation
+
+## 9. Error Handling and Edge Cases
+
+- [ ] 9.1 Add error handling for `clarify_components` tool failures
+- [ ] 9.2 Add error handling for invalid JSON output
+- [ ] 9.3 Add error handling for unexpected state transitions
+- [ ] 9.4 Write unit tests for error handling scenarios
+- [ ] 9.5 Write integration tests for edge cases
+
+## 10. Documentation and Deployment
+
+- [ ] 10.1 Document the disambiguation workflow in agent code comments
+- [ ] 10.2 Document the `AmbiguityInfo` data structure
+- [ ] 10.3 Document the `clarify_components` tool usage
+- [ ] 10.4 Update README or SETUP.md with disambiguation feature description
+- [ ] 10.5 Prepare deployment notes for the disambiguation feature
+- [ ] 10.6 Create rollback plan documentation
+
+## 11. Performance Optimization (Optional)
+
+- [ ] 11.1 Profile disambiguation logic performance with complex descriptions
+- [ ] 11.2 Optimize component parsing logic if needed
+- [ ] 11.3 Optimize ambiguity detection logic if needed
+- [ ] 11.4 Add caching for frequently accessed component rules
+- [ ] 11.5 Write performance benchmarks for disambiguation workflow
+
+## 12. Monitoring and Feedback Collection
+
+- [ ] 12.1 Add logging for disambiguation events (component ambiguity, clarification rounds)
+- [ ] 12.2 Add metrics for disambiguation success rate
+- [ ] 12.3 Add metrics for average clarification rounds per request
+- [ ] 12.4 Implement user feedback mechanism for disambiguation experience
+- [ ] 12.5 Set up monitoring dashboards for disambiguation metrics
