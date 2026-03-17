@@ -88,3 +88,33 @@ Components unambiguous: 0 (0.0%)
 Components guessed: 0 (0.0%)
 Components no match: 0 (0.0%)
 =====================================
+2026-03-17 17:26:45,219 - disambiguation_events - INFO - Metrics: All disambiguation metrics have been reset.
+2026-03-17 17:26:45,222 - disambiguation_events - INFO - Metrics: All disambiguation metrics have been reset.
+2026-03-17 17:26:45,222 - disambiguation_events - INFO - Metrics: All disambiguation metrics have been reset.
+2026-03-17 17:26:45,222 - disambiguation_events - INFO - Metrics: All disambiguation metrics have been reset.
+2026-03-17 17:26:45,223 - disambiguation_events - INFO - Metrics: All disambiguation metrics have been reset.
+2026-03-17 17:26:45,223 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 1
+2026-03-17 17:26:45,223 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 1, Rounds for this attempt: 3
+2026-03-17 17:26:45,223 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 2
+2026-03-17 17:26:45,223 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 2, Rounds for this attempt: 1
+2026-03-17 17:26:45,223 - disambiguation_events - INFO - Metrics: All disambiguation metrics have been reset.
+2026-03-17 17:26:45,223 - disambiguation_events - INFO - Metrics: All disambiguation metrics have been reset.
+2026-03-17 17:26:45,223 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 1
+2026-03-17 17:26:45,223 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 1, Rounds for this attempt: 2
+2026-03-17 17:26:45,223 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 2
+2026-03-17 17:26:45,223 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 2, Rounds for this attempt: 4
+2026-03-17 17:26:45,223 - disambiguation_events - INFO - === DISAMBIGUATION METRICS SUMMARY ===
+Total disambiguation attempts: 2
+Successful disambiguations: 2
+Failed disambiguations: 0
+Success rate: 100.0%
+Average clarification rounds per attempt: 3.0
+Total clarification rounds: 6
+
+=== COMPONENT ANALYSIS ===
+Total components analyzed: 0
+Components ambiguous: 0 (0.0%)
+Components unambiguous: 0 (0.0%)
+Components guessed: 0 (0.0%)
+Components no match: 0 (0.0%)
+=====================================
