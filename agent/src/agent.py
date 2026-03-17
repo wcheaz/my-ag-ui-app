@@ -834,6 +834,15 @@ def clarify_components(
         - component_details: Detailed information about each component
     """
     try:
+        # Input validation
+        if not user_description or not isinstance(user_description, str):
+            raise ValueError("ERROR: user_description must be a non-empty string")
+
+        if not ctx or not hasattr(ctx, "deps") or not hasattr(ctx.deps, "state"):
+            raise ValueError(
+                "ERROR: Invalid context provided - missing state dependency"
+            )
+
         # Check if rules file has been loaded this turn
         if not ctx.deps.state.rules_loaded_this_turn:
             raise ValueError(
@@ -842,12 +851,22 @@ def clarify_components(
 
         # Get the code generation content from context or read it
         # For now, we'll read it fresh each time (could be optimized)
-        code_generation_content = read_code_generation_file(ctx)
+        try:
+            code_generation_content = read_code_generation_file(ctx)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                f"ERROR: Code generation rules file not found: {str(e)}"
+            )
+        except Exception as e:
+            raise RuntimeError(f"ERROR: Failed to read code generation file: {str(e)}")
 
         # Get component extraction results with ambiguity detection
-        ambiguity_results = detect_component_ambiguity(
-            user_description, code_generation_content, ctx, user_description
-        )
+        try:
+            ambiguity_results = detect_component_ambiguity(
+                user_description, code_generation_content, ctx, user_description
+            )
+        except Exception as e:
+            raise RuntimeError(f"ERROR: Ambiguity detection failed: {str(e)}")
 
         # Prepare the structured response
         response = {
@@ -859,112 +878,180 @@ def clarify_components(
         }
 
         # Get component extraction results for detailed processing
-        extraction_results = get_component_extraction_results(
-            user_description, code_generation_content
-        )
+        try:
+            extraction_results = get_component_extraction_results(
+                user_description, code_generation_content
+            )
+        except Exception as e:
+            raise RuntimeError(f"ERROR: Component extraction failed: {str(e)}")
 
         # Process ambiguous components
         for component in extraction_results["ambiguous_components"]:
-            component_key = component["component_key"]
-            component_name = component["component_name"]
-            matches = component["matches"]
+            try:
+                component_key = component["component_key"]
+                component_name = component["component_name"]
+                matches = component["matches"]
 
-            # ITERATIVE CLARIFICATION: Skip components that have already been clarified
-            if component_name in ctx.deps.state.clarified_components:
-                # This component has already been clarified, skip it
+                # ITERATIVE CLARIFICATION: Skip components that have already been clarified
+                if component_name in ctx.deps.state.clarified_components:
+                    # This component has already been clarified, skip it
+                    continue
+
+                # Format options for ambiguous components
+                options = []
+                for match in matches:
+                    options.append(
+                        {
+                            "value": match["code"],
+                            "description": f"{match['name']}: {match['description']}",
+                        }
+                    )
+
+                ambiguous_component = {
+                    "component_name": component_name,
+                    "component_key": component_key,
+                    "options": options,
+                    "match_count": len(matches),
+                }
+                response["ambiguous_components"].append(ambiguous_component)
+            except Exception as e:
+                # Log error but continue processing other components
+                print(f"Warning: Failed to process ambiguous component: {str(e)}")
                 continue
-
-            # Format options for ambiguous components
-            options = []
-            for match in matches:
-                options.append(
-                    {
-                        "value": match["code"],
-                        "description": f"{match['name']}: {match['description']}",
-                    }
-                )
-
-            ambiguous_component = {
-                "component_name": component_name,
-                "component_key": component_key,
-                "options": options,
-                "match_count": len(matches),
-            }
-            response["ambiguous_components"].append(ambiguous_component)
 
         # Process unambiguous components (for context)
         for component in extraction_results["unambiguous_components"]:
-            component_key = component["component_key"]
-            component_name = component["component_name"]
-            match = component["matches"][0]  # Only one match for unambiguous
+            try:
+                component_key = component["component_key"]
+                component_name = component["component_name"]
+                match = component["matches"][0]  # Only one match for unambiguous
 
-            unambiguous_component = {
-                "component_name": component_name,
-                "component_key": component_key,
-                "selected_value": match["code"],
-                "description": f"{match['name']}: {match['description']}",
-            }
-            response["unambiguous_components"].append(unambiguous_component)
+                unambiguous_component = {
+                    "component_name": component_name,
+                    "component_key": component_key,
+                    "selected_value": match["code"],
+                    "description": f"{match['name']}: {match['description']}",
+                }
+                response["unambiguous_components"].append(unambiguous_component)
+            except Exception as e:
+                # Log error but continue processing other components
+                print(f"Warning: Failed to process unambiguous component: {str(e)}")
+                continue
 
         # Process guessed components (for context and notification)
         for component_name in ambiguity_results["guessed_components"]:
-            # Find the component details from extraction results
-            component_detail = None
-            component_key = None
-            for comp_key, detail in extraction_results["component_details"].items():
-                if detail["component_name"] == component_name:
-                    component_detail = detail
-                    component_key = comp_key
-                    break
+            try:
+                # Find the component details from extraction results
+                component_detail = None
+                component_key = None
+                for comp_key, detail in extraction_results["component_details"].items():
+                    if detail["component_name"] == component_name:
+                        component_detail = detail
+                        component_key = comp_key
+                        break
 
-            if component_detail and component_detail["matches"] and component_key:
-                # Get the guessed value from the state
-                ambiguity_info = ctx.deps.state.component_ambiguity_status.get(
-                    component_name
-                )
-                if ambiguity_info and ambiguity_info.guessed_value:
-                    match = component_detail["matches"][0]  # Highest scoring match
-                    guessed_component = {
-                        "component_name": component_name,
-                        "component_key": component_key,
-                        "guessed_value": ambiguity_info.guessed_value,
-                        "description": f"{match['name']}: {match['description']} (GUESSED)",
-                        "is_guessed": True,
-                    }
-                    response["guessed_components"].append(guessed_component)
+                if component_detail and component_detail["matches"] and component_key:
+                    # Get the guessed value from the state
+                    ambiguity_info = ctx.deps.state.component_ambiguity_status.get(
+                        component_name
+                    )
+                    if ambiguity_info and ambiguity_info.guessed_value:
+                        match = component_detail["matches"][0]  # Highest scoring match
+                        guessed_component = {
+                            "component_name": component_name,
+                            "component_key": component_key,
+                            "guessed_value": ambiguity_info.guessed_value,
+                            "description": f"{match['name']}: {match['description']} (GUESSED)",
+                            "is_guessed": True,
+                        }
+                        response["guessed_components"].append(guessed_component)
+            except Exception as e:
+                # Log error but continue processing other components
+                print(f"Warning: Failed to process guessed component: {str(e)}")
+                continue
 
         # Add component details for comprehensive information
         for component_key, detail in extraction_results["component_details"].items():
-            # Get the current status from state (might be updated to "guessed")
-            ambiguity_info = ctx.deps.state.component_ambiguity_status.get(
-                detail["component_name"]
-            )
-            current_status = (
-                ambiguity_info.status if ambiguity_info else detail["status"]
-            )
+            try:
+                # Get the current status from state (might be updated to "guessed")
+                ambiguity_info = ctx.deps.state.component_ambiguity_status.get(
+                    detail["component_name"]
+                )
+                current_status = (
+                    ambiguity_info.status if ambiguity_info else detail["status"]
+                )
 
-            response["component_details"][component_key] = {
-                "component_name": detail["component_name"],
-                "status": current_status,
-                "match_count": len(detail["matches"]),
-                "is_guessed": ambiguity_info.is_guessed if ambiguity_info else False,
-            }
+                response["component_details"][component_key] = {
+                    "component_name": detail["component_name"],
+                    "status": current_status,
+                    "match_count": len(detail["matches"]),
+                    "is_guessed": ambiguity_info.is_guessed
+                    if ambiguity_info
+                    else False,
+                }
+            except Exception as e:
+                # Log error but continue processing other components
+                print(f"Warning: Failed to process component details: {str(e)}")
+                continue
 
         # Add guess notification from ambiguity detection results
         response["guess_notification"] = ambiguity_results.get("guess_notification", "")
 
-        # Return the structured JSON response
-        return json.dumps(response, indent=2)
+        # Return the structured JSON response with error handling for JSON serialization
+        try:
+            return json.dumps(response, indent=2)
+        except (TypeError, ValueError) as e:
+            raise RuntimeError(f"ERROR: Failed to serialize response to JSON: {str(e)}")
 
-    except Exception as e:
-        # Return error information in structured format
+    except ValueError as e:
+        # Handle validation errors
         error_response = {
             "error": str(e),
+            "error_type": "validation_error",
             "ambiguous_components": [],
             "unambiguous_components": [],
             "component_details": {},
         }
         return json.dumps(error_response, indent=2)
+
+    except FileNotFoundError as e:
+        # Handle file not found errors
+        error_response = {
+            "error": str(e),
+            "error_type": "file_not_found",
+            "ambiguous_components": [],
+            "unambiguous_components": [],
+            "component_details": {},
+        }
+        return json.dumps(error_response, indent=2)
+
+    except RuntimeError as e:
+        # Handle runtime errors from sub-functions
+        error_response = {
+            "error": str(e),
+            "error_type": "runtime_error",
+            "ambiguous_components": [],
+            "unambiguous_components": [],
+            "component_details": {},
+        }
+        return json.dumps(error_response, indent=2)
+
+    except Exception as e:
+        # Catch-all for unexpected errors with detailed error information
+        import traceback
+
+        error_details = {
+            "error": str(e),
+            "error_type": "unexpected_error",
+            "error_details": traceback.format_exc(),
+            "ambiguous_components": [],
+            "unambiguous_components": [],
+            "component_details": {},
+        }
+        # Log the full error for debugging
+        print(f"ERROR in clarify_components: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        return json.dumps(error_details, indent=2)
 
 
 def format_guess_notification(guessed_components: list[dict]) -> str:
