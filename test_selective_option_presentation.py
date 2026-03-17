@@ -476,38 +476,38 @@ class TestSelectiveOptionPresentation(unittest.TestCase):
                 self.assertTrue(threshold_info["filtering_applied"])
                 self.assertIsInstance(threshold_info["description"], str)
 
-def test_selective_presentation_edge_case_no_matching_options(self):
+    def test_selective_presentation_edge_case_no_matching_options(self):
         """
         Test edge case where no options meet the similarity threshold.
-        
+
         When no options meet the similarity threshold, the system should handle
         this gracefully, potentially showing no options or all options with
         appropriate warnings.
         """
         user_description = "I need completely unrelated fictional products"
-        
+
         def mock_semantic_similarity(text1, text2):
             return 0.05  # Very low similarity for all options
-        
+
         with patch(
             "agent.calculate_semantic_similarity", side_effect=mock_semantic_similarity
         ):
             with patch("agent.read_code_generation_file") as mock_read:
                 mock_read.return_value = self.sample_code_generation_content
-                
+
                 # Call clarify_components
                 result = clarify_components(self.mock_ctx, user_description)
-                
+
                 # Parse the JSON result
                 import json
-                
+
                 result_data = json.loads(result)
-                
+
                 # Should still return valid JSON structure
                 self.assertIn("ambiguous_components", result_data)
                 self.assertIn("unambiguous_components", result_data)
                 self.assertIn("component_details", result_data)
-                
+
                 # Should handle the case gracefully without crashing
                 # May result in components with no matches or all components being ambiguous
                 for component_key, detail in result_data["component_details"].items():
@@ -518,7 +518,7 @@ def test_selective_presentation_edge_case_no_matching_options(self):
     def test_selective_presentation_comprehensive_filtering_logic(self):
         """
         Test comprehensive filtering logic across all similarity scenarios.
-        
+
         This test verifies that the filtering logic correctly handles:
         1. High semantic similarity (above threshold) - included
         2. Low semantic similarity but strong keyword matches - included
@@ -526,7 +526,7 @@ def test_selective_presentation_edge_case_no_matching_options(self):
         4. No semantic similarity and no keyword matches - excluded
         """
         user_description = "I need agricultural products and some chemical items"
-        
+
         # Mock semantic similarities for different scenarios
         def mock_semantic_similarity(text1, text2):
             # High similarity for agricultural products
@@ -543,8 +543,10 @@ def test_selective_presentation_edge_case_no_matching_options(self):
             # Default low similarity
             else:
                 return 0.1
-        
-        with patch("agent.calculate_semantic_similarity", side_effect=mock_semantic_similarity):
+
+        with patch(
+            "agent.calculate_semantic_similarity", side_effect=mock_semantic_similarity
+        ):
             # Test with different thresholds
             for threshold in [0.3, 0.5, 0.7]:
                 with self.subTest(threshold=threshold):
@@ -553,13 +555,13 @@ def test_selective_presentation_edge_case_no_matching_options(self):
                         self.test_component_rules["major_category"],
                         similarity_threshold=threshold,
                     )
-                    
+
                     # Verify filtering logic
                     for match in matches:
                         # Should either have high semantic similarity OR strong keyword matches
                         semantic_score = match["semantic_score"]
                         keyword_score = match["keyword_score"]
-                        
+
                         if semantic_score >= threshold:
                             # High semantic similarity - should be included
                             self.assertGreaterEqual(semantic_score, threshold)
@@ -576,56 +578,72 @@ def test_selective_presentation_edge_case_no_matching_options(self):
     def test_selective_presentation_threshold_boundary_conditions(self):
         """
         Test threshold boundary conditions to ensure exact threshold behavior.
-        
+
         This tests edge cases around the threshold value:
         1. Exactly at threshold - should be included
         2. Just below threshold - should be excluded unless keyword criteria met
         3. Just above threshold - should be included
         """
         user_description = "I need agricultural products"
-        
+
         # Test with exact threshold values
         test_thresholds = [0.29, 0.30, 0.31]  # Around default threshold
-        
+
         for threshold in test_thresholds:
             with self.subTest(threshold=threshold):
+
                 def mock_semantic_similarity(text1, text2):
                     if "Agricultural products" in text2:
                         # Return exact threshold value for testing
                         return threshold
                     else:
                         return 0.1
-                
-                with patch("agent.calculate_semantic_similarity", side_effect=mock_semantic_similarity):
+
+                with patch(
+                    "agent.calculate_semantic_similarity",
+                    side_effect=mock_semantic_similarity,
+                ):
                     matches = find_component_matches(
                         user_description,
                         self.test_component_rules["major_category"],
                         similarity_threshold=threshold,
                     )
-                    
+
                     # Agricultural products should be included (exactly at threshold)
                     ag_matches = [m for m in matches if m["code"] == "A"]
-                    
+
                     if threshold == DEFAULT_SIMILARITY_THRESHOLD:
                         # At default threshold, should be included due to semantic similarity
-                        self.assertEqual(len(ag_matches), 1, "Should include matches exactly at threshold")
+                        self.assertEqual(
+                            len(ag_matches),
+                            1,
+                            "Should include matches exactly at threshold",
+                        )
                     elif threshold < DEFAULT_SIMILARITY_THRESHOLD:
                         # Below default threshold, should still be included
-                        self.assertEqual(len(ag_matches), 1, "Should include matches below default threshold")
+                        self.assertEqual(
+                            len(ag_matches),
+                            1,
+                            "Should include matches below default threshold",
+                        )
                     else:
                         # Above default threshold, may or may not be included depending on keyword matches
                         # Since we have keyword matches ("agricultural" in description), it should be included
-                        self.assertGreaterEqual(len(ag_matches), 0, "May include matches above default threshold with keywords")
+                        self.assertGreaterEqual(
+                            len(ag_matches),
+                            0,
+                            "May include matches above default threshold with keywords",
+                        )
 
     def test_selective_presentation_multiple_components_filtering(self):
         """
         Test that filtering works correctly across multiple components.
-        
+
         This ensures that the similarity threshold filtering is applied
         consistently to all components (major_category, manufacturing_method, etc.).
         """
         user_description = "I need agricultural products made with automated methods"
-        
+
         def mock_semantic_similarity(text1, text2):
             # High similarity for agricultural products
             if "Agricultural products" in text2:
@@ -636,37 +654,41 @@ def test_selective_presentation_edge_case_no_matching_options(self):
             # Low similarity for other options
             else:
                 return 0.2
-        
-        with patch("agent.calculate_semantic_similarity", side_effect=mock_semantic_similarity):
+
+        with patch(
+            "agent.calculate_semantic_similarity", side_effect=mock_semantic_similarity
+        ):
             with patch("agent.read_code_generation_file") as mock_read:
                 mock_read.return_value = self.sample_code_generation_content
-                
+
                 # Call clarify_components
                 result = clarify_components(self.mock_ctx, user_description)
-                
+
                 # Parse the JSON result
                 import json
-                
+
                 result_data = json.loads(result)
-                
+
                 # Should have filtered options for both major_category and manufacturing_method
                 # Check that ambiguous components have been filtered
                 for component in result_data["ambiguous_components"]:
                     options = component["options"]
-                    
+
                     # Each option should have similarity information
                     for option in options:
                         if "similarity_info" in option:
                             similarity_info = option["similarity_info"]
                             self.assertIn("semantic_score", similarity_info)
                             self.assertIn("filter_reason", similarity_info)
-                            
+
                             # Verify that the option meets the filtering criteria
                             semantic_score = similarity_info["semantic_score"]
                             filter_reason = similarity_info["filter_reason"]
-                            
+
                             if "high_semantic_similarity" in filter_reason:
-                                self.assertGreaterEqual(semantic_score, DEFAULT_SIMILARITY_THRESHOLD)
+                                self.assertGreaterEqual(
+                                    semantic_score, DEFAULT_SIMILARITY_THRESHOLD
+                                )
                             elif "strong_keyword_matches" in filter_reason:
                                 # Should have keyword score >= 4
                                 self.assertIn("keyword_score", str(option))
