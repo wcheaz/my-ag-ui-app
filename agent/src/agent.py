@@ -97,6 +97,102 @@ def calculate_semantic_similarity(text1: str, text2: str) -> float:
         return 0.0
 
 
+def detect_explicit_guess_permission(user_text: str) -> bool:
+    """
+    Detect explicit guess permission phrases in user text.
+
+    This function analyzes user input to identify phrases that indicate
+    the user explicitly allows the agent to make a guess for ambiguous
+    components. This implements the "explicit guess permission" requirement
+    from the disambiguation workflow.
+
+    Args:
+        user_text: The user's input text to analyze
+
+    Returns:
+        bool: True if explicit guess permission is detected, False otherwise
+
+    Examples:
+        >>> detect_explicit_guess_permission("I don't know, you choose")
+        True
+        >>> detect_explicit_guess_permission("whatever you think is best")
+        True
+        >>> detect_explicit_guess_permission("please specify the material")
+        False
+    """
+    # Normalize the text for case-insensitive matching
+    normalized_text = user_text.lower().strip()
+
+    # Define explicit guess permission phrases
+    guess_permission_phrases = [
+        # Direct statements of not knowing
+        r"i don't know",
+        r"i dont know",
+        r"idk",
+        r"i have no idea",
+        r"no idea",
+        r"i'm not sure",
+        r"im not sure",
+        r"not sure",
+        # Delegative phrases
+        r"you choose",
+        r"you decide",
+        r"your choice",
+        r"your decision",
+        r"up to you",
+        r"your call",
+        r"your judgment",
+        # Indifference phrases
+        r"whatever",
+        r"whichever",
+        r"either one",
+        r"any of them",
+        r"any is fine",
+        r"doesn't matter",
+        r"doesn't matter to me",
+        r"i don't care",
+        r"i dont care",
+        r"don't care",
+        # Explicit permission to guess
+        r"just guess",
+        r"guess for me",
+        r"make a guess",
+        r"take your best guess",
+        r"your best guess",
+        r"go ahead and guess",
+        r"feel free to guess",
+    ]
+
+    # Check for exact phrase matches using word boundaries
+    for phrase in guess_permission_phrases:
+        # Use regex with word boundaries to avoid partial matches
+        pattern = r"\b" + re.escape(phrase) + r"\b"
+        if re.search(pattern, normalized_text):
+            return True
+
+    # Check for variations and combinations
+    # Handle "I don't know" followed by indifference
+    if re.search(r"\bi don't know\b.*\bwhatever\b", normalized_text):
+        return True
+
+    # Handle "you choose" variations with indifference
+    if re.search(r"\byou choose\b.*\bdoesn't matter\b", normalized_text):
+        return True
+
+    # Handle combined permission phrases
+    combined_patterns = [
+        r"\bi don't know\b.*\byou choose\b",
+        r"\bwhatever\b.*\byou decide\b",
+        r"\bup to you\b.*\bi don't care\b",
+    ]
+
+    for pattern in combined_patterns:
+        if re.search(pattern, normalized_text):
+            return True
+
+    return False
+
+
 class ProcurementCode(BaseModel):
     code: str
     description: str
