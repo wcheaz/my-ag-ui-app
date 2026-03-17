@@ -68,7 +68,7 @@
 - [x] 8.4 Write integration test for multiple ambiguous components scenario
 - [x] 8.5 Write integration test for iterative clarification (multiple rounds)
 - [x] 8.6 Write integration test for explicit guess permission scenario
-- [ ] 8.7 Write integration test for save rejection with ambiguous components
+- [x] 8.7 Write integration test for save rejection with ambiguous components
 - [ ] 8.8 Write integration test for successful save after disambiguation
 
 ## 9. Error Handling and Edge Cases
