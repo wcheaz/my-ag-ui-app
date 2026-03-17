@@ -7,6 +7,60 @@ from typing import List, Optional, Any, Union
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+# ============================================================================
+# DISAMBIGUATION WORKFLOW DOCUMENTATION
+# ============================================================================
+#
+# OVERVIEW:
+# This agent implements a confirm-before-generate pattern for procurement code
+# generation to ensure accuracy by preventing ambiguous inputs from being
+# silently guessed. The disambiguation workflow is programmatically enforced
+# through state management and tool validation.
+#
+# KEY COMPONENTS:
+#
+# 1. DISAMBIGUATION WORKFLOW:
+#    - User provides description → Agent reads rules → Agent detects ambiguities
+#    → Agent presents clarification options → User confirms → Agent generates code
+#
+# 2. STATE MANAGEMENT:
+#    - ProcurementState tracks component ambiguity status via component_ambiguity_status
+#    - AmbiguityInfo class tracks each component's status (ambiguous/unambiguous/guessed)
+#    - State transitions are validated to prevent invalid workflow progression
+#
+# 3. CORE TOOLS:
+#    - clarify_components: Parses user description and identifies ambiguous components
+#    - save_procurement_code: Validates all components are unambiguous before saving
+#    - read_code_generation_file: Must be called before any other operations
+#
+# 4. ITERATIVE CLARIFICATION:
+#    - System tracks which components have been clarified across multiple rounds
+#    - Already-clarified components are filtered out from subsequent clarification calls
+#    - User selections are preserved across clarification rounds
+#
+# 5. GUESS PERMISSION HANDLING:
+#    - Only makes guesses when user explicitly states they don't know
+#    - Detects phrases like "I don't know", "whatever", "you choose"
+#    - Always informs user when a guess is made based on their permission
+#
+# 6. PROGRAMMATIC ENFORCEMENT:
+#    - save_procurement_code rejects saves with ambiguous components
+#    - State validation ensures only valid transitions occur
+#    - Workflow cannot be bypassed through system prompt alone
+#
+# WORKFLOW SEQUENCE:
+# 1. User requests procurement code
+# 2. Agent calls read_code_generation_file (enforced)
+# 3. Agent calls clarify_components to detect ambiguities
+# 4. If ambiguous components exist, present options to user
+# 5. User clarifies ambiguous components (iterative if needed)
+# 6. When all components are unambiguous, generate code confidently
+# 7. Call save_procurement_code (validates no ambiguous components)
+# 8. Complete with justification and generated code
+#
+# For detailed implementation, see individual function documentation below.
+# ============================================================================
+
 # Third-party imports
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext
@@ -107,26 +161,56 @@ def calculate_semantic_similarity(text1: str, text2: str) -> float:
 
 def detect_explicit_guess_permission(user_text: str) -> bool:
     """
-    Detect explicit guess permission phrases in user text.
+    GUESS PERMISSION DETECTION:
+    Identifies when users explicitly allow the agent to make guesses for ambiguous components.
 
-    This function analyzes user input to identify phrases that indicate
-    the user explicitly allows the agent to make a guess for ambiguous
-    components. This implements the "explicit guess permission" requirement
-    from the disambiguation workflow.
+    This function is a critical component of the guess permission system in the
+    disambiguation workflow. It implements the requirement that agents can only
+    make guesses when users give explicit permission, preventing silent guessing
+    and ensuring users are always in control of the disambiguation process.
+
+    GUESS PERMISSION PHILOSOPHY:
+    - Users MUST explicitly state they don't know or give permission
+    - Agents MUST NEVER make silent guesses without permission
+    - All guesses MUST be clearly communicated to users
+    - Users retain full control over the disambiguation process
+
+    DETECTION APPROACH:
+    1. Uses comprehensive phrase matching with word boundaries
+    2. Supports multiple categories of permission phrases:
+       - Direct statements of not knowing ("I don't know", "no idea")
+       - Delegative phrases ("you choose", "your decision")
+       - Indifference phrases ("whatever", "doesn't matter")
+       - Explicit permission phrases ("just guess", "make a guess")
+    3. Handles combined phrases ("I don't know, whatever you choose")
+    4. Uses case-insensitive matching with regex word boundaries
+    5. Provides comprehensive coverage of common permission patterns
+
+    WORKFLOW INTEGRATION:
+    - Called by detect_component_ambiguity when analyzing user responses
+    - When True is returned, ambiguous components are marked as "guessed"
+    - When False is returned, users must provide clarification for ambiguities
+    - Results in user notification about any guesses made based on their permission
 
     Args:
-        user_text: The user's input text to analyze
+        user_text: The user's input text to analyze for guess permission phrases
 
     Returns:
         bool: True if explicit guess permission is detected, False otherwise
+        - True: User has given explicit permission to guess ambiguous components
+        - False: No explicit permission detected - must clarify all ambiguities
 
     Examples:
         >>> detect_explicit_guess_permission("I don't know, you choose")
-        True
+        True  # Combined permission phrases
         >>> detect_explicit_guess_permission("whatever you think is best")
-        True
+        True  # Indifference + delegative
         >>> detect_explicit_guess_permission("please specify the material")
-        False
+        False # No permission detected - requires clarification
+
+    CRITICAL: This function is the primary mechanism for preventing unauthorized
+    guessing. Without this detection, agents might make inappropriate assumptions
+    about user preferences, leading to incorrect procurement codes.
     """
     # Normalize the text for case-insensitive matching
     normalized_text = user_text.lower().strip()
@@ -208,10 +292,19 @@ class ProcurementCode(BaseModel):
 
 class AmbiguityInfo(BaseModel):
     """
+    DISAMBIGUATION DATA STRUCTURE:
     Data class to track component ambiguity status during disambiguation workflow.
 
-    This class tracks whether a component is ambiguous, unambiguous, or guessed,
+    This class is the core data structure for implementing the confirm-before-generate
+    pattern. It tracks whether a component is ambiguous, unambiguous, or guessed,
     maintains the list of plausible options, and stores the user's selected value.
+    This enables programmatic enforcement of the disambiguation workflow.
+
+    STATE TRANSITIONS:
+    - "ambiguous" → "unambiguous" (user clarifies)
+    - "ambiguous" → "guessed" (user gives explicit permission)
+    - "unambiguous" → No further transitions allowed
+    - "guessed" → No further transitions allowed
 
     Attributes:
         status: Either "ambiguous", "unambiguous", or "guessed"
@@ -219,6 +312,12 @@ class AmbiguityInfo(BaseModel):
         selected_value: The user's selected value (if resolved)
         guessed_value: The value selected when user gave explicit guess permission
         is_guessed: Boolean flag indicating if this component was guessed
+
+    Usage in Disambiguation Workflow:
+    1. Created by clarify_components tool when parsing user descriptions
+    2. Stored in ProcurementState.component_ambiguity_status for enforcement
+    3. Updated during iterative clarification rounds
+    4. Validated by save_procurement_code before allowing code generation
     """
 
     status: str  # "ambiguous", "unambiguous", or "guessed"
@@ -232,8 +331,36 @@ class AmbiguityInfo(BaseModel):
 
 class ProcurementState(BaseModel):
     """
-    State for the Procurement Agent.
-    Maintains conversation history and other session-specific data.
+    DISAMBIGUATION STATE MANAGEMENT:
+    State for the Procurement Agent with comprehensive disambiguation tracking.
+
+    This class implements the state management required for the confirm-before-generate
+    workflow. It maintains conversation history, tracks component ambiguity status,
+    and enforces the disambiguation workflow programmatically. The state prevents
+    agents from bypassing the disambiguation process and ensures all components
+    are resolved before code generation.
+
+    DISAMBIGUATION ENFORCEMENT FIELDS:
+    - rules_loaded_this_turn: Enforces workflow step ordering (must read rules before save)
+    - component_ambiguity_status: Tracks ambiguity status for all 8 components
+    - clarification_rounds: Enables iterative clarification with progress tracking
+    - clarified_components: Prevents redundant questions across clarification rounds
+
+    WORKFLOW ENFORCEMENT:
+    1. rules_loaded_this_turn must be True before save_procurement_code can be called
+    2. All components in component_ambiguity_status must be unambiguous before saving
+    3. State transitions are validated to prevent invalid workflow progression
+    4. Iterative clarification preserves context and tracks progress
+
+    STATE VALIDATION:
+    - validate_all_component_states(): Ensures all component states are valid
+    - validate_all_components_unambiguous(): Blocks saves with ambiguous components
+    - validate_state_transition(): Prevents invalid state changes
+
+    Usage:
+    - Initialized at start of each procurement code request
+    - Updated by clarify_components tool during disambiguation
+    - Validated by save_procurement_code before allowing code generation
     """
 
     # Placeholder for message history or other state tracking
@@ -806,17 +933,65 @@ def find_component_matches(
     similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
 ) -> list:
     """
-    Find matches for a component based on user description using both keyword matching
-    and semantic similarity scoring. Uses improved similarity threshold filtering to
-    effectively filter out unrelated options while preserving relevant matches.
+    COMPONENT MATCHING ENGINE:
+    Core matching logic that identifies plausible component options from user descriptions.
+
+    This function implements the intelligence behind component extraction by combining
+    keyword matching with semantic similarity scoring. It uses a sophisticated
+    similarity threshold filtering system to ensure only relevant options are presented
+    to users during clarification, preventing overwhelming them with unrelated choices.
+
+    MATCHING ALGORITHM:
+    1. KEYWORD MATCHING:
+       - Searches for exact keyword matches in component rules
+       - Uses word boundaries for precise matching
+       - Scores based on keyword frequency and relevance
+       - Handles partial and complete phrase matches
+
+    2. SEMANTIC SIMILARITY:
+       - Calculates semantic similarity using embeddings
+       - Compares user description with component text representations
+       - Uses cosine similarity for scoring (0.0 to 1.0)
+       - Provides nuanced understanding beyond exact keywords
+
+    3. SIMILARITY THRESHOLD FILTERING:
+       - Uses configurable threshold to filter out unrelated options
+       - Implements nuanced filtering logic:
+         * High semantic similarity (≥ threshold): Always included
+         * Low semantic similarity but strong keyword matches (≥ 4): Included
+         * Both low semantic similarity and low keyword matches: Filtered out
+       - Ensures users only see relevant options during clarification
+
+    SCORING SYSTEM:
+    - Keyword score: 0-6 points based on exact and word-boundary matches
+    - Semantic score: 0-10 points (scaled from 0.0-1.0 similarity)
+    - Combined score: Keyword + Semantic scores (0-16 range)
+    - Sorts by combined score for relevance ranking
+
+    DISAMBIGUATION ROLE:
+    - Called by extract_components_from_description for each component type
+    - Returns scored matches that drive ambiguity detection
+    - Enables clarify_components to present only relevant options
+    - Supports the similarity threshold filtering requirement
 
     Args:
-        description: User's description text
-        component_rules: Dictionary of component rules
-        similarity_threshold: Minimum semantic similarity score (0.0-1.0) for a match to be included
+        description: User's description text to analyze for component matches
+        component_rules: Dictionary of component rules from CODE_GENERATION.md
+        similarity_threshold: Minimum semantic similarity score (0.0-1.0) for inclusion
 
     Returns:
-        List of matching component options with their combined scores
+        List of matching component options with detailed scoring information:
+        - code: Component code value (e.g., "A", "01")
+        - name: Component name (e.g., "Agricultural products")
+        - description: Component description
+        - score: Combined relevance score (keyword + semantic)
+        - keyword_score: Points from keyword matches
+        - semantic_score: Semantic similarity score
+        - filter_reason: Why this option was included or filtered
+
+    CRITICAL: This function is the foundation of the similarity threshold filtering
+    system. Without proper filtering, users would be overwhelmed with irrelevant
+    options during clarification, leading to poor user experience.
     """
     description_lower = description.lower()
     matches = []
@@ -1077,22 +1252,54 @@ def clarify_components(
     similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
 ) -> str:
     """
-    Implement clarify_components tool to parse user description and identify ambiguous components.
+    PRIMARY DISAMBIGUATION TOOL:
+    Core component of the confirm-before-generate workflow. Parses user descriptions
+    and identifies ambiguous components that require clarification before code generation.
 
-    This tool serves as the primary disambiguation mechanism, returning structured JSON
-    with clarification options for ambiguous components while providing context about
-    unambiguous components. Uses configurable similarity threshold to filter options.
+    This tool is the heart of the disambiguation system and implements the programmatic
+    enforcement mechanism. It analyzes user descriptions against CODE_GENERATION.md rules,
+    identifies components with multiple plausible matches, and returns structured JSON
+    that can be rendered by the UI for user clarification. Uses similarity threshold
+    filtering to ensure only relevant options are presented.
+
+    WORKFLOW ROLE:
+    1. Called AFTER read_code_generation_file (enforced by state validation)
+    2. Called BEFORE any code generation attempt
+    3. Returns structured options for ambiguous components
+    4. Enables iterative clarification by tracking already-resolved components
+    5. Integrates with guess permission detection when user gives explicit permission
+
+    SIMILARITY THRESHOLD FILTERING:
+    - Filters out completely unrelated options from clarification prompts
+    - Uses both semantic similarity and keyword matching
+    - Ensures users only see options that actually match their description
+    - Prevents overwhelming users with irrelevant choices
+
+    ITERATIVE CLARIFICATION SUPPORT:
+    - Skips components already in ctx.deps.state.clarified_components
+    - Preserves previous user selections across clarification rounds
+    - Tracks clarification progress via ctx.deps.state.clarification_rounds
+    - Prevents redundant questions about already-confirmed components
 
     Args:
-        ctx: The run context containing the ProcurementState
-        user_description: The user's description text to analyze
+        ctx: The run context containing the ProcurementState with disambiguation tracking
+        user_description: The user's description text to analyze for component extraction
         similarity_threshold: Minimum semantic similarity score (0.0-1.0) for option filtering
 
     Returns:
-        JSON string containing:
-        - ambiguous_components: List of components that need clarification
-        - unambiguous_components: List of components already resolved
-        - component_details: Detailed information about each component
+        JSON string containing structured disambiguation information:
+        - ambiguous_components: List of components that need user clarification
+        - unambiguous_components: List of components already resolved (for context)
+        - guessed_components: List of components guessed with user permission
+        - component_details: Detailed information about each component including scores
+        - similarity_threshold_info: Transparency about filtering applied
+        - guess_notification: User-friendly message about any guesses made
+
+    ENFORCEMENT:
+    - Validates rules_loaded_this_turn is True (workflow enforcement)
+    - Updates ProcurementState.component_ambiguity_status with detected ambiguities
+    - Integrates with state validation to prevent invalid transitions
+    - Provides structured output for UI rendering and programmatic processing
     """
     try:
         # Input validation
@@ -1440,16 +1647,59 @@ def clarify_components(
 
 def format_guess_notification(guessed_components: list[dict]) -> str:
     """
-    Format a user-friendly notification message when components are guessed.
+    GUESS NOTIFICATION SYSTEM:
+    Creates user-friendly notifications when components are guessed based on explicit permission.
 
-    This function creates a clear, informative message that tells the user
-    which components were guessed based on their explicit permission.
+    This function implements the transparency requirement for the guess permission
+    system. When users give explicit permission to guess ambiguous components,
+    this function generates a clear, informative notification that explains
+    exactly what was guessed and why, maintaining user trust and control over
+    the disambiguation process.
+
+    NOTIFICATION PRINCIPLES:
+    1. TRANSPARENCY: Clearly state what was guessed and why
+    2. ACCOUNTABILITY: Show that guesses are based on user's explicit permission
+    3. CLARITY: Present information in a user-friendly, readable format
+    4. EMPOWERMENT: Remind users they can change guesses if desired
+    5. CONTEXT: Provide enough detail for informed decision-making
+
+    NOTIFICATION STRUCTURE:
+    1. HEADER: Clear indication that guesses were made
+    2. COMPONENT DETAILS: For each guessed component:
+       - Component name
+       - Guessed value selected
+       - Description of the guessed option
+    3. PERMISSION REMINDER: Explanation that guesses were based on explicit permission
+    4. USER CONTROL: Information about changing guesses if needed
+
+    FORMATTING APPROACH:
+    - Uses markdown formatting for readability
+    - Includes visual indicators (🎯, 💡) for better user experience
+    - Structures information hierarchically for easy scanning
+    - Provides actionable information for user follow-up
+
+    WORKFLOW INTEGRATION:
+    - Called by detect_component_ambiguity when guesses are made
+    - Included in clarify_components JSON response as guess_notification
+    - Presented to users during the disambiguation process
+    - Maintains user trust and process transparency
 
     Args:
-        guessed_components: List of component dictionaries with guessed information
+        guessed_components: List of component dictionaries with guessed information:
+                          - component_name: Name of the guessed component
+                          - guessed_value: The value that was guessed
+                          - description: Description of the guessed option
 
     Returns:
-        Formatted notification string for the user
+        Formatted notification string ready for user display:
+        - Clear header indicating guesses were made
+        - Detailed list of each guessed component
+        - Permission reminder and user control information
+
+    CRITICAL: This function is essential for maintaining user trust in the
+    disambiguation process. Without clear notifications, users might not
+    understand that guesses were made based on their permission, leading to
+    confusion or distrust in the system.
     """
     if not guessed_components:
         return ""
@@ -1487,29 +1737,60 @@ def detect_component_ambiguity(
     similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
 ) -> dict:
     """
-    Implement ambiguity detection logic to identify when a component has 2+ plausible matches.
-    Uses similarity threshold to filter out unrelated options from clarification prompts.
+    CORE AMBIGUITY DETECTION ENGINE:
+    Implements the logic to identify when components have 2+ plausible matches,
+    creating AmbiguityInfo objects that drive the disambiguation workflow.
 
-    This function analyzes component matches from user descriptions and creates AmbiguityInfo
-    objects to track the ambiguity status in the ProcurementState. It integrates with the
-    state management system to enforce the disambiguation workflow. When explicit guess
-    permission is detected, it marks components as "guessed" using the most likely match.
+    This function is the intelligence behind the confirm-before-generate pattern.
+    It analyzes user descriptions against CODE_GENERATION.md rules, identifies
+    ambiguous components, creates AmbiguityInfo objects, and integrates with
+    the state management system. When explicit guess permission is detected,
+    it handles the guess workflow by marking components as "guessed".
+
+    AMBIGUITY DETECTION PROCESS:
+    1. Parse user description against CODE_GENERATION.md rules
+    2. Find matches for each of the 8 required components
+    3. Apply similarity threshold filtering to remove unrelated options
+    4. Classify components as: ambiguous (2+ matches), unambiguous (1 match),
+       no_match (0 matches), or guessed (with explicit permission)
+    5. Create AmbiguityInfo objects for each component
+    6. Update ProcurementState with ambiguity information
+
+    GUESS PERMISSION INTEGRATION:
+    - Detects explicit guess permission phrases in user_text
+    - When detected, automatically marks ambiguous components as "guessed"
+    - Uses highest-scoring match as the guessed value
+    - Generates user notification about the guess made
+    - Ensures guesses are only made with explicit user permission
+
+    STATE INTEGRATION:
+    - Creates AmbiguityInfo objects for all 8 components
+    - Updates ProcurementState.component_ambiguity_status
+    - Validates state transitions to prevent invalid updates
+    - Enables iterative clarification by tracking which components are resolved
 
     Args:
-        user_description: The user's description text
-        code_generation_content: Content of the CODE_GENERATION.md file
-        ctx: The run context containing the ProcurementState
+        user_description: The user's description text to analyze
+        code_generation_content: Content of the CODE_GENERATION.md file with rules
+        ctx: The run context containing the ProcurementState for state updates
         user_text: The user's current response text (for guess permission detection)
-        similarity_threshold: Minimum semantic similarity score (0.0-1.0) for matches to be included
+        similarity_threshold: Minimum semantic similarity score (0.0-1.0) for filtering
 
     Returns:
-        Dictionary containing:
+        Dictionary containing comprehensive ambiguity analysis:
         - ambiguity_detected: Boolean indicating if any components are ambiguous
-        - ambiguous_components: List of component names that are ambiguous
-        - unambiguous_components: List of component names that are unambiguous
-        - guessed_components: List of component names that were guessed
-        - no_match_components: List of component names with no matches
+        - ambiguous_components: List of component names that need clarification
+        - unambiguous_components: List of component names with single matches
+        - guessed_components: List of component names marked as guessed
+        - no_match_components: List of component names with no valid matches
         - ambiguity_details: Detailed AmbiguityInfo for each component
+        - guess_notification: User-friendly message about any guesses made
+
+    STATE VALIDATION:
+    - Validates all state transitions before updating ProcurementState
+    - Prevents invalid transitions (e.g., unambiguous → ambiguous)
+    - Provides detailed error messages for state transition failures
+    - Ensures data consistency across the disambiguation workflow
     """
     # Get component extraction results with similarity threshold filtering
     extraction_results = get_component_extraction_results(
@@ -1706,14 +1987,59 @@ async def save_procurement_code(
     ctx: RunContext[StateDeps[ProcurementState]], code: str, description: str
 ) -> Union[StateSnapshotEvent, str]:
     """
-    Saves a generated procurement code to the application state using the specific format required by the UI.
-    Do NOT state that you are saving a code to application state. Just do it silently.
+    WORKFLOW ENFORCEMENT GATE:
+    Final validation step in the confirm-before-generate pattern. Enforces that all
+    components are unambiguous before allowing code generation to proceed.
+
+    This function is the critical enforcement point in the disambiguation workflow.
+    It validates that both workflow requirements have been met: (1) rules file has
+    been read this turn, and (2) all components are unambiguous. If either check
+    fails, it rejects the save with a detailed error message, preventing agents from
+    bypassing the disambiguation process.
+
+    ENFORCEMENT MECHANISMS:
+    1. RULES LOADING VALIDATION:
+       - Validates ctx.deps.state.rules_loaded_this_turn is True
+       - Ensures read_code_generation_file was called first
+       - Prevents workflow bypass attempts
+       - Returns error: "ERROR: You must call read_code_generation_file before saving a code."
+
+    2. DISAMBIGUATION VALIDATION:
+       - Calls ctx.deps.state.validate_all_component_states()
+       - Calls ctx.deps.state.validate_all_components_unambiguous()
+       - Ensures all 8 components are resolved (unambiguous or guessed)
+       - Returns detailed error listing which components need clarification
+
+    3. STATE CONSISTENCY CHECKING:
+       - Validates all AmbiguityInfo objects have valid states
+       - Ensures no unexpected state transitions occurred
+       - Verifies data consistency across all components
+       - Provides detailed error messages for validation failures
+
+    WORKFLOW ROLE:
+    - Must be called AFTER read_code_generation_file
+    - Must be called AFTER all components are resolved (via clarify_iterations)
+    - Must be called BEFORE any code is considered final
+    - Serves as the final gatekeeper in the disambiguation workflow
+
     Args:
-        code: The generated procurement code (e.g., "CFR01067261").
-        description: A brief description of the item (e.g., "Steel I-beam for office building construction").
+        ctx: The run context containing the ProcurementState with disambiguation tracking
+        code: The generated procurement code (e.g., "CFR01067261")
+        description: A brief description of the item (e.g., "Steel I-beam for office building construction")
 
     Returns:
-        A success message indicating the code has been saved.
+        StateSnapshotEvent on successful save (for UI state update)
+        Error message string on validation failure with detailed diagnostics
+
+    ERROR HANDLING:
+    - Rules not loaded: Returns explicit error about required file read step
+    - Ambiguous components: Returns detailed list of which components need clarification
+    - Invalid states: Returns detailed state validation error with component details
+    - State transitions: Returns detailed error about invalid state changes
+
+    CRITICAL: This function is the primary enforcement mechanism for the entire
+    disambiguation workflow. Without this validation, agents could bypass the
+    confirm-before-generate pattern and generate incorrect codes.
     """
     # ENFORCEMENT MECHANISM: Validate that rules were loaded this turn before allowing save
     # This enforces the workflow: read_code_generation_file MUST be called before save_procurement_code
