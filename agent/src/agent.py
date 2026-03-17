@@ -96,6 +96,92 @@ class ProcurementState(BaseModel):
     # This enables programmatic enforcement of disambiguation workflow
     component_ambiguity_status: dict[str, AmbiguityInfo] = Field(default_factory=dict)
 
+    def update_component_ambiguity(
+        self, component_name: str, ambiguity_info: AmbiguityInfo
+    ) -> None:
+        """
+        Update component ambiguity status with validation for state transitions.
+
+        Args:
+            component_name: Name of the component to update
+            ambiguity_info: New AmbiguityInfo for the component
+
+        Raises:
+            ValueError: If state transition is invalid
+        """
+        # Validate that unambiguous components have a selected_value (for both new and existing components)
+        if (
+            ambiguity_info.status == "unambiguous"
+            and ambiguity_info.selected_value is None
+        ):
+            raise ValueError(
+                f"Invalid state for component '{component_name}': "
+                f"Unambiguous components must have a selected_value."
+            )
+
+        if component_name in self.component_ambiguity_status:
+            current_info = self.component_ambiguity_status[component_name]
+
+            # Validate state transition: only allow ambiguous → unambiguous
+            if (
+                current_info.status == "unambiguous"
+                and ambiguity_info.status == "ambiguous"
+            ):
+                raise ValueError(
+                    f"Invalid state transition for component '{component_name}': "
+                    f"Cannot transition from 'unambiguous' to 'ambiguous'. "
+                    f"Once a component is resolved, it cannot become ambiguous again."
+                )
+
+        # Apply the update
+        self.component_ambiguity_status[component_name] = ambiguity_info
+
+    def validate_all_components_unambiguous(self) -> None:
+        """
+        Validate that all components are unambiguous (no ambiguous components remain).
+
+        Raises:
+            ValueError: If any component is still ambiguous
+        """
+        ambiguous_components = [
+            name
+            for name, info in self.component_ambiguity_status.items()
+            if info.status == "ambiguous"
+        ]
+
+        if ambiguous_components:
+            component_list = ", ".join(ambiguous_components)
+            raise ValueError(
+                f"Cannot proceed with code generation: "
+                f"The following components are still ambiguous and need clarification: {component_list}"
+            )
+
+    def get_ambiguous_components(self) -> dict[str, AmbiguityInfo]:
+        """
+        Get all components that are currently ambiguous.
+
+        Returns:
+            Dictionary of ambiguous component names to their AmbiguityInfo
+        """
+        return {
+            name: info
+            for name, info in self.component_ambiguity_status.items()
+            if info.status == "ambiguous"
+        }
+
+    def get_unambiguous_components(self) -> dict[str, AmbiguityInfo]:
+        """
+        Get all components that are currently unambiguous.
+
+        Returns:
+            Dictionary of unambiguous component names to their AmbiguityInfo
+        """
+        return {
+            name: info
+            for name, info in self.component_ambiguity_status.items()
+            if info.status == "unambiguous"
+        }
+
 
 def read_code_generation_file(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
     """
