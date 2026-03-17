@@ -12,7 +12,7 @@
 - [x] 2.3 Implement keyword-based matching for component options
 - [x] 2.4 Implement semantic similarity scoring for component options (initial version)
 - [x] 2.5 Add logic to handle "no matches found" scenario
-- [ ] 2.6 Write unit tests for component extraction with clear inputs
+- [x] 2.6 Write unit tests for component extraction with clear inputs
 - [ ] 2.7 Write unit tests for ambiguity detection with ambiguous inputs
 - [ ] 2.8 Write unit tests for edge cases (no matches, single match, multiple matches)
 
