@@ -819,6 +819,7 @@ def clarify_components(
             "unambiguous_components": [],
             "guessed_components": [],
             "component_details": {},
+            "guess_notification": "",  # User notification when guesses are made
         }
 
         # Get component extraction results for detailed processing
@@ -908,6 +909,9 @@ def clarify_components(
                 "is_guessed": ambiguity_info.is_guessed if ambiguity_info else False,
             }
 
+        # Add guess notification from ambiguity detection results
+        response["guess_notification"] = ambiguity_results.get("guess_notification", "")
+
         # Return the structured JSON response
         return json.dumps(response, indent=2)
 
@@ -920,6 +924,47 @@ def clarify_components(
             "component_details": {},
         }
         return json.dumps(error_response, indent=2)
+
+
+def format_guess_notification(guessed_components: list[dict]) -> str:
+    """
+    Format a user-friendly notification message when components are guessed.
+
+    This function creates a clear, informative message that tells the user
+    which components were guessed based on their explicit permission.
+
+    Args:
+        guessed_components: List of component dictionaries with guessed information
+
+    Returns:
+        Formatted notification string for the user
+    """
+    if not guessed_components:
+        return ""
+
+    notification_lines = [
+        "🎯 **I've made the following guesses based on your permission:**",
+        "",
+    ]
+
+    for comp in guessed_components:
+        component_name = comp.get("component_name", "Unknown Component")
+        guessed_value = comp.get("guessed_value", "Unknown")
+        description = comp.get("description", "No description available")
+
+        notification_lines.append(f"**{component_name}**: {description}")
+        notification_lines.append(f"  → Guessed value: {guessed_value}")
+        notification_lines.append("")
+
+    notification_lines.extend(
+        [
+            '💡 **Note**: These guesses are based on your explicit permission (e.g., "I don\'t know", "whatever", "you choose").',
+            "If you'd like to change any of these guesses, please let me know which component you'd like to clarify.",
+            "",
+        ]
+    )
+
+    return "\n".join(notification_lines)
 
 
 def detect_component_ambiguity(
@@ -969,6 +1014,7 @@ def detect_component_ambiguity(
         "guessed_components": [],
         "no_match_components": [],
         "ambiguity_details": {},
+        "guess_notification": "",  # User notification when guesses are made
     }
 
     # Process each component and create AmbiguityInfo objects
@@ -1035,6 +1081,35 @@ def detect_component_ambiguity(
 
         # Update the ProcurementState with the ambiguity information
         ctx.deps.state.update_component_ambiguity(component_name, ambiguity_info)
+
+    # Generate user notification for guessed components
+    if result["guessed_components"]:
+        # Prepare guessed component details for notification
+        guessed_component_details = []
+        for component_key, ambiguity_info in result["ambiguity_details"].items():
+            if ambiguity_info.status == "guessed":
+                component_name = None
+                # Find the component name from extraction results
+                for comp_key, detail in extraction_results["component_details"].items():
+                    if comp_key == component_key:
+                        component_name = detail["component_name"]
+                        break
+
+                if component_name:
+                    guessed_component_details.append(
+                        {
+                            "component_name": component_name,
+                            "guessed_value": ambiguity_info.guessed_value,
+                            "description": ambiguity_info.options[0]["description"]
+                            if ambiguity_info.options
+                            else "No description available",
+                        }
+                    )
+
+        # Format the notification
+        result["guess_notification"] = format_guess_notification(
+            guessed_component_details
+        )
 
     return result
 
