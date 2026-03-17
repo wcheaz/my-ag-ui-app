@@ -202,18 +202,24 @@ class AmbiguityInfo(BaseModel):
     """
     Data class to track component ambiguity status during disambiguation workflow.
 
-    This class tracks whether a component is ambiguous or unambiguous,
+    This class tracks whether a component is ambiguous, unambiguous, or guessed,
     maintains the list of plausible options, and stores the user's selected value.
 
     Attributes:
-        status: Either "ambiguous" or "unambiguous"
+        status: Either "ambiguous", "unambiguous", or "guessed"
         options: List of plausible matches for the component
         selected_value: The user's selected value (if resolved)
+        guessed_value: The value selected when user gave explicit guess permission
+        is_guessed: Boolean flag indicating if this component was guessed
     """
 
-    status: str  # "ambiguous" or "unambiguous"
+    status: str  # "ambiguous", "unambiguous", or "guessed"
     options: List[dict]  # List of plausible matches with their descriptions
     selected_value: Optional[str] = None  # User's selected value when resolved
+    guessed_value: Optional[str] = (
+        None  # Value selected when user gave guess permission
+    )
+    is_guessed: bool = False  # Flag indicating if this component was guessed
 
 
 class ProcurementState(BaseModel):
@@ -250,7 +256,7 @@ class ProcurementState(BaseModel):
         Raises:
             ValueError: If state transition is invalid
         """
-        # Validate that unambiguous components have a selected_value (for both new and existing components)
+        # Validate that unambiguous components have a selected_value
         if (
             ambiguity_info.status == "unambiguous"
             and ambiguity_info.selected_value is None
@@ -260,18 +266,25 @@ class ProcurementState(BaseModel):
                 f"Unambiguous components must have a selected_value."
             )
 
+        # Validate that guessed components have a guessed_value
+        if ambiguity_info.status == "guessed" and ambiguity_info.guessed_value is None:
+            raise ValueError(
+                f"Invalid state for component '{component_name}': "
+                f"Guessed components must have a guessed_value."
+            )
+
         if component_name in self.component_ambiguity_status:
             current_info = self.component_ambiguity_status[component_name]
 
-            # Validate state transition: only allow ambiguous → unambiguous
+            # Validate state transitions: only allow ambiguous → unambiguous or ambiguous → guessed
             if (
-                current_info.status == "unambiguous"
+                current_info.status in ["unambiguous", "guessed"]
                 and ambiguity_info.status == "ambiguous"
             ):
                 raise ValueError(
                     f"Invalid state transition for component '{component_name}': "
-                    f"Cannot transition from 'unambiguous' to 'ambiguous'. "
-                    f"Once a component is resolved, it cannot become ambiguous again."
+                    f"Cannot transition from '{current_info.status}' to 'ambiguous'. "
+                    f"Once a component is resolved (unambiguous or guessed), it cannot become ambiguous again."
                 )
 
         # Apply the update
@@ -279,7 +292,9 @@ class ProcurementState(BaseModel):
 
     def validate_all_components_unambiguous(self) -> None:
         """
-        Validate that all components are unambiguous (no ambiguous components remain).
+        Validate that all components are resolved (either unambiguous or guessed).
+        This allows code generation to proceed when components have been explicitly
+        guessed with user permission.
 
         Raises:
             ValueError: If any component is still ambiguous
@@ -793,17 +808,23 @@ def clarify_components(
         # For now, we'll read it fresh each time (could be optimized)
         code_generation_content = read_code_generation_file(ctx)
 
-        # Get component extraction results
-        extraction_results = get_component_extraction_results(
-            user_description, code_generation_content
+        # Get component extraction results with ambiguity detection
+        ambiguity_results = detect_component_ambiguity(
+            user_description, code_generation_content, ctx, user_description
         )
 
         # Prepare the structured response
         response = {
             "ambiguous_components": [],
             "unambiguous_components": [],
+            "guessed_components": [],
             "component_details": {},
         }
+
+        # Get component extraction results for detailed processing
+        extraction_results = get_component_extraction_results(
+            user_description, code_generation_content
+        )
 
         # Process ambiguous components
         for component in extraction_results["ambiguous_components"]:
@@ -843,17 +864,49 @@ def clarify_components(
             }
             response["unambiguous_components"].append(unambiguous_component)
 
+        # Process guessed components (for context and notification)
+        for component_name in ambiguity_results["guessed_components"]:
+            # Find the component details from extraction results
+            component_detail = None
+            component_key = None
+            for comp_key, detail in extraction_results["component_details"].items():
+                if detail["component_name"] == component_name:
+                    component_detail = detail
+                    component_key = comp_key
+                    break
+
+            if component_detail and component_detail["matches"] and component_key:
+                # Get the guessed value from the state
+                ambiguity_info = ctx.deps.state.component_ambiguity_status.get(
+                    component_name
+                )
+                if ambiguity_info and ambiguity_info.guessed_value:
+                    match = component_detail["matches"][0]  # Highest scoring match
+                    guessed_component = {
+                        "component_name": component_name,
+                        "component_key": component_key,
+                        "guessed_value": ambiguity_info.guessed_value,
+                        "description": f"{match['name']}: {match['description']} (GUESSED)",
+                        "is_guessed": True,
+                    }
+                    response["guessed_components"].append(guessed_component)
+
         # Add component details for comprehensive information
         for component_key, detail in extraction_results["component_details"].items():
+            # Get the current status from state (might be updated to "guessed")
+            ambiguity_info = ctx.deps.state.component_ambiguity_status.get(
+                detail["component_name"]
+            )
+            current_status = (
+                ambiguity_info.status if ambiguity_info else detail["status"]
+            )
+
             response["component_details"][component_key] = {
                 "component_name": detail["component_name"],
-                "status": detail["status"],
+                "status": current_status,
                 "match_count": len(detail["matches"]),
+                "is_guessed": ambiguity_info.is_guessed if ambiguity_info else False,
             }
-
-        # Update the ProcurementState with ambiguity information
-        # This ensures state consistency and enables programmatic enforcement
-        _ = detect_component_ambiguity(user_description, code_generation_content, ctx)
 
         # Return the structured JSON response
         return json.dumps(response, indent=2)
@@ -873,24 +926,28 @@ def detect_component_ambiguity(
     user_description: str,
     code_generation_content: str,
     ctx: RunContext[StateDeps[ProcurementState]],
+    user_text: Optional[str] = None,
 ) -> dict:
     """
     Implement ambiguity detection logic to identify when a component has 2+ plausible matches.
 
     This function analyzes component matches from user descriptions and creates AmbiguityInfo
     objects to track the ambiguity status in the ProcurementState. It integrates with the
-    state management system to enforce the disambiguation workflow.
+    state management system to enforce the disambiguation workflow. When explicit guess
+    permission is detected, it marks components as "guessed" using the most likely match.
 
     Args:
         user_description: The user's description text
         code_generation_content: Content of the CODE_GENERATION.md file
         ctx: The run context containing the ProcurementState
+        user_text: The user's current response text (for guess permission detection)
 
     Returns:
         Dictionary containing:
         - ambiguity_detected: Boolean indicating if any components are ambiguous
         - ambiguous_components: List of component names that are ambiguous
         - unambiguous_components: List of component names that are unambiguous
+        - guessed_components: List of component names that were guessed
         - no_match_components: List of component names with no matches
         - ambiguity_details: Detailed AmbiguityInfo for each component
     """
@@ -899,11 +956,17 @@ def detect_component_ambiguity(
         user_description, code_generation_content
     )
 
+    # Detect if user gave explicit guess permission
+    guess_permission_detected = False
+    if user_text:
+        guess_permission_detected = detect_explicit_guess_permission(user_text)
+
     # Initialize result structure
     result = {
         "ambiguity_detected": len(extraction_results["ambiguous_components"]) > 0,
         "ambiguous_components": [],
         "unambiguous_components": [],
+        "guessed_components": [],
         "no_match_components": [],
         "ambiguity_details": {},
     }
@@ -926,9 +989,22 @@ def detect_component_ambiguity(
                 }
             )
 
-        # Create AmbiguityInfo based on component status
-        if status == "ambiguous":
-            # Component has 2+ plausible matches - mark as ambiguous
+        # Create AmbiguityInfo based on component status and guess permission
+        if status == "ambiguous" and guess_permission_detected and matches:
+            # User gave guess permission and we have matches - mark as guessed
+            # Use the highest-scoring match (first in sorted list)
+            guessed_value = matches[0]["code"]
+            ambiguity_info = AmbiguityInfo(
+                status="guessed",
+                options=options,
+                selected_value=guessed_value,
+                guessed_value=guessed_value,
+                is_guessed=True,
+            )
+            result["guessed_components"].append(component_name)
+
+        elif status == "ambiguous":
+            # Component has 2+ plausible matches but no guess permission - mark as ambiguous
             ambiguity_info = AmbiguityInfo(
                 status="ambiguous",
                 options=options,
@@ -946,6 +1022,7 @@ def detect_component_ambiguity(
 
         else:  # status == "no_match"
             # Component has no matches - mark as ambiguous (needs clarification)
+            # Even with guess permission, we can't guess if there are no matches
             ambiguity_info = AmbiguityInfo(
                 status="ambiguous",
                 options=[],  # No options to show

@@ -29,7 +29,7 @@
 ## 4. User Intent Detection for Guess Permission
 
 - [x] 4.1 Implement phrase detection for explicit guess permission ("I don't know", "whatever", "you choose")
-- [ ] 4.2 Add logic to mark components as "guessed" when permission detected
+- [x] 4.2 Add logic to mark components as "guessed" when permission detected
 - [ ] 4.3 Implement user notification when a guess is made
 - [ ] 4.4 Write unit tests for guess permission detection
 - [ ] 4.5 Write unit tests for guess marking and notification
