@@ -3,7 +3,7 @@ import os
 import re
 import datetime
 import json
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Union
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -1215,7 +1215,7 @@ def reset_conversation(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
 
 async def save_procurement_code(
     ctx: RunContext[StateDeps[ProcurementState]], code: str, description: str
-) -> StateSnapshotEvent:
+) -> Union[StateSnapshotEvent, str]:
     """
     Saves a generated procurement code to the application state using the specific format required by the UI.
     Do NOT state that you are saving a code to application state. Just do it silently.
@@ -1231,6 +1231,19 @@ async def save_procurement_code(
     # The check prevents agents from skipping the file-read step and ensures code accuracy
     if not ctx.deps.state.rules_loaded_this_turn:
         return "ERROR: You must call read_code_generation_file before saving a code."
+
+    # DISAMBIGUATION ENFORCEMENT: Validate that all components are unambiguous before allowing save
+    # This enforces the confirm-before-generate pattern and prevents saving codes with ambiguous components
+    ambiguous_components = []
+    for (
+        component_name,
+        ambiguity_info,
+    ) in ctx.deps.state.component_ambiguity_status.items():
+        if ambiguity_info.status == "ambiguous":
+            ambiguous_components.append(component_name)
+
+    if ambiguous_components:
+        return f"ERROR: Cannot save code with ambiguous components. Please clarify the following components: {', '.join(ambiguous_components)}"
 
     new_code = ProcurementCode(code=code, description=description)
     ctx.deps.state.procurement_codes.append(new_code)
