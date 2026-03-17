@@ -1,6 +1,6 @@
 {
-  "active": true,
-  "iteration": 49,
+  "active": false,
+  "iteration": 50,
   "minIterations": 1,
   "maxIterations": 50,
   "completionPromise": "COMPLETE",
@@ -12,5 +12,6 @@
   "noCommit": false,
   "model": "",
   "startedAt": "2026-03-17T15:11:21.515Z",
-  "resumedAt": "2026-03-17T15:11:21.515Z"
+  "resumedAt": "2026-03-17T15:11:21.515Z",
+  "completedAt": "2026-03-17T17:30:13.832Z"
 }

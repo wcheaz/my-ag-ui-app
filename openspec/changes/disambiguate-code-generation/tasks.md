@@ -15,6 +15,9 @@
 - [x] 2.6 Write unit tests for component extraction with clear inputs
 - [x] 2.7 Write unit tests for ambiguity detection with ambiguous inputs
 - [x] 2.8 Write unit tests for edge cases (no matches, single match, multiple matches)
+- [ ] 2.9 Implement similarity threshold to filter out unrelated options from clarification prompts
+- [ ] 2.10 Add logic to only present options with similarity score above threshold
+- [ ] 2.11 Write unit tests for selective option presentation (matching vs unrelated options)
 
 ## 3. Disambiguation Tool Implementation
 
@@ -25,6 +28,9 @@
 - [x] 3.5 Add logic to include unambiguous components in output for context
 - [x] 3.6 Write unit tests for `clarify_components` tool
 - [x] 3.7 Write integration tests for tool with various input scenarios
+- [ ] 3.8 Modify `clarify_components` tool to filter options based on similarity threshold
+- [ ] 3.9 Update tool output to only include options that match the user's description
+- [ ] 3.10 Write unit tests for selective option filtering in `clarify_components` tool
 
 ## 4. User Intent Detection for Guess Permission
 
@@ -58,7 +64,10 @@
 - [x] 7.2 Add explicit instructions for confirm-before-generate pattern
 - [x] 7.3 Add instructions for iterative clarification
 - [x] 7.4 Add instructions for explicit guess permission handling
-- [SKIP - Human intervention required] 7.5 Review and refine prompt for clarity and effectiveness
+- [ ] 7.5 Update system prompt to instruct agent to only present matching options during clarification (not all possible options)
+- [ ] 7.6 Update system prompt to use generate-then-justify pattern instead of pre-generation confirmation
+- [ ] 7.7 Update system prompt to emphasize confident code generation when components are unambiguous
+- [SKIP - Human intervention required] 7.8 Review and refine prompt for clarity and effectiveness
 
 ## 8. Integration and Workflow Testing
 
@@ -103,3 +112,16 @@
 - [ ] 12.3 Add metrics for average clarification rounds per request
 - [SKIP - Human intervention required] 12.4 Implement user feedback mechanism for disambiguation experience
 - [SKIP - Human intervention required] 12.5 Set up monitoring dashboards for disambiguation metrics
+
+## 13. Confidence and Workflow Improvements
+
+- [ ] 13.1 Modify ambiguity detection to only present options that match the user's description (keyword/semantic matching)
+- [ ] 13.2 Add logic to filter out completely unrelated options from clarification prompts
+- [ ] 13.3 Implement similarity threshold to determine which options are "matching" vs "unrelated"
+- [ ] 13.4 Change workflow to generate code first, then provide justification (remove pre-generation confirmation)
+- [ ] 13.5 Update system prompt to instruct agent to be confident and generate code directly when unambiguous
+- [ ] 13.6 Modify agent response pattern to: "Generated code: [CODE]. Justification: [explanation]" instead of asking for confirmation
+- [ ] 13.7 Write unit tests for selective option presentation (only showing matching options)
+- [ ] 13.8 Write unit tests for similarity threshold filtering
+- [ ] 13.9 Write integration tests for generate-then-justify workflow pattern
+- [ ] 13.10 Write integration tests for confident agent behavior with clear inputs
