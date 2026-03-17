@@ -605,6 +605,99 @@ def get_component_extraction_results(
     }
 
 
+def detect_component_ambiguity(
+    user_description: str,
+    code_generation_content: str,
+    ctx: RunContext[StateDeps[ProcurementState]],
+) -> dict:
+    """
+    Implement ambiguity detection logic to identify when a component has 2+ plausible matches.
+
+    This function analyzes component matches from user descriptions and creates AmbiguityInfo
+    objects to track the ambiguity status in the ProcurementState. It integrates with the
+    state management system to enforce the disambiguation workflow.
+
+    Args:
+        user_description: The user's description text
+        code_generation_content: Content of the CODE_GENERATION.md file
+        ctx: The run context containing the ProcurementState
+
+    Returns:
+        Dictionary containing:
+        - ambiguity_detected: Boolean indicating if any components are ambiguous
+        - ambiguous_components: List of component names that are ambiguous
+        - unambiguous_components: List of component names that are unambiguous
+        - no_match_components: List of component names with no matches
+        - ambiguity_details: Detailed AmbiguityInfo for each component
+    """
+    # Get component extraction results
+    extraction_results = get_component_extraction_results(
+        user_description, code_generation_content
+    )
+
+    # Initialize result structure
+    result = {
+        "ambiguity_detected": len(extraction_results["ambiguous_components"]) > 0,
+        "ambiguous_components": [],
+        "unambiguous_components": [],
+        "no_match_components": [],
+        "ambiguity_details": {},
+    }
+
+    # Process each component and create AmbiguityInfo objects
+    for component_key, component_detail in extraction_results[
+        "component_details"
+    ].items():
+        component_name = component_detail["component_name"]
+        matches = component_detail["matches"]
+        status = component_detail["status"]
+
+        # Create options list for AmbiguityInfo
+        options = []
+        for match in matches:
+            options.append(
+                {
+                    "value": match["code"],
+                    "description": f"{match['name']}: {match['description']}",
+                }
+            )
+
+        # Create AmbiguityInfo based on component status
+        if status == "ambiguous":
+            # Component has 2+ plausible matches - mark as ambiguous
+            ambiguity_info = AmbiguityInfo(
+                status="ambiguous",
+                options=options,
+                selected_value=None,  # No selection yet for ambiguous components
+            )
+            result["ambiguous_components"].append(component_name)
+
+        elif status == "unambiguous":
+            # Component has exactly 1 match - mark as unambiguous with selected value
+            selected_value = matches[0]["code"]
+            ambiguity_info = AmbiguityInfo(
+                status="unambiguous", options=options, selected_value=selected_value
+            )
+            result["unambiguous_components"].append(component_name)
+
+        else:  # status == "no_match"
+            # Component has no matches - mark as ambiguous (needs clarification)
+            ambiguity_info = AmbiguityInfo(
+                status="ambiguous",
+                options=[],  # No options to show
+                selected_value=None,
+            )
+            result["no_match_components"].append(component_name)
+
+        # Store the AmbiguityInfo
+        result["ambiguity_details"][component_key] = ambiguity_info
+
+        # Update the ProcurementState with the ambiguity information
+        ctx.deps.state.update_component_ambiguity(component_name, ambiguity_info)
+
+    return result
+
+
 def reset_conversation(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
     """
     Resets the conversation history. Do this SILENTLY. Do NOT state that you are resetting memory. Just do it silently.
