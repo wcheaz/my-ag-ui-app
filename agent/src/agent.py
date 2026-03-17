@@ -254,6 +254,7 @@ class ProcurementState(BaseModel):
     ) -> None:
         """
         Update component ambiguity status with validation for state transitions.
+        Preserves previous user selections when updating component ambiguity status.
 
         Args:
             component_name: Name of the component to update
@@ -262,6 +263,49 @@ class ProcurementState(BaseModel):
         Raises:
             ValueError: If state transition is invalid
         """
+        # Check if we're updating an existing component and preserve previous selections
+        if component_name in self.component_ambiguity_status:
+            current_info = self.component_ambiguity_status[component_name]
+
+            # Validate state transitions: only allow ambiguous → unambiguous or ambiguous → guessed
+            if (
+                current_info.status in ["unambiguous", "guessed"]
+                and ambiguity_info.status == "ambiguous"
+            ):
+                raise ValueError(
+                    f"Invalid state transition for component '{component_name}': "
+                    f"Cannot transition from '{current_info.status}' to 'ambiguous'. "
+                    f"Once a component is resolved (unambiguous or guessed), it cannot become ambiguous again."
+                )
+
+            # PRESERVE PREVIOUS USER SELECTIONS: If the component already has a selected_value
+            # and the new status is unambiguous, preserve the existing selection if it's valid
+            if current_info.selected_value is not None:
+                if ambiguity_info.status == "unambiguous":
+                    # Check if the existing selected_value is still valid in the new options
+                    existing_selection_valid = any(
+                        option["value"] == current_info.selected_value
+                        for option in ambiguity_info.options
+                    )
+
+                    if existing_selection_valid:
+                        # Preserve the existing user selection
+                        ambiguity_info.selected_value = current_info.selected_value
+                    # If existing selection is not valid, use the new selected_value
+                elif ambiguity_info.status == "guessed":
+                    # For guessed components, preserve the existing guessed_value if valid
+                    if current_info.guessed_value is not None:
+                        existing_guess_valid = any(
+                            option["value"] == current_info.guessed_value
+                            for option in ambiguity_info.options
+                        )
+
+                        if existing_guess_valid:
+                            ambiguity_info.guessed_value = current_info.guessed_value
+                            ambiguity_info.selected_value = current_info.guessed_value
+                            ambiguity_info.is_guessed = True
+
+        # Now validate after potential preservation of selections
         # Validate that unambiguous components have a selected_value
         if (
             ambiguity_info.status == "unambiguous"
@@ -278,20 +322,6 @@ class ProcurementState(BaseModel):
                 f"Invalid state for component '{component_name}': "
                 f"Guessed components must have a guessed_value."
             )
-
-        if component_name in self.component_ambiguity_status:
-            current_info = self.component_ambiguity_status[component_name]
-
-            # Validate state transitions: only allow ambiguous → unambiguous or ambiguous → guessed
-            if (
-                current_info.status in ["unambiguous", "guessed"]
-                and ambiguity_info.status == "ambiguous"
-            ):
-                raise ValueError(
-                    f"Invalid state transition for component '{component_name}': "
-                    f"Cannot transition from '{current_info.status}' to 'ambiguous'. "
-                    f"Once a component is resolved (unambiguous or guessed), it cannot become ambiguous again."
-                )
 
         # Apply the update
         self.component_ambiguity_status[component_name] = ambiguity_info
