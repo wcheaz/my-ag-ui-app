@@ -839,6 +839,11 @@ def clarify_components(
             component_name = component["component_name"]
             matches = component["matches"]
 
+            # ITERATIVE CLARIFICATION: Skip components that have already been clarified
+            if component_name in ctx.deps.state.clarified_components:
+                # This component has already been clarified, skip it
+                continue
+
             # Format options for ambiguous components
             options = []
             for match in matches:
