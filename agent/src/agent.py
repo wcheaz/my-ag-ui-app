@@ -997,14 +997,43 @@ def clarify_components(
         # Add guess notification from ambiguity detection results
         response["guess_notification"] = ambiguity_results.get("guess_notification", "")
 
-        # Return the structured JSON response with error handling for JSON serialization
+        # Return the structured JSON response with comprehensive error handling for JSON serialization
         try:
-            return json.dumps(response, indent=2)
-        except (TypeError, ValueError) as e:
-            raise RuntimeError(f"ERROR: Failed to serialize response to JSON: {str(e)}")
+            json_output = json.dumps(response, indent=2, ensure_ascii=False)
+
+            # Validate that the JSON output can be parsed back (sanity check)
+            try:
+                json.loads(json_output)
+            except (json.JSONDecodeError, ValueError) as e:
+                # If our own JSON can't be parsed, this is a critical error
+                raise RuntimeError(
+                    f"ERROR: Generated JSON is invalid and cannot be parsed: {str(e)}"
+                )
+
+            return json_output
+        except (TypeError, ValueError, OverflowError, RecursionError) as e:
+            # Handle all JSON serialization errors comprehensively
+            error_msg = f"ERROR: Failed to serialize response to JSON: {str(e)}"
+            print(f"JSON Serialization Error: {error_msg}")
+
+            # Create a minimal safe error response that should always be serializable
+            safe_error_response = {
+                "error": "Internal error: Failed to generate response data",
+                "error_type": "json_serialization_error",
+                "ambiguous_components": [],
+                "unambiguous_components": [],
+                "component_details": {},
+            }
+
+            # Try to serialize the safe error response
+            try:
+                return json.dumps(safe_error_response, indent=2)
+            except Exception as fallback_error:
+                # Ultimate fallback: return a plain text error message
+                return f"CRITICAL ERROR: Failed to generate JSON response. Please contact support. Error details: {str(fallback_error)}"
 
     except ValueError as e:
-        # Handle validation errors
+        # Handle validation errors with comprehensive JSON error handling
         error_response = {
             "error": str(e),
             "error_type": "validation_error",
@@ -1012,10 +1041,14 @@ def clarify_components(
             "unambiguous_components": [],
             "component_details": {},
         }
-        return json.dumps(error_response, indent=2)
+        try:
+            return json.dumps(error_response, indent=2, ensure_ascii=False)
+        except (TypeError, ValueError, OverflowError, RecursionError) as json_error:
+            # Fallback if even error response can't be serialized
+            return f"CRITICAL ERROR: Validation failed and could not generate error response. Error: {str(e)}, JSON Error: {str(json_error)}"
 
     except FileNotFoundError as e:
-        # Handle file not found errors
+        # Handle file not found errors with comprehensive JSON error handling
         error_response = {
             "error": str(e),
             "error_type": "file_not_found",
@@ -1023,10 +1056,14 @@ def clarify_components(
             "unambiguous_components": [],
             "component_details": {},
         }
-        return json.dumps(error_response, indent=2)
+        try:
+            return json.dumps(error_response, indent=2, ensure_ascii=False)
+        except (TypeError, ValueError, OverflowError, RecursionError) as json_error:
+            # Fallback if even error response can't be serialized
+            return f"CRITICAL ERROR: File not found and could not generate error response. Error: {str(e)}, JSON Error: {str(json_error)}"
 
     except RuntimeError as e:
-        # Handle runtime errors from sub-functions
+        # Handle runtime errors from sub-functions with comprehensive JSON error handling
         error_response = {
             "error": str(e),
             "error_type": "runtime_error",
@@ -1034,10 +1071,14 @@ def clarify_components(
             "unambiguous_components": [],
             "component_details": {},
         }
-        return json.dumps(error_response, indent=2)
+        try:
+            return json.dumps(error_response, indent=2, ensure_ascii=False)
+        except (TypeError, ValueError, OverflowError, RecursionError) as json_error:
+            # Fallback if even error response can't be serialized
+            return f"CRITICAL ERROR: Runtime error occurred and could not generate error response. Error: {str(e)}, JSON Error: {str(json_error)}"
 
     except Exception as e:
-        # Catch-all for unexpected errors with detailed error information
+        # Catch-all for unexpected errors with detailed error information and comprehensive JSON error handling
         import traceback
 
         error_details = {
@@ -1051,7 +1092,14 @@ def clarify_components(
         # Log the full error for debugging
         print(f"ERROR in clarify_components: {str(e)}")
         print(f"Traceback: {traceback.format_exc()}")
-        return json.dumps(error_details, indent=2)
+
+        # Try to serialize the error details with comprehensive error handling
+        try:
+            return json.dumps(error_details, indent=2, ensure_ascii=False)
+        except (TypeError, ValueError, OverflowError, RecursionError) as json_error:
+            # Ultimate fallback: if even the error response can't be serialized,
+            # return a plain text error with basic information
+            return f"CRITICAL ERROR: Unexpected error occurred and could not generate error response. Primary Error: {str(e)}, JSON Error: {str(json_error)}"
 
 
 def format_guess_notification(guessed_components: list[dict]) -> str:
