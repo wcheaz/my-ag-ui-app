@@ -523,6 +523,23 @@ class TestExplicitGuessPermissionScenario(unittest.TestCase):
             len(ambiguous_components), 0, "Should have at least one ambiguous component"
         )
 
+        # Mark components as ambiguous in state (simulating the clarify_components result)
+        for comp_info in ambiguous_components:
+            component_name = comp_info["component_name"]
+            options = comp_info["options"]
+
+            # Create AmbiguityInfo for ambiguous component
+            ambiguity_info = AmbiguityInfo(
+                status="ambiguous",
+                options=options,
+                selected_value=None,
+                guessed_value=None,
+                is_guessed=False,
+            )
+
+            # Update the state to mark component as ambiguous
+            self.state.update_component_ambiguity(component_name, ambiguity_info)
+
         # DO NOT mark them as guessed (no permission)
 
         # Try to save without resolving or guessing
@@ -534,16 +551,16 @@ class TestExplicitGuessPermissionScenario(unittest.TestCase):
         )
 
         # Verify that an error string was returned (not a StateSnapshotEvent)
-        self.assertIsInstance(
-            result,
-            str,
-            f"Expected error string when no guess permission given, got {type(result)}: {result}",
-        )
+        if not isinstance(result, str):
+            self.fail(
+                f"Expected error string when no guess permission given, got {type(result)}: {result}"
+            )
 
-        # Verify the error message mentions ambiguous components
+        # Now we know result is a string, so we can safely call .lower()
+        result_lower = result.lower()
         self.assertIn(
             "ambiguous",
-            result.lower(),
+            result_lower,
             f"Error message should mention 'ambiguous' when no guess permission given, got: {result}",
         )
 
@@ -556,6 +573,9 @@ class TestExplicitGuessPermissionScenario(unittest.TestCase):
 
         print("✓ Save correctly blocked when no guess permission given")
         print("✓ Error message correctly indicates ambiguous components")
+
+
+import asyncio
 
 
 if __name__ == "__main__":
