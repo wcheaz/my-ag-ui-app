@@ -1,7 +1,7 @@
 ## 1. Data Model and State Management
 
 - [x] 1.1 Create `AmbiguityInfo` data class to track component ambiguity status (status, options, selected value)
-- [ ] 1.2 Extend `ProcurementState` with `component_ambiguity_status` field (Dict[str, AmbiguityInfo])
+- [x] 1.2 Extend `ProcurementState` with `component_ambiguity_status` field (Dict[str, AmbiguityInfo])
 - [ ] 1.3 Add validation logic to ensure state transitions are valid (ambiguous → unambiguous)
 - [ ] 1.4 Write unit tests for state management and ambiguity tracking
 
