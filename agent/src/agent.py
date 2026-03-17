@@ -20,6 +20,8 @@ from pydantic_ai.models import (
     StreamedResponse,
 )
 from ag_ui.core import EventType, StateSnapshotEvent
+from llama_index.core import Settings
+import numpy as np
 
 # Local application imports
 from src.rag.index import get_index
@@ -50,6 +52,49 @@ def load_env():
 
 
 load_env()
+
+
+def calculate_semantic_similarity(text1: str, text2: str) -> float:
+    """
+    Calculate semantic similarity between two texts using embeddings.
+
+    Args:
+        text1: First text string
+        text2: Second text string
+
+    Returns:
+        Similarity score between 0.0 and 1.0
+    """
+    try:
+        # Initialize embeddings if not already done
+        from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+
+        # Use the same model as configured in settings
+        embed_model = Settings.embed_model
+        if embed_model is None:
+            embed_model = HuggingFaceEmbedding(
+                model_name=os.getenv("EMBEDDING_MODEL") or "BAAI/bge-large-en-v1.5"
+            )
+            Settings.embed_model = embed_model
+
+        # Get embeddings for both texts
+        embedding1 = embed_model.get_text_embedding(text1)
+        embedding2 = embed_model.get_text_embedding(text2)
+
+        # Convert to numpy arrays
+        vec1 = np.array(embedding1)
+        vec2 = np.array(embedding2)
+
+        # Calculate cosine similarity
+        cosine_sim = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+
+        # Ensure the result is between 0 and 1
+        return max(0.0, min(1.0, float(cosine_sim)))
+
+    except Exception as e:
+        # If semantic similarity fails, return 0.0
+        print(f"Warning: Semantic similarity calculation failed: {e}")
+        return 0.0
 
 
 class ProcurementCode(BaseModel):
@@ -451,45 +496,61 @@ def parse_code_generation_rules(content: str) -> dict:
 
 def find_component_matches(description: str, component_rules: dict) -> list:
     """
-    Find matches for a component based on user description.
+    Find matches for a component based on user description using both keyword matching
+    and semantic similarity scoring.
 
     Args:
         description: User's description text
         component_rules: Dictionary of component rules
 
     Returns:
-        List of matching component options with their scores
+        List of matching component options with their combined scores
     """
     description_lower = description.lower()
     matches = []
 
     for code, rule_info in component_rules.items():
-        score = 0
+        keyword_score = 0
+        semantic_score = 0.0
         keywords = rule_info.get("keywords", [])
 
         # Check for keyword matches
         for keyword in keywords:
             if keyword in description_lower:
-                score += 1
+                keyword_score += 1
 
         # Additional scoring based on word boundaries
         for keyword in keywords:
             # Check for whole word matches
             pattern = r"\b" + re.escape(keyword) + r"\b"
             if re.search(pattern, description_lower):
-                score += 2
+                keyword_score += 2
 
-        if score > 0:
+        # Calculate semantic similarity
+        # Create a text representation of the component for semantic comparison
+        component_text = f"{rule_info['name']} {rule_info['description']}"
+        semantic_score = calculate_semantic_similarity(description, component_text)
+
+        # Convert semantic score to a 0-10 scale for combination with keyword score
+        semantic_score_scaled = semantic_score * 10
+
+        # Combine scores: keyword_score (0-6 range) + semantic_score_scaled (0-10 range)
+        # This gives semantic similarity more weight in the matching
+        combined_score = keyword_score + semantic_score_scaled
+
+        if combined_score > 0:
             matches.append(
                 {
                     "code": code,
                     "name": rule_info["name"],
                     "description": rule_info["description"],
-                    "score": score,
+                    "score": combined_score,
+                    "keyword_score": keyword_score,
+                    "semantic_score": semantic_score,
                 }
             )
 
-    # Sort matches by score (descending)
+    # Sort matches by combined score (descending)
     matches.sort(key=lambda x: x["score"], reverse=True)
     return matches
 

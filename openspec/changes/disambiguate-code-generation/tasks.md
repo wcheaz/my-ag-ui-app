@@ -8,10 +8,10 @@
 ## 2. Component Parsing and Ambiguity Detection
 
 - [x] 2.1 Implement component extraction logic to parse user descriptions against CODE_GENERATION.md rules
-- [ ] 2.2 Implement ambiguity detection logic to identify when a component has 2+ plausible matches
-- [ ] 2.3 Implement keyword-based matching for component options
-- [ ] 2.4 Implement semantic similarity scoring for component options (initial version)
-- [ ] 2.5 Add logic to handle "no matches found" scenario
+- [x] 2.2 Implement ambiguity detection logic to identify when a component has 2+ plausible matches
+- [x] 2.3 Implement keyword-based matching for component options
+- [x] 2.4 Implement semantic similarity scoring for component options (initial version)
+- [x] 2.5 Add logic to handle "no matches found" scenario
 - [ ] 2.6 Write unit tests for component extraction with clear inputs
 - [ ] 2.7 Write unit tests for ambiguity detection with ambiguous inputs
 - [ ] 2.8 Write unit tests for edge cases (no matches, single match, multiple matches)
