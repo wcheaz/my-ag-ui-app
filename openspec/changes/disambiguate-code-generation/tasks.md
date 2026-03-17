@@ -65,7 +65,7 @@
 - [x] 8.1 Run existing test suite to ensure no regressions
 - [x] 8.2 Write integration test for complete disambiguation workflow (clear input)
 - [x] 8.3 Write integration test for single ambiguous component scenario
-- [ ] 8.4 Write integration test for multiple ambiguous components scenario
+- [x] 8.4 Write integration test for multiple ambiguous components scenario
 - [ ] 8.5 Write integration test for iterative clarification (multiple rounds)
 - [ ] 8.6 Write integration test for explicit guess permission scenario
 - [ ] 8.7 Write integration test for save rejection with ambiguous components
