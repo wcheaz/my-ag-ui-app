@@ -1072,18 +1072,21 @@ def validate_options_similarity_threshold(
 
 
 def clarify_components(
-    ctx: RunContext[StateDeps[ProcurementState]], user_description: str
+    ctx: RunContext[StateDeps[ProcurementState]],
+    user_description: str,
+    similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
 ) -> str:
     """
     Implement clarify_components tool to parse user description and identify ambiguous components.
 
     This tool serves as the primary disambiguation mechanism, returning structured JSON
     with clarification options for ambiguous components while providing context about
-    unambiguous components.
+    unambiguous components. Uses configurable similarity threshold to filter options.
 
     Args:
         ctx: The run context containing the ProcurementState
         user_description: The user's description text to analyze
+        similarity_threshold: Minimum semantic similarity score (0.0-1.0) for option filtering
 
     Returns:
         JSON string containing:
@@ -1100,6 +1103,14 @@ def clarify_components(
             raise ValueError(
                 "ERROR: Invalid context provided - missing state dependency"
             )
+
+        # Validate and normalize the similarity threshold
+        similarity_threshold = max(
+            MINIMUM_SIMILARITY_THRESHOLD,
+            min(MAXIMUM_SIMILARITY_THRESHOLD, similarity_threshold),
+        )
+
+        # Check if rules file has been loaded this turn
 
         # Check if rules file has been loaded this turn
         if not ctx.deps.state.rules_loaded_this_turn:
@@ -1125,7 +1136,7 @@ def clarify_components(
                 code_generation_content,
                 ctx,
                 user_description,
-                similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD,
+                similarity_threshold=similarity_threshold,
             )
         except ValueError as e:
             # Handle state transition errors specifically
@@ -1156,7 +1167,7 @@ def clarify_components(
             extraction_results = get_component_extraction_results(
                 user_description,
                 code_generation_content,
-                similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD,
+                similarity_threshold=similarity_threshold,
             )
         except Exception as e:
             raise RuntimeError(f"ERROR: Component extraction failed: {str(e)}")
@@ -1179,7 +1190,7 @@ def clarify_components(
                     # TASK 2.10: Add logic to only present options with similarity score above threshold
                     # Validate that the match meets the similarity threshold criteria
                     validated_match = validate_options_similarity_threshold(
-                        [match], similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD
+                        [match], similarity_threshold=similarity_threshold
                     )
 
                     # Only include options that passed the similarity threshold validation
@@ -1221,7 +1232,7 @@ def clarify_components(
                 # TASK 2.10: Add similarity threshold validation for unambiguous components
                 # Validate that the unambiguous match meets the similarity threshold criteria
                 validated_match = validate_options_similarity_threshold(
-                    [match], similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD
+                    [match], similarity_threshold=similarity_threshold
                 )
 
                 if validated_match:
@@ -1311,9 +1322,9 @@ def clarify_components(
         # TASK 2.10: Add similarity threshold filtering information to response
         # This provides transparency about the filtering that was applied
         response["similarity_threshold_info"] = {
-            "threshold_used": DEFAULT_SIMILARITY_THRESHOLD,
+            "threshold_used": similarity_threshold,
             "filtering_applied": True,
-            "description": f"Only options with semantic similarity >= {DEFAULT_SIMILARITY_THRESHOLD} or strong keyword matches (score >= 4) are included",
+            "description": f"Only options with semantic similarity >= {similarity_threshold} or strong keyword matches (score >= 4) are included",
             "total_options_filtered": sum(
                 len(comp["matches"])
                 for comp in extraction_results["component_details"].values()
