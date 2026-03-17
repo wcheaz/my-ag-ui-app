@@ -245,6 +245,9 @@ class ProcurementState(BaseModel):
     # ITERATIVE CLARIFICATION: Counter to track number of clarification rounds completed
     # This enables iterative clarification workflows and context preservation across rounds
     clarification_rounds: int = 0
+    # ITERATIVE CLARIFICATION: Set to track which components have been successfully clarified
+    # This prevents asking about the same component multiple times across clarification rounds
+    clarified_components: set[str] = Field(default_factory=set)
 
     def update_component_ambiguity(
         self, component_name: str, ambiguity_info: AmbiguityInfo
