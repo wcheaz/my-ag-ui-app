@@ -115,7 +115,7 @@
 
 ## 13. Confidence and Workflow Improvements
 
-- [ ] 13.1 Modify ambiguity detection to only present options that match the user's description (keyword/semantic matching)
+- [x] 13.1 Modify ambiguity detection to only present options that match the user's description (keyword/semantic matching)
 - [ ] 13.2 Add logic to filter out completely unrelated options from clarification prompts
 - [ ] 13.3 Implement similarity threshold to determine which options are "matching" vs "unrelated"
 - [ ] 13.4 Change workflow to generate code first, then provide justification (remove pre-generation confirmation)

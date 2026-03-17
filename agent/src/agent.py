@@ -1240,9 +1240,9 @@ def find_component_matches(
     Core matching logic that identifies plausible component options from user descriptions.
 
     This function implements the intelligence behind component extraction by combining
-    keyword matching with semantic similarity scoring. It uses a sophisticated
-    similarity threshold filtering system to ensure only relevant options are presented
-    to users during clarification, preventing overwhelming them with unrelated choices.
+    keyword matching with semantic similarity scoring. It uses a strict filtering
+    system to ensure only options that match the user's description are presented,
+    preventing users from seeing irrelevant choices during clarification.
 
     MATCHING ALGORITHM:
     1. KEYWORD MATCHING:
@@ -1257,13 +1257,12 @@ def find_component_matches(
        - Uses cosine similarity for scoring (0.0 to 1.0)
        - Provides nuanced understanding beyond exact keywords
 
-    3. SIMILARITY THRESHOLD FILTERING:
-       - Uses configurable threshold to filter out unrelated options
-       - Implements nuanced filtering logic:
-         * High semantic similarity (≥ threshold): Always included
-         * Low semantic similarity but strong keyword matches (≥ 4): Included
-         * Both low semantic similarity and low keyword matches: Filtered out
-       - Ensures users only see relevant options during clarification
+    3. STRICT DESCRIPTION MATCHING (Task 13.1):
+       - Only presents options that match the user's description through either:
+         * Sufficient semantic similarity (≥ threshold), OR
+         * Meaningful keyword matches (≥ threshold combined with semantic relevance)
+       - Filters out completely unrelated options that don't match user description
+       - Ensures all presented options are relevant to the user's specific description
 
     SCORING SYSTEM:
     - Keyword score: 0-6 points based on exact and word-boundary matches
@@ -1274,8 +1273,8 @@ def find_component_matches(
     DISAMBIGUATION ROLE:
     - Called by extract_components_from_description for each component type
     - Returns scored matches that drive ambiguity detection
-    - Enables clarify_components to present only relevant options
-    - Supports the similarity threshold filtering requirement
+    - Enables clarify_components to present only description-matching options
+    - Implements strict filtering to present only options that match user description
 
     Args:
         description: User's description text to analyze for component matches
@@ -1292,9 +1291,9 @@ def find_component_matches(
         - semantic_score: Semantic similarity score
         - filter_reason: Why this option was included or filtered
 
-    CRITICAL: This function is the foundation of the similarity threshold filtering
-    system. Without proper filtering, users would be overwhelmed with irrelevant
-    options during clarification, leading to poor user experience.
+    CRITICAL: This function implements task 13.1 requirement to only present options
+    that match the user's description. Options must have either sufficient semantic
+    similarity or meaningful keyword matches combined with semantic relevance.
     """
     description_lower = description.lower()
     matches = []
@@ -1327,22 +1326,28 @@ def find_component_matches(
         component_text = f"{rule_info['name']} {rule_info['description']}"
         semantic_score = calculate_semantic_similarity(description, component_text)
 
-        # IMPROVED SIMILARITY THRESHOLD FILTERING: Use nuanced filtering logic
-        # This filters out completely unrelated options while preserving relevant matches
+        # TASK 13.1: STRICT DESCRIPTION MATCHING - Only present options that match user's description
+        # Modified filtering logic to ensure all options genuinely match the user's description
 
-        # Case 1: High semantic similarity (above threshold) - always include
+        # Case 1: High semantic similarity (≥ threshold) - Strong description match
+        # These options are semantically relevant to the user's description
         if semantic_score >= similarity_threshold:
-            pass  # Will be included if combined score > 0
+            pass  # Will be included - this option matches the user's description semantically
 
-        # Case 2: Low semantic similarity but high keyword relevance - include if keyword score is strong
-        elif semantic_score < similarity_threshold and keyword_score >= 4:
-            # If there are strong keyword matches (4+ points), include even with lower semantic similarity
-            # This preserves matches that are relevant based on keywords alone
-            pass  # Will be included if combined score > 0
+        # Case 2: Moderate semantic similarity with keyword evidence - Description match with keyword support
+        # These options have both some semantic relevance AND keyword evidence of matching
+        elif semantic_score >= (similarity_threshold * 0.7) and keyword_score >= 2:
+            # Reduced semantic threshold (70% of original) but requires keyword evidence
+            # This ensures the option is relevant to the description while requiring keyword support
+            pass  # Will be included - this option matches with keyword and semantic evidence
 
-        # Case 3: Both low semantic similarity and low keyword relevance - filter out
+        # Case 3: All other cases - Filter out as not matching user's description
         else:
-            continue  # Skip this match as it doesn't meet relevance criteria
+            # Options that don't meet the above criteria don't truly match the user's description
+            # This includes:
+            # - Very low semantic similarity with insufficient keyword evidence
+            # - Options that are unrelated to the user's specific description
+            continue  # Skip this match - doesn't match user's description
 
         # Convert semantic score to a 0-10 scale for combination with keyword score
         semantic_score_scaled = semantic_score * 10
@@ -1351,7 +1356,8 @@ def find_component_matches(
         # This gives semantic similarity more weight in the matching
         combined_score = keyword_score + semantic_score_scaled
 
-        # Only include matches with positive combined scores after threshold filtering
+        # Only include matches with positive combined scores after strict filtering
+        # Since we've already filtered for description matches, all should be relevant
         if combined_score > 0:
             matches.append(
                 {
@@ -1377,6 +1383,7 @@ def _get_filter_reason(
 ) -> str:
     """
     Helper function to determine the reason why a match was included or filtered.
+    Updated for task 13.1 to reflect strict description matching requirements.
 
     Args:
         semantic_score: The semantic similarity score
@@ -1388,10 +1395,11 @@ def _get_filter_reason(
     """
     if semantic_score >= threshold:
         return f"high_semantic_similarity ({semantic_score:.2f} >= {threshold})"
-    elif keyword_score >= 4:
-        return f"strong_keyword_matches ({keyword_score} >= 4)"
+    elif semantic_score >= (threshold * 0.7) and keyword_score >= 2:
+        return f"moderate_semantic_with_keywords ({semantic_score:.2f} >= {threshold * 0:.1f}, keywords: {keyword_score})"
     else:
-        return f"combined_relevance (semantic: {semantic_score:.2f}, keywords: {keyword_score})"
+        # This case should not be reached with the new filtering logic
+        return f"description_match (semantic: {semantic_score:.2f}, keywords: {keyword_score})"
 
 
 def extract_components_from_description(
@@ -1856,12 +1864,13 @@ def clarify_components(
         # Add guess notification from ambiguity detection results
         response["guess_notification"] = ambiguity_results.get("guess_notification", "")
 
-        # TASK 2.10: Add similarity threshold filtering information to response
-        # This provides transparency about the filtering that was applied
+        # TASK 13.1: Update similarity threshold filtering information to reflect strict description matching
+        # This provides transparency about the strict description matching filtering that was applied
         response["similarity_threshold_info"] = {
             "threshold_used": similarity_threshold,
             "filtering_applied": True,
-            "description": f"Only options with semantic similarity >= {similarity_threshold} or strong keyword matches (score >= 4) are included",
+            "description": f"Only options that match the user's description are included: high semantic similarity (>= {similarity_threshold}) OR moderate semantic similarity (>= {similarity_threshold * 0.7:.1f}) with keyword evidence (>= 2 keywords)",
+            "filtering_logic": "strict_description_matching",
             "total_options_filtered": sum(
                 len(comp["matches"])
                 for comp in extraction_results["component_details"].values()
