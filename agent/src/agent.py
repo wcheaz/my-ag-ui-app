@@ -53,6 +53,14 @@ def load_env():
 
 load_env()
 
+# Configuration constants for similarity threshold filtering
+DEFAULT_SIMILARITY_THRESHOLD = 0.3
+MINIMUM_SIMILARITY_THRESHOLD = 0.1
+MAXIMUM_SIMILARITY_THRESHOLD = 0.8
+KEYWORD_ONLY_THRESHOLD = (
+    0.0  # Threshold for keyword-only matches (no semantic filtering)
+)
+
 
 def calculate_semantic_similarity(text1: str, text2: str) -> float:
     """
@@ -793,11 +801,14 @@ def parse_code_generation_rules(content: str) -> dict:
 
 
 def find_component_matches(
-    description: str, component_rules: dict, similarity_threshold: float = 0.3
+    description: str,
+    component_rules: dict,
+    similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
 ) -> list:
     """
     Find matches for a component based on user description using both keyword matching
-    and semantic similarity scoring. Filters out options that don't meet the similarity threshold.
+    and semantic similarity scoring. Uses improved similarity threshold filtering to
+    effectively filter out unrelated options while preserving relevant matches.
 
     Args:
         description: User's description text
@@ -809,6 +820,12 @@ def find_component_matches(
     """
     description_lower = description.lower()
     matches = []
+
+    # Validate and normalize the similarity threshold
+    similarity_threshold = max(
+        MINIMUM_SIMILARITY_THRESHOLD,
+        min(MAXIMUM_SIMILARITY_THRESHOLD, similarity_threshold),
+    )
 
     for code, rule_info in component_rules.items():
         keyword_score = 0
@@ -832,10 +849,22 @@ def find_component_matches(
         component_text = f"{rule_info['name']} {rule_info['description']}"
         semantic_score = calculate_semantic_similarity(description, component_text)
 
-        # SIMILARITY THRESHOLD FILTERING: Only include matches that meet the minimum semantic similarity
-        # This filters out completely unrelated options from clarification prompts
-        if semantic_score < similarity_threshold:
-            continue  # Skip this match as it doesn't meet the similarity threshold
+        # IMPROVED SIMILARITY THRESHOLD FILTERING: Use nuanced filtering logic
+        # This filters out completely unrelated options while preserving relevant matches
+
+        # Case 1: High semantic similarity (above threshold) - always include
+        if semantic_score >= similarity_threshold:
+            pass  # Will be included if combined score > 0
+
+        # Case 2: Low semantic similarity but high keyword relevance - include if keyword score is strong
+        elif semantic_score < similarity_threshold and keyword_score >= 4:
+            # If there are strong keyword matches (4+ points), include even with lower semantic similarity
+            # This preserves matches that are relevant based on keywords alone
+            pass  # Will be included if combined score > 0
+
+        # Case 3: Both low semantic similarity and low keyword relevance - filter out
+        else:
+            continue  # Skip this match as it doesn't meet relevance criteria
 
         # Convert semantic score to a 0-10 scale for combination with keyword score
         semantic_score_scaled = semantic_score * 10
@@ -854,6 +883,9 @@ def find_component_matches(
                     "score": combined_score,
                     "keyword_score": keyword_score,
                     "semantic_score": semantic_score,
+                    "filter_reason": _get_filter_reason(
+                        semantic_score, keyword_score, similarity_threshold
+                    ),
                 }
             )
 
@@ -862,10 +894,32 @@ def find_component_matches(
     return matches
 
 
+def _get_filter_reason(
+    semantic_score: float, keyword_score: int, threshold: float
+) -> str:
+    """
+    Helper function to determine the reason why a match was included or filtered.
+
+    Args:
+        semantic_score: The semantic similarity score
+        keyword_score: The keyword match score
+        threshold: The similarity threshold used for filtering
+
+    Returns:
+        String describing the filter reason
+    """
+    if semantic_score >= threshold:
+        return f"high_semantic_similarity ({semantic_score:.2f} >= {threshold})"
+    elif keyword_score >= 4:
+        return f"strong_keyword_matches ({keyword_score} >= 4)"
+    else:
+        return f"combined_relevance (semantic: {semantic_score:.2f}, keywords: {keyword_score})"
+
+
 def extract_components_from_description(
     user_description: str,
     code_generation_content: str,
-    similarity_threshold: float = 0.3,
+    similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
 ) -> dict:
     """
     Extract component information from user description against CODE_GENERATION.md rules.
@@ -923,7 +977,7 @@ def extract_components_from_description(
 def get_component_extraction_results(
     user_description: str,
     code_generation_content: str,
-    similarity_threshold: float = 0.3,
+    similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
 ) -> dict:
     """
     Get complete component extraction results with structured ambiguity information.
@@ -1038,7 +1092,7 @@ def clarify_components(
                 code_generation_content,
                 ctx,
                 user_description,
-                similarity_threshold=0.3,
+                similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD,
             )
         except ValueError as e:
             # Handle state transition errors specifically
@@ -1067,7 +1121,9 @@ def clarify_components(
         # Get component extraction results for detailed processing with similarity threshold filtering
         try:
             extraction_results = get_component_extraction_results(
-                user_description, code_generation_content, similarity_threshold=0.3
+                user_description,
+                code_generation_content,
+                similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD,
             )
         except Exception as e:
             raise RuntimeError(f"ERROR: Component extraction failed: {str(e)}")
@@ -1335,7 +1391,7 @@ def detect_component_ambiguity(
     code_generation_content: str,
     ctx: RunContext[StateDeps[ProcurementState]],
     user_text: Optional[str] = None,
-    similarity_threshold: float = 0.3,
+    similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
 ) -> dict:
     """
     Implement ambiguity detection logic to identify when a component has 2+ plausible matches.
