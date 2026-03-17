@@ -3,6 +3,7 @@ import os
 import re
 import datetime
 import json
+import logging
 from typing import List, Optional, Any, Union
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -106,6 +107,30 @@ def load_env():
 
 
 load_env()
+
+# Set up logging for disambiguation events
+logging.basicConfig(level=logging.INFO)
+disambiguation_logger = logging.getLogger("disambiguation_events")
+disambiguation_logger.setLevel(logging.INFO)
+
+# Create file handler for disambiguation events
+try:
+    os.makedirs(os.path.join(os.getcwd(), "logs"), exist_ok=True)
+    file_handler = logging.FileHandler(
+        os.path.join(os.getcwd(), "logs", "disambiguation_events.log")
+    )
+    file_handler.setLevel(logging.INFO)
+
+    # Create formatter
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    file_handler.setFormatter(formatter)
+
+    # Add handler to logger
+    disambiguation_logger.addHandler(file_handler)
+except Exception as e:
+    print(f"Warning: Could not set up disambiguation logging: {e}")
 
 # Configuration constants for similarity threshold filtering
 DEFAULT_SIMILARITY_THRESHOLD = 0.3
@@ -1325,6 +1350,14 @@ def clarify_components(
                 "ERROR: You must call read_code_generation_file before using clarify_components."
             )
 
+        # Log the start of clarification process
+        current_round = ctx.deps.state.clarification_rounds + 1
+        disambiguation_logger.info(
+            f"Starting clarification round {current_round} - "
+            f"User description: {user_description[:100]}..., "
+            f"Similarity threshold: {similarity_threshold}"
+        )
+
         # Get the code generation content from context or read it
         # For now, we'll read it fresh each time (could be optimized)
         try:
@@ -1389,7 +1422,18 @@ def clarify_components(
                 # ITERATIVE CLARIFICATION: Skip components that have already been clarified
                 if component_name in ctx.deps.state.clarified_components:
                     # This component has already been clarified, skip it
+                    disambiguation_logger.info(
+                        f"Skipping already clarified component '{component_name}' - "
+                        f"Already in clarified_components set"
+                    )
                     continue
+
+                # Log that we're processing this ambiguous component
+                disambiguation_logger.info(
+                    f"Processing ambiguous component '{component_name}' for clarification - "
+                    f"Original matches: {len(matches)}, "
+                    f"Similarity threshold: {similarity_threshold}"
+                )
 
                 # Format options for ambiguous components with similarity threshold validation
                 options = []
@@ -1417,6 +1461,12 @@ def clarify_components(
                             }
                         options.append(option)
 
+                # Log the filtered options count
+                disambiguation_logger.info(
+                    f"Component '{component_name}' - "
+                    f"Options after similarity threshold filtering: {len(options)} (from {len(matches)} original matches)"
+                )
+
                 ambiguous_component = {
                     "component_name": component_name,
                     "component_key": component_key,
@@ -1426,7 +1476,9 @@ def clarify_components(
                 response["ambiguous_components"].append(ambiguous_component)
             except Exception as e:
                 # Log error but continue processing other components
-                print(f"Warning: Failed to process ambiguous component: {str(e)}")
+                error_msg = f"Failed to process ambiguous component: {str(e)}"
+                print(f"Warning: {error_msg}")
+                disambiguation_logger.error(error_msg)
                 continue
 
         # Process unambiguous components (for context)
@@ -1539,6 +1591,22 @@ def clarify_components(
             "options_presented": len(response["ambiguous_components"])
             + len(response["unambiguous_components"]),
         }
+
+        # Log the completion of this clarification round
+        ambiguous_count = len(response["ambiguous_components"])
+        unambiguous_count = len(response["unambiguous_components"])
+        guessed_count = len(response["guessed_components"])
+
+        # Update clarification rounds counter
+        ctx.deps.state.clarification_rounds = current_round
+
+        disambiguation_logger.info(
+            f"Clarification round {current_round} completed - "
+            f"Ambiguous components: {ambiguous_count}, "
+            f"Unambiguous components: {unambiguous_count}, "
+            f"Guessed components: {guessed_count}, "
+            f"Total rounds completed: {ctx.deps.state.clarification_rounds}"
+        )
 
         # Return the structured JSON response with comprehensive error handling for JSON serialization
         try:
@@ -1792,6 +1860,11 @@ def detect_component_ambiguity(
     - Provides detailed error messages for state transition failures
     - Ensures data consistency across the disambiguation workflow
     """
+    # Log the start of ambiguity detection
+    disambiguation_logger.info(
+        f"Starting ambiguity detection for user description: {user_description[:100]}..."
+    )
+
     # Get component extraction results with similarity threshold filtering
     extraction_results = get_component_extraction_results(
         user_description, code_generation_content, similarity_threshold
@@ -1813,6 +1886,19 @@ def detect_component_ambiguity(
         "guess_notification": "",  # User notification when guesses are made
     }
 
+    # Log ambiguity detection summary
+    ambiguous_count = len(extraction_results["ambiguous_components"])
+    unambiguous_count = len(extraction_results["unambiguous_components"])
+    no_match_count = len(extraction_results["no_match_components"])
+
+    disambiguation_logger.info(
+        f"Ambiguity detection completed - "
+        f"Ambiguous: {ambiguous_count}, "
+        f"Unambiguous: {unambiguous_count}, "
+        f"No matches: {no_match_count}, "
+        f"Guess permission: {guess_permission_detected}"
+    )
+
     # Process each component and create AmbiguityInfo objects
     for component_key, component_detail in extraction_results[
         "component_details"
@@ -1820,6 +1906,13 @@ def detect_component_ambiguity(
         component_name = component_detail["component_name"]
         matches = component_detail["matches"]
         status = component_detail["status"]
+
+        # Log individual component processing
+        disambiguation_logger.info(
+            f"Processing component '{component_name}' - "
+            f"Status: {status}, "
+            f"Matches: {len(matches)}"
+        )
 
         # Create options list for AmbiguityInfo
         options = []
@@ -1845,6 +1938,13 @@ def detect_component_ambiguity(
             )
             result["guessed_components"].append(component_name)
 
+            # Log the guess event
+            disambiguation_logger.info(
+                f"Component '{component_name}' marked as guessed - "
+                f"Guessed value: {guessed_value}, "
+                f"Based on explicit user permission"
+            )
+
         elif status == "ambiguous":
             # Component has 2+ plausible matches but no guess permission - mark as ambiguous
             ambiguity_info = AmbiguityInfo(
@@ -1854,6 +1954,13 @@ def detect_component_ambiguity(
             )
             result["ambiguous_components"].append(component_name)
 
+            # Log the ambiguity event
+            disambiguation_logger.info(
+                f"Component '{component_name}' marked as ambiguous - "
+                f"Options: {len(options)}, "
+                f"Requires user clarification"
+            )
+
         elif status == "unambiguous":
             # Component has exactly 1 match - mark as unambiguous with selected value
             selected_value = matches[0]["code"]
@@ -1861,6 +1968,12 @@ def detect_component_ambiguity(
                 status="unambiguous", options=options, selected_value=selected_value
             )
             result["unambiguous_components"].append(component_name)
+
+            # Log the unambiguous determination
+            disambiguation_logger.info(
+                f"Component '{component_name}' determined as unambiguous - "
+                f"Selected value: {selected_value}"
+            )
 
         else:  # status == "no_match"
             # Component has no matches - mark as ambiguous (needs clarification)
@@ -1871,6 +1984,12 @@ def detect_component_ambiguity(
                 selected_value=None,
             )
             result["no_match_components"].append(component_name)
+
+            # Log the no-match event
+            disambiguation_logger.warning(
+                f"Component '{component_name}' has no valid matches - "
+                f"Marked as ambiguous for user clarification"
+            )
 
         # Store the AmbiguityInfo
         result["ambiguity_details"][component_key] = ambiguity_info
@@ -1889,6 +2008,9 @@ def detect_component_ambiguity(
 
             # Log the error for debugging
             print(f"ERROR in detect_component_ambiguity: {error_msg}")
+            disambiguation_logger.error(
+                f"State transition error for component '{component_name}': {str(e)}"
+            )
 
             # Re-raise with additional context to help with debugging
             raise ValueError(error_msg) from e
@@ -1920,6 +2042,35 @@ def detect_component_ambiguity(
         # Format the notification
         result["guess_notification"] = format_guess_notification(
             guessed_component_details
+        )
+
+    # Log the completion of ambiguity detection process
+    total_components = (
+        len(result["ambiguous_components"])
+        + len(result["unambiguous_components"])
+        + len(result["guessed_components"])
+        + len(result["no_match_components"])
+    )
+    resolved_components = len(result["unambiguous_components"]) + len(
+        result["guessed_components"]
+    )
+
+    disambiguation_logger.info(
+        f"Ambiguity detection process completed - "
+        f"Total components processed: {total_components}, "
+        f"Resolved components: {resolved_components}, "
+        f"Still ambiguous: {len(result['ambiguous_components'])}, "
+        f"No matches: {len(result['no_match_components'])}"
+    )
+
+    # Log if all components are resolved (disambiguation complete)
+    if (
+        len(result["ambiguous_components"]) == 0
+        and len(result["no_match_components"]) == 0
+    ):
+        disambiguation_logger.info(
+            f"✓ DISAMBIGUATION COMPLETE - All {total_components} components resolved "
+            f"({len(result['unambiguous_components'])} unambiguous, {len(result['guessed_components'])} guessed)"
         )
 
     return result
@@ -2067,6 +2218,21 @@ async def save_procurement_code(
 
     new_code = ProcurementCode(code=code, description=description)
     ctx.deps.state.procurement_codes.append(new_code)
+
+    # Log successful code generation and save after disambiguation
+    total_components = len(ctx.deps.state.component_ambiguity_status)
+    clarified_components = len(ctx.deps.state.clarified_components)
+    total_rounds = ctx.deps.state.clarification_rounds
+
+    disambiguation_logger.info(
+        f"✓ CODE SUCCESSFULLY GENERATED AND SAVED - "
+        f"Code: {code}, "
+        f"Description: {description}, "
+        f"Total components: {total_components}, "
+        f"Clarified components: {clarified_components}, "
+        f"Clarification rounds: {total_rounds}"
+    )
+
     return StateSnapshotEvent(
         type=EventType.STATE_SNAPSHOT,
         snapshot=ctx.deps.state,
