@@ -325,6 +325,286 @@ def get_citation_sources(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
     return result
 
 
+def parse_code_generation_rules(content: str) -> dict:
+    """
+    Parse the CODE_GENERATION.md content to extract component rules and options.
+
+    Args:
+        content: The content of CODE_GENERATION.md file
+
+    Returns:
+        Dictionary with component rules structured for matching
+    """
+    import re
+
+    rules = {
+        "major_category": {},  # A: Industry focus
+        "manufacturing_method": {},  # B: Manufacturing method
+        "object_shape": {},  # C: Object shape/form
+        "material_type": {},  # MM: Material type
+        "quality_grade": {},  # QQ: Quality grade
+        "size_category": {},  # S: Size category
+    }
+
+    # Extract major categories (A)
+    major_pattern = r"\|\s*([A-Z])\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|"
+    major_matches = re.findall(major_pattern, content)
+
+    # Find the major category section
+    major_section = re.search(
+        r"### First Letter - Major Categories.*?(?=###|$)", content, re.DOTALL
+    )
+    if major_section:
+        major_matches = re.findall(
+            r"\|\s*([A-Z])\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|", major_section.group()
+        )
+        for code, industry, description in major_matches:
+            if code.strip() and industry.strip():
+                rules["major_category"][code.strip()] = {
+                    "name": industry.strip(),
+                    "description": description.strip(),
+                    "keywords": [industry.lower(), description.lower()],
+                }
+
+    # Extract manufacturing methods (B)
+    method_section = re.search(
+        r"### Second Letter - Manufacturing Method.*?(?=###|$)", content, re.DOTALL
+    )
+    if method_section:
+        method_matches = re.findall(
+            r"\|\s*([A-Z])\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|", method_section.group()
+        )
+        for code, method, description in method_matches:
+            if code.strip() and method.strip():
+                rules["manufacturing_method"][code.strip()] = {
+                    "name": method.strip(),
+                    "description": description.strip(),
+                    "keywords": [method.lower(), description.lower()],
+                }
+
+    # Extract object shapes (C)
+    shape_section = re.search(
+        r"### Third Letter - Object Shape/Form.*?(?=###|$)", content, re.DOTALL
+    )
+    if shape_section:
+        shape_matches = re.findall(
+            r"\|\s*([A-Z])\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|", shape_section.group()
+        )
+        for code, shape, description in shape_matches:
+            if code.strip() and shape.strip():
+                rules["object_shape"][code.strip()] = {
+                    "name": shape.strip(),
+                    "description": description.strip(),
+                    "keywords": [shape.lower(), description.lower()],
+                }
+
+    # Extract material types (MM)
+    material_section = re.search(r"### Material Type.*?(?=###|$)", content, re.DOTALL)
+    if material_section:
+        material_matches = re.findall(
+            r"\|\s*(\d{2})\s*\|\s*([^|]+)\s*\|\s*([^|]*)\s*\|", material_section.group()
+        )
+        for code, material, examples in material_matches:
+            if code.strip() and material.strip():
+                keywords = [material.lower()]
+                if examples.strip():
+                    keywords.extend([ex.strip().lower() for ex in examples.split(",")])
+                rules["material_type"][code.strip()] = {
+                    "name": material.strip(),
+                    "description": examples.strip(),
+                    "keywords": keywords,
+                }
+
+    # Extract quality grades (QQ)
+    quality_section = re.search(r"### Quality Grade.*?(?=###|$)", content, re.DOTALL)
+    if quality_section:
+        quality_matches = re.findall(
+            r"\|\s*(\d{2})\s*\|\s*([^|]+)\s*\|\s*([^|]*)\s*\|", quality_section.group()
+        )
+        for code, quality, description in quality_matches:
+            if code.strip() and quality.strip():
+                keywords = [quality.lower()]
+                if description.strip():
+                    keywords.append(description.lower())
+                rules["quality_grade"][code.strip()] = {
+                    "name": quality.strip(),
+                    "description": description.strip(),
+                    "keywords": keywords,
+                }
+
+    # Extract size categories (S)
+    size_section = re.search(r"### Size Category.*?(?=###|$)", content, re.DOTALL)
+    if size_section:
+        size_matches = re.findall(
+            r"\|\s*(\d)\s*\|\s*([^|]+)\s*\|\s*([^|]*)\s*\|", size_section.group()
+        )
+        for code, size, description in size_matches:
+            if code.strip() and size.strip():
+                rules["size_category"][code.strip()] = {
+                    "name": size.strip(),
+                    "description": description.strip(),
+                    "keywords": [size.lower(), description.lower()],
+                }
+
+    return rules
+
+
+def find_component_matches(description: str, component_rules: dict) -> list:
+    """
+    Find matches for a component based on user description.
+
+    Args:
+        description: User's description text
+        component_rules: Dictionary of component rules
+
+    Returns:
+        List of matching component options with their scores
+    """
+    description_lower = description.lower()
+    matches = []
+
+    for code, rule_info in component_rules.items():
+        score = 0
+        keywords = rule_info.get("keywords", [])
+
+        # Check for keyword matches
+        for keyword in keywords:
+            if keyword in description_lower:
+                score += 1
+
+        # Additional scoring based on word boundaries
+        for keyword in keywords:
+            # Check for whole word matches
+            pattern = r"\b" + re.escape(keyword) + r"\b"
+            if re.search(pattern, description_lower):
+                score += 2
+
+        if score > 0:
+            matches.append(
+                {
+                    "code": code,
+                    "name": rule_info["name"],
+                    "description": rule_info["description"],
+                    "score": score,
+                }
+            )
+
+    # Sort matches by score (descending)
+    matches.sort(key=lambda x: x["score"], reverse=True)
+    return matches
+
+
+def extract_components_from_description(
+    user_description: str, code_generation_content: str
+) -> dict:
+    """
+    Extract component information from user description against CODE_GENERATION.md rules.
+
+    Args:
+        user_description: The user's description text
+        code_generation_content: Content of the CODE_GENERATION.md file
+
+    Returns:
+        Dictionary with component extraction results including ambiguity information
+    """
+    # Parse the rules from the content
+    rules = parse_code_generation_rules(code_generation_content)
+
+    results = {
+        "major_category": None,
+        "manufacturing_method": None,
+        "object_shape": None,
+        "material_type": None,
+        "quality_grade": None,
+        "size_category": None,
+        "year": "26",  # Current year is 2026
+        "sequence": None,  # Will be determined during code generation
+    }
+
+    # Find matches for each component
+    components_to_check = [
+        ("major_category", "Major Category"),
+        ("manufacturing_method", "Manufacturing Method"),
+        ("object_shape", "Object Shape"),
+        ("material_type", "Material Type"),
+        ("quality_grade", "Quality Grade"),
+        ("size_category", "Size Category"),
+    ]
+
+    component_matches = {}
+
+    for component_key, component_name in components_to_check:
+        matches = find_component_matches(user_description, rules[component_key])
+        component_matches[component_key] = {
+            "name": component_name,
+            "matches": matches,
+            "is_ambiguous": len(matches) > 1,
+            "no_matches": len(matches) == 0,
+        }
+
+    return component_matches
+
+
+def get_component_extraction_results(
+    user_description: str, code_generation_content: str
+) -> dict:
+    """
+    Get complete component extraction results with structured ambiguity information.
+
+    This function serves as the main entry point for component extraction logic,
+    providing structured information about which components are ambiguous and
+    need clarification.
+
+    Args:
+        user_description: The user's description text
+        code_generation_content: Content of the CODE_GENERATION.md file
+
+    Returns:
+        Dictionary with:
+        - ambiguous_components: List of components with multiple matches
+        - unambiguous_components: List of components with single matches
+        - no_match_components: List of components with no matches
+        - component_details: Detailed information about each component
+    """
+    component_matches = extract_components_from_description(
+        user_description, code_generation_content
+    )
+
+    ambiguous_components = []
+    unambiguous_components = []
+    no_match_components = []
+    component_details = {}
+
+    for component_key, match_info in component_matches.items():
+        component_name = match_info["name"]
+        matches = match_info["matches"]
+
+        detail = {
+            "component_name": component_name,
+            "component_key": component_key,
+            "matches": matches,
+            "status": "ambiguous"
+            if len(matches) > 1
+            else ("no_match" if len(matches) == 0 else "unambiguous"),
+        }
+
+        component_details[component_key] = detail
+
+        if len(matches) > 1:
+            ambiguous_components.append(detail)
+        elif len(matches) == 1:
+            unambiguous_components.append(detail)
+        else:
+            no_match_components.append(detail)
+
+    return {
+        "ambiguous_components": ambiguous_components,
+        "unambiguous_components": unambiguous_components,
+        "no_match_components": no_match_components,
+        "component_details": component_details,
+    }
+
+
 def reset_conversation(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
     """
     Resets the conversation history. Do this SILENTLY. Do NOT state that you are resetting memory. Just do it silently.
