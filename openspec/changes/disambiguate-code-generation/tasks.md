@@ -65,7 +65,7 @@
 - [x] 7.3 Add instructions for iterative clarification
 - [x] 7.4 Add instructions for explicit guess permission handling
 - [x] 7.5 Update system prompt to instruct agent to only present matching options during clarification (not all possible options)
-- [ ] 7.6 Update system prompt to use generate-then-justify pattern instead of pre-generation confirmation
+- [x] 7.6 Update system prompt to use generate-then-justify pattern instead of pre-generation confirmation
 - [ ] 7.7 Update system prompt to emphasize confident code generation when components are unambiguous
 - [SKIP - Human intervention required] 7.8 Review and refine prompt for clarity and effectiveness
 
