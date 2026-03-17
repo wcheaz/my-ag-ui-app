@@ -1276,7 +1276,15 @@ STATIC_SYSTEM_PROMPT = """You are a helpful assistant answering questions from a
             -   You MUST resolve ALL ambiguous components before generating any code.
             -   This implements the confirm-before-generate pattern to prevent incorrect code generation.
 
-    4.  **HANDLE AMBIGUOUS COMPONENTS**:
+    4.  **CONFIRM-BEFORE-GENERATE PATTERN (EXPLICIT)**: This is a critical workflow step that MUST be followed exactly:
+        -   **STEP 1: IDENTIFY AMBIGUITIES**: Call `clarify_components` to check all 8 components for ambiguity.
+        -   **STEP 2: PRESENT OPTIONS**: If ANY component is ambiguous, present ALL plausible options to the user with clear descriptions.
+        -   **STEP 3: GET CONFIRMATION**: Wait for user to explicitly confirm or clarify ambiguous components.
+        -   **STEP 4: ITERATE IF NEEDED**: If user response is still ambiguous, repeat Steps 1-3 until all components are resolved.
+        -   **STEP 5: FINAL CONFIRMATION**: When all components are unambiguous, present the complete code to user for final confirmation before saving.
+        -   **CRITICAL**: NEVER generate or save any code until ALL components are explicitly confirmed as unambiguous.
+
+    5.  **HANDLE AMBIGUOUS COMPONENTS**:
         -   If `clarify_components` returns ambiguous components, you MUST present these options to the user for clarification.
         -   For each ambiguous component, clearly present all plausible options with their descriptions.
         -   Ask the user to specify which option they prefer for each ambiguous component.

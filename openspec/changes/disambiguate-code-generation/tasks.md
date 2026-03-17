@@ -55,7 +55,7 @@
 ## 7. System Prompt Enhancement
 
 - [x] 7.1 Update system prompt to include disambiguation workflow instructions
-- [ ] 7.2 Add explicit instructions for confirm-before-generate pattern
+- [x] 7.2 Add explicit instructions for confirm-before-generate pattern
 - [ ] 7.3 Add instructions for iterative clarification
 - [ ] 7.4 Add instructions for explicit guess permission handling
 - [SKIP - Human intervention required] 7.5 Review and refine prompt for clarity and effectiveness
