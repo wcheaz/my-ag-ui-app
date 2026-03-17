@@ -16,7 +16,7 @@
 - [x] 2.7 Write unit tests for ambiguity detection with ambiguous inputs
 - [x] 2.8 Write unit tests for edge cases (no matches, single match, multiple matches)
 - [x] 2.9 Implement similarity threshold to filter out unrelated options from clarification prompts
-- [ ] 2.10 Add logic to only present options with similarity score above threshold
+- [x] 2.10 Add logic to only present options with similarity score above threshold
 - [ ] 2.11 Write unit tests for selective option presentation (matching vs unrelated options)
 
 ## 3. Disambiguation Tool Implementation

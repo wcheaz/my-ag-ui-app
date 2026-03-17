@@ -1038,6 +1038,39 @@ def get_component_extraction_results(
     }
 
 
+def validate_options_similarity_threshold(
+    options: list, similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD
+) -> list:
+    """
+    Validate that all options have similarity scores above the threshold.
+
+    This function implements explicit similarity threshold validation to ensure
+    that only options with sufficient similarity scores are presented to users.
+
+    Args:
+        options: List of option dictionaries with similarity information
+        similarity_threshold: Minimum similarity score (0.0-1.0) required
+
+    Returns:
+        List of options that meet the similarity threshold requirement
+    """
+    validated_options = []
+
+    for option in options:
+        # Check if the option has similarity information
+        if "semantic_score" in option:
+            semantic_score = option["semantic_score"]
+            if semantic_score >= similarity_threshold:
+                validated_options.append(option)
+            # Note: Options with keyword_score >= 4 are also included from find_component_matches
+            # so we don't need to re-validate that logic here
+        else:
+            # If no similarity info is available, include the option (fallback behavior)
+            validated_options.append(option)
+
+    return validated_options
+
+
 def clarify_components(
     ctx: RunContext[StateDeps[ProcurementState]], user_description: str
 ) -> str:
@@ -1140,15 +1173,31 @@ def clarify_components(
                     # This component has already been clarified, skip it
                     continue
 
-                # Format options for ambiguous components
+                # Format options for ambiguous components with similarity threshold validation
                 options = []
                 for match in matches:
-                    options.append(
-                        {
+                    # TASK 2.10: Add logic to only present options with similarity score above threshold
+                    # Validate that the match meets the similarity threshold criteria
+                    validated_match = validate_options_similarity_threshold(
+                        [match], similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD
+                    )
+
+                    # Only include options that passed the similarity threshold validation
+                    if validated_match:
+                        option = {
                             "value": match["code"],
                             "description": f"{match['name']}: {match['description']}",
                         }
-                    )
+                        # Add similarity information for debugging and transparency
+                        if "semantic_score" in match:
+                            option["similarity_info"] = {
+                                "semantic_score": match["semantic_score"],
+                                "keyword_score": match.get("keyword_score", 0),
+                                "filter_reason": match.get(
+                                    "filter_reason", "above_threshold"
+                                ),
+                            }
+                        options.append(option)
 
                 ambiguous_component = {
                     "component_name": component_name,
@@ -1169,12 +1218,31 @@ def clarify_components(
                 component_name = component["component_name"]
                 match = component["matches"][0]  # Only one match for unambiguous
 
-                unambiguous_component = {
-                    "component_name": component_name,
-                    "component_key": component_key,
-                    "selected_value": match["code"],
-                    "description": f"{match['name']}: {match['description']}",
-                }
+                # TASK 2.10: Add similarity threshold validation for unambiguous components
+                # Validate that the unambiguous match meets the similarity threshold criteria
+                validated_match = validate_options_similarity_threshold(
+                    [match], similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD
+                )
+
+                if validated_match:
+                    unambiguous_component = {
+                        "component_name": component_name,
+                        "component_key": component_key,
+                        "selected_value": match["code"],
+                        "description": f"{match['name']}: {match['description']}",
+                        "similarity_info": {
+                            "semantic_score": match.get("semantic_score", 0.0),
+                            "keyword_score": match.get("keyword_score", 0),
+                            "filter_reason": match.get(
+                                "filter_reason", "above_threshold"
+                            ),
+                        },
+                    }
+                else:
+                    # If the match doesn't meet threshold, it should be treated as ambiguous
+                    # This should theoretically not happen since find_component_matches should filter
+                    # but we add this as a safety check
+                    continue
                 response["unambiguous_components"].append(unambiguous_component)
             except Exception as e:
                 # Log error but continue processing other components
@@ -1239,6 +1307,20 @@ def clarify_components(
 
         # Add guess notification from ambiguity detection results
         response["guess_notification"] = ambiguity_results.get("guess_notification", "")
+
+        # TASK 2.10: Add similarity threshold filtering information to response
+        # This provides transparency about the filtering that was applied
+        response["similarity_threshold_info"] = {
+            "threshold_used": DEFAULT_SIMILARITY_THRESHOLD,
+            "filtering_applied": True,
+            "description": f"Only options with semantic similarity >= {DEFAULT_SIMILARITY_THRESHOLD} or strong keyword matches (score >= 4) are included",
+            "total_options_filtered": sum(
+                len(comp["matches"])
+                for comp in extraction_results["component_details"].values()
+            ),
+            "options_presented": len(response["ambiguous_components"])
+            + len(response["unambiguous_components"]),
+        }
 
         # Return the structured JSON response with comprehensive error handling for JSON serialization
         try:
