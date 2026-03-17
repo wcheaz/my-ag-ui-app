@@ -263,20 +263,22 @@ class ProcurementState(BaseModel):
         Raises:
             ValueError: If state transition is invalid
         """
-        # Check if we're updating an existing component and preserve previous selections
+        # Check if we're updating an existing component and validate state transition
         if component_name in self.component_ambiguity_status:
             current_info = self.component_ambiguity_status[component_name]
 
-            # Validate state transitions: only allow ambiguous → unambiguous or ambiguous → guessed
-            if (
-                current_info.status in ["unambiguous", "guessed"]
-                and ambiguity_info.status == "ambiguous"
-            ):
-                raise ValueError(
-                    f"Invalid state transition for component '{component_name}': "
-                    f"Cannot transition from '{current_info.status}' to 'ambiguous'. "
-                    f"Once a component is resolved (unambiguous or guessed), it cannot become ambiguous again."
+            # Use comprehensive state transition validation with error handling
+            try:
+                self.validate_state_transition(
+                    current_info.status, ambiguity_info.status, component_name
                 )
+            except ValueError as e:
+                # Re-raise with additional context about the transition
+                raise ValueError(
+                    f"{str(e)} "
+                    f"Current state: {current_info.status}, Target state: {ambiguity_info.status}. "
+                    f"This transition violates the state machine rules for component ambiguity resolution."
+                ) from e
 
             # PRESERVE PREVIOUS USER SELECTIONS: If the component already has a selected_value
             # and the new status is unambiguous, preserve the existing selection if it's valid
@@ -305,6 +307,20 @@ class ProcurementState(BaseModel):
                             ambiguity_info.selected_value = current_info.guessed_value
                             ambiguity_info.is_guessed = True
 
+        # For new components (not in state), validate the initial state is valid
+        else:
+            try:
+                self.validate_state_transition(
+                    "new",  # Special case for new components
+                    ambiguity_info.status,
+                    component_name,
+                )
+            except ValueError as e:
+                raise ValueError(
+                    f"Invalid initial state for component '{component_name}': {str(e)} "
+                    f"New components must start in 'ambiguous' or 'unambiguous' state."
+                ) from e
+
         # Now validate after potential preservation of selections
         # Validate that unambiguous components have a selected_value
         if (
@@ -325,6 +341,74 @@ class ProcurementState(BaseModel):
 
         # Apply the update
         self.component_ambiguity_status[component_name] = ambiguity_info
+
+def validate_state_transition(
+        self, 
+        current_status: str, 
+        new_status: str, 
+        component_name: str
+    ) -> None:
+        """
+        Validate that a state transition is allowed for a component.
+        
+        This method implements comprehensive error handling for unexpected state transitions,
+        ensuring that components follow valid state progression according to business rules.
+
+        Args:
+            current_status: The current status of the component
+            new_status: The desired new status for the component
+            component_name: Name of the component being transitioned
+
+        Raises:
+            ValueError: If the state transition is not allowed
+        """
+        # Define valid states
+        valid_states = ["ambiguous", "unambiguous", "guessed"]
+        
+        # Handle special case for new components
+        if current_status == "new":
+            # New components can start in any valid state
+            if new_status not in valid_states:
+                raise ValueError(
+                    f"Invalid initial state '{new_status}' for new component '{component_name}'. "
+                    f"New components must start in one of: {', '.join(valid_states)}"
+                )
+            return  # New component transition is always valid
+        
+        # Validate that both states are valid for existing components
+        if current_status not in valid_states:
+            raise ValueError(
+                f"Invalid current state '{current_status}' for component '{component_name}'. "
+                f"Valid states are: {', '.join(valid_states)}"
+            )
+        
+        if new_status not in valid_states:
+            raise ValueError(
+                f"Invalid target state '{new_status}' for component '{component_name}'. "
+                f"Valid states are: {', '.join(valid_states)}"
+            )
+        
+        # Define allowed transitions
+        allowed_transitions = {
+            "ambiguous": ["unambiguous", "guessed"],
+            "unambiguous": [],  # No transitions allowed from resolved states
+            "guessed": [],  # No transitions allowed from resolved states
+        }
+        
+        # Check if transition is allowed
+        if new_status not in allowed_transitions.get(current_status, []):
+            if current_status == new_status:
+                raise ValueError(
+                    f"Invalid state transition for component '{component_name}': "
+                    f"Cannot transition from '{current_status}' to '{current_status}' (same state). "
+                    f"Component is already in the '{current_status}' state."
+                )
+            else:
+                raise ValueError(
+                    f"Invalid state transition for component '{component_name}': "
+                    f"Cannot transition from '{current_status}' to '{new_status}'. "
+                    f"Once a component is resolved (unambiguous or guessed), it cannot change state again."
+                )
 
     def validate_all_components_unambiguous(self) -> None:
         """
@@ -865,7 +949,19 @@ def clarify_components(
             ambiguity_results = detect_component_ambiguity(
                 user_description, code_generation_content, ctx, user_description
             )
+        except ValueError as e:
+            # Handle state transition errors specifically
+            error_response = {
+                "error": str(e),
+                "error_type": "state_transition_error",
+                "error_details": "A component state transition was invalid. This may indicate a workflow issue.",
+                "ambiguous_components": [],
+                "unambiguous_components": [],
+                "component_details": {},
+            }
+            return json.dumps(error_response, indent=2, ensure_ascii=False)
         except Exception as e:
+            # Handle other ambiguity detection errors
             raise RuntimeError(f"ERROR: Ambiguity detection failed: {str(e)}")
 
         # Prepare the structured response
@@ -1256,7 +1352,22 @@ def detect_component_ambiguity(
         result["ambiguity_details"][component_key] = ambiguity_info
 
         # Update the ProcurementState with the ambiguity information
-        ctx.deps.state.update_component_ambiguity(component_name, ambiguity_info)
+        # Add error handling for unexpected state transitions
+        try:
+            ctx.deps.state.update_component_ambiguity(component_name, ambiguity_info)
+        except ValueError as e:
+            # Handle unexpected state transitions with detailed error information
+            error_msg = (
+                f"Unexpected state transition error for component '{component_name}': {str(e)} "
+                f"This indicates a critical issue in the ambiguity detection workflow. "
+                f"Component status: {status}, Attempted new status: {ambiguity_info.status}."
+            )
+            
+            # Log the error for debugging
+            print(f"ERROR in detect_component_ambiguity: {error_msg}")
+            
+            # Re-raise with additional context to help with debugging
+            raise ValueError(error_msg) from e
 
     # Generate user notification for guessed components
     if result["guessed_components"]:
