@@ -57,6 +57,24 @@ class ProcurementCode(BaseModel):
     description: str
 
 
+class AmbiguityInfo(BaseModel):
+    """
+    Data class to track component ambiguity status during disambiguation workflow.
+
+    This class tracks whether a component is ambiguous or unambiguous,
+    maintains the list of plausible options, and stores the user's selected value.
+
+    Attributes:
+        status: Either "ambiguous" or "unambiguous"
+        options: List of plausible matches for the component
+        selected_value: The user's selected value (if resolved)
+    """
+
+    status: str  # "ambiguous" or "unambiguous"
+    options: List[dict]  # List of plausible matches with their descriptions
+    selected_value: Optional[str] = None  # User's selected value when resolved
+
+
 class ProcurementState(BaseModel):
     """
     State for the Procurement Agent.
@@ -73,6 +91,10 @@ class ProcurementState(BaseModel):
     # This flag enforces the workflow: read_code_generation_file MUST be called before save_procurement_code
     # The flag defaults to False and is reset per request to prevent stale state
     rules_loaded_this_turn: bool = False
+    # DISAMBIGUATION TRACKING: Dictionary to track component ambiguity status
+    # Key: component_name (str), Value: AmbiguityInfo object
+    # This enables programmatic enforcement of disambiguation workflow
+    component_ambiguity_status: dict[str, AmbiguityInfo] = Field(default_factory=dict)
 
 
 def read_code_generation_file(ctx: RunContext[StateDeps[ProcurementState]]) -> str:

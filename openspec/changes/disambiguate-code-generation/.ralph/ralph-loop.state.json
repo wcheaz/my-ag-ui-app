@@ -1,0 +1,16 @@
+{
+  "active": true,
+  "iteration": 2,
+  "minIterations": 1,
+  "maxIterations": 50,
+  "completionPromise": "COMPLETE",
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "tasksMode": true,
+  "tasksFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/disambiguate-code-generation/tasks.md",
+  "promptFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/disambiguate-code-generation/.ralph/PRD.md",
+  "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/disambiguate-code-generation/.ralph/prompt-template.md",
+  "noCommit": false,
+  "model": "",
+  "startedAt": "2026-03-17T00:19:56.797Z",
+  "resumedAt": "2026-03-17T00:19:56.797Z"
+}
