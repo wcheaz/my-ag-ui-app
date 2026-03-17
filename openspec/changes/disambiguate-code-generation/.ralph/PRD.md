@@ -527,4 +527,28 @@ class ProcurementState(BaseModel):
 ## Current Task Context
 
 ## Current Task
-- 1.1 Create `AmbiguityInfo` data class to track component ambiguity status (status, options, selected value)
+- 4.5 Write unit tests for guess marking and notification
+## Completed Tasks for Git Commit
+- [x] 1.1 Create `AmbiguityInfo` data class to track component ambiguity status (status, options, selected value)
+- [x] 1.2 Extend `ProcurementState` with `component_ambiguity_status` field (Dict[str, AmbiguityInfo])
+- [x] 1.3 Add validation logic to ensure state transitions are valid (ambiguous → unambiguous)
+- [x] 1.4 Write unit tests for state management and ambiguity tracking
+- [x] 2.1 Implement component extraction logic to parse user descriptions against CODE_GENERATION.md rules
+- [x] 2.2 Implement ambiguity detection logic to identify when a component has 2+ plausible matches
+- [x] 2.3 Implement keyword-based matching for component options
+- [x] 2.4 Implement semantic similarity scoring for component options (initial version)
+- [x] 2.5 Add logic to handle "no matches found" scenario
+- [x] 2.6 Write unit tests for component extraction with clear inputs
+- [x] 2.7 Write unit tests for ambiguity detection with ambiguous inputs
+- [x] 2.8 Write unit tests for edge cases (no matches, single match, multiple matches)
+- [x] 3.1 Implement `clarify_components` tool in `agent.py`
+- [x] 3.2 Add tool to agent's available tools list
+- [x] 3.3 Implement JSON output format for structured disambiguation options
+- [x] 3.4 Add logic to filter and present only ambiguous components
+- [x] 3.5 Add logic to include unambiguous components in output for context
+- [x] 3.6 Write unit tests for `clarify_components` tool
+- [x] 3.7 Write integration tests for tool with various input scenarios
+- [x] 4.1 Implement phrase detection for explicit guess permission ("I don't know", "whatever", "you choose")
+- [x] 4.2 Add logic to mark components as "guessed" when permission detected
+- [x] 4.3 Implement user notification when a guess is made
+- [x] 4.4 Write unit tests for guess permission detection
