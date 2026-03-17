@@ -24,7 +24,7 @@
 - [x] 3.4 Add logic to filter and present only ambiguous components
 - [x] 3.5 Add logic to include unambiguous components in output for context
 - [x] 3.6 Write unit tests for `clarify_components` tool
-- [ ] 3.7 Write integration tests for tool with various input scenarios
+- [x] 3.7 Write integration tests for tool with various input scenarios
 
 ## 4. User Intent Detection for Guess Permission
 
