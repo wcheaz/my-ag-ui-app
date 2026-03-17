@@ -342,15 +342,12 @@ class ProcurementState(BaseModel):
         # Apply the update
         self.component_ambiguity_status[component_name] = ambiguity_info
 
-def validate_state_transition(
-        self, 
-        current_status: str, 
-        new_status: str, 
-        component_name: str
+    def validate_state_transition(
+        self, current_status: str, new_status: str, component_name: str
     ) -> None:
         """
         Validate that a state transition is allowed for a component.
-        
+
         This method implements comprehensive error handling for unexpected state transitions,
         ensuring that components follow valid state progression according to business rules.
 
@@ -364,7 +361,7 @@ def validate_state_transition(
         """
         # Define valid states
         valid_states = ["ambiguous", "unambiguous", "guessed"]
-        
+
         # Handle special case for new components
         if current_status == "new":
             # New components can start in any valid state
@@ -374,27 +371,27 @@ def validate_state_transition(
                     f"New components must start in one of: {', '.join(valid_states)}"
                 )
             return  # New component transition is always valid
-        
+
         # Validate that both states are valid for existing components
         if current_status not in valid_states:
             raise ValueError(
                 f"Invalid current state '{current_status}' for component '{component_name}'. "
                 f"Valid states are: {', '.join(valid_states)}"
             )
-        
+
         if new_status not in valid_states:
             raise ValueError(
                 f"Invalid target state '{new_status}' for component '{component_name}'. "
                 f"Valid states are: {', '.join(valid_states)}"
             )
-        
+
         # Define allowed transitions
         allowed_transitions = {
             "ambiguous": ["unambiguous", "guessed"],
             "unambiguous": [],  # No transitions allowed from resolved states
             "guessed": [],  # No transitions allowed from resolved states
         }
-        
+
         # Check if transition is allowed
         if new_status not in allowed_transitions.get(current_status, []):
             if current_status == new_status:
@@ -410,6 +407,72 @@ def validate_state_transition(
                     f"Once a component is resolved (unambiguous or guessed), it cannot change state again."
                 )
 
+    def validate_all_component_states(self) -> None:
+        """
+        Validate that all component states are valid and consistent.
+        This provides comprehensive error handling for unexpected state transitions
+        by checking all components for valid states and data consistency.
+
+        Raises:
+            ValueError: If any component has an invalid state or inconsistent data
+        """
+        valid_states = ["ambiguous", "unambiguous", "guessed"]
+
+        for component_name, ambiguity_info in self.component_ambiguity_status.items():
+            # Validate that the status is one of the allowed states
+            if ambiguity_info.status not in valid_states:
+                raise ValueError(
+                    f"Invalid state '{ambiguity_info.status}' for component '{component_name}'. "
+                    f"Valid states are: {', '.join(valid_states)}"
+                )
+
+            # Validate data consistency based on status
+            if ambiguity_info.status == "unambiguous":
+                if ambiguity_info.selected_value is None:
+                    raise ValueError(
+                        f"Invalid state for component '{component_name}': "
+                        f"Unambiguous components must have a selected_value."
+                    )
+                if ambiguity_info.is_guessed:
+                    raise ValueError(
+                        f"Invalid state for component '{component_name}': "
+                        f"Unambiguous components cannot be marked as guessed."
+                    )
+
+            elif ambiguity_info.status == "guessed":
+                if ambiguity_info.guessed_value is None:
+                    raise ValueError(
+                        f"Invalid state for component '{component_name}': "
+                        f"Guessed components must have a guessed_value."
+                    )
+                if ambiguity_info.selected_value != ambiguity_info.guessed_value:
+                    raise ValueError(
+                        f"Invalid state for component '{component_name}': "
+                        f"Guessed components must have selected_value equal to guessed_value."
+                    )
+                if not ambiguity_info.is_guessed:
+                    raise ValueError(
+                        f"Invalid state for component '{component_name}': "
+                        f"Guessed components must have is_guessed=True."
+                    )
+
+            elif ambiguity_info.status == "ambiguous":
+                if ambiguity_info.selected_value is not None:
+                    raise ValueError(
+                        f"Invalid state for component '{component_name}': "
+                        f"Ambiguous components cannot have a selected_value."
+                    )
+                if ambiguity_info.guessed_value is not None:
+                    raise ValueError(
+                        f"Invalid state for component '{component_name}': "
+                        f"Ambiguous components cannot have a guessed_value."
+                    )
+                if ambiguity_info.is_guessed:
+                    raise ValueError(
+                        f"Invalid state for component '{component_name}': "
+                        f"Ambiguous components cannot be marked as guessed."
+                    )
+
     def validate_all_components_unambiguous(self) -> None:
         """
         Validate that all components are resolved (either unambiguous or guessed).
@@ -417,8 +480,12 @@ def validate_state_transition(
         guessed with user permission.
 
         Raises:
-            ValueError: If any component is still ambiguous
+            ValueError: If any component is still ambiguous or has invalid state
         """
+        # First validate that all component states are valid
+        self.validate_all_component_states()
+
+        # Then check for ambiguous components
         ambiguous_components = [
             name
             for name, info in self.component_ambiguity_status.items()
@@ -1362,10 +1429,10 @@ def detect_component_ambiguity(
                 f"This indicates a critical issue in the ambiguity detection workflow. "
                 f"Component status: {status}, Attempted new status: {ambiguity_info.status}."
             )
-            
+
             # Log the error for debugging
             print(f"ERROR in detect_component_ambiguity: {error_msg}")
-            
+
             # Re-raise with additional context to help with debugging
             raise ValueError(error_msg) from e
 
@@ -1478,18 +1545,23 @@ async def save_procurement_code(
     if not ctx.deps.state.rules_loaded_this_turn:
         return "ERROR: You must call read_code_generation_file before saving a code."
 
+    # COMPREHENSIVE STATE VALIDATION: Validate all component states before allowing save
+    # This provides error handling for unexpected state transitions and data inconsistencies
+    try:
+        ctx.deps.state.validate_all_component_states()
+    except ValueError as e:
+        # Handle unexpected state transitions with detailed error information
+        error_msg = f"ERROR: Cannot save code due to invalid component states: {str(e)}"
+        print(f"State validation failed in save_procurement_code: {error_msg}")
+        return error_msg
+
     # DISAMBIGUATION ENFORCEMENT: Validate that all components are unambiguous before allowing save
     # This enforces the confirm-before-generate pattern and prevents saving codes with ambiguous components
-    ambiguous_components = []
-    for (
-        component_name,
-        ambiguity_info,
-    ) in ctx.deps.state.component_ambiguity_status.items():
-        if ambiguity_info.status == "ambiguous":
-            ambiguous_components.append(component_name)
-
-    if ambiguous_components:
-        return f"ERROR: Cannot save code with ambiguous components. Please clarify the following components: {', '.join(ambiguous_components)}"
+    try:
+        ctx.deps.state.validate_all_components_unambiguous()
+    except ValueError as e:
+        # Handle ambiguous components with detailed error information
+        return f"ERROR: Cannot save code with unresolved components: {str(e)}"
 
     new_code = ProcurementCode(code=code, description=description)
     ctx.deps.state.procurement_codes.append(new_code)
