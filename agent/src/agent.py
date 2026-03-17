@@ -1772,7 +1772,7 @@ STATIC_SYSTEM_PROMPT = """You are a helpful assistant answering questions from a
 
     4.  **CONFIRM-BEFORE-GENERATE PATTERN (EXPLICIT)**: This is a critical workflow step that MUST be followed exactly:
         -   **STEP 1: IDENTIFY AMBIGUITIES**: Call `clarify_components` to check all 8 components for ambiguity.
-        -   **STEP 2: PRESENT OPTIONS**: If ANY component is ambiguous, present ALL plausible options to the user with clear descriptions.
+        -   **STEP 2: PRESENT OPTIONS**: If ANY component is ambiguous, present ONLY the options that MATCH the user's description with clear descriptions. Do NOT present all possible options - only those that are relevant to the user's specific description.
         -   **STEP 3: GET CONFIRMATION**: Wait for user to explicitly confirm or clarify ambiguous components.
         -   **STEP 4: ITERATE IF NEEDED**: If user response is still ambiguous, repeat Steps 1-3 until all components are resolved.
         -   **STEP 5: FINAL CONFIRMATION**: When all components are unambiguous, present the complete code to user for final confirmation before saving.
@@ -1780,7 +1780,7 @@ STATIC_SYSTEM_PROMPT = """You are a helpful assistant answering questions from a
 
     5.  **HANDLE AMBIGUOUS COMPONENTS**:
         -   If `clarify_components` returns ambiguous components, you MUST present these options to the user for clarification.
-        -   For each ambiguous component, clearly present all plausible options with their descriptions.
+        -   For each ambiguous component, clearly present ONLY the options that MATCH the user's description with their descriptions. Do NOT present all possible options - only those that are relevant to the user's specific description.
         -   Ask the user to specify which option they prefer for each ambiguous component.
         -   **ITERATIVE CLARIFICATION**: If the user's response is still ambiguous, call `clarify_components` again to narrow down the options and continue until all components are resolved.
 
