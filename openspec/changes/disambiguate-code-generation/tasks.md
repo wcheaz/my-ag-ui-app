@@ -49,7 +49,7 @@
 - [x] 6.2 Add validation to reject saves with ambiguous components
 - [x] 6.3 Implement clear error message indicating which components need clarification
 - [x] 6.4 Ensure existing `rules_loaded_this_turn` validation still works
-- [ ] 6.5 Write unit tests for save rejection with ambiguous components
+- [x] 6.5 Write unit tests for save rejection with ambiguous components
 - [ ] 6.6 Write unit tests for save success with all unambiguous components
 
 ## 7. System Prompt Enhancement
