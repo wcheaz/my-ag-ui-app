@@ -18,12 +18,12 @@
 
 ## 3. Disambiguation Tool Implementation
 
-- [ ] 3.1 Implement `clarify_components` tool in `agent.py`
-- [ ] 3.2 Add tool to agent's available tools list
-- [ ] 3.3 Implement JSON output format for structured disambiguation options
-- [ ] 3.4 Add logic to filter and present only ambiguous components
-- [ ] 3.5 Add logic to include unambiguous components in output for context
-- [ ] 3.6 Write unit tests for `clarify_components` tool
+- [x] 3.1 Implement `clarify_components` tool in `agent.py`
+- [x] 3.2 Add tool to agent's available tools list
+- [x] 3.3 Implement JSON output format for structured disambiguation options
+- [x] 3.4 Add logic to filter and present only ambiguous components
+- [x] 3.5 Add logic to include unambiguous components in output for context
+- [x] 3.6 Write unit tests for `clarify_components` tool
 - [ ] 3.7 Write integration tests for tool with various input scenarios
 
 ## 4. User Intent Detection for Guess Permission

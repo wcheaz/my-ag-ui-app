@@ -666,6 +666,113 @@ def get_component_extraction_results(
     }
 
 
+def clarify_components(
+    ctx: RunContext[StateDeps[ProcurementState]], user_description: str
+) -> str:
+    """
+    Implement clarify_components tool to parse user description and identify ambiguous components.
+
+    This tool serves as the primary disambiguation mechanism, returning structured JSON
+    with clarification options for ambiguous components while providing context about
+    unambiguous components.
+
+    Args:
+        ctx: The run context containing the ProcurementState
+        user_description: The user's description text to analyze
+
+    Returns:
+        JSON string containing:
+        - ambiguous_components: List of components that need clarification
+        - unambiguous_components: List of components already resolved
+        - component_details: Detailed information about each component
+    """
+    try:
+        # Check if rules file has been loaded this turn
+        if not ctx.deps.state.rules_loaded_this_turn:
+            raise ValueError(
+                "ERROR: You must call read_code_generation_file before using clarify_components."
+            )
+
+        # Get the code generation content from context or read it
+        # For now, we'll read it fresh each time (could be optimized)
+        code_generation_content = read_code_generation_file(ctx)
+
+        # Get component extraction results
+        extraction_results = get_component_extraction_results(
+            user_description, code_generation_content
+        )
+
+        # Prepare the structured response
+        response = {
+            "ambiguous_components": [],
+            "unambiguous_components": [],
+            "component_details": {},
+        }
+
+        # Process ambiguous components
+        for component in extraction_results["ambiguous_components"]:
+            component_key = component["component_key"]
+            component_name = component["component_name"]
+            matches = component["matches"]
+
+            # Format options for ambiguous components
+            options = []
+            for match in matches:
+                options.append(
+                    {
+                        "value": match["code"],
+                        "description": f"{match['name']}: {match['description']}",
+                    }
+                )
+
+            ambiguous_component = {
+                "component_name": component_name,
+                "component_key": component_key,
+                "options": options,
+                "match_count": len(matches),
+            }
+            response["ambiguous_components"].append(ambiguous_component)
+
+        # Process unambiguous components (for context)
+        for component in extraction_results["unambiguous_components"]:
+            component_key = component["component_key"]
+            component_name = component["component_name"]
+            match = component["matches"][0]  # Only one match for unambiguous
+
+            unambiguous_component = {
+                "component_name": component_name,
+                "component_key": component_key,
+                "selected_value": match["code"],
+                "description": f"{match['name']}: {match['description']}",
+            }
+            response["unambiguous_components"].append(unambiguous_component)
+
+        # Add component details for comprehensive information
+        for component_key, detail in extraction_results["component_details"].items():
+            response["component_details"][component_key] = {
+                "component_name": detail["component_name"],
+                "status": detail["status"],
+                "match_count": len(detail["matches"]),
+            }
+
+        # Update the ProcurementState with ambiguity information
+        # This ensures state consistency and enables programmatic enforcement
+        _ = detect_component_ambiguity(user_description, code_generation_content, ctx)
+
+        # Return the structured JSON response
+        return json.dumps(response, indent=2)
+
+    except Exception as e:
+        # Return error information in structured format
+        error_response = {
+            "error": str(e),
+            "ambiguous_components": [],
+            "unambiguous_components": [],
+            "component_details": {},
+        }
+        return json.dumps(error_response, indent=2)
+
+
 def detect_component_ambiguity(
     user_description: str,
     code_generation_content: str,
@@ -1002,6 +1109,7 @@ agent = Agent(
         read_code_generation_file,
         reset_conversation,
         save_procurement_code,
+        clarify_components,
     ],  # query_rag_system, get_citation_sources removed
     system_prompt=STATIC_SYSTEM_PROMPT,
 )
