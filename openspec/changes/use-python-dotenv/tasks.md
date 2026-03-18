@@ -30,5 +30,5 @@
 - [x] 5.1 Commit dependency changes to version control
 - [x] 5.2 Commit code changes to version control
 - [x] 5.3 Update CHANGELOG with migration notes
-- [ ] 5.4 Deploy to production environment
+- [x] 5.4 Deploy to production environment
 - [ ] 5.5 Monitor for any issues after deployment
