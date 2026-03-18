@@ -118,7 +118,7 @@
 - [x] 13.1 Modify ambiguity detection to only present options that match the user's description (keyword/semantic matching)
 - [x] 13.2 Add logic to filter out completely unrelated options from clarification prompts
 - [x] 13.3 Implement similarity threshold to determine which options are "matching" vs "unrelated"
-- [ ] 13.4 Change workflow to generate code first, then provide justification (remove pre-generation confirmation)
+- [x] 13.4 Change workflow to generate code first, then provide justification (remove pre-generation confirmation)
 - [ ] 13.5 Update system prompt to instruct agent to be confident and generate code directly when unambiguous
 - [ ] 13.6 Modify agent response pattern to: "Generated code: [CODE]. Justification: [explanation]" instead of asking for confirmation
 - [ ] 13.7 Write unit tests for selective option presentation (only showing matching options)
