@@ -1,6 +1,6 @@
 {
   "active": true,
-  "iteration": 84,
+  "iteration": 90,
   "minIterations": 1,
   "maxIterations": 200,
   "completionPromise": "COMPLETE",
@@ -11,6 +11,6 @@
   "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/disambiguate-code-generation/.ralph/prompt-template.md",
   "noCommit": false,
   "model": "",
-  "startedAt": "2026-03-17T18:19:25.172Z",
-  "resumedAt": "2026-03-17T18:19:25.172Z"
+  "startedAt": "2026-03-18T00:43:14.564Z",
+  "resumedAt": "2026-03-18T00:43:14.564Z"
 }

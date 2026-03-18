@@ -527,7 +527,7 @@ class ProcurementState(BaseModel):
 ## Current Task Context
 
 ## Current Task
-- 2.9 Implement similarity threshold to filter out unrelated options from clarification prompts
+- 13.4 Change workflow to generate code first, then provide justification (remove pre-generation confirmation)
 ## Completed Tasks for Git Commit
 - [x] 1.1 Create `AmbiguityInfo` data class to track component ambiguity status (status, options, selected value)
 - [x] 1.2 Extend `ProcurementState` with `component_ambiguity_status` field (Dict[str, AmbiguityInfo])
@@ -541,6 +541,9 @@ class ProcurementState(BaseModel):
 - [x] 2.6 Write unit tests for component extraction with clear inputs
 - [x] 2.7 Write unit tests for ambiguity detection with ambiguous inputs
 - [x] 2.8 Write unit tests for edge cases (no matches, single match, multiple matches)
+- [x] 2.9 Implement similarity threshold to filter out unrelated options from clarification prompts
+- [x] 2.10 Add logic to only present options with similarity score above threshold
+- [x] 2.11 Write unit tests for selective option presentation (matching vs unrelated options)
 - [x] 3.1 Implement `clarify_components` tool in `agent.py`
 - [x] 3.2 Add tool to agent's available tools list
 - [x] 3.3 Implement JSON output format for structured disambiguation options
@@ -548,6 +551,9 @@ class ProcurementState(BaseModel):
 - [x] 3.5 Add logic to include unambiguous components in output for context
 - [x] 3.6 Write unit tests for `clarify_components` tool
 - [x] 3.7 Write integration tests for tool with various input scenarios
+- [x] 3.8 Modify `clarify_components` tool to filter options based on similarity threshold
+- [x] 3.9 Update tool output to only include options that match the user's description
+- [x] 3.10 Write unit tests for selective option filtering in `clarify_components` tool
 - [x] 4.1 Implement phrase detection for explicit guess permission ("I don't know", "whatever", "you choose")
 - [x] 4.2 Add logic to mark components as "guessed" when permission detected
 - [x] 4.3 Implement user notification when a guess is made
@@ -569,6 +575,9 @@ class ProcurementState(BaseModel):
 - [x] 7.2 Add explicit instructions for confirm-before-generate pattern
 - [x] 7.3 Add instructions for iterative clarification
 - [x] 7.4 Add instructions for explicit guess permission handling
+- [x] 7.5 Update system prompt to instruct agent to only present matching options during clarification (not all possible options)
+- [x] 7.6 Update system prompt to use generate-then-justify pattern instead of pre-generation confirmation
+- [x] 7.7 Update system prompt to emphasize confident code generation when components are unambiguous
 - [x] 8.1 Run existing test suite to ensure no regressions
 - [x] 8.2 Write integration test for complete disambiguation workflow (clear input)
 - [x] 8.3 Write integration test for single ambiguous component scenario
@@ -580,3 +589,16 @@ class ProcurementState(BaseModel):
 - [x] 9.1 Add error handling for `clarify_components` tool failures
 - [x] 9.2 Add error handling for invalid JSON output
 - [x] 9.3 Add error handling for unexpected state transitions
+- [x] 9.4 Write unit tests for error handling scenarios
+- [x] 9.5 Write integration tests for edge cases
+- [x] 10.1 Document the disambiguation workflow in agent code comments
+- [x] 10.2 Document the `AmbiguityInfo` data structure
+- [x] 10.3 Document the `clarify_components` tool usage
+- [x] 10.5 Prepare deployment notes for the disambiguation feature
+- [x] 10.6 Create rollback plan documentation
+- [x] 12.1 Add logging for disambiguation events (component ambiguity, clarification rounds)
+- [x] 12.2 Add metrics for disambiguation success rate
+- [x] 12.3 Add metrics for average clarification rounds per request
+- [x] 13.1 Modify ambiguity detection to only present options that match the user's description (keyword/semantic matching)
+- [x] 13.2 Add logic to filter out completely unrelated options from clarification prompts
+- [x] 13.3 Implement similarity threshold to determine which options are "matching" vs "unrelated"
