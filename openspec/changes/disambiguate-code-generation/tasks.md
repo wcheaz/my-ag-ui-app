@@ -122,6 +122,6 @@
 - [x] 13.5 Update system prompt to instruct agent to be confident and generate code directly when unambiguous
 - [x] 13.6 Modify agent response pattern to: "Generated code: [CODE]. Justification: [explanation]" instead of asking for confirmation
 - [x] 13.7 Write unit tests for selective option presentation (only showing matching options)
-- [ ] 13.8 Write unit tests for similarity threshold filtering
+- [x] 13.8 Write unit tests for similarity threshold filtering
 - [ ] 13.9 Write integration tests for generate-then-justify workflow pattern
 - [ ] 13.10 Write integration tests for confident agent behavior with clear inputs
