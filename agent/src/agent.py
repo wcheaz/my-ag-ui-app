@@ -77,6 +77,7 @@ from pydantic_ai.models import (
 from ag_ui.core import EventType, StateSnapshotEvent
 from llama_index.core import Settings
 import numpy as np
+from dotenv import load_dotenv
 
 # Local application imports
 from src.rag.index import get_index

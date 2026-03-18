@@ -6,7 +6,7 @@
 ## 2. Code Changes
 
 - [x] 2.1 Remove custom load_env function from agent.py (lines 90-106)
-- [ ] 2.2 Add `from dotenv import load_dotenv` import to agent.py imports section
+- [x] 2.2 Add `from dotenv import load_dotenv` import to agent.py imports section
 - [ ] 2.3 Replace load_env call with load_dotenv call at line 109
 - [ ] 2.4 Remove comment about manual env loading (lines 87-88)
 
