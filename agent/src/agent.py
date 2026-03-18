@@ -1141,10 +1141,78 @@ def parse_code_generation_rules(content: str) -> dict:
         )
         for code, industry, description in major_matches:
             if code.strip() and industry.strip():
+                # Enhanced keyword extraction for better matching
+                base_keywords = [industry.lower(), description.lower()]
+
+                # Add enhanced keywords based on the industry type
+                enhanced_keywords = []
+                industry_lower = industry.lower()
+
+                # Agricultural products
+                if "agricultural" in industry_lower or "farm" in industry_lower:
+                    enhanced_keywords.extend(
+                        ["agriculture", "farming", "crop", "harvest", "rural"]
+                    )
+
+                # Chemical products
+                elif "chemical" in industry_lower:
+                    enhanced_keywords.extend(
+                        ["chemicals", "compound", "formula", "synthetic", "industrial"]
+                    )
+
+                # Food and beverage
+                elif "food" in industry_lower or "beverage" in industry_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "food",
+                            "drink",
+                            "beverage",
+                            "edible",
+                            "consumable",
+                            "nutrition",
+                        ]
+                    )
+
+                # Metal products
+                elif "metal" in industry_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "metal",
+                            "metallic",
+                            "steel",
+                            "iron",
+                            "aluminum",
+                            "titanium",
+                            "alloy",
+                            "forging",
+                            "casting",
+                            "machining",
+                            "aircraft",
+                            "aerospace",
+                            "aviation",
+                        ]
+                    )
+
+                # Textile products
+                elif "textile" in industry_lower or "fabric" in industry_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "textile",
+                            "fabric",
+                            "cloth",
+                            "weaving",
+                            "sewing",
+                            "apparel",
+                            "clothing",
+                        ]
+                    )
+
+                all_keywords = base_keywords + enhanced_keywords
+
                 rules["major_category"][code.strip()] = {
                     "name": industry.strip(),
                     "description": description.strip(),
-                    "keywords": [industry.lower(), description.lower()],
+                    "keywords": all_keywords,
                 }
 
     # Extract manufacturing methods (B)
@@ -1157,10 +1225,98 @@ def parse_code_generation_rules(content: str) -> dict:
         )
         for code, method, description in method_matches:
             if code.strip() and method.strip():
+                # Enhanced keyword extraction for manufacturing methods
+                base_keywords = [method.lower(), description.lower()]
+
+                # Add enhanced keywords based on the manufacturing method
+                enhanced_keywords = []
+                method_lower = method.lower()
+
+                # Additive manufacturing / 3D printing
+                if "additive" in method_lower or "3d" in method_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "3d",
+                            "printing",
+                            "additive",
+                            "layer",
+                            "digital",
+                            "prototype",
+                            "printed",
+                        ]
+                    )
+
+                # Blow molding
+                elif "blow" in method_lower or "molding" in method_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "blow",
+                            "mold",
+                            "molding",
+                            "plastic",
+                            "bottle",
+                            "container",
+                            "hollow",
+                        ]
+                    )
+
+                # Casting
+                elif "cast" in method_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "cast",
+                            "casting",
+                            "mold",
+                            "pour",
+                            "metal",
+                            "foundry",
+                            "molten",
+                        ]
+                    )
+
+                # Forging
+                elif "forg" in method_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "forged",
+                            "forging",
+                            "hammer",
+                            "press",
+                            "shape",
+                            "metal",
+                            "hot",
+                        ]
+                    )
+
+                # Machining
+                elif "machin" in method_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "machined",
+                            "machining",
+                            "cnc",
+                            "machine",
+                            "mill",
+                            "lathe",
+                            "cut",
+                            "drill",
+                            "precision",
+                            "turn",
+                        ]
+                    )
+
+                # Welding
+                elif "weld" in method_lower:
+                    enhanced_keywords.extend(
+                        ["weld", "welding", "join", "fuse", "bond", "heat", "seam"]
+                    )
+
+                all_keywords = base_keywords + enhanced_keywords
+
                 rules["manufacturing_method"][code.strip()] = {
                     "name": method.strip(),
                     "description": description.strip(),
-                    "keywords": [method.lower(), description.lower()],
+                    "keywords": all_keywords,
                 }
 
     # Extract object shapes (C)
@@ -1173,10 +1329,106 @@ def parse_code_generation_rules(content: str) -> dict:
         )
         for code, shape, description in shape_matches:
             if code.strip() and shape.strip():
+                # Enhanced keyword extraction for object shapes
+                base_keywords = [shape.lower(), description.lower()]
+
+                # Add enhanced keywords based on the object shape
+                enhanced_keywords = []
+                shape_lower = shape.lower()
+
+                # Angular shapes
+                if "angular" in shape_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "angular",
+                            "sharp",
+                            "corner",
+                            "edge",
+                            "pointed",
+                            "angled",
+                            "cornered",
+                        ]
+                    )
+
+                # Barrel/cylindrical shapes
+                elif "barrel" in shape_lower or "cylindrical" in shape_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "barrel",
+                            "cylindrical",
+                            "cylinder",
+                            "round",
+                            "tube",
+                            "pipe",
+                            "circular",
+                            "curved",
+                        ]
+                    )
+
+                # Cubic shapes
+                elif "cubic" in shape_lower or "cube" in shape_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "cubic",
+                            "cube",
+                            "box",
+                            "rectangular",
+                            "square",
+                            "block",
+                            "solid",
+                        ]
+                    )
+
+                # Flat/sheet shapes
+                elif "flat" in shape_lower or "sheet" in shape_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "flat",
+                            "sheet",
+                            "plate",
+                            "planar",
+                            "surface",
+                            "level",
+                            "plain",
+                            "layer",
+                        ]
+                    )
+
+                # Round/spherical shapes
+                elif "round" in shape_lower or "spherical" in shape_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "round",
+                            "spherical",
+                            "sphere",
+                            "ball",
+                            "orb",
+                            "circular",
+                            "curved",
+                            "globe",
+                        ]
+                    )
+
+                # Tubular shapes
+                elif "tubular" in shape_lower or "tube" in shape_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "tubular",
+                            "tube",
+                            "pipe",
+                            "hollow",
+                            "cylinder",
+                            "cylindrical",
+                            "conduit",
+                        ]
+                    )
+
+                all_keywords = base_keywords + enhanced_keywords
+
                 rules["object_shape"][code.strip()] = {
                     "name": shape.strip(),
                     "description": description.strip(),
-                    "keywords": [shape.lower(), description.lower()],
+                    "keywords": all_keywords,
                 }
 
     # Extract material types (MM)
@@ -1204,13 +1456,97 @@ def parse_code_generation_rules(content: str) -> dict:
         )
         for code, quality, description in quality_matches:
             if code.strip() and quality.strip():
-                keywords = [quality.lower()]
+                # Enhanced keyword extraction for quality grades
+                base_keywords = [quality.lower()]
                 if description.strip():
-                    keywords.append(description.lower())
+                    base_keywords.append(description.lower())
+
+                # Add enhanced keywords based on the quality grade
+                enhanced_keywords = []
+                quality_lower = quality.lower()
+
+                # Standard quality
+                if "standard" in quality_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "standard",
+                            "regular",
+                            "normal",
+                            "basic",
+                            "common",
+                            "commercial",
+                        ]
+                    )
+
+                # Premium quality
+                elif "premium" in quality_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "premium",
+                            "high",
+                            "superior",
+                            "enhanced",
+                            "quality",
+                            "plus",
+                            "select",
+                        ]
+                    )
+
+                # Industrial quality
+                elif "industrial" in quality_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "industrial",
+                            "heavy",
+                            "duty",
+                            "commercial",
+                            "strong",
+                            "robust",
+                            "tough",
+                            "machinery",
+                        ]
+                    )
+
+                # Aerospace quality
+                elif "aerospace" in quality_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "aerospace",
+                            "aircraft",
+                            "aviation",
+                            "flight",
+                            "aeronautical",
+                            "airplane",
+                            "grade",
+                            "precision",
+                        ]
+                    )
+
+                # Medical quality
+                elif "medical" in quality_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "medical",
+                            "surgical",
+                            "hospital",
+                            "clinic",
+                            "healthcare",
+                            "sterile",
+                            "biocompatible",
+                            "implant",
+                        ]
+                    )
+
+                # Add "-grade" variations for all quality types (important for matching "Aerospace-grade", "Medical-grade")
+                grade_variations = [f"{quality_lower}-grade", f"{quality_lower}grade"]
+                enhanced_keywords.extend(grade_variations)
+
+                all_keywords = base_keywords + enhanced_keywords
+
                 rules["quality_grade"][code.strip()] = {
                     "name": quality.strip(),
                     "description": description.strip(),
-                    "keywords": keywords,
+                    "keywords": all_keywords,
                 }
 
     # Extract size categories (S)
@@ -1221,10 +1557,80 @@ def parse_code_generation_rules(content: str) -> dict:
         )
         for code, size, description in size_matches:
             if code.strip() and size.strip():
+                # Enhanced keyword extraction for size categories
+                base_keywords = [size.lower(), description.lower()]
+
+                # Add enhanced keywords based on the size category
+                enhanced_keywords = []
+                size_lower = size.lower()
+
+                # Small size
+                if "small" in size_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "small",
+                            "tiny",
+                            "mini",
+                            "micro",
+                            "compact",
+                            "little",
+                            "minute",
+                            " undersized",
+                        ]
+                    )
+
+                # Medium size
+                elif "medium" in size_lower or "med" in size_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "medium",
+                            "med",
+                            "average",
+                            "moderate",
+                            "middle",
+                            "intermediate",
+                            "normal",
+                            "regular",
+                        ]
+                    )
+
+                # Large size
+                elif "large" in size_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "large",
+                            "big",
+                            "huge",
+                            "sizable",
+                            "substantial",
+                            "major",
+                            "generous",
+                            "oversized",
+                        ]
+                    )
+
+                # Extra Large size
+                elif "extra" in size_lower or "xl" in size_lower:
+                    enhanced_keywords.extend(
+                        [
+                            "extra",
+                            "xl",
+                            "extra large",
+                            "jumbo",
+                            "giant",
+                            "enormous",
+                            "massive",
+                            "colossal",
+                            "oversized",
+                        ]
+                    )
+
+                all_keywords = base_keywords + enhanced_keywords
+
                 rules["size_category"][code.strip()] = {
                     "name": size.strip(),
                     "description": description.strip(),
-                    "keywords": [size.lower(), description.lower()],
+                    "keywords": all_keywords,
                 }
 
     return rules
@@ -1341,7 +1747,14 @@ def find_component_matches(
             # This ensures the option is relevant to the description while requiring keyword support
             pass  # Will be included - this option matches with keyword and semantic evidence
 
-        # Case 3: All other cases - Filter out as not matching user's description
+        # Case 3: Semantic similarity failed (returned 0.0) - Fall back to keyword-only matching
+        # This handles cases where llama_index is not available or semantic calculation fails
+        elif semantic_score == 0.0 and keyword_score >= 1:
+            # When semantic similarity fails, rely on keyword evidence
+            # This ensures basic functionality when semantic features are unavailable
+            pass  # Will be included - fallback to keyword matching when semantic fails
+
+        # Case 4: All other cases - Filter out as not matching user's description
         else:
             # Options that don't meet the above criteria don't truly match the user's description
             # This includes:
