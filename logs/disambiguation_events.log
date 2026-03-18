@@ -118,3 +118,870 @@ Components unambiguous: 0 (0.0%)
 Components guessed: 0 (0.0%)
 Components no match: 0 (0.0%)
 =====================================
+2026-03-17 21:26:10,595 - disambiguation_events - INFO - Starting clarification round 1 - User description: Stainless steel CNC machined flat sheet for medical device..., Similarity threshold: 0.3
+2026-03-17 21:26:10,595 - disambiguation_events - INFO - Starting ambiguity detection for user description: Stainless steel CNC machined flat sheet for medical device...
+2026-03-17 21:26:10,604 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:26:10,604 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,605 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,605 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,605 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,605 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,605 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,605 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,605 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,605 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,605 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,605 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,605 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,605 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:26:10,605 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 1
+2026-03-17 21:26:10,605 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:26:10,610 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:26:10,610 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMF015261, Description: Stainless steel CNC machined flat sheet for medical device, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:26:10,610 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 1, Rounds for this attempt: 1
+2026-03-17 21:26:10,612 - disambiguation_events - INFO - Starting clarification round 1 - User description: Steel I-beam for office building construction..., Similarity threshold: 0.3
+2026-03-17 21:26:10,612 - disambiguation_events - INFO - Starting ambiguity detection for user description: Steel I-beam for office building construction...
+2026-03-17 21:26:10,618 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:26:10,618 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,618 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,618 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,618 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,618 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,618 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,619 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,619 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,619 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,619 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,619 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,619 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,619 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:26:10,619 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 2
+2026-03-17 21:26:10,619 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:26:10,624 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:26:10,625 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MFA013261, Description: Steel I-beam for office building construction, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:26:10,625 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 2, Rounds for this attempt: 1
+2026-03-17 21:26:10,626 - disambiguation_events - INFO - Starting clarification round 1 - User description: Metal component for industrial use..., Similarity threshold: 0.3
+2026-03-17 21:26:10,626 - disambiguation_events - INFO - Starting ambiguity detection for user description: Metal component for industrial use...
+2026-03-17 21:26:10,632 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:26:10,632 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,632 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,632 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,632 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,632 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,632 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,632 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,632 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,632 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,632 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,632 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:26:10,632 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:10,632 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:26:10,632 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 3
+2026-03-17 21:26:10,632 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:26:10,637 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:26:49,026 - disambiguation_events - INFO - Starting clarification round 1 - User description: Stainless steel CNC machined flat sheet for medical device..., Similarity threshold: 0.3
+2026-03-17 21:26:49,026 - disambiguation_events - INFO - Starting ambiguity detection for user description: Stainless steel CNC machined flat sheet for medical device...
+2026-03-17 21:26:49,035 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:26:49,036 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,036 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,036 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,036 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,036 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,036 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,036 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,036 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,036 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,036 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,036 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,036 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,036 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:26:49,036 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 1
+2026-03-17 21:26:49,036 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:26:49,040 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:26:49,041 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMF015261, Description: Stainless steel CNC machined flat sheet for medical device, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:26:49,041 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 1, Rounds for this attempt: 1
+2026-03-17 21:26:49,042 - disambiguation_events - INFO - Starting clarification round 1 - User description: Steel I-beam for office building construction..., Similarity threshold: 0.3
+2026-03-17 21:26:49,043 - disambiguation_events - INFO - Starting ambiguity detection for user description: Steel I-beam for office building construction...
+2026-03-17 21:26:49,048 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:26:49,048 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,048 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,048 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,048 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,048 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,048 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,048 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,049 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,049 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,049 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,049 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,049 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,049 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:26:49,049 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 2
+2026-03-17 21:26:49,049 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:26:49,054 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:26:49,054 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MFA013261, Description: Steel I-beam for office building construction, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:26:49,054 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 2, Rounds for this attempt: 1
+2026-03-17 21:26:49,056 - disambiguation_events - INFO - Starting clarification round 1 - User description: Metal component for industrial use..., Similarity threshold: 0.3
+2026-03-17 21:26:49,056 - disambiguation_events - INFO - Starting ambiguity detection for user description: Metal component for industrial use...
+2026-03-17 21:26:49,060 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:26:49,060 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,060 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,060 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,060 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,060 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,060 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,060 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,061 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,061 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,061 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,061 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:26:49,061 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:26:49,061 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:26:49,061 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 3
+2026-03-17 21:26:49,061 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:26:49,065 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:27:35,832 - disambiguation_events - INFO - Starting clarification round 1 - User description: Metal component for industrial use..., Similarity threshold: 0.3
+2026-03-17 21:27:35,833 - disambiguation_events - INFO - Starting ambiguity detection for user description: Metal component for industrial use...
+2026-03-17 21:27:35,844 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:27:35,844 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:27:35,844 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:27:35,844 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:27:35,844 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:27:35,844 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:27:35,844 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:27:35,844 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:27:35,844 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:27:35,844 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:27:35,844 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:27:35,844 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:27:35,845 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:27:35,845 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:27:35,845 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 1
+2026-03-17 21:27:35,845 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:27:35,850 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:28:58,194 - disambiguation_events - INFO - Starting clarification round 1 - User description: Metal component for industrial use..., Similarity threshold: 0.3
+2026-03-17 21:28:58,194 - disambiguation_events - INFO - Starting ambiguity detection for user description: Metal component for industrial use...
+2026-03-17 21:28:58,204 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:28:58,204 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:28:58,204 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:28:58,204 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:28:58,204 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:28:58,204 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:28:58,204 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:28:58,204 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:28:58,204 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:28:58,204 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:28:58,204 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:28:58,204 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:28:58,204 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:28:58,204 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:28:58,205 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 1
+2026-03-17 21:28:58,205 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:28:58,209 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:28:58,210 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMC013261, Description: Metal component for industrial use, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:28:58,210 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 1, Rounds for this attempt: 1
+2026-03-17 21:29:10,212 - disambiguation_events - INFO - Starting clarification round 1 - User description: Stainless steel CNC machined flat sheet for medical device..., Similarity threshold: 0.3
+2026-03-17 21:29:10,212 - disambiguation_events - INFO - Starting ambiguity detection for user description: Stainless steel CNC machined flat sheet for medical device...
+2026-03-17 21:29:10,221 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:29:10,221 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,221 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,221 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,221 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,221 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,222 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,222 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,222 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,222 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,222 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,222 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,222 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,222 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:29:10,222 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 1
+2026-03-17 21:29:10,222 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:29:10,226 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:29:10,227 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMF015261, Description: Stainless steel CNC machined flat sheet for medical device, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:29:10,227 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 1, Rounds for this attempt: 1
+2026-03-17 21:29:10,228 - disambiguation_events - INFO - Starting clarification round 1 - User description: Steel I-beam for office building construction..., Similarity threshold: 0.3
+2026-03-17 21:29:10,229 - disambiguation_events - INFO - Starting ambiguity detection for user description: Steel I-beam for office building construction...
+2026-03-17 21:29:10,234 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:29:10,234 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,234 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,234 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,234 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,234 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,234 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,234 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,234 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,234 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,234 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,234 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,234 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,234 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:29:10,234 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 2
+2026-03-17 21:29:10,234 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:29:10,240 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:29:10,240 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MFA013261, Description: Steel I-beam for office building construction, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:29:10,240 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 2, Rounds for this attempt: 1
+2026-03-17 21:29:10,241 - disambiguation_events - INFO - Starting clarification round 1 - User description: Metal component for industrial use..., Similarity threshold: 0.3
+2026-03-17 21:29:10,241 - disambiguation_events - INFO - Starting ambiguity detection for user description: Metal component for industrial use...
+2026-03-17 21:29:10,246 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:29:10,246 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,246 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,246 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,246 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,246 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,246 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,246 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,246 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,246 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,246 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,247 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:29:10,247 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:29:10,247 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:29:10,247 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 3
+2026-03-17 21:29:10,247 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:29:10,251 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:29:10,251 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMC013261, Description: Metal component for industrial use, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:29:10,252 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 3, Rounds for this attempt: 1
+2026-03-17 21:47:11,290 - disambiguation_events - INFO - Starting clarification round 1 - User description: Aerospace-grade aluminum machined component for aircraft engine..., Similarity threshold: 0.3
+2026-03-17 21:47:11,290 - disambiguation_events - INFO - Starting ambiguity detection for user description: Aerospace-grade aluminum machined component for aircraft engine...
+2026-03-17 21:47:11,300 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:47:11,300 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,300 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,300 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,300 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,300 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,300 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,300 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,300 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,300 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,300 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,300 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,300 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,300 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:47:11,300 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 1
+2026-03-17 21:47:11,300 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:47:11,305 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:47:11,306 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMA024261, Description: Aerospace-grade aluminum machined component for aircraft engine, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:47:11,306 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 1, Rounds for this attempt: 1
+2026-03-17 21:47:11,306 - disambiguation_events - INFO - Starting clarification round 2 - User description: Medical-grade stainless steel flat surgical instrument..., Similarity threshold: 0.3
+2026-03-17 21:47:11,306 - disambiguation_events - INFO - Starting ambiguity detection for user description: Medical-grade stainless steel flat surgical instrument...
+2026-03-17 21:47:11,311 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:47:11,311 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,312 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,312 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,312 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,312 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,312 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,312 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,312 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,312 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,312 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,312 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,312 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,312 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:47:11,312 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 2
+2026-03-17 21:47:11,312 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:47:11,317 - disambiguation_events - INFO - Clarification round 2 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 2
+2026-03-17 21:47:11,317 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMF015261, Description: Medical-grade stainless steel flat surgical instrument, Total components: 6, Clarified components: 0, Clarification rounds: 2
+2026-03-17 21:47:11,317 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 2, Rounds for this attempt: 2
+2026-03-17 21:47:11,318 - disambiguation_events - INFO - Starting clarification round 3 - User description: Industrial forged steel cubic component for heavy machinery..., Similarity threshold: 0.3
+2026-03-17 21:47:11,318 - disambiguation_events - INFO - Starting ambiguity detection for user description: Industrial forged steel cubic component for heavy machinery...
+2026-03-17 21:47:11,323 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:47:11,323 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,323 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,323 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,323 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,323 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,323 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,323 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,323 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,323 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,323 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,323 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,323 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,323 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:47:11,323 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 3
+2026-03-17 21:47:11,323 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:47:11,329 - disambiguation_events - INFO - Clarification round 3 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 3
+2026-03-17 21:47:11,329 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MFC013361, Description: Industrial forged steel cubic component for heavy machinery, Total components: 6, Clarified components: 0, Clarification rounds: 3
+2026-03-17 21:47:11,329 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 3, Rounds for this attempt: 3
+2026-03-17 21:47:11,331 - disambiguation_events - INFO - Starting clarification round 1 - User description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining..., Similarity threshold: 0.3
+2026-03-17 21:47:11,332 - disambiguation_events - INFO - Starting ambiguity detection for user description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining...
+2026-03-17 21:47:11,338 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:47:11,338 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,338 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,338 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,338 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,338 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,338 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,338 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,338 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,338 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,338 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,338 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,338 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,338 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:47:11,338 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 4
+2026-03-17 21:47:11,338 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:47:11,344 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:47:11,344 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMA014261, Description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:47:11,344 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 4, Rounds for this attempt: 1
+2026-03-17 21:47:11,345 - disambiguation_events - INFO - Starting clarification round 1 - User description: Industrial-grade forged steel cubic component for heavy machinery..., Similarity threshold: 0.3
+2026-03-17 21:47:11,345 - disambiguation_events - INFO - Starting ambiguity detection for user description: Industrial-grade forged steel cubic component for heavy machinery...
+2026-03-17 21:47:11,350 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:47:11,350 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,350 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,350 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,351 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,351 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,351 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,351 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,351 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,351 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,351 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,351 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,351 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,351 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:47:11,351 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 5
+2026-03-17 21:47:11,351 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:47:11,356 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:47:11,356 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MFC013361, Description: Industrial-grade forged steel cubic component for heavy machinery, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:47:11,356 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 5, Rounds for this attempt: 1
+2026-03-17 21:47:11,357 - disambiguation_events - INFO - Starting clarification round 1 - User description: Medical-grade stainless steel flat surgical instrument for precision surgery..., Similarity threshold: 0.3
+2026-03-17 21:47:11,357 - disambiguation_events - INFO - Starting ambiguity detection for user description: Medical-grade stainless steel flat surgical instrument for precision surgery...
+2026-03-17 21:47:11,362 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:47:11,363 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,363 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,363 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,363 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,363 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,363 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,363 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,363 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,363 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,363 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,363 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:47:11,363 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:47:11,363 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:47:11,363 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 6
+2026-03-17 21:47:11,363 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:47:11,368 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:47:11,368 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMF015261, Description: Medical-grade stainless steel flat surgical instrument for precision surgery, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:47:11,368 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 6, Rounds for this attempt: 1
+2026-03-17 21:49:15,819 - disambiguation_events - INFO - Starting clarification round 1 - User description: Aerospace-grade aluminum machined component for aircraft engine..., Similarity threshold: 0.3
+2026-03-17 21:49:15,819 - disambiguation_events - INFO - Starting ambiguity detection for user description: Aerospace-grade aluminum machined component for aircraft engine...
+2026-03-17 21:49:15,828 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:49:15,828 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,828 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,828 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,828 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,828 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,828 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,829 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,829 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,829 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,829 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,829 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,829 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,829 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:49:15,829 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 1
+2026-03-17 21:49:15,829 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:49:15,834 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:49:15,834 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMA024261, Description: Aerospace-grade aluminum machined component for aircraft engine, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:49:15,834 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 1, Rounds for this attempt: 1
+2026-03-17 21:49:15,835 - disambiguation_events - INFO - Starting clarification round 2 - User description: Medical-grade stainless steel flat surgical instrument..., Similarity threshold: 0.3
+2026-03-17 21:49:15,835 - disambiguation_events - INFO - Starting ambiguity detection for user description: Medical-grade stainless steel flat surgical instrument...
+2026-03-17 21:49:15,840 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:49:15,840 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,840 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,840 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,840 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,840 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,840 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,840 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,840 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,840 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,840 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,840 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,840 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,840 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:49:15,840 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 2
+2026-03-17 21:49:15,840 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:49:15,845 - disambiguation_events - INFO - Clarification round 2 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 2
+2026-03-17 21:49:15,846 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMF015261, Description: Medical-grade stainless steel flat surgical instrument, Total components: 6, Clarified components: 0, Clarification rounds: 2
+2026-03-17 21:49:15,846 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 2, Rounds for this attempt: 2
+2026-03-17 21:49:15,846 - disambiguation_events - INFO - Starting clarification round 3 - User description: Industrial forged steel cubic component for heavy machinery..., Similarity threshold: 0.3
+2026-03-17 21:49:15,846 - disambiguation_events - INFO - Starting ambiguity detection for user description: Industrial forged steel cubic component for heavy machinery...
+2026-03-17 21:49:15,851 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:49:15,851 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,851 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,851 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,851 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,851 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,852 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,852 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,852 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,852 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,852 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,852 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,852 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,852 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:49:15,852 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 3
+2026-03-17 21:49:15,852 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:49:15,857 - disambiguation_events - INFO - Clarification round 3 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 3
+2026-03-17 21:49:15,857 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MFC013361, Description: Industrial forged steel cubic component for heavy machinery, Total components: 6, Clarified components: 0, Clarification rounds: 3
+2026-03-17 21:49:15,857 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 3, Rounds for this attempt: 3
+2026-03-17 21:49:15,859 - disambiguation_events - INFO - Starting clarification round 1 - User description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining..., Similarity threshold: 0.3
+2026-03-17 21:49:15,859 - disambiguation_events - INFO - Starting ambiguity detection for user description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining...
+2026-03-17 21:49:15,865 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:49:15,865 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,865 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,865 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,865 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,865 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,865 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,865 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,865 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,865 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,865 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,865 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,865 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,865 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:49:15,865 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 4
+2026-03-17 21:49:15,865 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:49:15,870 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:49:15,870 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMA014261, Description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:49:15,870 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 4, Rounds for this attempt: 1
+2026-03-17 21:49:15,872 - disambiguation_events - INFO - Starting clarification round 1 - User description: Industrial-grade forged steel cubic component for heavy machinery..., Similarity threshold: 0.3
+2026-03-17 21:49:15,872 - disambiguation_events - INFO - Starting ambiguity detection for user description: Industrial-grade forged steel cubic component for heavy machinery...
+2026-03-17 21:49:15,877 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:49:15,877 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,877 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,877 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,877 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,877 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,877 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,877 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,877 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,877 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,877 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,877 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,877 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,877 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:49:15,877 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 5
+2026-03-17 21:49:15,877 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:49:15,882 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:49:15,882 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MFC013361, Description: Industrial-grade forged steel cubic component for heavy machinery, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:49:15,882 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 5, Rounds for this attempt: 1
+2026-03-17 21:49:15,884 - disambiguation_events - INFO - Starting clarification round 1 - User description: Medical-grade stainless steel flat surgical instrument for precision surgery..., Similarity threshold: 0.3
+2026-03-17 21:49:15,884 - disambiguation_events - INFO - Starting ambiguity detection for user description: Medical-grade stainless steel flat surgical instrument for precision surgery...
+2026-03-17 21:49:15,889 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:49:15,889 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,889 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,889 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,889 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,889 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,889 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,889 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,889 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,889 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,889 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,889 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:49:15,889 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:49:15,889 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:49:15,889 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 6
+2026-03-17 21:49:15,889 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:49:15,894 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:49:15,894 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMF015261, Description: Medical-grade stainless steel flat surgical instrument for precision surgery, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:49:15,894 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 6, Rounds for this attempt: 1
+2026-03-17 21:51:41,062 - disambiguation_events - INFO - Starting clarification round 1 - User description: Aerospace-grade aluminum machined component for aircraft engine..., Similarity threshold: 0.3
+2026-03-17 21:51:41,062 - disambiguation_events - INFO - Starting ambiguity detection for user description: Aerospace-grade aluminum machined component for aircraft engine...
+2026-03-17 21:51:41,071 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 1, No matches: 5, Guess permission: False
+2026-03-17 21:51:41,071 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,071 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,071 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,071 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,071 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,071 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,071 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:51:41,071 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 02
+2026-03-17 21:51:41,071 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,071 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,071 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,071 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,071 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 1, Still ambiguous: 0, No matches: 5
+2026-03-17 21:51:41,071 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 1
+2026-03-17 21:51:41,071 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 1, Guessed: 0, No match: 5
+2026-03-17 21:51:41,076 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:51:41,076 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMA024261, Description: Aerospace-grade aluminum machined component for aircraft engine, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:51:41,076 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 1, Rounds for this attempt: 1
+2026-03-17 21:51:41,077 - disambiguation_events - INFO - Starting clarification round 2 - User description: Medical-grade stainless steel flat surgical instrument..., Similarity threshold: 0.3
+2026-03-17 21:51:41,077 - disambiguation_events - INFO - Starting ambiguity detection for user description: Medical-grade stainless steel flat surgical instrument...
+2026-03-17 21:51:41,081 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 1, No matches: 5, Guess permission: False
+2026-03-17 21:51:41,081 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,081 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,081 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,082 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,082 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,082 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,082 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:51:41,082 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 01
+2026-03-17 21:51:41,082 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,082 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,082 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,082 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,082 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 1, Still ambiguous: 0, No matches: 5
+2026-03-17 21:51:41,082 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 2
+2026-03-17 21:51:41,082 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 1, Guessed: 0, No match: 5
+2026-03-17 21:51:41,086 - disambiguation_events - INFO - Clarification round 2 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 2
+2026-03-17 21:51:41,086 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMF015261, Description: Medical-grade stainless steel flat surgical instrument, Total components: 6, Clarified components: 0, Clarification rounds: 2
+2026-03-17 21:51:41,086 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 2, Rounds for this attempt: 2
+2026-03-17 21:51:41,087 - disambiguation_events - INFO - Starting clarification round 3 - User description: Industrial forged steel cubic component for heavy machinery..., Similarity threshold: 0.3
+2026-03-17 21:51:41,087 - disambiguation_events - INFO - Starting ambiguity detection for user description: Industrial forged steel cubic component for heavy machinery...
+2026-03-17 21:51:41,092 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 1, No matches: 5, Guess permission: False
+2026-03-17 21:51:41,092 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,092 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,092 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,092 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,092 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,092 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,092 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:51:41,092 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 01
+2026-03-17 21:51:41,092 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,092 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,092 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,092 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,092 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 1, Still ambiguous: 0, No matches: 5
+2026-03-17 21:51:41,092 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 3
+2026-03-17 21:51:41,092 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 1, Guessed: 0, No match: 5
+2026-03-17 21:51:41,096 - disambiguation_events - INFO - Clarification round 3 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 3
+2026-03-17 21:51:41,097 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MFC013361, Description: Industrial forged steel cubic component for heavy machinery, Total components: 6, Clarified components: 0, Clarification rounds: 3
+2026-03-17 21:51:41,097 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 3, Rounds for this attempt: 3
+2026-03-17 21:51:41,098 - disambiguation_events - INFO - Starting clarification round 1 - User description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining..., Similarity threshold: 0.3
+2026-03-17 21:51:41,099 - disambiguation_events - INFO - Starting ambiguity detection for user description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining...
+2026-03-17 21:51:41,103 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 0, No matches: 6, Guess permission: False
+2026-03-17 21:51:41,103 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,103 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,103 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,103 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,103 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,103 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,103 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,103 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,103 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,103 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,104 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,104 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,104 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 0, No matches: 6
+2026-03-17 21:51:41,104 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 4
+2026-03-17 21:51:41,104 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 0, Guessed: 0, No match: 6
+2026-03-17 21:51:41,108 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:51:41,108 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMA014261, Description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:51:41,108 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 4, Rounds for this attempt: 1
+2026-03-17 21:51:41,110 - disambiguation_events - INFO - Starting clarification round 1 - User description: Industrial-grade forged steel cubic component for heavy machinery..., Similarity threshold: 0.3
+2026-03-17 21:51:41,110 - disambiguation_events - INFO - Starting ambiguity detection for user description: Industrial-grade forged steel cubic component for heavy machinery...
+2026-03-17 21:51:41,115 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 1, No matches: 5, Guess permission: False
+2026-03-17 21:51:41,116 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,116 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,116 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,116 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,116 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,116 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,116 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:51:41,116 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 01
+2026-03-17 21:51:41,116 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,116 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,116 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,116 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,116 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 1, Still ambiguous: 0, No matches: 5
+2026-03-17 21:51:41,116 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 5
+2026-03-17 21:51:41,116 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 1, Guessed: 0, No match: 5
+2026-03-17 21:51:41,121 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:51:41,122 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MFC013361, Description: Industrial-grade forged steel cubic component for heavy machinery, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:51:41,122 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 5, Rounds for this attempt: 1
+2026-03-17 21:51:41,123 - disambiguation_events - INFO - Starting clarification round 1 - User description: Medical-grade stainless steel flat surgical instrument for precision surgery..., Similarity threshold: 0.3
+2026-03-17 21:51:41,124 - disambiguation_events - INFO - Starting ambiguity detection for user description: Medical-grade stainless steel flat surgical instrument for precision surgery...
+2026-03-17 21:51:41,129 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 1, No matches: 5, Guess permission: False
+2026-03-17 21:51:41,129 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,130 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,130 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,130 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,130 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,130 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,130 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:51:41,130 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 01
+2026-03-17 21:51:41,130 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,130 - disambiguation_events - WARNING - Component 'Quality Grade' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,130 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:51:41,130 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:51:41,130 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 1, Still ambiguous: 0, No matches: 5
+2026-03-17 21:51:41,130 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 6
+2026-03-17 21:51:41,130 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 1, Guessed: 0, No match: 5
+2026-03-17 21:51:41,135 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:51:41,135 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMF015261, Description: Medical-grade stainless steel flat surgical instrument for precision surgery, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:51:41,135 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 6, Rounds for this attempt: 1
+2026-03-17 21:55:32,170 - disambiguation_events - INFO - Starting clarification round 1 - User description: Aerospace-grade aluminum machined component for aircraft engine..., Similarity threshold: 0.3
+2026-03-17 21:55:32,170 - disambiguation_events - INFO - Starting ambiguity detection for user description: Aerospace-grade aluminum machined component for aircraft engine...
+2026-03-17 21:55:32,182 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 2, No matches: 4, Guess permission: False
+2026-03-17 21:55:32,182 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,182 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,182 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,182 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,182 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,182 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,182 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:55:32,182 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 02
+2026-03-17 21:55:32,182 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: unambiguous, Matches: 1
+2026-03-17 21:55:32,182 - disambiguation_events - INFO - Component 'Quality Grade' determined as unambiguous - Selected value: 15
+2026-03-17 21:55:32,182 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,182 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,182 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 2, Still ambiguous: 0, No matches: 4
+2026-03-17 21:55:32,182 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 1
+2026-03-17 21:55:32,182 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 2, Guessed: 0, No match: 4
+2026-03-17 21:55:32,188 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:55:32,188 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMA024261, Description: Aerospace-grade aluminum machined component for aircraft engine, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:55:32,188 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 1, Rounds for this attempt: 1
+2026-03-17 21:55:32,189 - disambiguation_events - INFO - Starting clarification round 2 - User description: Medical-grade stainless steel flat surgical instrument..., Similarity threshold: 0.3
+2026-03-17 21:55:32,189 - disambiguation_events - INFO - Starting ambiguity detection for user description: Medical-grade stainless steel flat surgical instrument...
+2026-03-17 21:55:32,194 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 1, Unambiguous: 3, No matches: 2, Guess permission: False
+2026-03-17 21:55:32,194 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,194 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,194 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,194 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,194 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: unambiguous, Matches: 1
+2026-03-17 21:55:32,195 - disambiguation_events - INFO - Component 'Object Shape' determined as unambiguous - Selected value: S
+2026-03-17 21:55:32,195 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:55:32,195 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 01
+2026-03-17 21:55:32,195 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: ambiguous, Matches: 2
+2026-03-17 21:55:32,195 - disambiguation_events - INFO - Component 'Quality Grade' marked as ambiguous - Options: 2, Requires user clarification
+2026-03-17 21:55:32,195 - disambiguation_events - INFO - Processing component 'Size Category' - Status: unambiguous, Matches: 1
+2026-03-17 21:55:32,195 - disambiguation_events - INFO - Component 'Size Category' determined as unambiguous - Selected value: 3
+2026-03-17 21:55:32,195 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 3, Still ambiguous: 1, No matches: 2
+2026-03-17 21:55:32,195 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 2
+2026-03-17 21:55:32,195 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 1, Unambiguous: 3, Guessed: 0, No match: 2
+2026-03-17 21:55:32,200 - disambiguation_events - INFO - Processing ambiguous component 'Quality Grade' for clarification - Original matches: 2, Similarity threshold: 0.3
+2026-03-17 21:55:32,200 - disambiguation_events - INFO - Component 'Quality Grade' - Options after similarity threshold filtering: 0 (from 2 original matches)
+2026-03-17 21:55:32,200 - disambiguation_events - INFO - Clarification round 2 completed - Ambiguous components: 1, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 2
+2026-03-17 21:55:32,200 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMF015261, Description: Medical-grade stainless steel flat surgical instrument, Total components: 6, Clarified components: 0, Clarification rounds: 2
+2026-03-17 21:55:32,200 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 2, Rounds for this attempt: 2
+2026-03-17 21:55:32,201 - disambiguation_events - INFO - Starting clarification round 3 - User description: Industrial forged steel cubic component for heavy machinery..., Similarity threshold: 0.3
+2026-03-17 21:55:32,201 - disambiguation_events - INFO - Starting ambiguity detection for user description: Industrial forged steel cubic component for heavy machinery...
+2026-03-17 21:55:32,206 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 2, No matches: 4, Guess permission: False
+2026-03-17 21:55:32,206 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,206 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,206 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,207 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,207 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,207 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,207 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:55:32,207 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 01
+2026-03-17 21:55:32,207 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: unambiguous, Matches: 1
+2026-03-17 21:55:32,207 - disambiguation_events - INFO - Component 'Quality Grade' determined as unambiguous - Selected value: 10
+2026-03-17 21:55:32,207 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,207 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,207 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 2, Still ambiguous: 0, No matches: 4
+2026-03-17 21:55:32,207 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 3
+2026-03-17 21:55:32,207 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 2, Guessed: 0, No match: 4
+2026-03-17 21:55:32,212 - disambiguation_events - INFO - Clarification round 3 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 3
+2026-03-17 21:55:32,212 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MFC013361, Description: Industrial forged steel cubic component for heavy machinery, Total components: 6, Clarified components: 0, Clarification rounds: 3
+2026-03-17 21:55:32,212 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 3, Rounds for this attempt: 3
+2026-03-17 21:55:32,214 - disambiguation_events - INFO - Starting clarification round 1 - User description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining..., Similarity threshold: 0.3
+2026-03-17 21:55:32,214 - disambiguation_events - INFO - Starting ambiguity detection for user description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining...
+2026-03-17 21:55:32,220 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 1, No matches: 5, Guess permission: False
+2026-03-17 21:55:32,220 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,220 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,220 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,220 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,220 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,220 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,220 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,220 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,220 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: unambiguous, Matches: 1
+2026-03-17 21:55:32,220 - disambiguation_events - INFO - Component 'Quality Grade' determined as unambiguous - Selected value: 15
+2026-03-17 21:55:32,220 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,220 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,220 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 1, Still ambiguous: 0, No matches: 5
+2026-03-17 21:55:32,220 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 4
+2026-03-17 21:55:32,220 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 1, Guessed: 0, No match: 5
+2026-03-17 21:55:32,225 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:55:32,226 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMA014261, Description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:55:32,226 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 4, Rounds for this attempt: 1
+2026-03-17 21:55:32,227 - disambiguation_events - INFO - Starting clarification round 1 - User description: Industrial-grade forged steel cubic component for heavy machinery..., Similarity threshold: 0.3
+2026-03-17 21:55:32,227 - disambiguation_events - INFO - Starting ambiguity detection for user description: Industrial-grade forged steel cubic component for heavy machinery...
+2026-03-17 21:55:32,233 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 1, Unambiguous: 1, No matches: 4, Guess permission: False
+2026-03-17 21:55:32,233 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,233 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,233 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,233 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,233 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,233 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,233 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:55:32,233 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 01
+2026-03-17 21:55:32,233 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: ambiguous, Matches: 2
+2026-03-17 21:55:32,233 - disambiguation_events - INFO - Component 'Quality Grade' marked as ambiguous - Options: 2, Requires user clarification
+2026-03-17 21:55:32,233 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,233 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,233 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 1, Still ambiguous: 1, No matches: 4
+2026-03-17 21:55:32,233 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 5
+2026-03-17 21:55:32,233 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 1, Unambiguous: 1, Guessed: 0, No match: 4
+2026-03-17 21:55:32,239 - disambiguation_events - INFO - Processing ambiguous component 'Quality Grade' for clarification - Original matches: 2, Similarity threshold: 0.3
+2026-03-17 21:55:32,239 - disambiguation_events - INFO - Component 'Quality Grade' - Options after similarity threshold filtering: 0 (from 2 original matches)
+2026-03-17 21:55:32,239 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 1, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:55:32,240 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MFC013361, Description: Industrial-grade forged steel cubic component for heavy machinery, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:55:32,240 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 5, Rounds for this attempt: 1
+2026-03-17 21:55:32,241 - disambiguation_events - INFO - Starting clarification round 1 - User description: Medical-grade stainless steel flat surgical instrument for precision surgery..., Similarity threshold: 0.3
+2026-03-17 21:55:32,241 - disambiguation_events - INFO - Starting ambiguity detection for user description: Medical-grade stainless steel flat surgical instrument for precision surgery...
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 1, Unambiguous: 3, No matches: 2, Guess permission: False
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,248 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:55:32,248 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: unambiguous, Matches: 1
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Component 'Object Shape' determined as unambiguous - Selected value: S
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 01
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: ambiguous, Matches: 2
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Component 'Quality Grade' marked as ambiguous - Options: 2, Requires user clarification
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Processing component 'Size Category' - Status: unambiguous, Matches: 1
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Component 'Size Category' determined as unambiguous - Selected value: 3
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 3, Still ambiguous: 1, No matches: 2
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 6
+2026-03-17 21:55:32,248 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 1, Unambiguous: 3, Guessed: 0, No match: 2
+2026-03-17 21:55:32,254 - disambiguation_events - INFO - Processing ambiguous component 'Quality Grade' for clarification - Original matches: 2, Similarity threshold: 0.3
+2026-03-17 21:55:32,254 - disambiguation_events - INFO - Component 'Quality Grade' - Options after similarity threshold filtering: 0 (from 2 original matches)
+2026-03-17 21:55:32,254 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 1, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:55:32,255 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMF015261, Description: Medical-grade stainless steel flat surgical instrument for precision surgery, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:55:32,255 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 6, Rounds for this attempt: 1
+2026-03-17 21:58:26,263 - disambiguation_events - INFO - Starting clarification round 1 - User description: Aerospace-grade aluminum machined component for aircraft engine..., Similarity threshold: 0.3
+2026-03-17 21:58:26,263 - disambiguation_events - INFO - Starting ambiguity detection for user description: Aerospace-grade aluminum machined component for aircraft engine...
+2026-03-17 21:58:26,275 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 2, No matches: 4, Guess permission: False
+2026-03-17 21:58:26,275 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,275 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,275 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,275 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,275 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,275 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,275 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:58:26,275 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 02
+2026-03-17 21:58:26,275 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: unambiguous, Matches: 1
+2026-03-17 21:58:26,275 - disambiguation_events - INFO - Component 'Quality Grade' determined as unambiguous - Selected value: 15
+2026-03-17 21:58:26,275 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,275 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,276 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 2, Still ambiguous: 0, No matches: 4
+2026-03-17 21:58:26,276 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 1
+2026-03-17 21:58:26,276 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 2, Guessed: 0, No match: 4
+2026-03-17 21:58:26,284 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:58:26,285 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMA024261, Description: Aerospace-grade aluminum machined component for aircraft engine, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:58:26,285 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 1, Rounds for this attempt: 1
+2026-03-17 21:58:26,285 - disambiguation_events - INFO - Starting clarification round 2 - User description: Medical-grade stainless steel flat surgical instrument..., Similarity threshold: 0.3
+2026-03-17 21:58:26,286 - disambiguation_events - INFO - Starting ambiguity detection for user description: Medical-grade stainless steel flat surgical instrument...
+2026-03-17 21:58:26,292 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 1, Unambiguous: 3, No matches: 2, Guess permission: False
+2026-03-17 21:58:26,293 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,293 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,293 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,293 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,293 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: unambiguous, Matches: 1
+2026-03-17 21:58:26,293 - disambiguation_events - INFO - Component 'Object Shape' determined as unambiguous - Selected value: S
+2026-03-17 21:58:26,293 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:58:26,293 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 01
+2026-03-17 21:58:26,293 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: ambiguous, Matches: 2
+2026-03-17 21:58:26,293 - disambiguation_events - INFO - Component 'Quality Grade' marked as ambiguous - Options: 2, Requires user clarification
+2026-03-17 21:58:26,293 - disambiguation_events - INFO - Processing component 'Size Category' - Status: unambiguous, Matches: 1
+2026-03-17 21:58:26,293 - disambiguation_events - INFO - Component 'Size Category' determined as unambiguous - Selected value: 3
+2026-03-17 21:58:26,293 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 3, Still ambiguous: 1, No matches: 2
+2026-03-17 21:58:26,293 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 2
+2026-03-17 21:58:26,293 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 1, Unambiguous: 3, Guessed: 0, No match: 2
+2026-03-17 21:58:26,298 - disambiguation_events - INFO - Processing ambiguous component 'Quality Grade' for clarification - Original matches: 2, Similarity threshold: 0.3
+2026-03-17 21:58:26,299 - disambiguation_events - INFO - Component 'Quality Grade' - Options after similarity threshold filtering: 0 (from 2 original matches)
+2026-03-17 21:58:26,299 - disambiguation_events - INFO - Clarification round 2 completed - Ambiguous components: 1, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 2
+2026-03-17 21:58:26,299 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMF015261, Description: Medical-grade stainless steel flat surgical instrument, Total components: 6, Clarified components: 0, Clarification rounds: 2
+2026-03-17 21:58:26,299 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 2, Rounds for this attempt: 2
+2026-03-17 21:58:26,299 - disambiguation_events - INFO - Starting clarification round 3 - User description: Industrial forged steel cubic component for heavy machinery..., Similarity threshold: 0.3
+2026-03-17 21:58:26,299 - disambiguation_events - INFO - Starting ambiguity detection for user description: Industrial forged steel cubic component for heavy machinery...
+2026-03-17 21:58:26,306 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 2, No matches: 4, Guess permission: False
+2026-03-17 21:58:26,306 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,306 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,306 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,306 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,306 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,306 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,306 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:58:26,306 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 01
+2026-03-17 21:58:26,306 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: unambiguous, Matches: 1
+2026-03-17 21:58:26,306 - disambiguation_events - INFO - Component 'Quality Grade' determined as unambiguous - Selected value: 10
+2026-03-17 21:58:26,306 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,306 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,306 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 2, Still ambiguous: 0, No matches: 4
+2026-03-17 21:58:26,306 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 3
+2026-03-17 21:58:26,306 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 2, Guessed: 0, No match: 4
+2026-03-17 21:58:26,311 - disambiguation_events - INFO - Clarification round 3 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 3
+2026-03-17 21:58:26,312 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MFC013361, Description: Industrial forged steel cubic component for heavy machinery, Total components: 6, Clarified components: 0, Clarification rounds: 3
+2026-03-17 21:58:26,312 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 3, Rounds for this attempt: 3
+2026-03-17 21:58:26,313 - disambiguation_events - INFO - Starting clarification round 1 - User description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining..., Similarity threshold: 0.3
+2026-03-17 21:58:26,313 - disambiguation_events - INFO - Starting ambiguity detection for user description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining...
+2026-03-17 21:58:26,321 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 0, Unambiguous: 1, No matches: 5, Guess permission: False
+2026-03-17 21:58:26,321 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,321 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,321 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,321 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,321 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,321 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,321 - disambiguation_events - INFO - Processing component 'Material Type' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,321 - disambiguation_events - WARNING - Component 'Material Type' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,321 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: unambiguous, Matches: 1
+2026-03-17 21:58:26,321 - disambiguation_events - INFO - Component 'Quality Grade' determined as unambiguous - Selected value: 15
+2026-03-17 21:58:26,321 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,321 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,321 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 1, Still ambiguous: 0, No matches: 5
+2026-03-17 21:58:26,321 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 4
+2026-03-17 21:58:26,321 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 0, Unambiguous: 1, Guessed: 0, No match: 5
+2026-03-17 21:58:26,328 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 0, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:58:26,328 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMA014261, Description: Aerospace-grade titanium alloy turbine blade manufactured by CNC machining, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:58:26,328 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 4, Rounds for this attempt: 1
+2026-03-17 21:58:26,330 - disambiguation_events - INFO - Starting clarification round 1 - User description: Industrial-grade forged steel cubic component for heavy machinery..., Similarity threshold: 0.3
+2026-03-17 21:58:26,330 - disambiguation_events - INFO - Starting ambiguity detection for user description: Industrial-grade forged steel cubic component for heavy machinery...
+2026-03-17 21:58:26,337 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 1, Unambiguous: 1, No matches: 4, Guess permission: False
+2026-03-17 21:58:26,337 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,337 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,337 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,337 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,337 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,337 - disambiguation_events - WARNING - Component 'Object Shape' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,337 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:58:26,337 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 01
+2026-03-17 21:58:26,337 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: ambiguous, Matches: 2
+2026-03-17 21:58:26,337 - disambiguation_events - INFO - Component 'Quality Grade' marked as ambiguous - Options: 2, Requires user clarification
+2026-03-17 21:58:26,337 - disambiguation_events - INFO - Processing component 'Size Category' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,338 - disambiguation_events - WARNING - Component 'Size Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,338 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 1, Still ambiguous: 1, No matches: 4
+2026-03-17 21:58:26,338 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 5
+2026-03-17 21:58:26,338 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 1, Unambiguous: 1, Guessed: 0, No match: 4
+2026-03-17 21:58:26,343 - disambiguation_events - INFO - Processing ambiguous component 'Quality Grade' for clarification - Original matches: 2, Similarity threshold: 0.3
+2026-03-17 21:58:26,343 - disambiguation_events - INFO - Component 'Quality Grade' - Options after similarity threshold filtering: 0 (from 2 original matches)
+2026-03-17 21:58:26,343 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 1, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:58:26,344 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MFC013361, Description: Industrial-grade forged steel cubic component for heavy machinery, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:58:26,344 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 5, Rounds for this attempt: 1
+2026-03-17 21:58:26,345 - disambiguation_events - INFO - Starting clarification round 1 - User description: Medical-grade stainless steel flat surgical instrument for precision surgery..., Similarity threshold: 0.3
+2026-03-17 21:58:26,345 - disambiguation_events - INFO - Starting ambiguity detection for user description: Medical-grade stainless steel flat surgical instrument for precision surgery...
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 1, Unambiguous: 3, No matches: 2, Guess permission: False
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Processing component 'Major Category' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,352 - disambiguation_events - WARNING - Component 'Major Category' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: no_match, Matches: 0
+2026-03-17 21:58:26,352 - disambiguation_events - WARNING - Component 'Manufacturing Method' has no valid matches - Marked as ambiguous for user clarification
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: unambiguous, Matches: 1
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Component 'Object Shape' determined as unambiguous - Selected value: S
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Processing component 'Material Type' - Status: unambiguous, Matches: 1
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Component 'Material Type' determined as unambiguous - Selected value: 01
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: ambiguous, Matches: 2
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Component 'Quality Grade' marked as ambiguous - Options: 2, Requires user clarification
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Processing component 'Size Category' - Status: unambiguous, Matches: 1
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Component 'Size Category' determined as unambiguous - Selected value: 3
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 3, Still ambiguous: 1, No matches: 2
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 6
+2026-03-17 21:58:26,352 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 1, Unambiguous: 3, Guessed: 0, No match: 2
+2026-03-17 21:58:26,358 - disambiguation_events - INFO - Processing ambiguous component 'Quality Grade' for clarification - Original matches: 2, Similarity threshold: 0.3
+2026-03-17 21:58:26,358 - disambiguation_events - INFO - Component 'Quality Grade' - Options after similarity threshold filtering: 0 (from 2 original matches)
+2026-03-17 21:58:26,358 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 1, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 21:58:26,359 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: MMF015261, Description: Medical-grade stainless steel flat surgical instrument for precision surgery, Total components: 6, Clarified components: 0, Clarification rounds: 1
+2026-03-17 21:58:26,359 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 6, Rounds for this attempt: 1

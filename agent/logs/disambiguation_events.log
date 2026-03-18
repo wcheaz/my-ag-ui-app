@@ -1,0 +1,64 @@
+2026-03-17 22:41:12,836 - disambiguation_events - INFO - Starting clarification round 1 - User description: Aerospace grade aluminum component for aircraft wing, tight tolerances, 150mm..., Similarity threshold: 0.3
+2026-03-17 22:41:12,836 - disambiguation_events - INFO - Starting ambiguity detection for user description: Aerospace grade aluminum component for aircraft wing, tight tolerances, 150mm...
+2026-03-17 22:41:27,640 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 6, Unambiguous: 0, No matches: 0, Guess permission: False
+2026-03-17 22:41:27,640 - disambiguation_events - INFO - Processing component 'Major Category' - Status: ambiguous, Matches: 9
+2026-03-17 22:41:27,640 - disambiguation_events - INFO - Component 'Major Category' marked as ambiguous - Options: 9, Requires user clarification
+2026-03-17 22:41:27,640 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: ambiguous, Matches: 9
+2026-03-17 22:41:27,640 - disambiguation_events - INFO - Component 'Manufacturing Method' marked as ambiguous - Options: 9, Requires user clarification
+2026-03-17 22:41:27,641 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: ambiguous, Matches: 11
+2026-03-17 22:41:27,641 - disambiguation_events - INFO - Component 'Object Shape' marked as ambiguous - Options: 11, Requires user clarification
+2026-03-17 22:41:27,641 - disambiguation_events - INFO - Processing component 'Material Type' - Status: ambiguous, Matches: 22
+2026-03-17 22:41:27,641 - disambiguation_events - INFO - Component 'Material Type' marked as ambiguous - Options: 22, Requires user clarification
+2026-03-17 22:41:27,641 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: ambiguous, Matches: 22
+2026-03-17 22:41:27,641 - disambiguation_events - INFO - Component 'Quality Grade' marked as ambiguous - Options: 22, Requires user clarification
+2026-03-17 22:41:27,641 - disambiguation_events - INFO - Processing component 'Size Category' - Status: ambiguous, Matches: 9
+2026-03-17 22:41:27,641 - disambiguation_events - INFO - Component 'Size Category' marked as ambiguous - Options: 9, Requires user clarification
+2026-03-17 22:41:27,641 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 6, No matches: 0
+2026-03-17 22:41:27,641 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 1
+2026-03-17 22:41:27,641 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 6, Unambiguous: 0, Guessed: 0, No match: 0
+2026-03-17 22:41:40,169 - disambiguation_events - INFO - Processing ambiguous component 'Major Category' for clarification - Original matches: 9, Similarity threshold: 0.3
+2026-03-17 22:41:40,169 - disambiguation_events - INFO - Component 'Major Category' - Options after similarity threshold filtering: 9 (from 9 original matches)
+2026-03-17 22:41:40,169 - disambiguation_events - INFO - Processing ambiguous component 'Manufacturing Method' for clarification - Original matches: 9, Similarity threshold: 0.3
+2026-03-17 22:41:40,169 - disambiguation_events - INFO - Component 'Manufacturing Method' - Options after similarity threshold filtering: 9 (from 9 original matches)
+2026-03-17 22:41:40,169 - disambiguation_events - INFO - Processing ambiguous component 'Object Shape' for clarification - Original matches: 11, Similarity threshold: 0.3
+2026-03-17 22:41:40,169 - disambiguation_events - INFO - Component 'Object Shape' - Options after similarity threshold filtering: 11 (from 11 original matches)
+2026-03-17 22:41:40,169 - disambiguation_events - INFO - Processing ambiguous component 'Material Type' for clarification - Original matches: 22, Similarity threshold: 0.3
+2026-03-17 22:41:40,170 - disambiguation_events - INFO - Component 'Material Type' - Options after similarity threshold filtering: 22 (from 22 original matches)
+2026-03-17 22:41:40,170 - disambiguation_events - INFO - Processing ambiguous component 'Quality Grade' for clarification - Original matches: 22, Similarity threshold: 0.3
+2026-03-17 22:41:40,170 - disambiguation_events - INFO - Component 'Quality Grade' - Options after similarity threshold filtering: 22 (from 22 original matches)
+2026-03-17 22:41:40,170 - disambiguation_events - INFO - Processing ambiguous component 'Size Category' for clarification - Original matches: 9, Similarity threshold: 0.3
+2026-03-17 22:41:40,170 - disambiguation_events - INFO - Component 'Size Category' - Options after similarity threshold filtering: 9 (from 9 original matches)
+2026-03-17 22:41:40,170 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 6, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 22:42:49,356 - disambiguation_events - INFO - Starting clarification round 1 - User description: Aerospace grade aluminum component for aircraft wing, tight tolerances, 150mm, fabricated component..., Similarity threshold: 0.3
+2026-03-17 22:42:49,357 - disambiguation_events - INFO - Starting ambiguity detection for user description: Aerospace grade aluminum component for aircraft wing, tight tolerances, 150mm, fabricated component...
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Ambiguity detection completed - Ambiguous: 6, Unambiguous: 0, No matches: 0, Guess permission: False
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Processing component 'Major Category' - Status: ambiguous, Matches: 9
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Component 'Major Category' marked as ambiguous - Options: 9, Requires user clarification
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Processing component 'Manufacturing Method' - Status: ambiguous, Matches: 9
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Component 'Manufacturing Method' marked as ambiguous - Options: 9, Requires user clarification
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Processing component 'Object Shape' - Status: ambiguous, Matches: 11
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Component 'Object Shape' marked as ambiguous - Options: 11, Requires user clarification
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Processing component 'Material Type' - Status: ambiguous, Matches: 22
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Component 'Material Type' marked as ambiguous - Options: 22, Requires user clarification
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Processing component 'Quality Grade' - Status: ambiguous, Matches: 22
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Component 'Quality Grade' marked as ambiguous - Options: 22, Requires user clarification
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Processing component 'Size Category' - Status: ambiguous, Matches: 9
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Component 'Size Category' marked as ambiguous - Options: 9, Requires user clarification
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Ambiguity detection process completed - Total components processed: 6, Resolved components: 0, Still ambiguous: 6, No matches: 0
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Metrics: New disambiguation attempt recorded. Total attempts: 2
+2026-03-17 22:43:03,013 - disambiguation_events - INFO - Metrics: Component analysis recorded. This batch - Ambiguous: 6, Unambiguous: 0, Guessed: 0, No match: 0
+2026-03-17 22:43:17,587 - disambiguation_events - INFO - Processing ambiguous component 'Major Category' for clarification - Original matches: 9, Similarity threshold: 0.3
+2026-03-17 22:43:17,587 - disambiguation_events - INFO - Component 'Major Category' - Options after similarity threshold filtering: 9 (from 9 original matches)
+2026-03-17 22:43:17,587 - disambiguation_events - INFO - Processing ambiguous component 'Manufacturing Method' for clarification - Original matches: 9, Similarity threshold: 0.3
+2026-03-17 22:43:17,587 - disambiguation_events - INFO - Component 'Manufacturing Method' - Options after similarity threshold filtering: 9 (from 9 original matches)
+2026-03-17 22:43:17,587 - disambiguation_events - INFO - Processing ambiguous component 'Object Shape' for clarification - Original matches: 11, Similarity threshold: 0.3
+2026-03-17 22:43:17,587 - disambiguation_events - INFO - Component 'Object Shape' - Options after similarity threshold filtering: 11 (from 11 original matches)
+2026-03-17 22:43:17,587 - disambiguation_events - INFO - Processing ambiguous component 'Material Type' for clarification - Original matches: 22, Similarity threshold: 0.3
+2026-03-17 22:43:17,587 - disambiguation_events - INFO - Component 'Material Type' - Options after similarity threshold filtering: 22 (from 22 original matches)
+2026-03-17 22:43:17,588 - disambiguation_events - INFO - Processing ambiguous component 'Quality Grade' for clarification - Original matches: 22, Similarity threshold: 0.3
+2026-03-17 22:43:17,588 - disambiguation_events - INFO - Component 'Quality Grade' - Options after similarity threshold filtering: 22 (from 22 original matches)
+2026-03-17 22:43:17,588 - disambiguation_events - INFO - Processing ambiguous component 'Size Category' for clarification - Original matches: 9, Similarity threshold: 0.3
+2026-03-17 22:43:17,588 - disambiguation_events - INFO - Component 'Size Category' - Options after similarity threshold filtering: 9 (from 9 original matches)
+2026-03-17 22:43:17,588 - disambiguation_events - INFO - Clarification round 1 completed - Ambiguous components: 6, Unambiguous components: 0, Guessed components: 0, Total rounds completed: 1
+2026-03-17 22:44:25,214 - disambiguation_events - INFO - ✓ CODE SUCCESSFULLY GENERATED AND SAVED - Code: AFS02154261, Description: Aerospace grade aluminum component for aircraft wing, tight tolerances, 150mm, fabricated component, Total components: 0, Clarified components: 0, Clarification rounds: 0
+2026-03-17 22:44:25,214 - disambiguation_events - INFO - Metrics: Successful disambiguation recorded. Total successful: 1, Rounds for this attempt: 0

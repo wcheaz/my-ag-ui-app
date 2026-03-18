@@ -3,7 +3,7 @@
 ## Purpose
 The code disambiguation capability ensures that procurement codes are only generated after all required components are unambiguous and confirmed by the user. This prevents the generation of incorrect codes and improves user experience by surfacing clarification options before any code is created.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Parse User Description for Component Extraction
 The system MUST parse the user's description to identify the best match for each of the 8 required code components (Major Category, Manufacturing Method, Object Shape, Material Type, Quality Grade, Size Category, Year, Daily Sequence).
