@@ -85,7 +85,7 @@ from src.rag.settings import init_settings
 from src.rag.citation import enable_citation, CITATION_SYSTEM_PROMPT
 from src.rag.query import get_query_engine_tool
 
-load_env()
+load_dotenv()
 
 # Set up logging for disambiguation events
 logging.basicConfig(level=logging.INFO)
