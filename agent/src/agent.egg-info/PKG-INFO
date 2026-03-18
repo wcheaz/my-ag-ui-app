@@ -13,3 +13,4 @@ Requires-Dist: fastapi
 Requires-Dist: pydantic-ai
 Requires-Dist: logfire>=4.19.0
 Requires-Dist: torch
+Requires-Dist: python-dotenv
