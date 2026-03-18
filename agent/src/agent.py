@@ -84,28 +84,6 @@ from src.rag.settings import init_settings
 from src.rag.citation import enable_citation, CITATION_SYSTEM_PROMPT
 from src.rag.query import get_query_engine_tool
 
-# LOAD ENVIRONMENT VARIABLES manually since init_settings is disabled
-
-
-def load_env():
-    # Try finding .env file
-    paths = [
-        os.path.join(os.getcwd(), ".env"),
-        os.path.join(os.getcwd(), "..", ".env"),
-        os.path.join(os.path.dirname(__file__), "..", ".env"),
-        os.path.join(os.path.dirname(__file__), "..", "..", ".env"),
-    ]
-    for p in paths:
-        if os.path.exists(p):
-            with open(p, "r") as f:
-                for line in f:
-                    if "=" in line and not line.strip().startswith("#"):
-                        key, val = line.strip().split("=", 1)
-                        if not os.environ.get(key):
-                            os.environ[key] = val.strip().strip("'").strip('"')
-            break
-
-
 load_env()
 
 # Set up logging for disambiguation events
