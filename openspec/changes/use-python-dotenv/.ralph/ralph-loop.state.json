@@ -1,8 +1,8 @@
 {
   "active": true,
-  "iteration": 43,
+  "iteration": 59,
   "minIterations": 1,
-  "maxIterations": 50,
+  "maxIterations": 100,
   "completionPromise": "COMPLETE",
   "taskPromise": "READY_FOR_NEXT_TASK",
   "tasksMode": true,
@@ -11,6 +11,6 @@
   "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/use-python-dotenv/.ralph/prompt-template.md",
   "noCommit": false,
   "model": "",
-  "startedAt": "2026-03-18T03:31:41.162Z",
-  "resumedAt": null
+  "startedAt": "2026-03-18T17:27:48.727Z",
+  "resumedAt": "2026-03-18T17:27:48.727Z"
 }
