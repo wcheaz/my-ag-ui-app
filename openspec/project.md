@@ -27,7 +27,7 @@ This project implements an AI agent using Pydantic AI, designed to be served via
 - **RAG**: Use LlamaIndex for Retrieval-Augmented Generation.
 
 ### Testing Strategy
-[Explain your testing approach and requirements]
+When a test file is created, please put it in the "tests" directory. 
 
 ### Git Workflow
 [Describe your branching strategy and commit conventions]
@@ -35,6 +35,7 @@ This project implements an AI agent using Pydantic AI, designed to be served via
 ## Domain Context
 The current domain involves:
 - **Procurement Codes**: The agent suggests appropriate procurement codes.
+- **.env.copy**: Check instead of ".env" for env structure. 
 
 ## Existing Code
 - `agent/src/agent.py`: Defines the `agent` instance and its tools. It uses OpenAI's model (defaulting to `deepseek-chat`).

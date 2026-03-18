@@ -283,4 +283,15 @@ None - this is a straightforward refactoring with clear implementation path.
 ## Current Task Context
 
 ## Current Task
-- 1.1 Add python-dotenv to agent/pyproject.toml dependencies
+- 3.2 Confirm environment variables are loaded correctly from .env file
+## Completed Tasks for Git Commit
+- [x] 1.1 Add python-dotenv to agent/pyproject.toml dependencies
+- [x] 1.2 Install python-dotenv in development environment
+- [x] 2.1 Remove custom load_env function from agent.py (lines 90-106)
+- [x] 2.2 Add from dotenv import load_dotenv import to agent.py imports section
+- [x] 2.3 Replace load_env call with load_dotenv call at line 109
+- [x] 2.4 Remove comment about manual env loading (lines 87-88)
+- [x] 2.5 Remove custom load_env_file function from agent/src/rag/settings.py (lines 8-26)
+- [x] 2.6 Add from dotenv import load_dotenv import to agent/src/rag/settings.py
+- [x] 2.7 Replace load_env_file call with load_dotenv call in agent/src/rag/settings.py init_settings function
+- [x] 3.1 Verify agent starts without errors after changes
