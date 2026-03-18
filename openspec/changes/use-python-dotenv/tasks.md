@@ -1,7 +1,7 @@
 ## 1. Dependency Setup
 
 - [x] 1.1 Add python-dotenv to agent/pyproject.toml dependencies
-- [ ] 1.2 Install python-dotenv in development environment
+- [x] 1.2 Install python-dotenv in development environment
 
 ## 2. Code Changes
 
