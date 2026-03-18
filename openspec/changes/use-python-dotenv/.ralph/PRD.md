@@ -6,14 +6,19 @@
 
 ## Why
 
-The current [`load_env()`](agent.py:16-34) function in [`agent.py`](agent.py) manually parses `.env` files, which handles basic cases but misses edge cases like multiline values, quoted strings with embedded `=`, and other complex environment variable formats. This creates maintenance burden and potential for parsing errors. Using the industry-standard `python-dotenv` library provides robust, well-tested parsing that handles all edge cases and respects existing environment variables.
+The codebase contains TWO manual `.env` parsers that handle basic cases but miss edge cases like multiline values, quoted strings with embedded `=`, and other complex environment variable formats. This creates maintenance burden and potential for parsing errors. Using the industry-standard `python-dotenv` library provides robust, well-tested parsing that handles all edge cases and respects existing environment variables.
+
+**Two Manual Parsers Found:**
+1. [`load_env()`](agent.py:90-106) function in [`agent.py`](agent.py) - searches multiple paths for `.env` file
+2. `load_env_file()` function in [`agent/src/rag/settings.py`](agent/src/rag/settings.py) - tries to find `.env` in specific directories
 
 ## What Changes
 
-- Remove the custom [`load_env()`](agent.py:16-34) function (~20 lines) from [`agent.py`](agent.py)
+- Remove the custom [`load_env()`](agent.py:90-106) function (~20 lines) from [`agent.py`](agent.py)
+- Remove the custom `load_env_file()` function (~20 lines) from [`agent/src/rag/settings.py`](agent/src/rag/settings.py)
 - Add `python-dotenv` as a dependency in [`agent/pyproject.toml`](agent/pyproject.toml)
-- Replace manual environment loading with `from dotenv import load_dotenv; load_dotenv()`
-- Update imports in [`agent.py`](agent.py) to use the new library
+- Replace manual environment loading with `from dotenv import load_dotenv; load_dotenv()` in both locations
+- Update imports in [`agent.py`](agent.py) and [`agent/src/rag/settings.py`](agent/src/rag/settings.py) to use the new library
 
 ## Capabilities
 
@@ -26,6 +31,7 @@ The current [`load_env()`](agent.py:16-34) function in [`agent.py`](agent.py) ma
 ## Impact
 
 - **Code**: [`agent.py`](agent.py) - remove `load_env()` function, add `load_dotenv()` import and call
+- **Code**: [`agent/src/rag/settings.py`](agent/src/rag/settings.py) - remove `load_env_file()` function, add `load_dotenv()` import and call
 - **Dependencies**: [`agent/pyproject.toml`](agent/pyproject.toml) - add `python-dotenv` package
 - **Behavior**: No functional changes - environment variables will be loaded identically, but with more robust parsing
 - **Testing**: Existing tests should pass without modification since the behavior remains the same
@@ -38,22 +44,30 @@ The current [`load_env()`](agent.py:16-34) function in [`agent.py`](agent.py) ma
 
 ## Context
 
-The current [`load_env()`](agent.py:90-106) function in [`agent.py`](agent.py) manually parses `.env` files using basic string manipulation. This implementation:
+The codebase contains TWO manual `.env` parsers that handle basic cases but miss edge cases.
 
+**Parser 1: [`load_env()`](agent.py:90-106) in [`agent.py`](agent.py)**
 - Searches multiple directory paths for `.env` file
 - Reads file line by line
 - Splits on first `=` character
 - Strips quotes from values
 - Only sets environment variables if they don't already exist
 
-**Current Limitations:**
+**Parser 2: `load_env_file()` in [`agent/src/rag/settings.py`](agent/src/rag/settings.py:8-26)**
+- Searches specific directory paths for `.env` file
+- Reads file line by line
+- Splits on first `=` character
+- Strips quotes from values
+- Only sets environment variables if they don't already exist
+
+**Current Limitations (both parsers):**
 - No support for multiline values
 - No support for quoted strings containing `=` characters
 - No support for comments after values
 - No support for variable expansion (`${VAR}`)
 - No support for export statements
 - Fragile parsing that can break on edge cases
-- ~20 lines of custom code to maintain
+- ~40 lines of custom code to maintain (20 lines per parser)
 
 **Why This Matters:**
 Environment variable parsing is a critical bootstrap operation. Failures here prevent the agent from starting. The manual parser works for simple cases but lacks robustness and maintainability compared to battle-tested libraries.
@@ -94,19 +108,28 @@ Environment variable parsing is a critical bootstrap operation. Failures here pr
 
 ### 2. Import and Call Pattern
 
-**Decision:** Import `load_dotenv` at module level and call immediately after import.
+**Decision:** Import `load_dotenv` at module level and call immediately after import in both locations.
 
 **Rationale:**
-- **Simplicity:** Single function call replaces 20+ lines of custom code
+- **Simplicity:** Single function call replaces 40+ lines of custom code (20 lines per parser)
 - **Early Loading:** Ensures environment variables are available for all subsequent code
 - **Explicit:** Makes environment loading visible and intentional
 - **No Side Effects:** `load_dotenv()` is idempotent and safe to call multiple times
+- **Consistency:** Using same library in both locations prevents path resolution issues
 
 **Implementation:**
 ```python
+# In agent.py
 from dotenv import load_dotenv
 
 load_dotenv()  # Load .env file, respecting existing env vars
+
+# In agent/src/rag/settings.py
+from dotenv import load_dotenv
+
+def init_settings():
+    load_dotenv()  # Load .env file, respecting existing env vars
+    # Rest of init_settings() implementation...
 ```
 
 ### 3. Dependency Management
@@ -212,11 +235,17 @@ load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
    - Add import: `from dotenv import load_dotenv`
    - Replace `load_env()` call (line 109) with `load_dotenv()`
 
+3. **Update [`agent/src/rag/settings.py`](agent/src/rag/settings.py)**
+   - Remove `load_env_file()` function (lines 8-26)
+   - Add import: `from dotenv import load_dotenv`
+   - Replace `load_env_file()` call in `init_settings()` with `load_dotenv()`
+
 3. **Test Locally**
    - Verify agent starts successfully
    - Confirm environment variables are loaded
    - Check that all tools work correctly
    - Test with various `.env` file formats
+   - Test that both agent.py and rag/settings.py load environment correctly
 
 4. **Commit Changes**
    - Commit dependency update
@@ -226,10 +255,11 @@ load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 ### Rollback Strategy
 
 **If Issues Arise:**
-1. **Revert Code:** Restore original [`load_env()`](agent.py:90-106) function and call
-2. **Remove Dependency:** Remove `python-dotenv` from [`agent/pyproject.toml`](agent/pyproject.toml)
-3. **Redeploy:** Deploy previous working version
-4. **Investigate:** Debug why `python-dotenv` failed before retrying
+1. **Revert Code:** Restore original [`load_env()`](agent.py:90-106) function and call in [`agent.py`](agent.py)
+2. **Revert Code:** Restore original `load_env_file()` function and call in [`agent/src/rag/settings.py`](agent/src/rag/settings.py)
+3. **Remove Dependency:** Remove `python-dotenv` from [`agent/pyproject.toml`](agent/pyproject.toml)
+4. **Redeploy:** Deploy previous working version
+5. **Investigate:** Debug why `python-dotenv` failed before retrying
 
 **Rollback Time:** < 5 minutes (simple git revert and redeploy)
 
@@ -253,18 +283,4 @@ None - this is a straightforward refactoring with clear implementation path.
 ## Current Task Context
 
 ## Current Task
-- 4.3 Confirm backward compatibility with existing .env files
-## Completed Tasks for Git Commit
-- [x] 1.1 Add `python-dotenv` to agent/pyproject.toml dependencies
-- [x] 1.2 Install python-dotenv in development environment
-- [x] 2.1 Remove custom load_env function from agent.py (lines 90-106)
-- [x] 2.2 Add `from dotenv import load_dotenv` import to agent.py imports section
-- [x] 2.3 Replace load_env call with load_dotenv call at line 109
-- [x] 2.4 Remove comment about manual env loading (lines 87-88)
-- [x] 3.1 Verify agent starts without errors after changes
-- [x] 3.2 Confirm environment variables are loaded correctly from .env file
-- [x] 3.3 Test that all agent tools work correctly with loaded environment variables
-- [x] 3.4 Test with various .env file formats (simple values, quoted values, comments)
-- [x] 3.5 Run existing test suite to ensure no regressions
-- [x] 4.1 Verify no performance degradation in agent startup time
-- [x] 4.2 Check for security vulnerabilities in python-dotenv dependency
+- 1.1 Add python-dotenv to agent/pyproject.toml dependencies

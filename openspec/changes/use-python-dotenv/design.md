@@ -1,21 +1,29 @@
 ## Context
 
-The current [`load_env()`](agent.py:90-106) function in [`agent.py`](agent.py) manually parses `.env` files using basic string manipulation. This implementation:
+The codebase contains TWO manual `.env` parsers that handle basic cases but miss edge cases.
 
+**Parser 1: [`load_env()`](agent.py:90-106) in [`agent.py`](agent.py)**
 - Searches multiple directory paths for `.env` file
 - Reads file line by line
 - Splits on first `=` character
 - Strips quotes from values
 - Only sets environment variables if they don't already exist
 
-**Current Limitations:**
+**Parser 2: `load_env_file()` in [`agent/src/rag/settings.py`](agent/src/rag/settings.py:8-26)**
+- Searches specific directory paths for `.env` file
+- Reads file line by line
+- Splits on first `=` character
+- Strips quotes from values
+- Only sets environment variables if they don't already exist
+
+**Current Limitations (both parsers):**
 - No support for multiline values
 - No support for quoted strings containing `=` characters
 - No support for comments after values
 - No support for variable expansion (`${VAR}`)
 - No support for export statements
 - Fragile parsing that can break on edge cases
-- ~20 lines of custom code to maintain
+- ~40 lines of custom code to maintain (20 lines per parser)
 
 **Why This Matters:**
 Environment variable parsing is a critical bootstrap operation. Failures here prevent the agent from starting. The manual parser works for simple cases but lacks robustness and maintainability compared to battle-tested libraries.
@@ -56,19 +64,28 @@ Environment variable parsing is a critical bootstrap operation. Failures here pr
 
 ### 2. Import and Call Pattern
 
-**Decision:** Import `load_dotenv` at module level and call immediately after import.
+**Decision:** Import `load_dotenv` at module level and call immediately after import in both locations.
 
 **Rationale:**
-- **Simplicity:** Single function call replaces 20+ lines of custom code
+- **Simplicity:** Single function call replaces 40+ lines of custom code (20 lines per parser)
 - **Early Loading:** Ensures environment variables are available for all subsequent code
 - **Explicit:** Makes environment loading visible and intentional
 - **No Side Effects:** `load_dotenv()` is idempotent and safe to call multiple times
+- **Consistency:** Using same library in both locations prevents path resolution issues
 
 **Implementation:**
 ```python
+# In agent.py
 from dotenv import load_dotenv
 
 load_dotenv()  # Load .env file, respecting existing env vars
+
+# In agent/src/rag/settings.py
+from dotenv import load_dotenv
+
+def init_settings():
+    load_dotenv()  # Load .env file, respecting existing env vars
+    # Rest of init_settings() implementation...
 ```
 
 ### 3. Dependency Management
@@ -174,11 +191,17 @@ load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
    - Add import: `from dotenv import load_dotenv`
    - Replace `load_env()` call (line 109) with `load_dotenv()`
 
+3. **Update [`agent/src/rag/settings.py`](agent/src/rag/settings.py)**
+   - Remove `load_env_file()` function (lines 8-26)
+   - Add import: `from dotenv import load_dotenv`
+   - Replace `load_env_file()` call in `init_settings()` with `load_dotenv()`
+
 3. **Test Locally**
    - Verify agent starts successfully
    - Confirm environment variables are loaded
    - Check that all tools work correctly
    - Test with various `.env` file formats
+   - Test that both agent.py and rag/settings.py load environment correctly
 
 4. **Commit Changes**
    - Commit dependency update
@@ -188,10 +211,11 @@ load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 ### Rollback Strategy
 
 **If Issues Arise:**
-1. **Revert Code:** Restore original [`load_env()`](agent.py:90-106) function and call
-2. **Remove Dependency:** Remove `python-dotenv` from [`agent/pyproject.toml`](agent/pyproject.toml)
-3. **Redeploy:** Deploy previous working version
-4. **Investigate:** Debug why `python-dotenv` failed before retrying
+1. **Revert Code:** Restore original [`load_env()`](agent.py:90-106) function and call in [`agent.py`](agent.py)
+2. **Revert Code:** Restore original `load_env_file()` function and call in [`agent/src/rag/settings.py`](agent/src/rag/settings.py)
+3. **Remove Dependency:** Remove `python-dotenv` from [`agent/pyproject.toml`](agent/pyproject.toml)
+4. **Redeploy:** Deploy previous working version
+5. **Investigate:** Debug why `python-dotenv` failed before retrying
 
 **Rollback Time:** < 5 minutes (simple git revert and redeploy)
 
