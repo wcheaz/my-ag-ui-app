@@ -120,7 +120,7 @@
 - [x] 13.3 Implement similarity threshold to determine which options are "matching" vs "unrelated"
 - [x] 13.4 Change workflow to generate code first, then provide justification (remove pre-generation confirmation)
 - [x] 13.5 Update system prompt to instruct agent to be confident and generate code directly when unambiguous
-- [ ] 13.6 Modify agent response pattern to: "Generated code: [CODE]. Justification: [explanation]" instead of asking for confirmation
+- [x] 13.6 Modify agent response pattern to: "Generated code: [CODE]. Justification: [explanation]" instead of asking for confirmation
 - [ ] 13.7 Write unit tests for selective option presentation (only showing matching options)
 - [ ] 13.8 Write unit tests for similarity threshold filtering
 - [ ] 13.9 Write integration tests for generate-then-justify workflow pattern
