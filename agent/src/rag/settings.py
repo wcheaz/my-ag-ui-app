@@ -8,7 +8,7 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 def init_settings():
     # Load environment variables from .env file
-    load_dotenv()
+    load_dotenv(dotenv_path="../.env")
 
     # Check for OpenAI API key in environment to be used as DeepSeek Key
     if os.getenv("OPENAI_API_KEY") is None:
