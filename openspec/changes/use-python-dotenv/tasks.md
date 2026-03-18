@@ -5,13 +5,13 @@
 
 ## 2. Code Changes
 
-- [ ] 2.1 Remove custom load_env function from agent.py (lines 90-106)
-- [ ] 2.2 Add from dotenv import load_dotenv import to agent.py imports section
-- [ ] 2.3 Replace load_env call with load_dotenv call at line 109
-- [ ] 2.4 Remove comment about manual env loading (lines 87-88)
-- [ ] 2.5 Remove custom load_env_file function from agent/src/rag/settings.py (lines 8-26)
-- [ ] 2.6 Add from dotenv import load_dotenv import to agent/src/rag/settings.py
-- [ ] 2.7 Replace load_env_file call with load_dotenv call in agent/src/rag/settings.py init_settings function
+- [x] 2.1 Remove custom load_env function from agent.py (lines 90-106)
+- [x] 2.2 Add from dotenv import load_dotenv import to agent.py imports section
+- [x] 2.3 Replace load_env call with load_dotenv call at line 109
+- [x] 2.4 Remove comment about manual env loading (lines 87-88)
+- [x] 2.5 Remove custom load_env_file function from agent/src/rag/settings.py (lines 8-26)
+- [x] 2.6 Add from dotenv import load_dotenv import to agent/src/rag/settings.py
+- [x] 2.7 Replace load_env_file call with load_dotenv call in agent/src/rag/settings.py init_settings function
 
 ## 3. Testing
 
