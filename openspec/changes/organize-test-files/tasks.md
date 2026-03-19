@@ -11,7 +11,7 @@
 - [x] 2.2 Move all debug*.py files to test/ directory using git mv: `git mv debug*.py test/`
 - [x] 2.3 Move all check*.py files to test/ directory using git mv: `git mv check*.py test/`
 - [x] 2.4 Move all measure*.py files to test/ directory using git mv: `git mv measure*.py test/`
-- [ ] 2.5 Move all performance*.py files to test/ directory using git mv: `git mv performance*.py test/` and `git mv env_performance*.py test/`
+- [x] 2.5 Move all performance*.py files to test/ directory using git mv: `git mv performance*.py test/` and `git mv env_performance*.py test/`
 - [ ] 2.6 Move all verify*.py files to test/ directory using git mv: `git mv verify*.py test/`
 - [ ] 2.7 Move all validate*.py files to test/ directory using git mv: `git mv validate*.py test/`
 - [ ] 2.8 Verify all files were moved successfully by checking the test/ directory: `ls test/ | wc -l` (should show 70+ files)
