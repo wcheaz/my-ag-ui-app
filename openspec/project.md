@@ -27,7 +27,27 @@ This project implements an AI agent using Pydantic AI, designed to be served via
 - **RAG**: Use LlamaIndex for Retrieval-Augmented Generation.
 
 ### Testing Strategy
-When a test file is created, please put it in the "test" directory. 
+All development and testing files must be placed in the `test/` directory located at the project root. This includes:
+
+- **Test files**: Files matching `test*.py` pattern (e.g., `test_agent_tools.py`, `test_complete_workflow.py`)
+- **Debug files**: Files matching `debug*.py` pattern (e.g., `debug_parsing.py`, `debug_component_extraction.py`)
+- **Check files**: Files matching `check*.py` pattern (e.g., `check_version.py`)
+- **Measure files**: Files matching `measure*.py` pattern (e.g., `measure_startup_time.py`)
+- **Performance files**: Files matching `performance*.py` or `env_performance*.py` patterns (e.g., `performance_test.py`, `env_performance_test.py`)
+- **Verify files**: Files matching `verify*.py` pattern (e.g., `verify_datetime_fix.py`, `verify_flag_reset.py`)
+- **Validate files**: Files matching `validate*.py` pattern (e.g., `validate_similarity_threshold.py`)
+
+**Naming Conventions:**
+- Test files: Use `test_*.py` prefix
+- Debug files: Use `debug_*.py` prefix
+- Check files: Use `check_*.py` prefix
+- Measure files: Use `measure_*.py` prefix
+- Performance files: Use `performance_*.py` or `env_performance_*.py` prefix
+- Verify files: Use `verify_*.py` prefix
+- Validate files: Use `validate_*.py` prefix
+
+**Running Tests:**
+When running test files from the `test/` directory, ensure proper import paths. Most files can be run directly with `python test/your_test_file.py` from the project root, or by navigating to the `test/` directory first. 
 
 ### Git Workflow
 [Describe your branching strategy and commit conventions]
