@@ -46,6 +46,27 @@ The system SHALL configure liveness and readiness probes to ensure Kubernetes ca
 - **THEN** Kubernetes restarts the pod automatically
 - **AND** the pod returns to a healthy state
 
+### Requirement: Deployment must use environment variables and secrets
+The system SHALL configure environment variables for the application using Kubernetes secrets for sensitive data and ConfigMaps for non-sensitive configuration, referencing .env.example for required variables.
+
+#### Scenario: Environment variables are configured
+- **WHEN** deployment manifest is examined
+- **THEN** it includes environment variable references from secrets or ConfigMaps
+- **AND** sensitive variables (API keys, tokens) use Kubernetes secrets
+- **AND** non-sensitive variables use ConfigMaps or direct values
+
+#### Scenario: .env.example is available as reference
+- **WHEN** .env.example file is examined
+- **THEN** it lists all required environment variables
+- **THEN** it can be read by ralph-loop automation
+- **AND** it provides documentation for each variable
+
+#### Scenario: Secrets are created and applied
+- **WHEN** deployment script is executed
+- **THEN** Kubernetes secrets are created from provided values
+- **AND** secrets are applied to the cluster before deployment
+- **AND** secrets are not logged or exposed in plain text
+
 ### Requirement: System must provide Kubernetes service manifest
 The system SHALL provide a service.yaml manifest that defines how the application is exposed within the cluster, including port configuration and selector.
 
