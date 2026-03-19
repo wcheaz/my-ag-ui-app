@@ -45,9 +45,9 @@
 - [x] 4.3 Enable dns add-on in microk8s
 - [x] 4.4 Enable storage add-on in microk8s
 - [x] 4.5 Enable ingress add-on in microk8s
-- [ ] 4.6 Wait for microk8s to be ready
-- [ ] 4.7 Verify microk8s status after installation
-- [ ] 4.8 Add microk8s error handling to deployment script
+- [x] 4.6 Wait for microk8s to be ready
+- [x] 4.7 Verify microk8s status after installation
+- [x] 4.8 Add microk8s error handling to deployment script
 - [ ] 4.9 Test microk8s installation and add-on enablement
 
 ## 5. Container Image Deployment
