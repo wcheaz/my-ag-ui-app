@@ -80,7 +80,7 @@
 - [x] 7.2 Add pre-deployment checks (multipass, Docker, resources)
 - [x] 7.3 Add VM provisioning section
 - [x] 7.4 Add microk8s installation section
-- [ ] 7.5 Add container build section
+- [x] 7.5 Add container build section
 - [ ] 7.6 Add Kubernetes deployment section
 - [ ] 7.7 Add verification steps after each section
 - [ ] 7.8 Add progress feedback messages throughout script
