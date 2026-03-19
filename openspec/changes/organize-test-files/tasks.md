@@ -29,7 +29,7 @@
 
 ## 5. Validation
 
-- [ ] 5.1 Run a sample of test files to verify they work correctly: `cd test/ && python test_complete_workflow_simple.py`
+- [x] 5.1 Run a sample of test files to verify they work correctly: `cd test/ && python test_complete_workflow_simple.py`
 - [ ] 5.2 Run a sample of debug files to verify they work correctly: `cd test/ && python debug_parsing.py`
 - [ ] 5.3 Run a sample of verify files to verify they work correctly: `cd test/ && python verify_datetime_fix.py`
 - [ ] 5.4 Check for any import errors or path issues in the executed files

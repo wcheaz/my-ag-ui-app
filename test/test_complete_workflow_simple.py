@@ -11,7 +11,7 @@ import tempfile
 import shutil
 
 # We need to run this from the agent directory to access dependencies
-agent_dir = os.path.join(os.path.dirname(__file__), "agent")
+agent_dir = os.path.join(os.path.dirname(__file__), "..", "agent")
 os.chdir(agent_dir)
 
 # Add the agent src directory to the Python path
