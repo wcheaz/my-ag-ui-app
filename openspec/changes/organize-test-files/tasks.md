@@ -30,17 +30,17 @@
 ## 5. Validation
 
 - [x] 5.1 Run a sample of test files to verify they work correctly: `cd test/ && python test_complete_workflow_simple.py`
-- [ ] 5.2 Run a sample of debug files to verify they work correctly: `cd test/ && python debug_parsing.py`
-- [ ] 5.3 Run a sample of verify files to verify they work correctly: `cd test/ && python verify_datetime_fix.py`
-- [ ] 5.4 Check for any import errors or path issues in the executed files
-- [ ] 5.5 If import errors are found, identify the pattern and add `test/` to PYTHONPATH in relevant scripts or update problematic imports
-- [ ] 5.6 Update any script references found in step 1.2 to use the new path (e.g., update `./test_file.py` to `./test/test_file.py`)
-- [ ] 5.7 Verify all updated script references work correctly
+- [x] 5.2 Run a sample of debug files to verify they work correctly: `cd test/ && python debug_parsing.py`
+- [x] 5.3 Run a sample of verify files to verify they work correctly: `cd test/ && python verify_datetime_fix.py`
+- [x] 5.4 Check for any import errors or path issues in the executed files
+- [x] 5.5 If import errors are found, identify the pattern and add `test/` to PYTHONPATH in relevant scripts or update problematic imports
+- [x] 5.6 Update any script references found in step 1.2 to use the new path (e.g., update `./test_file.py` to `./test/test_file.py`)
+- [x] 5.7 Verify all updated script references work correctly
 
 ## 6. Final Verification
 
-- [ ] 6.1 Verify Git status shows all moved files: `git status`
-- [ ] 6.2 Verify the project root is cleaner and easier to navigate: `ls` (should show significantly fewer files)
-- [ ] 6.3 Verify the `test/` directory contains all expected files: `ls test/`
-- [ ] 6.4 Verify the documentation in `openspec/project.md` correctly specifies the `test/` directory convention
-- [ ] 6.5 Commit the changes with an appropriate commit message describing the file reorganization
+- [x] 6.1 Verify Git status shows all moved files: `git status`
+- [x] 6.2 Verify the project root is cleaner and easier to navigate: `ls` (should show significantly fewer files)
+- [x] 6.3 Verify the `test/` directory contains all expected files: `ls test/`
+- [x] 6.4 Verify the documentation in `openspec/project.md` correctly specifies the `test/` directory convention
+- [/] 6.5 Commit the changes with an appropriate commit message describing the file reorganization
