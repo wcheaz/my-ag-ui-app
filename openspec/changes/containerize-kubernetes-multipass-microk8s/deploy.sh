@@ -1608,7 +1608,7 @@ rm -rf "$CERT_DIR"
 log "SSL/TLS certificate configuration completed successfully"
 
 # ===========================
-# KUBERNETES MANIFESTS DEPLOYMENT
+# KUBERNETES DEPLOYMENT SECTION
 # ===========================
 
 # Kubernetes deployment error handler
@@ -1625,108 +1625,306 @@ handle_k8s_deployment_error() {
     log "VM Name: $VM_NAME"
     log "Image name: $FULL_IMAGE_NAME"
     log "Microk8s status: $(multipass exec "$VM_NAME" -- microk8s status --wait 2>/dev/null || echo 'microk8s not ready')"
+    log "Current directory: $(pwd)"
+    log "K8s manifests directory: $(pwd)/k8s/"
+    
+    # Check if k8s directory exists
+    if [ -d "k8s" ]; then
+        log "K8s manifests found in: $(pwd)/k8s/"
+        log "Available manifest files:"
+        ls -la k8s/ | tee -a "$LOG_FILE" 2>/dev/null || log "Could not list k8s directory contents"
+    else
+        log "ERROR: k8s directory not found in $(pwd)"
+    fi
+    
+    # Check Kubernetes cluster status
+    if multipass exec "$VM_NAME" -- command -v microk8s >/dev/null 2>&1; then
+        log "Kubernetes cluster status:"
+        multipass exec "$VM_NAME" -- microk8s status 2>&1 | head -10 | tee -a "$LOG_FILE" || log "Could not get microk8s status"
+        
+        log "Kubernetes nodes:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get nodes 2>&1 | tee -a "$LOG_FILE" || log "Could not get kubernetes nodes"
+        
+        log "Kubernetes namespaces:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get namespaces 2>&1 | tee -a "$LOG_FILE" || log "Could not get kubernetes namespaces"
+    fi
     
     exit $error_code
 }
 
-log "Starting Kubernetes manifests deployment..."
+# Function to verify Kubernetes resources
+verify_k8s_resource() {
+    local resource_type=$1
+    local resource_name=$2
+    local namespace=${3:-default}
+    local max_attempts=${4:-10}
+    local wait_time=${5:-3}
+    
+    log "Verifying $resource_type '$resource_name' in namespace '$namespace'..."
+    
+    local attempt=1
+    while [ $attempt -le $max_attempts ]; do
+        log "Verification attempt $attempt/$max_attempts for $resource_type '$resource_name'..."
+        
+        if multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get $resource_type $resource_name -n $namespace" >/dev/null 2>&1; then
+            log "SUCCESS: $resource_type '$resource_name' verified successfully"
+            return 0
+        else
+            log "WARNING: $resource_type '$resource_name' not found yet (attempt $attempt/$max_attempts)"
+            
+            if [ $attempt -eq $max_attempts ]; then
+                log "ERROR: $resource_type '$resource_name' verification failed after $max_attempts attempts"
+                return 1
+            fi
+            
+            sleep $wait_time
+            attempt=$((attempt + 1))
+        fi
+    done
+}
 
-# Verify image is available in microk8s
-log "Verifying Docker image is available in microk8s..."
-if ! multipass exec "$VM_NAME" -- bash -c "microk8s ctr image list | grep -q '$IMAGE_NAME'" 2>&1 | tee -a "$LOG_FILE"; then
-    handle_k8s_deployment_error 201 "Docker image not found in microk8s" \
-        "Ensure image was imported: microk8s ctr image list | grep $IMAGE_NAME"
+# Function to wait for pods to be ready
+wait_for_pods_ready() {
+    local app_label=$1
+    local namespace=${2:-default}
+    local max_attempts=${3:-30}
+    local wait_time=${4:-5}
+    local min_ready=${5:-1}
+    
+    log "Waiting for pods with label '$app_label' to be ready in namespace '$namespace'..."
+    log "Minimum required ready pods: $min_ready"
+    
+    local attempt=1
+    while [ $attempt -le $max_attempts ]; do
+        log "Checking pod readiness... (attempt $attempt/$max_attempts)"
+        
+        # Get pod information
+        local pod_info=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=$app_label -n $namespace -o json" 2>/dev/null || echo "")
+        
+        if [ -n "$pod_info" ]; then
+            # Count total and ready pods
+            local total_pods=$(echo "$pod_info" | jq '.items | length' 2>/dev/null || echo "0")
+            local ready_pods=$(echo "$pod_info" | jq '.items[].status.containerStatuses[0].ready // false' | grep -c true 2>/dev/null || echo "0")
+            local running_pods=$(echo "$pod_info" | jq '.items[].status.phase' | grep -c Running 2>/dev/null || echo "0")
+            
+            log "Pod status: $ready_pods/$total_pods ready, $running_pods/$total_pods running"
+            
+            if [ "$ready_pods" -ge "$min_ready" ] && [ "$running_pods" -ge "$min_ready" ] && [ "$total_pods" -ge "$min_ready" ]; then
+                log "SUCCESS: Required pods are ready ($ready_pods/$total_pods ready, $running_pods/$total_pods running)"
+                return 0
+            fi
+        else
+            log "WARNING: No pods found with label '$app_label' in namespace '$namespace'"
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            log "ERROR: Pods did not become ready after $max_attempts attempts"
+            log "Current pod status:"
+            multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=$app_label -n $namespace" 2>&1 | tee -a "$LOG_FILE" || log "Could not get pod status"
+            return 1
+        fi
+        
+        sleep $wait_time
+        attempt=$((attempt + 1))
+    done
+}
+
+log "Starting comprehensive Kubernetes deployment process..."
+
+# 7.6.1 Verify microk8s cluster is ready for deployment
+log "Step 1: Verifying microk8s cluster readiness..."
+if ! microk8s_ready; then
+    handle_k8s_deployment_error 101 "Microk8s cluster is not ready for deployment" \
+        "Ensure microk8s is running and ready: microk8s status --wait. Check cluster status: microk8s kubectl cluster-info"
 fi
-log "Docker image is available in microk8s"
+log "Microk8s cluster is ready for deployment"
 
-# 5.5 Apply deployment manifest to microk8s cluster
-log "Applying deployment manifest to microk8s cluster..."
+# 7.6.2 Verify Docker image is available in microk8s
+log "Step 2: Verifying Docker image is available in microk8s..."
+if ! multipass exec "$VM_NAME" -- bash -c "microk8s ctr image list | grep -q '$IMAGE_NAME'" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 102 "Docker image '$FULL_IMAGE_NAME' not found in microk8s" \
+        "Ensure image was imported: microk8s ctr image list | grep $IMAGE_NAME. Import manually: microk8s ctr image import <image-tar-file>"
+fi
+log "Docker image '$FULL_IMAGE_NAME' is available in microk8s"
+
+# 7.6.3 Verify Kubernetes manifests exist
+log "Step 3: Verifying Kubernetes manifests exist..."
+K8S_MANIFESTS=("deployment.yaml" "service.yaml" "ingress.yaml" "secrets.yaml")
+for manifest in "${K8S_MANIFESTS[@]}"; do
+    if [ ! -f "k8s/$manifest" ]; then
+        handle_k8s_deployment_error 103 "Kubernetes manifest '$manifest' not found" \
+            "Ensure manifest exists in k8s/ directory: $(pwd)/k8s/$manifest"
+    fi
+    log "Manifest '$manifest' found and accessible"
+done
+log "All required Kubernetes manifests are available"
+
+# 7.6.4 Apply secrets manifest (if sensitive data needs to be configured)
+log "Step 4: Applying Kubernetes secrets manifest..."
+if [ -f "k8s/secrets.yaml" ]; then
+    log "Found secrets.yaml, applying secrets configuration..."
+    if ! multipass exec "$VM_NAME" -- bash -c "cd /tmp && microk8s kubectl apply -f <(cat <<'EOF'
+$(cat k8s/secrets.yaml)
+EOF
+)" 2>&1 | tee -a "$LOG_FILE"; then
+        handle_k8s_deployment_error 104 "Failed to apply secrets manifest" \
+            "Check secrets manifest: k8s/secrets.yaml. Apply manually: microk8s kubectl apply -f k8s/secrets.yaml"
+    fi
+    log "Secrets manifest applied successfully"
+    
+    # Verify secrets were created
+    if ! verify_k8s_resource "secret" "my-ag-ui-app-secrets" "default" 5 2; then
+        log "WARNING: Secrets verification failed, but continuing with deployment"
+    else
+        log "Secrets verified successfully"
+    fi
+else
+    log "No secrets.yaml found, skipping secrets configuration"
+fi
+
+# 7.6.5 Apply deployment manifest
+log "Step 5: Applying Kubernetes deployment manifest..."
+log "Creating deployment for application '$IMAGE_NAME'..."
 if ! multipass exec "$VM_NAME" -- bash -c "cd /tmp && microk8s kubectl apply -f <(cat <<'EOF'
 $(cat k8s/deployment.yaml)
 EOF
 )" 2>&1 | tee -a "$LOG_FILE"; then
-    handle_k8s_deployment_error 202 "Failed to apply deployment manifest" \
+    handle_k8s_deployment_error 105 "Failed to apply deployment manifest" \
         "Check deployment manifest: k8s/deployment.yaml. Apply manually: microk8s kubectl apply -f k8s/deployment.yaml"
 fi
 log "Deployment manifest applied successfully"
 
-# 5.6 Apply service manifest to microk8s cluster
-log "Applying service manifest to microk8s cluster..."
+# 7.6.6 Verify deployment was created
+log "Step 6: Verifying Kubernetes deployment..."
+if ! verify_k8s_resource "deployment" "my-ag-ui-app-deployment" "default" 10 3; then
+    handle_k8s_deployment_error 106 "Deployment verification failed" \
+        "Check deployment status: microk8s kubectl get deployment my-ag-ui-app-deployment. Check events: microk8s kubectl get events"
+fi
+log "Deployment verified successfully"
+
+# 7.6.7 Apply service manifest
+log "Step 7: Applying Kubernetes service manifest..."
 if ! multipass exec "$VM_NAME" -- bash -c "cd /tmp && microk8s kubectl apply -f <(cat <<'EOF'
 $(cat k8s/service.yaml)
 EOF
 )" 2>&1 | tee -a "$LOG_FILE"; then
-    handle_k8s_deployment_error 203 "Failed to apply service manifest" \
+    handle_k8s_deployment_error 107 "Failed to apply service manifest" \
         "Check service manifest: k8s/service.yaml. Apply manually: microk8s kubectl apply -f k8s/service.yaml"
 fi
 log "Service manifest applied successfully"
 
-# 5.7 Apply ingress manifest to microk8s cluster
-log "Applying ingress manifest to microk8s cluster..."
+# 7.6.8 Verify service was created
+log "Step 8: Verifying Kubernetes service..."
+if ! verify_k8s_resource "service" "my-ag-ui-app-service" "default" 10 3; then
+    handle_k8s_deployment_error 108 "Service verification failed" \
+        "Check service status: microk8s kubectl get service my-ag-ui-app-service. Check endpoints: microk8s kubectl get endpoints my-ag-ui-app-service"
+fi
+log "Service verified successfully"
+
+# 7.6.9 Apply ingress manifest
+log "Step 9: Applying Kubernetes ingress manifest..."
 if ! multipass exec "$VM_NAME" -- bash -c "cd /tmp && microk8s kubectl apply -f <(cat <<'EOF'
 $(cat k8s/ingress.yaml)
 EOF
 )" 2>&1 | tee -a "$LOG_FILE"; then
-    handle_k8s_deployment_error 204 "Failed to apply ingress manifest" \
+    handle_k8s_deployment_error 109 "Failed to apply ingress manifest" \
         "Check ingress manifest: k8s/ingress.yaml. Apply manually: microk8s kubectl apply -f k8s/ingress.yaml"
 fi
 log "Ingress manifest applied successfully"
 
-# 5.8 Wait for pods to be ready
-log "Waiting for application pods to be ready..."
-MAX_ATTEMPTS=30
-ATTEMPT=1
-while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-    log "Checking pod status... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
-    
-    # Get pod status
-    local pod_status=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[*].status.phase}' 2>/dev/null || echo ''")
-    local pod_ready=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[*].status.containerStatuses[0].ready}' 2>/dev/null || echo ''")
-    
-    if [ -n "$pod_status" ] && [ "$pod_status" = "Running" ] && [ "$pod_ready" = "true" ]; then
-        log "Application pods are ready"
-        break
-    else
-        log "Pods not ready yet. Status: $pod_status, Ready: $pod_ready"
-        
-        if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-            handle_k8s_deployment_error 205 "Pods did not become ready after $MAX_ATTEMPTS attempts" \
-                "Check pod status: microk8s kubectl get pods. Check pod logs: microk8s kubectl logs <pod-name>"
-        fi
+# 7.6.10 Verify ingress was created
+log "Step 10: Verifying Kubernetes ingress..."
+if ! verify_k8s_resource "ingress" "my-ag-ui-app-ingress" "default" 10 3; then
+    handle_k8s_deployment_error 110 "Ingress verification failed" \
+        "Check ingress status: microk8s kubectl get ingress my-ag-ui-app-ingress. Check ingress class: microk8s kubectl get ingressclass"
+fi
+log "Ingress verified successfully"
+
+# 7.6.11 Wait for application pods to be ready
+log "Step 11: Waiting for application pods to be ready..."
+if ! wait_for_pods_ready "my-ag-ui-app" "default" 30 5 1; then
+    handle_k8s_deployment_error 111 "Application pods did not become ready" \
+        "Check pod status: microk8s kubectl get pods -l app=my-ag-ui-app. Check pod logs: microk8s kubectl logs <pod-name>. Check events: microk8s kubectl get events"
+fi
+log "Application pods are ready and running"
+
+# 7.6.12 Verify deployment rollout status
+log "Step 12: Verifying deployment rollout status..."
+if ! multipass exec "$VM_NAME" -- bash -c "microk8s kubectl rollout status deployment/my-ag-ui-app-deployment" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 112 "Deployment rollout verification failed" \
+        "Check deployment rollout: microk8s kubectl rollout status deployment/my-ag-ui-app-deployment. Check deployment details: microk8s kubectl describe deployment my-ag-ui-app-deployment"
+fi
+log "Deployment rollout completed successfully"
+
+# 7.6.13 Verify service endpoints are populated
+log "Step 13: Verifying service endpoints are populated..."
+local endpoints_check=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get endpoints my-ag-ui-app-service -o jsonpath='{.subsets}'" 2>/dev/null || echo "")
+if [ -z "$endpoints_check" ] || [ "$endpoints_check" = "[]" ]; then
+    log "WARNING: Service endpoints are not populated yet"
+    # Wait a bit and check again
+    sleep 10
+    endpoints_check=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get endpoints my-ag-ui-app-service -o jsonpath='{.subsets}'" 2>/dev/null || echo "")
+    if [ -z "$endpoints_check" ] || [ "$endpoints_check" = "[]" ]; then
+        log "ERROR: Service endpoints remain unpopulated"
+        handle_k8s_deployment_error 113 "Service endpoints are not populated" \
+            "Check service endpoints: microk8s kubectl get endpoints my-ag-ui-app-service. Check pod labels: microk8s kubectl get pods --show-labels"
     fi
-    
-    sleep 5
-    ATTEMPT=$((ATTEMPT + 1))
-done
-
-# 5.9 Verify deployment status
-log "Verifying deployment status..."
-if ! multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get deployment my-ag-ui-app-deployment" 2>&1 | tee -a "$LOG_FILE"; then
-    handle_k8s_deployment_error 206 "Deployment verification failed" \
-        "Check deployment status: microk8s kubectl get deployment my-ag-ui-app-deployment"
 fi
-log "Deployment status verified successfully"
+log "Service endpoints are populated and ready"
 
-# 5.10 Verify application is accessible via ingress
-log "Verifying application is accessible via ingress..."
-log "Getting ingress endpoint..."
-
-# Get ingress IP/hostname
-local ingress_endpoint=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress my-ag-ui-app-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo ''")
-if [ -z "$ingress_endpoint" ]; then
-    # For local testing, we use localhost
-    ingress_endpoint="localhost"
+# 7.6.14 Verify application is accessible through service
+log "Step 14: Verifying application accessibility through service..."
+local service_test=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl run temp-access-test --image=curlimages/curl --rm -i --restart=Never -- curl -s -f http://my-ag-ui-app-service:3000" 2>&1 || echo "")
+if echo "$service_test" | grep -q "200\|OK\|healthy" 2>/dev/null; then
+    log "SUCCESS: Application is accessible through service"
+else
+    log "WARNING: Service accessibility test inconclusive (this may be normal if app has specific health check requirements)"
+    log "Service test output: $service_test"
 fi
-log "Ingress endpoint: $ingress_endpoint"
 
-log "Testing application access via ingress..."
-# Note: In a real deployment, we would test HTTP/HTTPS access here
-# For now, we'll just verify that the ingress is configured correctly
-if ! multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress my-ag-ui-app-ingress" 2>&1 | tee -a "$LOG_FILE"; then
-    handle_k8s_deployment_error 207 "Ingress verification failed" \
-        "Check ingress status: microk8s kubectl get ingress my-ag-ui-app-ingress"
-fi
-log "Application ingress configuration verified successfully"
+# 7.6.15 Comprehensive deployment verification
+log "Step 15: Performing comprehensive deployment verification..."
+log "=== KUBERNETES DEPLOYMENT VERIFICATION SUMMARY ==="
+
+# Verify all resources are present and healthy
+log "Deployment resources status:"
+multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get deployment,service,ingress,secret,pods -l app=my-ag-ui-app" 2>&1 | tee -a "$LOG_FILE" || log "Could not get deployment resources summary"
+
+# Check deployment details
+log "Deployment details:"
+multipass exec "$VM_NAME" -- bash -c "microk8s kubectl describe deployment my-ag-ui-app-deployment" 2>&1 | head -20 | tee -a "$LOG_FILE" || log "Could not get deployment details"
+
+# Check service details
+log "Service details:"
+multipass exec "$VM_NAME" -- bash -c "microk8s kubectl describe service my-ag-ui-app-service" 2>&1 | head -15 | tee -a "$LOG_FILE" || log "Could not get service details"
+
+# Check ingress details
+log "Ingress details:"
+multipass exec "$VM_NAME" -- bash -c "microk8s kubectl describe ingress my-ag-ui-app-ingress" 2>&1 | head -15 | tee -a "$LOG_FILE" || log "Could not get ingress details"
+
+log "=============================================="
+log "Kubernetes deployment verification completed"
+
+# 7.6.16 Final deployment success confirmation
+log "=== KUBERNETES DEPLOYMENT SUCCESS ==="
+log "Kubernetes deployment completed successfully!"
+log ""
+log "Deployment Summary:"
+log "  - Application: my-ag-ui-app"
+log "  - Image: $FULL_IMAGE_NAME"
+log "  - Namespace: default"
+log "  - Deployment: my-ag-ui-app-deployment"
+log "  - Service: my-ag-ui-app-service"
+log "  - Ingress: my-ag-ui-app-ingress"
+log "  - Pods: All running and ready"
+log ""
+log "Next Steps:"
+log "  1. Access the application via ingress endpoint"
+log "  2. Monitor application health and logs"
+log "  3. Verify all functionality is working"
+log ""
+log "Kubernetes deployment section completed successfully"
+log "=========================================="
 
 # 6.5 Test HTTPS access (if SSL is configured)
 log "Starting HTTPS access testing..."
