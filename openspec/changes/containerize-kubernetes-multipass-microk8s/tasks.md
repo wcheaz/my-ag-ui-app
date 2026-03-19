@@ -17,9 +17,9 @@
 - [x] 2.3 Add resource requests and limits to deployment (CPU and memory)
 - [x] 2.4 Configure liveness probe in deployment manifest
 - [x] 2.5 Configure readiness probe in deployment manifest
-- [ ] 2.6 Create k8s/service.yaml with service configuration
-- [ ] 2.7 Configure service to listen on port 80 and forward to port 3000
-- [ ] 2.8 Set up service selector to match deployment pods
+- [x] 2.6 Create k8s/service.yaml with service configuration
+- [x] 2.7 Configure service to listen on port 80 and forward to port 3000
+- [x] 2.8 Set up service selector to match deployment pods
 - [ ] 2.9 Create k8s/ingress.yaml with ingress configuration
 - [ ] 2.10 Configure ingress to route traffic to the service
 - [ ] 2.11 Set up ingress class for microk8s ingress controller
