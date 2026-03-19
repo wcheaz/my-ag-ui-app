@@ -52,8 +52,8 @@
 
 ## 5. Container Image Deployment
 
-- [ ] 5.1 Build Docker image in deployment script
-- [ ] 5.2 Tag Docker image appropriately
+- [x] 5.1 Build Docker image in deployment script
+- [x] 5.2 Tag Docker image appropriately
 - [ ] 5.3 Load Docker image into microk8s (or configure image pull)
 - [ ] 5.4 Create Kubernetes secrets for sensitive environment variables
 - [ ] 5.5 Apply deployment manifest to microk8s cluster

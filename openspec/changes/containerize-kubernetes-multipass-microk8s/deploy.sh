@@ -954,3 +954,178 @@ test_microk8s_functionality
 # 4.8 Add microk8s error handling to deployment script
 log "Microk8s installation and configuration completed successfully"
 log "Microk8s is ready for Kubernetes deployment"
+
+# ===========================
+# CONTAINER IMAGE BUILD SECTION
+# ===========================
+
+# Container build error handler
+handle_container_build_error() {
+    local error_code=$1
+    local error_message=$2
+    local recovery_suggestion=$3
+    
+    log "CONTAINER BUILD ERROR [Code: $error_code]: $error_message"
+    log "RECOVERY SUGGESTION: $recovery_suggestion"
+    
+    # Log additional diagnostic information
+    log "CONTAINER BUILD DIAGNOSTIC INFO:"
+    log "Current directory: $(pwd)"
+    log "Dockerfile location: $(pwd)/Dockerfile"
+    log "Docker version: $(docker version 2>/dev/null | grep "Version" | head -1 || echo 'docker not found')"
+    
+    # Check if Dockerfile exists
+    if [ ! -f "Dockerfile" ]; then
+        log "ISSUE: Dockerfile not found in current directory"
+        log "EXPECTED LOCATION: $(pwd)/Dockerfile"
+    fi
+    
+    # Check if package.json exists (needed for Node.js build)
+    if [ ! -f "package.json" ]; then
+        log "ISSUE: package.json not found in current directory"
+        log "EXPECTED LOCATION: $(pwd)/package.json"
+    fi
+    
+    # Check if Docker is running
+    if ! docker info >/dev/null 2>&1; then
+        log "ISSUE: Docker daemon is not running"
+        log "FIX: Start Docker daemon: sudo systemctl start docker"
+    fi
+    
+    # Check available disk space for build
+    log "Available disk space: $(df -h . | awk 'NR==2 {print $4}')"
+    
+    exit $error_code
+}
+
+# Function to check if Docker is installed and running
+docker_ready() {
+    command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1
+}
+
+# 5.1 Build Docker image in deployment script
+log "Starting container image build..."
+
+# Check Docker prerequisites
+log "Checking Docker installation and status..."
+if ! docker_ready; then
+    handle_container_build_error 101 "Docker is not installed or not running" \
+        "Install Docker and start the daemon: https://docs.docker.com/get-docker/"
+fi
+log "Docker is ready: $(docker version | grep "Version" | head -1 | tr -s ' ')"
+
+# Check if required files exist
+log "Checking required files for container build..."
+if [ ! -f "Dockerfile" ]; then
+    handle_container_build_error 102 "Dockerfile not found" \
+        "Ensure Dockerfile exists in the project root directory: $(pwd)/Dockerfile"
+fi
+log "Dockerfile found: $(pwd)/Dockerfile"
+
+if [ ! -f "package.json" ]; then
+    handle_container_build_error 103 "package.json not found" \
+        "Ensure package.json exists in the project root directory: $(pwd)/package.json"
+fi
+log "package.json found: $(pwd)/package.json"
+
+# 5.2 Tag Docker image appropriately
+IMAGE_NAME="my-ag-ui-app"
+IMAGE_TAG="latest"
+FULL_IMAGE_NAME="$IMAGE_NAME:$IMAGE_TAG"
+
+log "Building Docker image: $FULL_IMAGE_NAME"
+
+# Set build arguments with default values
+OPENAI_API_KEY="${OPENAI_API_KEY:-}"
+OPENAI_BASE_URL="${OPENAI_BASE_URL:-}"
+OPENAI_MODEL="${OPENAI_MODEL:-}"
+LLM_MAX_TOKENS="${LLM_MAX_TOKENS:-}"
+LLM_CONTEXT_WINDOW="${LLM_CONTEXT_WINDOW:-}"
+EMBEDDING_MODEL="${EMBEDDING_MODEL:-}"
+LOGFIRE_TOKEN="${LOGFIRE_TOKEN:-}"
+
+# Build the Docker image with build args
+log "Starting Docker build process..."
+log "Build context directory: $(pwd)"
+log "Build args: OPENAI_API_KEY=${OPENAI_API_KEY:0:10}..., OPENAI_BASE_URL=$OPENAI_BASE_URL, OPENAI_MODEL=$OPENAI_MODEL"
+
+if ! docker build \
+    --build-arg "OPENAI_API_KEY=$OPENAI_API_KEY" \
+    --build-arg "OPENAI_BASE_URL=$OPENAI_BASE_URL" \
+    --build-arg "OPENAI_MODEL=$OPENAI_MODEL" \
+    --build-arg "LLM_MAX_TOKENS=$LLM_MAX_TOKENS" \
+    --build-arg "LLM_CONTEXT_WINDOW=$LLM_CONTEXT_WINDOW" \
+    --build-arg "EMBEDDING_MODEL=$EMBEDDING_MODEL" \
+    --build-arg "LOGFIRE_TOKEN=$LOGFIRE_TOKEN" \
+    -t "$FULL_IMAGE_NAME" \
+    . 2>&1 | tee -a "$LOG_FILE"; then
+    handle_container_build_error 104 "Docker build failed" \
+        "Check the build output above for errors. Common issues include:\n1. Network connectivity issues\n2. Missing dependencies\n3. Insufficient disk space\n4. Build context issues"
+fi
+
+log "Docker image built successfully: $FULL_IMAGE_NAME"
+
+# Verify the image was created
+log "Verifying Docker image..."
+if ! docker images | grep -q "^$IMAGE_NAME[[:space:]]*$IMAGE_TAG"; then
+    handle_container_build_error 105 "Built Docker image not found in local registry" \
+        "Check if the build completed successfully: docker images | grep $IMAGE_NAME"
+fi
+
+# Get image details
+IMAGE_ID=$(docker images | grep "^$IMAGE_NAME[[:space:]]*$IMAGE_TAG" | awk '{print $3}' | head -1)
+IMAGE_SIZE=$(docker images | grep "^$IMAGE_NAME[[:space:]]*$IMAGE_TAG" | awk '{print $5,$6}' | head -1)
+log "Docker image details:"
+log "  Image: $FULL_IMAGE_NAME"
+log "  ID: $IMAGE_ID"
+log "  Size: $IMAGE_SIZE"
+
+# Test the image locally (optional but recommended)
+log "Testing Docker image locally..."
+CONTAINER_NAME="test-$IMAGE_NAME-$$"
+
+# Run the container in detached mode for testing
+if ! docker run -d --name "$CONTAINER_NAME" -p 3001:3000 "$FULL_IMAGE_NAME" >/dev/null 2>&1; then
+    log "WARNING: Failed to start container for local testing"
+    log "This may be due to port conflicts or resource limitations"
+    log "Continuing with deployment, but local testing was skipped"
+else
+    log "Container started for testing: $CONTAINER_NAME"
+    
+    # Wait for the container to be ready
+    MAX_ATTEMPTS=10
+    ATTEMPT=1
+    while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+        if docker ps | grep -q "$CONTAINER_NAME"; then
+            log "Container is running (attempt $ATTEMPT/$MAX_ATTEMPTS)"
+            
+            # Test if the application is responding
+            if curl -s -f http://localhost:3001 >/dev/null 2>&1; then
+                log "Application is responding successfully"
+                break
+            else
+                log "Application not yet responding..."
+            fi
+        else
+            log "Container not running yet..."
+        fi
+        
+        if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+            log "WARNING: Container did not become ready for testing within $MAX_ATTEMPTS attempts"
+            log "Container logs:"
+            docker logs "$CONTAINER_NAME" 2>&1 | head -10 | tee -a "$LOG_FILE"
+        fi
+        
+        sleep 3
+        ATTEMPT=$((ATTEMPT + 1))
+    done
+    
+    # Stop and remove the test container
+    log "Stopping and removing test container..."
+    docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || true
+    docker rm "$CONTAINER_NAME" >/dev/null 2>&1 || true
+    log "Test container cleaned up"
+fi
+
+log "Container image build completed successfully"
+log "Image $FULL_IMAGE_NAME is ready for Kubernetes deployment"
