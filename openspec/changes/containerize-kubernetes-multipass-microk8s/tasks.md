@@ -5,8 +5,8 @@
 - [x] 1.3 Create runtime stage with lightweight Alpine base image
 - [x] 1.4 Configure Dockerfile to expose port 3000
 - [x] 1.5 Add health check endpoint configuration to Dockerfile
-- [ ] 1.6 Configure environment variable support in Dockerfile
-- [ ] 1.7 Test Docker build locally to ensure it works correctly
+- [x] 1.6 Configure environment variable support in Dockerfile
+- [x] 1.7 Test Docker build locally to ensure it works correctly
 - [ ] 1.8 Verify container runs successfully with `docker run`
 - [ ] 1.9 Verify container responds to HTTP requests on port 3000
 
@@ -55,12 +55,13 @@
 - [ ] 5.1 Build Docker image in deployment script
 - [ ] 5.2 Tag Docker image appropriately
 - [ ] 5.3 Load Docker image into microk8s (or configure image pull)
-- [ ] 5.4 Apply deployment manifest to microk8s cluster
-- [ ] 5.5 Apply service manifest to microk8s cluster
-- [ ] 5.6 Apply ingress manifest to microk8s cluster
-- [ ] 5.7 Wait for pods to be ready
-- [ ] 5.8 Verify deployment status
-- [ ] 5.9 Verify application is accessible via ingress
+- [ ] 5.4 Create Kubernetes secrets for sensitive environment variables
+- [ ] 5.5 Apply deployment manifest to microk8s cluster
+- [ ] 5.6 Apply service manifest to microk8s cluster
+- [ ] 5.7 Apply ingress manifest to microk8s cluster
+- [ ] 5.8 Wait for pods to be ready
+- [ ] 5.9 Verify deployment status
+- [ ] 5.10 Verify application is accessible via ingress
 
 ## 6. Ingress Configuration
 
