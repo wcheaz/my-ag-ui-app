@@ -1129,3 +1129,91 @@ fi
 
 log "Container image build completed successfully"
 log "Image $FULL_IMAGE_NAME is ready for Kubernetes deployment"
+
+# ===========================
+# CONTAINER IMAGE DEPLOYMENT SECTION
+# ===========================
+
+# Container image deployment error handler
+handle_image_deployment_error() {
+    local error_code=$1
+    local error_message=$2
+    local recovery_suggestion=$3
+    
+    log "IMAGE DEPLOYMENT ERROR [Code: $error_code]: $error_message"
+    log "RECOVERY SUGGESTION: $recovery_suggestion"
+    
+    # Log additional diagnostic information
+    log "IMAGE DEPLOYMENT DIAGNOSTIC INFO:"
+    log "Image name: $FULL_IMAGE_NAME"
+    log "VM name: $VM_NAME"
+    log "Microk8s status: $(multipass exec "$VM_NAME" -- microk8s status --wait 2>&1 || echo 'microk8s not ready')"
+    
+    exit $error_code
+}
+
+# 5.3 Load Docker image into microk8s (or configure image pull)
+log "Starting container image deployment to microk8s..."
+
+# Verify microk8s is ready in the VM
+log "Verifying microk8s is ready for image deployment..."
+if ! microk8s_ready; then
+    handle_image_deployment_error 201 "Microk8s is not ready for image deployment" \
+        "Ensure microk8s is running and ready: microk8s status --wait"
+fi
+log "Microk8s is ready for image deployment"
+
+# Save the Docker image to a tar file
+log "Saving Docker image to tar file for transfer..."
+IMAGE_TAR_FILE="$IMAGE_NAME-$IMAGE_TAG.tar"
+if ! docker save -o "$IMAGE_TAR_FILE" "$FULL_IMAGE_NAME" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_image_deployment_error 202 "Failed to save Docker image to tar file" \
+        "Check if the image exists and Docker has sufficient permissions: docker images | grep $IMAGE_NAME"
+fi
+log "Docker image saved to: $IMAGE_TAR_FILE"
+
+# Get the tar file size for logging
+TAR_FILE_SIZE=$(du -h "$IMAGE_TAR_FILE" | cut -f1)
+log "Image tar file size: $TAR_FILE_SIZE"
+
+# Copy the tar file to the VM
+log "Copying image tar file to VM '$VM_NAME'..."
+if ! multipass copy-file "$IMAGE_TAR_FILE" "$VM_NAME:/tmp/$IMAGE_TAR_FILE" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_image_deployment_error 203 "Failed to copy image tar file to VM" \
+        "Check if VM is running and accessible: multipass info $VM_NAME. Check disk space in VM."
+fi
+log "Image tar file copied to VM"
+
+# Clean up local tar file
+log "Cleaning up local tar file..."
+rm -f "$IMAGE_TAR_FILE"
+log "Local tar file cleaned up"
+
+# Load the image into microk8s
+log "Loading Docker image into microk8s..."
+if ! multipass exec "$VM_NAME" -- bash -c "microk8s ctr image import /tmp/$IMAGE_TAR_FILE" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_image_deployment_error 204 "Failed to import image into microk8s" \
+        "Check if microk8s is running and has sufficient resources: microk8s status. Try importing manually: microk8s ctr image import /tmp/$IMAGE_TAR_FILE"
+fi
+log "Docker image imported into microk8s successfully"
+
+# Clean up the tar file in the VM
+log "Cleaning up tar file in VM..."
+if ! multipass exec "$VM_NAME" -- rm -f "/tmp/$IMAGE_TAR_FILE" 2>&1 | tee -a "$LOG_FILE"; then
+    log "WARNING: Failed to clean up tar file in VM (this is not critical)"
+fi
+log "VM tar file cleaned up"
+
+# Verify the image is available in microk8s
+log "Verifying image is available in microk8s..."
+if ! multipass exec "$VM_NAME" -- bash -c "microk8s ctr image list | grep -q '$IMAGE_NAME'" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_image_deployment_error 205 "Image not found in microk8s after import" \
+        "Check if image was imported correctly: microk8s ctr image list | grep $IMAGE_NAME"
+fi
+log "Image verified in microk8s"
+
+# Get the full image reference in microk8s
+log "Getting image details from microk8s..."
+multipass exec "$VM_NAME" -- bash -c "microk8s ctr image list | grep '$IMAGE_NAME'" | tee -a "$LOG_FILE"
+
+log "Container image deployment to microk8s completed successfully"
