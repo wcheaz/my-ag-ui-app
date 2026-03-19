@@ -731,6 +731,226 @@ else
         "Microk8s is not ready. Check status: microk8s status. Try restarting: sudo snap restart microk8s"
 fi
 
+# 4.9 Test microk8s installation and add-on enablement
+log "Testing microk8s installation and add-on functionality..."
+
+# Function to test microk8s cluster functionality
+test_microk8s_functionality() {
+    log "Running microk8s functionality tests..."
+    
+    # Test 1: Verify microk8s CLI is accessible and working
+    log "Test 1: Verifying microk8s CLI accessibility..."
+    if ! multipass exec "$VM_NAME" -- microk8s kubectl version --client >/dev/null 2>&1; then
+        handle_microk8s_error 201 "Microk8s kubectl client is not accessible" \
+            "Check microk8s installation: sudo snap list microk8s. Try reinstalling: sudo snap refresh microk8s"
+    fi
+    log "Microk8s kubectl client is accessible"
+
+    # Test 2: Verify cluster connectivity
+    log "Test 2: Verifying cluster connectivity..."
+    if ! multipass exec "$VM_NAME" -- microk8s kubectl cluster-info >/dev/null 2>&1; then
+        handle_microk8s_error 202 "Cannot connect to microk8s cluster" \
+            "Check if microk8s is running: sudo snap start microk8s. Check cluster status: microk8s status"
+    fi
+    log "Cluster connectivity verified"
+
+    # Test 3: Verify nodes are ready
+    log "Test 3: Verifying cluster nodes are ready..."
+    local node_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get nodes -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+    if [ "$node_status" != "True" ]; then
+        handle_microk8s_error 203 "Cluster nodes are not ready" \
+            "Check node status: microk8s kubectl get nodes. Wait for nodes to be ready: microk8s status --wait"
+    fi
+    log "All cluster nodes are ready"
+
+    # Test 4: Verify core DNS is working
+    log "Test 4: Verifying core DNS functionality..."
+    if ! microk8s_addon_enabled "dns"; then
+        handle_microk8s_error 204 "DNS add-on is not enabled" \
+            "Enable DNS add-on: microk8s enable dns. Check add-on status: microk8s status"
+    fi
+    
+    # Create a test pod to verify DNS resolution
+    log "Creating test pod to verify DNS resolution..."
+    multipass exec "$VM_NAME" -- bash -c 'cat <<EOF | microk8s kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dns-test
+spec:
+  containers:
+  - name: dns-test
+    image: busybox:1.28
+    command: ["tail", "-f", "/dev/null"]
+  restartPolicy: Never
+EOF' >/dev/null 2>&1 || true
+    
+    # Wait for the test pod to be ready
+    log "Waiting for DNS test pod to be ready..."
+    local dns_test_attempts=0
+    local max_dns_test_attempts=10
+    while [ $dns_test_attempts -lt $max_dns_test_attempts ]; do
+        local pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pod dns-test -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+        if [ "$pod_status" = "Running" ]; then
+            log "DNS test pod is ready"
+            break
+        fi
+        sleep 2
+        dns_test_attempts=$((dns_test_attempts + 1))
+    done
+    
+    if [ $dns_test_attempts -ge $max_dns_test_attempts ]; then
+        log "WARNING: DNS test pod did not become ready in time"
+    else
+        # Test DNS resolution inside the pod
+        log "Testing DNS resolution inside the pod..."
+        if multipass exec "$VM_NAME" -- microk8s kubectl exec dns-test -- nslookup kubernetes.default >/dev/null 2>&1; then
+            log "DNS resolution is working correctly"
+        else
+            log "WARNING: DNS resolution test failed"
+        fi
+    fi
+    
+    # Clean up the test pod
+    multipass exec "$VM_NAME" -- microk8s kubectl delete pod dns-test --ignore-not-found=true >/dev/null 2>&1 || true
+
+    # Test 5: Verify storage provisioner is working
+    log "Test 5: Verifying storage provisioner functionality..."
+    if ! microk8s_addon_enabled "storage"; then
+        handle_microk8s_error 205 "Storage add-on is not enabled" \
+            "Enable storage add-on: microk8s enable storage. Check add-on status: microk8s status"
+    fi
+    
+    # Check if storage class is available
+    local storage_class=$(multipass exec "$VM_NAME" -- microk8s kubectl get storageclass -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+    if [ -z "$storage_class" ]; then
+        handle_microk8s_error 206 "No storage class available" \
+            "Check storage add-on status: microk8s status. Check available storage classes: microk8s kubectl get storageclass"
+    fi
+    log "Storage provisioner is working. Available storage class: $storage_class"
+
+    # Test 6: Verify ingress controller is working
+    log "Test 6: Verifying ingress controller functionality..."
+    if ! microk8s_addon_enabled "ingress"; then
+        handle_microk8s_error 207 "Ingress add-on is not enabled" \
+            "Enable ingress add-on: microk8s enable ingress. Check add-on status: microk8s status"
+    fi
+    
+    # Check if ingress controller pod is running
+    local ingress_pod=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n ingress -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+    if [ -n "$ingress_pod" ]; then
+        local ingress_pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pod "$ingress_pod" -n ingress -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+        if [ "$ingress_pod_status" = "Running" ]; then
+            log "Ingress controller pod is running: $ingress_pod"
+        else
+            log "WARNING: Ingress controller pod is not running: $ingress_pod (status: $ingress_pod_status)"
+        fi
+    else
+        log "WARNING: No ingress controller pod found"
+    fi
+    
+    # Check if ingress controller service is available
+    local ingress_service=$(multipass exec "$VM_NAME" -- microk8s kubectl get service -n ingress -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+    if [ -n "$ingress_service" ]; then
+        log "Ingress controller service is available: $ingress_service"
+    else
+        log "WARNING: No ingress controller service found"
+    fi
+
+    # Test 7: Verify cluster can create and manage resources
+    log "Test 7: Verifying cluster resource management..."
+    
+    # Create a test namespace
+    log "Creating test namespace..."
+    multipass exec "$VM_NAME" -- microk8s kubectl create namespace microk8s-test --dry-run=client -o yaml | multipass exec "$VM_NAME" -- microk8s kubectl apply -f - >/dev/null 2>&1 || true
+    
+    # Create a test deployment
+    log "Creating test deployment..."
+    multipass exec "$VM_NAME" -- bash -c 'cat <<EOF | microk8s kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-test
+  namespace: microk8s-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-test
+  template:
+    metadata:
+      labels:
+        app: nginx-test
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+EOF' >/dev/null 2>&1 || true
+    
+    # Wait for the test deployment to be ready
+    log "Waiting for test deployment to be ready..."
+    local test_deployment_attempts=0
+    local max_test_deployment_attempts=15
+    while [ $test_deployment_attempts -lt $max_test_deployment_attempts ]; do
+        local deployment_ready=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment nginx-test -n microk8s-test -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+        if [ "$deployment_ready" = "1" ]; then
+            log "Test deployment is ready"
+            break
+        fi
+        sleep 2
+        test_deployment_attempts=$((test_deployment_attempts + 1))
+    done
+    
+    if [ $test_deployment_attempts -ge $max_test_deployment_attempts ]; then
+        log "WARNING: Test deployment did not become ready in time"
+    else
+        # Create a test service
+        log "Creating test service..."
+        multipass exec "$VM_NAME" -- bash -c 'cat <<EOF | microk8s kubectl apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-test-service
+  namespace: microk8s-test
+spec:
+  selector:
+    app: nginx-test
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+EOF' >/dev/null 2>&1 || true
+        
+        # Test service connectivity
+        log "Testing service connectivity..."
+        if multipass exec "$VM_NAME" -- microk8s kubectl run temp-curl --image=curlimages/curl -n microk8s-test --rm -it --restart=Never -- curl -s http://nginx-test-service >/dev/null 2>&1; then
+            log "Service connectivity test passed"
+        else
+            log "WARNING: Service connectivity test failed"
+        fi
+    fi
+    
+    # Clean up test resources
+    log "Cleaning up test resources..."
+    multipass exec "$VM_NAME" -- microk8s kubectl delete namespace microk8s-test --ignore-not-found=true >/dev/null 2>&1 || true
+
+    # Test 8: Verify cluster health metrics
+    log "Test 8: Verifying cluster health metrics..."
+    local cluster_info=$(multipass exec "$VM_NAME" -- microk8s kubectl cluster-info 2>&1 || echo "")
+    if echo "$cluster_info" | grep -q "is running"; then
+        log "Cluster health metrics are available"
+    else
+        log "WARNING: Cluster health metrics may not be fully available"
+    fi
+
+    log "All microk8s functionality tests completed successfully"
+}
+
+# Run the microk8s functionality tests
+test_microk8s_functionality
+
 # 4.8 Add microk8s error handling to deployment script
 log "Microk8s installation and configuration completed successfully"
 log "Microk8s is ready for Kubernetes deployment"

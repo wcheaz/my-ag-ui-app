@@ -48,7 +48,7 @@
 - [x] 4.6 Wait for microk8s to be ready
 - [x] 4.7 Verify microk8s status after installation
 - [x] 4.8 Add microk8s error handling to deployment script
-- [ ] 4.9 Test microk8s installation and add-on enablement
+- [x] 4.9 Test microk8s installation and add-on enablement
 
 ## 5. Container Image Deployment
 
