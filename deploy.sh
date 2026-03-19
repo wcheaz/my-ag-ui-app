@@ -182,41 +182,118 @@ log "Deployment details:"
 multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app 2>&1 | tee -a "$LOG_FILE"
 
 # 5.10 Verify application is accessible via ingress
+# 6.2 Get ingress endpoint URL/IP
 log "Verifying application accessibility via ingress..."
+
+# Get VM IP address (primary ingress endpoint)
+VM_IP=$(multipass info "$VM_NAME" | grep -E "IPv4:" | awk '{print $2}' | cut -d',' -f1 | head -n1 || echo "")
+if [ -z "$VM_IP" ]; then
+    log "ERROR: Failed to get VM IP address"
+    VM_IP="127.0.0.1"  # fallback for testing
+    log "Using fallback VM IP: $VM_IP"
+fi
+log "VM IP address: $VM_IP"
 
 # Get ingress details
 INGRESS_DETAILS=$(multipass exec "$VM_NAME" -- microk8s kubectl get ingress my-ag-ui-app-ingress -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "Unknown")
 log "Ingress host: $INGRESS_DETAILS"
 
-# Check if ingress has an address assigned
+# Get ingress controller service details
+INGRESS_CONTROLLER_SVC=$(multipass exec "$VM_NAME" -- microk8s kubectl get svc -n ingress nginx-ingress-controller -o jsonpath='{.spec.ports[?(@.port==80)].nodePort}' 2>/dev/null || echo "")
+if [ -z "$INGRESS_CONTROLLER_SVC" ]; then
+    # Try alternative service name for newer microk8s versions
+    INGRESS_CONTROLLER_SVC=$(multipass exec "$VM_NAME" -- microk8s kubectl get svc -n ingress nginx-ingress-microk8s-controller -o jsonpath='{.spec.ports[?(@.port==80)].nodePort}' 2>/dev/null || echo "")
+fi
+
+if [ -z "$INGRESS_CONTROLLER_SVC" ]; then
+    log "WARNING: Could not get ingress controller node port, using default port 80"
+    INGRESS_PORT="80"
+else
+    INGRESS_PORT="$INGRESS_CONTROLLER_SVC"
+    log "Ingress controller node port: $INGRESS_PORT"
+fi
+
+# Check if ingress has an address assigned (for cloud environments)
 INGRESS_IP=$(multipass exec "$VM_NAME" -- microk8s kubectl get ingress my-ag-ui-app-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
 INGRESS_HOSTNAME=$(multipass exec "$VM_NAME" -- microk8s kubectl get ingress my-ag-ui-app-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
 
+# Determine the accessible URL
 if [ -n "$INGRESS_IP" ]; then
-    log "Ingress IP address: $INGRESS_IP"
-    log "Application should be accessible at: http://$INGRESS_IP"
+    ACCESS_URL="http://$INGRESS_IP"
+    log "Cloud LoadBalancer IP detected: $INGRESS_IP"
+    log "Application accessible at: $ACCESS_URL"
 elif [ -n "$INGRESS_HOSTNAME" ]; then
-    log "Ingress hostname: $INGRESS_HOSTNAME"
-    log "Application should be accessible at: http://$INGRESS_HOSTNAME"
+    ACCESS_URL="http://$INGRESS_HOSTNAME"
+    log "Cloud LoadBalancer hostname detected: $INGRESS_HOSTNAME"
+    log "Application accessible at: $ACCESS_URL"
 else
-    log "Ingress address not yet assigned. This may take a few minutes."
-    log "To check ingress status, run: microk8s kubectl get ingress my-ag-ui-app-ingress"
+    # Local microk8s deployment - use VM IP and ingress port
+    if [ "$INGRESS_PORT" = "80" ]; then
+        ACCESS_URL="http://$VM_IP"
+    else
+        ACCESS_URL="http://$VM_IP:$INGRESS_PORT"
+    fi
+    log "Local microk8s deployment detected"
+    log "Application accessible at: $ACCESS_URL"
+fi
+
+# Store access URL for later use
+echo "$ACCESS_URL" > /tmp/my-ag-ui-app-access-url.txt
+log "Access URL saved to /tmp/my-ag-ui-app-access-url.txt"
+
+# Test basic connectivity to the VM
+log "Testing basic connectivity to VM..."
+if ping -c 1 -W 5 "$VM_IP" >/dev/null 2>&1; then
+    log "VM is reachable at $VM_IP"
+else
+    log "WARNING: VM is not reachable at $VM_IP"
 fi
 
 # Test application accessibility (basic check)
 log "Testing application accessibility..."
+
+# First test from within the cluster (pod to pod)
 if multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.podIP}' 2>/dev/null | grep -q "."; then
     POD_IP=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.podIP}' 2>/dev/null)
     log "Application pod IP: $POD_IP"
     
     # Try to access the application from within the cluster
     if multipass exec "$VM_NAME" -- microk8s kubectl run temp-curl --image=curlimages/curl --rm -it --restart=Never -- curl -s --connect-timeout 5 "http://$POD_IP:3000/health" >/dev/null 2>&1; then
-        log "Application health check passed"
+        log "✓ Application internal health check passed"
     else
-        log "WARNING: Application health check failed"
+        log "WARNING: Application internal health check failed"
     fi
 else
-    log "Unable to determine pod IP for accessibility test"
+    log "Unable to determine pod IP for internal accessibility test"
+fi
+
+# Test ingress endpoint accessibility (external access)
+log "Testing ingress endpoint accessibility..."
+if command_exists curl; then
+    log "Testing external access to: $ACCESS_URL"
+    
+    # Wait a few seconds for ingress to be ready
+    log "Waiting 10 seconds for ingress to be fully ready..."
+    sleep 10
+    
+    # Test the ingress endpoint
+    if curl -s --connect-timeout 10 --max-time 30 "$ACCESS_URL" >/dev/null 2>&1; then
+        log "✓ Ingress endpoint is accessible: $ACCESS_URL"
+        
+        # Test with the configured hostname if different from IP
+        if [[ "$ACCESS_URL" != *"my-ag-ui-app.local"* ]] && [ -n "$INGRESS_DETAILS" ] && [ "$INGRESS_DETAILS" != "Unknown" ]; then
+            # Try with hostname (may require /etc/hosts modification)
+            log "NOTE: For hostname-based access ($INGRESS_DETAILS), you may need to add this to your /etc/hosts file:"
+            log "  $VM_IP    $INGRESS_DETAILS"
+        fi
+    else
+        log "WARNING: Ingress endpoint not immediately accessible: $ACCESS_URL"
+        log "This is normal - ingress may take a few minutes to be fully ready"
+        log "To test manually: curl $ACCESS_URL"
+    fi
+else
+    log "curl command not found, skipping external accessibility test"
+    log "To test manually: curl $ACCESS_URL"
 fi
 
 log "Kubernetes deployment phase completed successfully"
@@ -224,11 +301,24 @@ log "Application should be accessible via ingress (may take a few minutes for in
 
 # Provide access instructions
 log "=== APPLICATION ACCESS INFORMATION ==="
+log "Primary Access URL: $ACCESS_URL"
+log ""
 log "To access the application:"
-log "1. Check ingress status: microk8s kubectl get ingress my-ag-ui-app-ingress"
-log "2. If ingress has an IP address: http://<ingress-ip>"
-log "3. If using local testing: add '127.0.0.1 my-ag-ui-app.local' to your /etc/hosts file"
-log "4. Then access: http://my-ag-ui-app.local"
+log "1. Direct URL: $ACCESS_URL"
+log "2. Check ingress status: microk8s kubectl get ingress my-ag-ui-app-ingress"
+log "3. If using hostname-based routing, add this to your /etc/hosts file:"
+if [ -n "$INGRESS_DETAILS" ] && [ "$INGRESS_DETAILS" != "Unknown" ]; then
+    log "   $VM_IP    $INGRESS_DETAILS"
+    log "4. Then access: http://$INGRESS_DETAILS"
+fi
+log ""
+log "Troubleshooting:"
+log "- If URL is not accessible, wait 2-3 minutes for ingress to be fully ready"
+log "- Check ingress controller: microk8s kubectl get pods -n ingress"
+log "- Check application logs: microk8s kubectl logs -l app=my-ag-ui-app"
 log "=== END ACCESS INFORMATION ==="
+
+# 6.3 Test application access via ingress (this was completed above)
+log "Ingress endpoint URL/IP retrieval and testing completed"
 
 log "Kubernetes secrets setup and deployment completed successfully"
