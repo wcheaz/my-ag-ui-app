@@ -43,4 +43,4 @@
 - [x] 6.2 Verify the project root is cleaner and easier to navigate: `ls` (should show significantly fewer files)
 - [x] 6.3 Verify the `test/` directory contains all expected files: `ls test/`
 - [x] 6.4 Verify the documentation in `openspec/project.md` correctly specifies the `test/` directory convention
-- [/] 6.5 Commit the changes with an appropriate commit message describing the file reorganization
+- [x] 6.5 Commit the changes with an appropriate commit message describing the file reorganization
