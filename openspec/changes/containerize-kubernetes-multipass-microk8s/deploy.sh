@@ -99,17 +99,57 @@ fi
 # 3.5 Configure VM networking verification
 log "Verifying VM networking..."
 VM_IP=$(multipass info "$VM_NAME" | grep "IPv4:" | awk '{print $2}')
+if [ -z "$VM_IP" ]; then
+    handle_error "Failed to get VM IP address - VM networking is not properly configured"
+fi
 log "VM '$VM_NAME' IP address: $VM_IP"
 
 # Test DNS resolution
+log "Testing DNS resolution in VM..."
 if ! multipass exec "$VM_NAME" -- nslookup google.com >/dev/null 2>&1; then
-    log "WARNING: DNS resolution test failed in VM"
+    log "ERROR: DNS resolution test failed in VM"
+    log "This may prevent Kubernetes from pulling images and resolving service names"
+    handle_error "VM DNS resolution is not working"
 fi
+log "DNS resolution test passed"
 
 # Test outbound connectivity
+log "Testing outbound connectivity from VM..."
 if ! multipass exec "$VM_NAME" -- curl -s --connect-timeout 5 https://www.google.com >/dev/null 2>&1; then
-    log "WARNING: Outbound connectivity test failed in VM"
+    log "ERROR: Outbound connectivity test failed in VM"
+    log "This will prevent Kubernetes from pulling container images"
+    handle_error "VM outbound connectivity is not working"
 fi
+log "Outbound connectivity test passed"
+
+# Test container image pulling (critical for Kubernetes)
+log "Testing container image pulling capability..."
+if ! multipass exec "$VM_NAME" -- docker pull alpine:latest >/dev/null 2>&1; then
+    log "WARNING: Could not test Docker image pulling (Docker may not be installed yet)"
+    log "This is expected if Docker hasn't been installed in the VM yet"
+else
+    log "Container image pulling test passed"
+    # Clean up the test image
+    multipass exec "$VM_NAME" -- docker rmi alpine:latest >/dev/null 2>&1 || true
+fi
+
+# Test connectivity from host to VM
+log "Testing connectivity from host to VM..."
+if ! ping -c 1 -W 5 "$VM_IP" >/dev/null 2>&1; then
+    log "WARNING: Cannot ping VM from host"
+    log "This may be due to firewall restrictions but should not prevent Kubernetes operation"
+else
+    log "Host to VM connectivity test passed"
+fi
+
+# Test SSH access to VM (required for microk8s installation)
+log "Testing SSH access to VM..."
+if ! multipass exec "$VM_NAME" -- echo "SSH access test successful" >/dev/null 2>&1; then
+    handle_error "SSH access to VM failed - this is required for microk8s installation"
+fi
+log "SSH access test passed"
+
+log "VM networking verification completed successfully"
 
 # 3.6 Add VM status monitoring during deployment
 log "VM '$VM_NAME' status:"
