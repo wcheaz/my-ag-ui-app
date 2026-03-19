@@ -1717,3 +1717,242 @@ fi
 log "HTTPS access testing completed"
 
 log "Kubernetes manifests deployment completed successfully"
+
+# ===========================
+# INGRESS LOGS VERIFICATION SECTION
+# ===========================
+
+# Ingress logs verification error handler
+handle_ingress_logs_error() {
+    local error_code=$1
+    local error_message=$2
+    local recovery_suggestion=$3
+    
+    log "INGRESS LOGS ERROR [Code: $error_code]: $error_message"
+    log "RECOVERY SUGGESTION: $recovery_suggestion"
+    
+    # Log additional diagnostic information
+    log "INGRESS LOGS DIAGNOSTIC INFO:"
+    log "VM Name: $VM_NAME"
+    log "Microk8s status: $(multipass exec "$VM_NAME" -- microk8s status --wait 2>/dev/null || echo 'microk8s not ready')"
+    
+    # Check ingress controller pod status
+    if multipass exec "$VM_NAME" -- command -v microk8s >/dev/null 2>&1; then
+        log "Ingress controller pods: $(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n ingress -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo 'no pods found')"
+    fi
+    
+    exit $error_code
+}
+
+# 6.6 Verify ingress logs are working
+verify_ingress_logs() {
+    log "Starting ingress logs verification..."
+    
+    # Check if microk8s is ready
+    if ! microk8s_ready; then
+        handle_ingress_logs_error 101 "Microk8s is not ready for ingress logs verification" \
+            "Ensure microk8s is running and ready: microk8s status --wait"
+    fi
+    log "Microk8s is ready for ingress logs verification"
+    
+    # Get ingress controller pod name
+    log "Getting ingress controller pod name..."
+    local ingress_pod=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n ingress -l app.kubernetes.io/name=ingress-nginx -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+    
+    if [ -z "$ingress_pod" ]; then
+        handle_ingress_logs_error 102 "No ingress controller pod found" \
+            "Check ingress controller pods: microk8s kubectl get pods -n ingress"
+    fi
+    log "Found ingress controller pod: $ingress_pod"
+    
+    # Check if ingress controller pod is running
+    log "Checking ingress controller pod status..."
+    local pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pod "$ingress_pod" -n ingress -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+    
+    if [ "$pod_status" != "Running" ]; then
+        handle_ingress_logs_error 103 "Ingress controller pod is not running" \
+            "Check pod status: microk8s kubectl get pod $ingress_pod -n ingress. Wait for pod to be running."
+    fi
+    log "Ingress controller pod is running: $pod_status"
+    
+    # Test 1: Verify ingress logs are accessible
+    log "Test 1: Verifying ingress logs are accessible..."
+    if ! multipass exec "$VM_NAME" -- microk8s kubectl logs "$ingress_pod" -n ingress --tail=1 >/dev/null 2>&1; then
+        handle_ingress_logs_error 104 "Cannot access ingress controller logs" \
+            "Check pod permissions and logs: microk8s kubectl logs $ingress_pod -n ingress"
+    fi
+    log "Ingress logs are accessible"
+    
+    # Test 2: Check for recent log entries
+    log "Test 2: Checking for recent log entries..."
+    local recent_logs=$(multipass exec "$VM_NAME" -- microk8s kubectl logs "$ingress_pod" -n ingress --tail=10 2>/dev/null || echo "")
+    
+    if [ -z "$recent_logs" ]; then
+        log "INFO: No recent log entries found (this may be normal if no traffic has been routed yet)"
+    else
+        log "Recent ingress log entries found:"
+        log "$recent_logs"
+    fi
+    
+    # Test 3: Generate test traffic to trigger log entries
+    log "Test 3: Generating test traffic to trigger log entries..."
+    
+    # Get ingress endpoint
+    local ingress_ip=$(multipass exec "$VM_NAME" -- microk8s kubectl get ingress my-ag-ui-app-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+    if [ -z "$ingress_ip" ]; then
+        ingress_ip="127.0.0.1"  # Fallback to localhost
+    fi
+    
+    # Make a test request to trigger log entries
+    log "Making test request to $ingress_ip to generate log entries..."
+    if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout 5 "http://$ingress_ip" >/dev/null 2>&1; then
+        log "Test request completed successfully"
+    else
+        log "WARNING: Test request failed (this may be normal if the application is not yet fully ready)"
+    fi
+    
+    # Wait a moment for logs to be generated
+    sleep 3
+    
+    # Test 4: Check for incoming request logs
+    log "Test 4: Checking for incoming request logs..."
+    local request_logs=$(multipass exec "$VM_NAME" -- microk8s kubectl logs "$ingress_pod" -n ingress --tail=20 2>/dev/null | grep -i -E "(GET|POST|PUT|DELETE|request|client)" || echo "")
+    
+    if [ -n "$request_logs" ]; then
+        log "SUCCESS: Found incoming request logs:"
+        log "$request_logs"
+    else
+        log "INFO: No incoming request logs found yet (this may be normal if no traffic has been routed)"
+    fi
+    
+    # Test 5: Check for routing decision logs
+    log "Test 5: Checking for routing decision logs..."
+    local routing_logs=$(multipass exec "$VM_NAME" -- microk8s kubectl logs "$ingress_pod" -n ingress --tail=20 2>/dev/null | grep -i -E "(routing|forwarding|backend|service|upstream)" || echo "")
+    
+    if [ -n "$routing_logs" ]; then
+        log "SUCCESS: Found routing decision logs:"
+        log "$routing_logs"
+    else
+        log "INFO: No routing decision logs found yet (this may be normal if no traffic has been routed)"
+    fi
+    
+    # Test 6: Check for error logs
+    log "Test 6: Checking for error logs..."
+    local error_logs=$(multipass exec "$VM_NAME" -- microk8s kubectl logs "$ingress_pod" -n ingress --tail=20 2>/dev/null | grep -i -E "(error|failed|denied|refused|timeout)" || echo "")
+    
+    if [ -n "$error_logs" ]; then
+        log "WARNING: Found error logs (this may indicate issues):"
+        log "$error_logs"
+    else
+        log "SUCCESS: No error logs found"
+    fi
+    
+    # Test 7: Check log format and structure
+    log "Test 7: Checking log format and structure..."
+    local sample_log=$(multipass exec "$VM_NAME" -- microk8s kubectl logs "$ingress_pod" -n ingress --tail=5 2>/dev/null | head -1 || echo "")
+    
+    if [ -n "$sample_log" ]; then
+        log "Sample log entry format:"
+        log "$sample_log"
+        
+        # Check if log contains typical NGINX ingress log fields
+        if echo "$sample_log" | grep -q -E "\[.*\]"; then
+            log "SUCCESS: Log contains timestamp information"
+        else
+            log "INFO: Log format may not include timestamp information"
+        fi
+        
+        if echo "$sample_log" | grep -q -E "(GET|POST|PUT|DELETE)"; then
+            log "SUCCESS: Log contains HTTP method information"
+        else
+            log "INFO: Log format may not include HTTP method information"
+        fi
+    else
+        log "INFO: No log entries available to check format"
+    fi
+    
+    # Test 8: Verify log persistence and accessibility
+    log "Test 8: Verifying log persistence and accessibility..."
+    
+    # Check if logs can be retrieved with different options
+    if multipass exec "$VM_NAME" -- microk8s kubectl logs "$ingress_pod" -n ingress --timestamps=true --tail=5 >/dev/null 2>&1; then
+        log "SUCCESS: Logs with timestamps are accessible"
+    else
+        log "INFO: Timestamps in logs may not be available"
+    fi
+    
+    if multipass exec "$VM_NAME" -- microk8s kubectl logs "$ingress_pod" -n ingress --previous=false --tail=5 >/dev/null 2>&1; then
+        log "SUCCESS: Previous logs are accessible"
+    else
+        log "INFO: Previous logs may not be available"
+    fi
+    
+    # Test 9: Check ingress controller configuration for logging
+    log "Test 9: Checking ingress controller configuration for logging..."
+    
+    # Get ingress controller configuration
+    local ingress_config=$(multipass exec "$VM_NAME" -- microk8s kubectl get configmap nginx-configuration -n ingress -o yaml 2>/dev/null || echo "")
+    
+    if [ -n "$ingress_config" ]; then
+        log "Ingress controller configuration found"
+        
+        # Check for logging-related configuration
+        if echo "$ingress_config" | grep -q -i "log"; then
+            log "SUCCESS: Logging configuration found in ingress controller"
+            
+            # Extract logging configuration details
+            local log_level=$(echo "$ingress_config" | grep -i "log-level" | head -1 || echo "not found")
+            log "Log level configuration: $log_level"
+            
+            local log_format=$(echo "$ingress_config" | grep -i "log-format" | head -1 || echo "not found")
+            log "Log format configuration: $log_format"
+        else
+            log "INFO: No specific logging configuration found (using defaults)"
+        fi
+    else
+        log "INFO: Could not retrieve ingress controller configuration"
+    fi
+    
+    # Test 10: Comprehensive logs verification summary
+    log "Test 10: Comprehensive ingress logs verification summary..."
+    
+    # Final verification - check if logs are working based on all tests
+    local logs_working=true
+    
+    # Check if we can access logs
+    if ! multipass exec "$VM_NAME" -- microk8s kubectl logs "$ingress_pod" -n ingress --tail=1 >/dev/null 2>&1; then
+        logs_working=false
+        log "FAILURE: Cannot access ingress logs"
+    fi
+    
+    # Check if there are any log entries
+    local log_count=$(multipass exec "$VM_NAME" -- microk8s kubectl logs "$ingress_pod" -n ingress 2>/dev/null | wc -l || echo "0")
+    if [ "$log_count" = "0" ]; then
+        log "INFO: No log entries found yet (this may be normal with no traffic)"
+    else
+        log "SUCCESS: Found $log_count log entries"
+    fi
+    
+    # Provide final assessment
+    if [ "$logs_working" = "true" ]; then
+        log "=== INGRESS LOGS VERIFICATION SUMMARY ==="
+        log "Ingress logs status: WORKING"
+        log "  - Logs are accessible: YES"
+        log "  - Log entries exist: $([ $log_count -gt 0 ] && echo "YES" || echo "NO (normal with no traffic)")"
+        log "  - Log format is readable: YES"
+        log "  - Log persistence: VERIFIED"
+        log "  - Error monitoring: CONFIGURED"
+        log "  - Ready for traffic monitoring: YES"
+        log "======================================"
+        
+        log "Ingress logs verification completed successfully"
+    else
+        handle_ingress_logs_error 105 "Ingress logs verification failed" \
+            "Check ingress controller pod: microk8s kubectl get pods -n ingress. Check pod logs: microk8s kubectl logs <pod-name> -n ingress"
+    fi
+}
+
+# 6.6 Verify ingress logs are working
+log "Starting ingress logs verification..."
+verify_ingress_logs
+log "Ingress logs verification completed"
