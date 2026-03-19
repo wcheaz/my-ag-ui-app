@@ -1,22 +1,22 @@
 ## ADDED Requirements
 
 ### Requirement: System must create multipass VM with specified resources
-The system SHALL create a multipass VM with 2 CPUs, 4GB RAM, and 20GB disk to host the Kubernetes cluster.
+The system SHALL create a multipass VM with 4 CPUs, 7.7GiB RAM, and 19.3GiB disk to host the Kubernetes cluster (matching outlook-monitor-vm specs).
 
 #### Scenario: VM is created with correct CPU allocation
-- **WHEN** `multipass launch --cpus 2 --memory 4G --disk 20G <vm-name>` is executed
-- **THEN** the VM is created successfully
-- **AND** the VM has 2 CPUs allocated
+- **WHEN** `multipass launch --cpus 4 --memory 7.7G --disk 19.3G <vm-name>` is executed
+- **THEN** VM is created successfully
+- **AND** VM has 4 CPUs allocated
 
 #### Scenario: VM is created with correct memory allocation
 - **WHEN** VM creation is complete
-- **THEN** the VM has 4GB of RAM allocated
-- **AND** the memory is available to the VM
+- **THEN** VM has 7.7GiB of RAM allocated
+- **AND** memory is available to the VM
 
 #### Scenario: VM is created with correct disk allocation
 - **WHEN** VM creation is complete
-- **THEN** the VM has 20GB of disk space allocated
-- **AND** the disk space is available to the VM
+- **THEN** VM has 19.3GiB of disk space allocated
+- **AND** disk space is available to the VM
 
 ### Requirement: System must verify multipass installation
 The system SHALL check that multipass is installed on the host system before attempting to create a VM.

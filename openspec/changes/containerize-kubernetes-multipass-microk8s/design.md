@@ -58,17 +58,19 @@ The application is currently a Next.js application with a Python agent component
 
 ### 2. Multipass VM Configuration
 
-**Decision:** Allocate 2 CPUs, 4GB RAM, and 20GB disk for the VM.
+**Decision:** Allocate 4 CPUs, 7.7GiB RAM, and 19.3GiB disk for the VM (matching outlook-monitor-vm specs exactly).
 
 **Rationale:**
-- Sufficient resources for microk8s and the application
-- Reasonable balance between performance and host resource usage
-- Meets microk8s minimum requirements (2 CPUs, 4GB RAM)
-- Allows room for future expansion
+- Sufficient resources for microk8s and the application with headroom
+- Matches proven configuration from existing outlook-monitor-vm (4 CPUs, 7.7GiB RAM, 19.3GiB disk)
+- Well above microk8s minimum requirements (2 CPUs, 4GB RAM)
+- Allows room for future expansion and multiple replicas
+- Provides good performance for development and testing
 
 **Alternatives Considered:**
+- 2 CPUs, 4GB RAM: Meets minimum but less headroom for growth
 - 1 CPU, 2GB RAM: Below microk8s minimum, would fail
-- 4 CPUs, 8GB RAM: Overkill for single-node cluster, wastes resources
+- 8 CPUs, 16GB RAM: Overkill for single-node cluster, wastes resources
 
 ### 3. Microk8s Add-ons
 
