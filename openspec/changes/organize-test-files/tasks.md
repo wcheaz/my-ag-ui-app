@@ -25,7 +25,7 @@
 ## 4. Cleanup
 
 - [x] 4.1 Remove the empty `tests/` directory if it exists: `rmdir tests/` (only if empty)
-- [ ] 4.2 Verify the empty `tests/` directory has been removed: `ls tests/ 2>&1 | grep "No such file or directory"`
+- [x] 4.2 Verify the empty `tests/` directory has been removed: `ls tests/ 2>&1 | grep "No such file or directory"`
 
 ## 5. Validation
 
