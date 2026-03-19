@@ -34,7 +34,7 @@
 - [x] 3.4 Add VM readiness verification to deployment script
 - [x] 3.5 Configure VM networking verification
 - [x] 3.6 Add VM status monitoring during deployment
-- [ ] 3.7 Implement VM cleanup capability in cleanup script
+- [x] 3.7 Implement VM cleanup capability in cleanup script
 - [ ] 3.8 Add VM error handling and recovery suggestions
 - [ ] 3.9 Test VM creation and deletion
 
@@ -95,13 +95,13 @@
 
 ## 8. Cleanup Script
 
-- [ ] 8.1 Create cleanup script (cleanup.sh)
-- [ ] 8.2 Add Kubernetes resource cleanup (delete ingress, service, deployment)
-- [ ] 8.3 Add microk8s cleanup (optional)
-- [ ] 8.4 Add VM deletion (multipass delete and purge)
-- [ ] 8.5 Add cleanup confirmation prompt (or flag for non-interactive)
-- [ ] 8.6 Add error handling for cleanup failures
-- [ ] 8.7 Make cleanup script executable
+- [x] 8.1 Create cleanup script (cleanup.sh)
+- [x] 8.2 Add Kubernetes resource cleanup (delete ingress, service, deployment)
+- [x] 8.3 Add microk8s cleanup (optional)
+- [x] 8.4 Add VM deletion (multipass delete and purge)
+- [x] 8.5 Add cleanup confirmation prompt (or flag for non-interactive)
+- [x] 8.6 Add error handling for cleanup failures
+- [x] 8.7 Make cleanup script executable
 - [ ] 8.8 Test cleanup script
 
 ## 9. Documentation
