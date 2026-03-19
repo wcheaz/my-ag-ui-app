@@ -77,7 +77,7 @@
 ## 7. Deployment Automation Script
 
 - [x] 7.1 Create main deployment script (deploy.sh)
-- [ ] 7.2 Add pre-deployment checks (multipass, Docker, resources)
+- [x] 7.2 Add pre-deployment checks (multipass, Docker, resources)
 - [x] 7.3 Add VM provisioning section
 - [ ] 7.4 Add microk8s installation section
 - [ ] 7.5 Add container build section

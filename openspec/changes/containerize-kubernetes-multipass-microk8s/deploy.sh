@@ -227,6 +227,124 @@ vm_running() {
     multipass info "$VM_NAME" | grep -q "State: Running"
 }
 
+# ========================
+# PRE-DEPLOYMENT CHECKS SECTION
+# ========================
+
+log "Starting pre-deployment checks..."
+
+# Pre-deployment checks error handler
+handle_predeployment_error() {
+    local error_code=$1
+    local error_message=$2
+    local recovery_suggestion=$3
+    
+    log "PRE-DEPLOYMENT ERROR [Code: $error_code]: $error_message"
+    log "RECOVERY SUGGESTION: $recovery_suggestion"
+    
+    # Log additional diagnostic information
+    log "PRE-DEPLOYMENT DIAGNOSTIC INFO:"
+    log "System: $(uname -a)"
+    log "Current directory: $(pwd)"
+    log "Available disk space: $(df -h . | awk 'NR==2 {print $4}')"
+    log "Available memory: $(free -h | awk 'NR==2 {print $7}')"
+    
+    exit $error_code
+}
+
+# 7.2.1 Check multipass installation
+log "Checking multipass installation..."
+if ! command_exists multipass; then
+    handle_predeployment_error 201 "multipass is not installed" \
+        "Please install multipass before running this script. Installation instructions: https://multipass.run/install"
+fi
+log "multipass is installed: $(multipass version | head -1)"
+
+# 7.2.2 Check Docker installation
+log "Checking Docker installation..."
+if ! command_exists docker; then
+    handle_predeployment_error 202 "Docker is not installed" \
+        "Please install Docker before running this script. Installation instructions: https://docs.docker.com/get-docker/"
+fi
+
+# Check if Docker daemon is running
+if ! docker info >/dev/null 2>&1; then
+    handle_predeployment_error 203 "Docker daemon is not running" \
+        "Please start Docker daemon: sudo systemctl start docker or sudo service docker start"
+fi
+log "Docker is installed and running: $(docker version | grep "Version" | head -1 | tr -s ' ')"
+
+# 7.2.3 Check system resources
+log "Checking system resources..."
+
+# Check CPU cores (minimum 4 recommended for VM + microk8s)
+AVAILABLE_CPUS=$(nproc)
+REQUIRED_CPUS=4
+log "Available CPU cores: $AVAILABLE_CPUS (recommended: $REQUIRED_CPUS)"
+if [ "$AVAILABLE_CPUS" -lt "$REQUIRED_CPUS" ]; then
+    log "WARNING: System has only $AVAILABLE_CPUS CPU cores, $REQUIRED_CPUS are recommended"
+    log "This may impact VM and microk8s performance, but deployment will continue"
+fi
+
+# Check available memory (minimum 8GB recommended for VM + microk8s)
+TOTAL_MEMORY_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+TOTAL_MEMORY_GB=$((TOTAL_MEMORY_KB / 1024 / 1024))
+REQUIRED_MEMORY_GB=8
+log "Total system memory: ${TOTAL_MEMORY_GB}GB (recommended: ${REQUIRED_MEMORY_GB}GB)"
+if [ "$TOTAL_MEMORY_GB" -lt "$REQUIRED_MEMORY_GB" ]; then
+    log "WARNING: System has only ${TOTAL_MEMORY_GB}GB RAM, ${REQUIRED_MEMORY_GB}GB are recommended"
+    log "This may impact VM and microk8s performance, but deployment will continue"
+fi
+
+# Check available disk space (minimum 20GB recommended for VM + images + build cache)
+AVAILABLE_DISK=$(df -k . | awk 'NR==2 {print $4}')
+AVAILABLE_DISK_GB=$((AVAILABLE_DISK / 1024 / 1024))
+REQUIRED_DISK_GB=20
+log "Available disk space: ${AVAILABLE_DISK_GB}GB (recommended: ${REQUIRED_DISK_GB}GB)"
+if [ "$AVAILABLE_DISK_GB" -lt "$REQUIRED_DISK_GB" ]; then
+    log "WARNING: System has only ${AVAILABLE_DISK_GB}GB disk space, ${REQUIRED_DISK_GB}GB are recommended"
+    log "This may cause deployment to fail due to insufficient space"
+    
+    # Check if critically low disk space
+    if [ "$AVAILABLE_DISK_GB" -lt 10 ]; then
+        handle_predeployment_error 204 "Critically low disk space: ${AVAILABLE_DISK_GB}GB" \
+            "Free up at least 10GB disk space before running deployment. Clean up old files, containers, and images."
+    fi
+fi
+
+# Check network connectivity (required for downloading images and packages)
+log "Checking network connectivity..."
+if ! curl -s --connect-timeout 5 https://www.google.com >/dev/null 2>&1; then
+    log "WARNING: Cannot reach internet - this may be required for downloading dependencies"
+    log "The deployment may fail if images or packages need to be downloaded"
+    # Don't fail here, as it might be a temporary issue or behind a proxy
+else
+    log "Network connectivity check passed"
+fi
+
+# Check if we have the necessary permissions
+log "Checking user permissions..."
+if [ "$EUID" -eq 0 ]; then
+    log "Running as root user - this should work"
+elif groups | grep -q docker; then
+    log "User is in docker group - this should work"
+else
+    log "WARNING: Current user is not in docker group"
+    log "You may need to: sudo usermod -aG docker \$USER && newgrp docker"
+    log "Or run the script with sudo if you encounter permission issues"
+fi
+
+# Check for existing VM with the same name
+log "Checking for existing VM..."
+if multipass list | grep -q "^$VM_NAME "; then
+    log "WARNING: VM '$VM_NAME' already exists"
+    log "The script will attempt to use the existing VM or recreate it if needed"
+    log "To use a clean environment, delete the existing VM first: multipass delete $VM_NAME && multipass purge"
+fi
+
+log "All pre-deployment checks completed successfully"
+log "System is ready for deployment"
+
 # =====================
 # VM PROVISIONING SECTION
 # =====================
