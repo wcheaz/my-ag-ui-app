@@ -7,7 +7,7 @@
 
 ## 2. File Relocation
 
-- [ ] 2.1 Move all test*.py files to test/ directory using git mv: `git mv test*.py test/`
+- [x] 2.1 Move all test*.py files to test/ directory using git mv: `git mv test*.py test/`
 - [ ] 2.2 Move all debug*.py files to test/ directory using git mv: `git mv debug*.py test/`
 - [ ] 2.3 Move all check*.py files to test/ directory using git mv: `git mv check*.py test/`
 - [ ] 2.4 Move all measure*.py files to test/ directory using git mv: `git mv measure*.py test/`
