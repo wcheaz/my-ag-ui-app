@@ -20,8 +20,29 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
+# Application environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
+
+# OpenAI Configuration (build-time args with runtime env defaults)
+ARG OPENAI_API_KEY=""
+ARG OPENAI_BASE_URL=""
+ARG OPENAI_MODEL=""
+ENV OPENAI_API_KEY=$OPENAI_API_KEY
+ENV OPENAI_BASE_URL=$OPENAI_BASE_URL
+ENV OPENAI_MODEL=$OPENAI_MODEL
+
+# Procurement Agent Configuration (build-time args with runtime env defaults)
+ARG LLM_MAX_TOKENS=""
+ARG LLM_CONTEXT_WINDOW=""
+ARG EMBEDDING_MODEL=""
+ENV LLM_MAX_TOKENS=$LLM_MAX_TOKENS
+ENV LLM_CONTEXT_WINDOW=$LLM_CONTEXT_WINDOW
+ENV EMBEDDING_MODEL=$EMBEDDING_MODEL
+
+# Logging Configuration (build-time args with runtime env defaults)
+ARG LOGFIRE_TOKEN=""
+ENV LOGFIRE_TOKEN=$LOGFIRE_TOKEN
 
 # Copy necessary files from builder - only what's needed for runtime
 COPY --from=builder /app/public ./public
