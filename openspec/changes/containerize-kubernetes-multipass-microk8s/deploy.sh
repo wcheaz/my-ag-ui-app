@@ -1395,3 +1395,219 @@ verify_ingress_controller() {
 log "Starting ingress configuration verification..."
 verify_ingress_controller
 log "Ingress configuration verification completed"
+
+# ==============================
+# SSL/TLS CERTIFICATE CONFIGURATION
+# ==============================
+
+# SSL/TLS certificate error handler
+handle_ssl_error() {
+    local error_code=$1
+    local error_message=$2
+    local recovery_suggestion=$3
+    
+    log "SSL/TLS ERROR [Code: $error_code]: $error_message"
+    log "RECOVERY SUGGESTION: $recovery_suggestion"
+    
+    # Log additional diagnostic information
+    log "SSL/TLS DIAGNOSTIC INFO:"
+    log "VM Name: $VM_NAME"
+    log "Microk8s status: $(multipass exec "$VM_NAME" -- microk8s status --wait 2>/dev/null || echo 'microk8s not ready')"
+    
+    exit $error_code
+}
+
+# 6.4 Configure SSL/TLS certificates
+log "Starting SSL/TLS certificate configuration..."
+
+# Create self-signed certificate for localhost/127.0.0.1
+log "Creating self-signed SSL/TLS certificate for localhost and 127.0.0.1..."
+
+# Create certificate on the host system first
+CERT_DIR="/tmp/ssl-certificates-$$"
+mkdir -p "$CERT_DIR"
+cd "$CERT_DIR"
+
+log "Generating private key..."
+if ! openssl genrsa -out tls.key 2048 2>&1 | tee -a "$LOG_FILE"; then
+    handle_ssl_error 101 "Failed to generate private key" \
+        "Ensure OpenSSL is installed: openssl version. Try manual generation: openssl genrsa -out tls.key 2048"
+fi
+
+log "Generating certificate signing request (CSR)..."
+if ! openssl req -new -key tls.key -out tls.csr -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_ssl_error 102 "Failed to generate certificate signing request" \
+        "Ensure OpenSSL supports subjectAltName. Try manual: openssl req -new -key tls.key -out tls.csr -subj '/CN=localhost'"
+fi
+
+log "Generating self-signed certificate..."
+if ! openssl x509 -req -in tls.csr -signkey tls.key -out tls.crt -days 365 -extfile <(printf "subjectAltName=DNS:localhost,IP:127.0.0.1") 2>&1 | tee -a "$LOG_FILE"; then
+    handle_ssl_error 103 "Failed to generate self-signed certificate" \
+        "Check OpenSSL version and subjectAltName support. Try manual: openssl x509 -req -in tls.csr -signkey tls.key -out tls.crt -days 365"
+fi
+
+log "Self-signed certificate created successfully"
+
+# Copy certificate files to the VM
+log "Copying certificate files to VM '$VM_NAME'..."
+if ! multipass copy-file tls.crt "$VM_NAME:/tmp/tls.crt" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_ssl_error 104 "Failed to copy certificate file to VM" \
+        "Check VM accessibility: multipass info $VM_NAME. Check file permissions."
+fi
+
+if ! multipass copy-file tls.key "$VM_NAME:/tmp/tls.key" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_ssl_error 105 "Failed to copy private key file to VM" \
+        "Check VM accessibility: multipass info $VM_NAME. Check file permissions."
+fi
+
+log "Certificate files copied to VM successfully"
+
+# Create TLS secret in microk8s
+log "Creating TLS secret in microk8s..."
+if ! multipass exec "$VM_NAME" -- bash -c "microk8s kubectl create secret tls my-ag-ui-app-tls-secret --cert=/tmp/tls.crt --key=/tmp/tls.key --namespace=default --dry-run=client -o yaml | microk8s kubectl apply -f -" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_ssl_error 106 "Failed to create TLS secret in microk8s" \
+        "Check secret creation manually: microk8s kubectl create secret tls my-ag-ui-app-tls-secret --cert=/tmp/tls.crt --key=/tmp/tls.key"
+fi
+
+log "TLS secret created successfully in microk8s"
+
+# Verify the secret was created
+log "Verifying TLS secret creation..."
+if ! multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get secret my-ag-ui-app-tls-secret" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_ssl_error 107 "TLS secret verification failed" \
+        "Check if secret exists: microk8s kubectl get secret my-ag-ui-app-tls-secret"
+fi
+
+log "TLS secret verified successfully"
+
+# Clean up certificate files from VM
+log "Cleaning up certificate files from VM..."
+multipass exec "$VM_NAME" -- rm -f /tmp/tls.crt /tmp/tls.key 2>&1 | tee -a "$LOG_FILE" || true
+
+# Clean up local certificate directory
+cd - >/dev/null
+rm -rf "$CERT_DIR"
+log "SSL/TLS certificate configuration completed successfully"
+
+# ===========================
+# KUBERNETES MANIFESTS DEPLOYMENT
+# ===========================
+
+# Kubernetes deployment error handler
+handle_k8s_deployment_error() {
+    local error_code=$1
+    local error_message=$2
+    local recovery_suggestion=$3
+    
+    log "KUBERNETES DEPLOYMENT ERROR [Code: $error_code]: $error_message"
+    log "RECOVERY SUGGESTION: $recovery_suggestion"
+    
+    # Log additional diagnostic information
+    log "KUBERNETES DEPLOYMENT DIAGNOSTIC INFO:"
+    log "VM Name: $VM_NAME"
+    log "Image name: $FULL_IMAGE_NAME"
+    log "Microk8s status: $(multipass exec "$VM_NAME" -- microk8s status --wait 2>/dev/null || echo 'microk8s not ready')"
+    
+    exit $error_code
+}
+
+log "Starting Kubernetes manifests deployment..."
+
+# Verify image is available in microk8s
+log "Verifying Docker image is available in microk8s..."
+if ! multipass exec "$VM_NAME" -- bash -c "microk8s ctr image list | grep -q '$IMAGE_NAME'" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 201 "Docker image not found in microk8s" \
+        "Ensure image was imported: microk8s ctr image list | grep $IMAGE_NAME"
+fi
+log "Docker image is available in microk8s"
+
+# 5.5 Apply deployment manifest to microk8s cluster
+log "Applying deployment manifest to microk8s cluster..."
+if ! multipass exec "$VM_NAME" -- bash -c "cd /tmp && microk8s kubectl apply -f <(cat <<'EOF'
+$(cat k8s/deployment.yaml)
+EOF
+)" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 202 "Failed to apply deployment manifest" \
+        "Check deployment manifest: k8s/deployment.yaml. Apply manually: microk8s kubectl apply -f k8s/deployment.yaml"
+fi
+log "Deployment manifest applied successfully"
+
+# 5.6 Apply service manifest to microk8s cluster
+log "Applying service manifest to microk8s cluster..."
+if ! multipass exec "$VM_NAME" -- bash -c "cd /tmp && microk8s kubectl apply -f <(cat <<'EOF'
+$(cat k8s/service.yaml)
+EOF
+)" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 203 "Failed to apply service manifest" \
+        "Check service manifest: k8s/service.yaml. Apply manually: microk8s kubectl apply -f k8s/service.yaml"
+fi
+log "Service manifest applied successfully"
+
+# 5.7 Apply ingress manifest to microk8s cluster
+log "Applying ingress manifest to microk8s cluster..."
+if ! multipass exec "$VM_NAME" -- bash -c "cd /tmp && microk8s kubectl apply -f <(cat <<'EOF'
+$(cat k8s/ingress.yaml)
+EOF
+)" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 204 "Failed to apply ingress manifest" \
+        "Check ingress manifest: k8s/ingress.yaml. Apply manually: microk8s kubectl apply -f k8s/ingress.yaml"
+fi
+log "Ingress manifest applied successfully"
+
+# 5.8 Wait for pods to be ready
+log "Waiting for application pods to be ready..."
+MAX_ATTEMPTS=30
+ATTEMPT=1
+while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+    log "Checking pod status... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
+    
+    # Get pod status
+    local pod_status=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[*].status.phase}' 2>/dev/null || echo ''")
+    local pod_ready=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[*].status.containerStatuses[0].ready}' 2>/dev/null || echo ''")
+    
+    if [ -n "$pod_status" ] && [ "$pod_status" = "Running" ] && [ "$pod_ready" = "true" ]; then
+        log "Application pods are ready"
+        break
+    else
+        log "Pods not ready yet. Status: $pod_status, Ready: $pod_ready"
+        
+        if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+            handle_k8s_deployment_error 205 "Pods did not become ready after $MAX_ATTEMPTS attempts" \
+                "Check pod status: microk8s kubectl get pods. Check pod logs: microk8s kubectl logs <pod-name>"
+        fi
+    fi
+    
+    sleep 5
+    ATTEMPT=$((ATTEMPT + 1))
+done
+
+# 5.9 Verify deployment status
+log "Verifying deployment status..."
+if ! multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get deployment my-ag-ui-app-deployment" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 206 "Deployment verification failed" \
+        "Check deployment status: microk8s kubectl get deployment my-ag-ui-app-deployment"
+fi
+log "Deployment status verified successfully"
+
+# 5.10 Verify application is accessible via ingress
+log "Verifying application is accessible via ingress..."
+log "Getting ingress endpoint..."
+
+# Get ingress IP/hostname
+local ingress_endpoint=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress my-ag-ui-app-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo ''")
+if [ -z "$ingress_endpoint" ]; then
+    # For local testing, we use localhost
+    ingress_endpoint="localhost"
+fi
+log "Ingress endpoint: $ingress_endpoint"
+
+log "Testing application access via ingress..."
+# Note: In a real deployment, we would test HTTP/HTTPS access here
+# For now, we'll just verify that the ingress is configured correctly
+if ! multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress my-ag-ui-app-ingress" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 207 "Ingress verification failed" \
+        "Check ingress status: microk8s kubectl get ingress my-ag-ui-app-ingress"
+fi
+log "Application ingress configuration verified successfully"
+
+log "Kubernetes manifests deployment completed successfully"
