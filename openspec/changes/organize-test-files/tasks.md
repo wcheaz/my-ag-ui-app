@@ -2,7 +2,7 @@
 
 - [x] 1.1 Verify the list of files to be moved by running glob patterns: `ls test*.py`, `ls debug*.py`, `ls check*.py`, `ls measure*.py`, `ls performance*.py`, `ls verify*.py`, `ls validate*.py`
 - [x] 1.2 Search for references to development files in scripts, Makefiles, and CI/CD configurations using `grep -r "test_.*\.py\|debug_.*\.py\|check_.*\.py\|measure_.*\.py\|performance_.*\.py\|verify_.*\.py\|validate_.*\.py" --include="*.sh" --include="*.yml" --include="*.yaml" --include="Makefile" --include="*.json"`
-- [ ] 1.3 Create the `test/` directory if it doesn't exist: `mkdir -p test/`
+- [x] 1.3 Create the `test/` directory if it doesn't exist: `mkdir -p test/`
 - [ ] 1.4 Verify the `test/` directory is empty or ready to receive files: `ls test/`
 
 ## 2. File Relocation
