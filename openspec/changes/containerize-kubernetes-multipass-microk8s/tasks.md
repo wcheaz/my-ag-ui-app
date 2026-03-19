@@ -4,7 +4,7 @@
 - [x] 1.2 Create build stage with all build dependencies (Node.js, npm)
 - [x] 1.3 Create runtime stage with lightweight Alpine base image
 - [x] 1.4 Configure Dockerfile to expose port 3000
-- [ ] 1.5 Add health check endpoint configuration to Dockerfile
+- [x] 1.5 Add health check endpoint configuration to Dockerfile
 - [ ] 1.6 Configure environment variable support in Dockerfile
 - [ ] 1.7 Test Docker build locally to ensure it works correctly
 - [ ] 1.8 Verify container runs successfully with `docker run`
