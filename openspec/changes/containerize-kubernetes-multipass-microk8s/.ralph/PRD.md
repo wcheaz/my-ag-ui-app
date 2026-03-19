@@ -1173,7 +1173,7 @@ multipass purge
 ## Current Task Context
 
 ## Current Task
-- 3.9 Test VM creation and deletion
+- 6.7 Test ingress error handling
 ## Completed Tasks for Git Commit
 - [x] 1.1 Review and optimize existing Dockerfile for multi-stage builds
 - [x] 1.2 Create build stage with all build dependencies (Node.js, npm)
@@ -1205,6 +1205,32 @@ multipass purge
 - [x] 3.6 Add VM status monitoring during deployment
 - [x] 3.7 Implement VM cleanup capability in cleanup script
 - [x] 3.8 Add VM error handling and recovery suggestions
+- [x] 3.9 Test VM creation and deletion
+- [x] 4.1 Create microk8s installation section in deployment script
+- [x] 4.2 Install microk8s in the VM
+- [x] 4.3 Enable dns add-on in microk8s
+- [x] 4.4 Enable storage add-on in microk8s
+- [x] 4.5 Enable ingress add-on in microk8s
+- [x] 4.6 Wait for microk8s to be ready
+- [x] 4.7 Verify microk8s status after installation
+- [x] 4.8 Add microk8s error handling to deployment script
+- [x] 4.9 Test microk8s installation and add-on enablement
+- [x] 5.1 Build Docker image in deployment script
+- [x] 5.2 Tag Docker image appropriately
+- [x] 5.3 Load Docker image into microk8s (or configure image pull)
+- [x] 5.4 Create Kubernetes secrets for sensitive environment variables
+- [x] 5.5 Apply deployment manifest to microk8s cluster
+- [x] 5.6 Apply service manifest to microk8s cluster
+- [x] 5.7 Apply ingress manifest to microk8s cluster
+- [x] 5.8 Wait for pods to be ready
+- [x] 5.9 Verify deployment status
+- [x] 5.10 Verify application is accessible via ingress
+- [x] 6.1 Verify ingress controller is running
+- [x] 6.2 Get ingress endpoint URL/IP
+- [x] 6.3 Test application access via ingress
+- [x] 6.4 Configure SSL/TLS certificates (if needed)
+- [x] 6.5 Test HTTPS access (if SSL is configured)
+- [x] 6.6 Verify ingress logs are working
 - [x] 7.1 Create main deployment script (deploy.sh)
 - [x] 7.3 Add VM provisioning section
 - [x] 8.1 Create cleanup script (cleanup.sh)
