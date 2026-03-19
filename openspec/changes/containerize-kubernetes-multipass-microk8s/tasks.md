@@ -8,7 +8,7 @@
 - [x] 1.6 Configure environment variable support in Dockerfile
 - [x] 1.7 Test Docker build locally to ensure it works correctly
 - [x] 1.8 Verify container runs successfully with `docker run`
-- [ ] 1.9 Verify container responds to HTTP requests on port 3000
+- [x] 1.9 Verify container responds to HTTP requests on port 3000
 
 ## 2. Kubernetes Manifests
 
