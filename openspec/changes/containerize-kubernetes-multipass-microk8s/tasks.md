@@ -28,7 +28,7 @@
 
 ## 3. VM Provisioning
 
-- [ ] 3.1 Create VM provisioning script section in deployment script
+- [x] 3.1 Create VM provisioning script section in deployment script
 - [ ] 3.2 Add multipass installation check to deployment script
 - [ ] 3.3 Configure VM creation with 4 CPUs, 7.7GiB RAM, 19.3GiB disk
 - [ ] 3.4 Add VM readiness verification to deployment script
@@ -76,9 +76,9 @@
 
 ## 7. Deployment Automation Script
 
-- [ ] 7.1 Create main deployment script (deploy.sh)
+- [x] 7.1 Create main deployment script (deploy.sh)
 - [ ] 7.2 Add pre-deployment checks (multipass, Docker, resources)
-- [ ] 7.3 Add VM provisioning section
+- [x] 7.3 Add VM provisioning section
 - [ ] 7.4 Add microk8s installation section
 - [ ] 7.5 Add container build section
 - [ ] 7.6 Add Kubernetes deployment section
