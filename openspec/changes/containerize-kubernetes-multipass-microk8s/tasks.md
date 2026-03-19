@@ -12,11 +12,11 @@
 
 ## 2. Kubernetes Manifests
 
-- [ ] 2.1 Create k8s/deployment.yaml with deployment configuration
-- [ ] 2.2 Configure deployment with appropriate replica count (start with 1)
-- [ ] 2.3 Add resource requests and limits to deployment (CPU and memory)
-- [ ] 2.4 Configure liveness probe in deployment manifest
-- [ ] 2.5 Configure readiness probe in deployment manifest
+- [x] 2.1 Create k8s/deployment.yaml with deployment configuration
+- [x] 2.2 Configure deployment with appropriate replica count (start with 1)
+- [x] 2.3 Add resource requests and limits to deployment (CPU and memory)
+- [x] 2.4 Configure liveness probe in deployment manifest
+- [x] 2.5 Configure readiness probe in deployment manifest
 - [ ] 2.6 Create k8s/service.yaml with service configuration
 - [ ] 2.7 Configure service to listen on port 80 and forward to port 3000
 - [ ] 2.8 Set up service selector to match deployment pods

@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-ag-ui-app
+  labels:
+    app: my-ag-ui-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-ag-ui-app
+  template:
+    metadata:
+      labels:
+        app: my-ag-ui-app
+    spec:
+      containers:
+      - name: my-ag-ui-app
+        image: my-ag-ui-app:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        # OpenAI Configuration
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: my-ag-ui-app-secrets
+              key: openai-api-key
+        - name: OPENAI_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: my-ag-ui-app-config
+              key: openai-base-url
+        - name: OPENAI_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: my-ag-ui-app-config
+              key: openai-model
+        # Procurement Agent Configuration
+        - name: LLM_MAX_TOKENS
+          valueFrom:
+            configMapKeyRef:
+              name: my-ag-ui-app-config
+              key: llm-max-tokens
+        - name: LLM_CONTEXT_WINDOW
+          valueFrom:
+            configMapKeyRef:
+              name: my-ag-ui-app-config
+              key: llm-context-window
+        - name: EMBEDDING_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: my-ag-ui-app-config
+              key: embedding-model
+        # Logging Configuration
+        - name: LOGFIRE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: my-ag-ui-app-secrets
+              key: logfire-token
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
