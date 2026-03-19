@@ -18,6 +18,58 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
+# Progress logging function with visual indicators
+progress() {
+    local step=$1
+    local total_steps=$2
+    local message=$3
+    local percentage=$((step * 100 / total_steps))
+    
+    # Create progress bar
+    local completed=$((percentage / 2))
+    local remaining=$((50 - completed))
+    local progress_bar=""
+    
+    for ((i=0; i<completed; i++)); do
+        progress_bar+="█"
+    done
+    for ((i=0; i<remaining; i++)); do
+        progress_bar+="░"
+    done
+    
+    echo -e "\n[$(date '+%Y-%m-%d %H:%M:%S')] 🚀 PROGRESS: [$progress_bar] $percentage% ($step/$total_steps) - $message" | tee -a "$LOG_FILE"
+}
+
+# Section header function
+section_header() {
+    local section_name=$1
+    local section_number=$2
+    local total_sections=$3
+    
+    echo -e "\n\n[$(date '+%Y-%m-%d %H:%M:%S')] ======================================================" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] 📋 SECTION $section_number/$total_sections: $section_name" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ======================================================" | tee -a "$LOG_FILE"
+}
+
+# Step completion function
+step_complete() {
+    local step_name=$1
+    local step_number=$2
+    local total_steps=$3
+    
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✅ STEP $step_number/$total_steps COMPLETED: $step_name" | tee -a "$LOG_FILE"
+}
+
+# Major milestone function
+milestone() {
+    local milestone_name=$1
+    local milestone_number=$2
+    local total_milestones=$3
+    
+    echo -e "\n[$(date '+%Y-%m-%d %H:%M:%S')] 🎯 MILESTONE $milestone_number/$total_milestones: $milestone_name" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ------------------------------------------------------" | tee -a "$LOG_FILE"
+}
+
 # Error handling function
 handle_error() {
     log "ERROR: $1"
@@ -231,6 +283,8 @@ vm_running() {
 # PRE-DEPLOYMENT CHECKS SECTION
 # ========================
 
+section_header "PRE-DEPLOYMENT CHECKS" 1 7
+progress 1 7 "Starting pre-deployment checks"
 log "Starting pre-deployment checks..."
 
 # Pre-deployment checks error handler
@@ -253,19 +307,23 @@ handle_predeployment_error() {
 }
 
 # 7.2.1 Check multipass installation
+progress 1 9 "Checking multipass installation"
 log "Checking multipass installation..."
 if ! command_exists multipass; then
     handle_predeployment_error 201 "multipass is not installed" \
         "Please install multipass before running this script. Installation instructions: https://multipass.run/install"
 fi
+step_complete "Multipass installation check" 1 9
 log "multipass is installed: $(multipass version | head -1)"
 
 # 7.2.2 Check Docker installation
+progress 2 9 "Checking Docker installation"
 log "Checking Docker installation..."
 if ! command_exists docker; then
     handle_predeployment_error 202 "Docker is not installed" \
         "Please install Docker before running this script. Installation instructions: https://docs.docker.com/get-docker/"
 fi
+step_complete "Docker installation check" 2 9
 
 # Check if Docker daemon is running
 if ! docker info >/dev/null 2>&1; then
@@ -275,6 +333,7 @@ fi
 log "Docker is installed and running: $(docker version | grep "Version" | head -1 | tr -s ' ')"
 
 # 7.2.3 Check system resources
+progress 3 9 "Checking system resources"
 log "Checking system resources..."
 
 # Check CPU cores (minimum 4 recommended for VM + microk8s)
@@ -285,6 +344,7 @@ if [ "$AVAILABLE_CPUS" -lt "$REQUIRED_CPUS" ]; then
     log "WARNING: System has only $AVAILABLE_CPUS CPU cores, $REQUIRED_CPUS are recommended"
     log "This may impact VM and microk8s performance, but deployment will continue"
 fi
+step_complete "System resources check" 3 9
 
 # Check available memory (minimum 8GB recommended for VM + microk8s)
 TOTAL_MEMORY_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
@@ -313,6 +373,7 @@ if [ "$AVAILABLE_DISK_GB" -lt "$REQUIRED_DISK_GB" ]; then
 fi
 
 # Check network connectivity (required for downloading images and packages)
+progress 4 9 "Checking network connectivity"
 log "Checking network connectivity..."
 if ! curl -s --connect-timeout 5 https://www.google.com >/dev/null 2>&1; then
     log "WARNING: Cannot reach internet - this may be required for downloading dependencies"
@@ -321,8 +382,10 @@ if ! curl -s --connect-timeout 5 https://www.google.com >/dev/null 2>&1; then
 else
     log "Network connectivity check passed"
 fi
+step_complete "Network connectivity check" 4 9
 
 # Check if we have the necessary permissions
+progress 5 9 "Checking user permissions"
 log "Checking user permissions..."
 if [ "$EUID" -eq 0 ]; then
     log "Running as root user - this should work"
@@ -333,22 +396,27 @@ else
     log "You may need to: sudo usermod -aG docker \$USER && newgrp docker"
     log "Or run the script with sudo if you encounter permission issues"
 fi
+step_complete "User permissions check" 5 9
 
 # Check for existing VM with the same name
+progress 6 9 "Checking for existing VM"
 log "Checking for existing VM..."
 if multipass list | grep -q "^$VM_NAME "; then
     log "WARNING: VM '$VM_NAME' already exists"
     log "The script will attempt to use the existing VM or recreate it if needed"
     log "To use a clean environment, delete the existing VM first: multipass delete $VM_NAME && multipass purge"
 fi
+step_complete "Existing VM check" 6 9
 
 log "All pre-deployment checks completed successfully"
 log "System is ready for deployment"
+step_complete "Pre-deployment checks completion" 7 9
 
 # ========================
 # VERIFICATION: Pre-deployment checks
 # ========================
 
+progress 8 9 "Running pre-deployment verification"
 verify_predeployment_completion() {
     log "=== VERIFYING PRE-DEPLOYMENT COMPLETION ==="
     
@@ -433,22 +501,31 @@ log "Running pre-deployment completion verification..."
 verify_predeployment_completion
 
 log "Pre-deployment verification completed successfully"
+step_complete "Pre-deployment verification" 8 9
+progress 9 9 "Pre-deployment phase completed - 100% ready for VM provisioning"
 log "Proceeding to VM provisioning section"
 
 # =====================
 # VM PROVISIONING SECTION
 # =====================
 
+step_complete "Pre-deployment checks" 1 7
+section_header "VM PROVISIONING" 2 7
+progress 2 7 "Starting VM provisioning"
+milestone "Infrastructure Setup" 1 4
 log "Starting VM provisioning..."
 
 # 3.2 Add multipass installation check to deployment script
+progress 1 8 "Checking multipass installation for VM provisioning"
 log "Checking multipass installation..."
 if ! command_exists multipass; then
     handle_error "multipass is not installed. Please install multipass before running this script. Installation instructions: https://multipass.run/install"
 fi
+step_complete "Multipass installation verified" 1 8
 log "multipass is installed: $(multipass version)"
 
 # 3.3 Configure VM creation with 4 CPUs, 7.7GiB RAM, 19.3GiB disk
+progress 2 8 "Checking for existing VM"
 log "Checking if VM '$VM_NAME' already exists..."
 if vm_exists; then
     log "VM '$VM_NAME' already exists"
@@ -478,6 +555,7 @@ else
 fi
 
 # 3.4 Add VM readiness verification to deployment script
+progress 4 8 "Verifying VM readiness"
 log "Waiting for VM to be ready..."
 MAX_ATTEMPTS=30
 ATTEMPT=1
@@ -507,6 +585,7 @@ if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
 fi
 
 # 3.5 Configure VM networking verification
+progress 5 8 "Verifying VM networking"
 log "Verifying VM networking..."
 VM_IP=$(multipass info "$VM_NAME" | grep "IPv4:" | awk '{print $2}')
 if [ -z "$VM_IP" ]; then
@@ -558,10 +637,12 @@ if ! multipass exec "$VM_NAME" -- echo "SSH access test successful" >/dev/null 2
     handle_vm_networking_error "$VM_NAME" "ssh_access"
 fi
 log "SSH access test passed"
+step_complete "VM networking verification" 5 8
 
 log "VM networking verification completed successfully"
 
 # 3.6 Add VM status monitoring during deployment
+progress 6 8 "Monitoring VM status during deployment"
 log "=== VM Status Monitoring ==="
 log "VM '$VM_NAME' detailed status:"
 
@@ -689,11 +770,13 @@ log "VM recovery suggestions have been logged for reference if issues occur late
 provide_vm_recovery_suggestions "$VM_NAME" >> "$LOG_FILE"
 
 log "VM provisioning completed successfully"
+step_complete "VM status monitoring" 6 8
 
 # ========================
 # VERIFICATION: VM provisioning completion
 # ========================
 
+progress 7 8 "Running VM provisioning verification"
 verify_vm_provisioning_completion() {
     log "=== VERIFYING VM PROVISIONING COMPLETION ==="
     
@@ -715,8 +798,25 @@ verify_vm_provisioning_completion() {
         verification_passed=false
         verification_details+="FAIL: VM '$VM_NAME' is not running\n"
     else
-        log "SUCCESS: VM '$VM_NAME' is running"
+        log "VM '$VM_NAME' is running"
+        step_complete "VM startup" 2 8
     fi
+else
+    progress 3 8 "Creating new VM with specified resources"
+    log "Creating VM '$VM_NAME' with $VM_CPUS CPUs, $VM_MEMORY RAM, $VM_DISK disk..."
+    vm_creation_output=""
+    if ! vm_creation_output=$(multipass launch \
+        --name "$VM_NAME" \
+        --cpus "$VM_CPUS" \
+        --memory "$VM_MEMORY" \
+        --disk "$VM_DISK" \
+        --timeout 600 \
+        2>&1); then
+        handle_vm_creation_error "$VM_NAME" "$vm_creation_output"
+    fi
+    log "VM '$VM_NAME' created successfully"
+    step_complete "VM creation" 3 8
+fi
     
     # Verify VM is responsive
     log "Verifying VM responsiveness..."
@@ -818,112 +918,18 @@ log "Running VM provisioning completion verification..."
 verify_vm_provisioning_completion
 
 log "VM provisioning verification completed successfully"
+step_complete "VM provisioning verification" 7 8
+progress 8 8 "VM provisioning phase completed - 100% ready for microk8s installation"
 log "Proceeding to microk8s installation section"
 
 # ========================
 # MICROK8S INSTALLATION SECTION
 # ========================
 
-# Microk8s installation error handler
-handle_microk8s_error() {
-    local error_code=$1
-    local error_message=$2
-    local recovery_suggestion=$3
-    
-    log "MICROK8S ERROR [Code: $error_code]: $error_message"
-    log "RECOVERY SUGGESTION: $recovery_suggestion"
-    
-    # Log additional diagnostic information
-    log "MICROK8S DIAGNOSTIC INFO:"
-    log "VM Name: $VM_NAME"
-    log "VM Status: $(multipass info "$VM_NAME" | grep "State:" | awk '{print $2}')"
-    
-    # Check if microk8s is installed
-    if multipass exec "$VM_NAME" -- command -v microk8s >/dev/null 2>&1; then
-        log "Microk8s version: $(multipass exec "$VM_NAME" -- microk8s version 2>/dev/null || echo 'unknown')"
-        log "Microk8s status: $(multipass exec "$VM_NAME" -- microk8s status --wait 2>/dev/null || echo 'status check failed')"
-    else
-        log "Microk8s is not installed in the VM"
-    fi
-    
-    # Check system resources in VM
-    log "VM System Resources:"
-    if multipass exec "$VM_NAME" -- command -v free >/dev/null 2>&1; then
-        log "Memory: $(multipass exec "$VM_NAME" -- free -h | awk 'NR==2{print $2}' | tr -d '\n') total"
-    fi
-    if multipass exec "$VM_NAME" -- command -v nproc >/dev/null 2>&1; then
-        log "CPU Cores: $(multipass exec "$VM_NAME" -- nproc)"
-    fi
-    if multipass exec "$VM_NAME" -- command -v df >/dev/null 2>&1; then
-        log "Disk Space: $(multipass exec "$VM_NAME" -- df -h / | awk 'NR==2{print $4}' | tr -d '\n') available"
-    fi
-    
-    # Check for common issues
-    log "Checking for common microk8s installation issues..."
-    
-    # Check if snap is available (microk8s requires snap)
-    if ! multipass exec "$VM_NAME" -- command -v snap >/dev/null 2>&1; then
-        log "ISSUE: snap is not available in the VM. Microk8s requires snap."
-        log "FIX: Install snap first: sudo apt update && sudo apt install -y snapd"
-    fi
-    
-    # Check if VM has sufficient resources
-    local vm_cpu_cores=$(multipass exec "$VM_NAME" -- nproc 2>/dev/null || echo "0")
-    local vm_memory_gb=$(multipass exec "$VM_NAME" -- free -g 2>/dev/null | awk 'NR==2{print $2}' || echo "0")
-    
-    if [ "$vm_cpu_cores" -lt 2 ]; then
-        log "ISSUE: VM has only $vm_cpu_cores CPU cores. Microk8s requires at least 2 cores."
-        log "FIX: Recreate VM with at least 2 CPU cores."
-    fi
-    
-    if [ "$vm_memory_gb" -lt 4 ]; then
-        log "ISSUE: VM has only ${vm_memory_gb}GB RAM. Microk8s requires at least 4GB RAM."
-        log "FIX: Recreate VM with at least 4GB RAM."
-    fi
-    
-    exit $error_code
-}
-
-# Microk8s add-on enablement error handler
-handle_microk8s_addon_error() {
-    local addon_name=$1
-    local error_output=$2
-    
-    case "$error_output" in
-        *"already enabled"*)
-            log "WARNING: $addon_name add-on is already enabled"
-            return 0
-            ;;
-        *"not found"*)
-            handle_microk8s_error 301 "$addon_name add-on not found" \
-                "Check if the add-on name is correct: microk8s status. Valid add-ons include: dns, storage, ingress"
-            ;;
-        *"failed"*)
-            handle_microk8s_error 302 "$addon_name add-on enablement failed" \
-                "Try enabling manually: microk8s enable $addon_name. Check microk8s logs: journalctl -u snap.microk8s.daemon-*"
-            ;;
-        *"timeout"*)
-            handle_microk8s_error 303 "$addon_name add-on enablement timed out" \
-                "Wait for microk8s to be ready: microk8s status --wait. Then retry enabling the add-on."
-            ;;
-        *)
-            handle_microk8s_error 304 "Unknown error enabling $addon_name add-on: $error_output" \
-                "Check microk8s status: microk8s status. Try manual enablement: microk8s enable $addon_name"
-            ;;
-    esac
-}
-
-# Function to check if microk8s is ready
-microk8s_ready() {
-    multipass exec "$VM_NAME" -- microk8s status --wait --timeout 30 >/dev/null 2>&1
-}
-
-# Function to check if microk8s add-on is enabled
-microk8s_addon_enabled() {
-    local addon_name=$1
-    multipass exec "$VM_NAME" -- microk8s status | grep -q "^$addon_name: enabled"
-}
-
+step_complete "VM provisioning" 2 7
+section_header "MICROK8S INSTALLATION" 3 7
+progress 3 7 "Starting microk8s installation"
+milestone "Kubernetes Cluster Setup" 2 4
 log "Starting microk8s installation..."
 
 # 4.2 Install microk8s in the VM
@@ -1439,6 +1445,11 @@ log "Proceeding to container image build section"
 # CONTAINER IMAGE BUILD SECTION
 # ===========================
 
+step_complete "Microk8s installation" 3 7
+section_header "CONTAINER IMAGE BUILD" 4 7
+progress 4 7 "Starting container image build"
+milestone "Application Containerization" 3 4
+
 # Container build error handler
 handle_container_build_error() {
     local error_code=$1
@@ -1769,6 +1780,10 @@ log "Proceeding to container image deployment section"
 # CONTAINER IMAGE DEPLOYMENT SECTION
 # ===========================
 
+step_complete "Container image build" 4 7
+section_header "CONTAINER IMAGE DEPLOYMENT" 5 7
+progress 5 7 "Starting container image deployment"
+
 # Container image deployment error handler
 handle_image_deployment_error() {
     local error_code=$1
@@ -1979,10 +1994,13 @@ log "Container image deployment verification completed successfully"
 log "Proceeding to ingress configuration section"
 
 # ===========================
-# INGRESS CONFIGURATION SECTION
-# ===========================
 # KUBERNETES DEPLOYMENT SECTION
 # ===========================
+
+step_complete "Container image deployment" 5 7
+section_header "KUBERNETES DEPLOYMENT" 6 7
+progress 6 7 "Starting Kubernetes deployment"
+milestone "Application Deployment" 4 4
 
 # Kubernetes deployment error handler
 handle_k8s_deployment_error() {
@@ -2959,6 +2977,11 @@ log "Ingress logs verification completed"
 # FINAL COMPREHENSIVE VERIFICATION
 # ========================
 
+step_complete "Kubernetes deployment" 6 7
+section_header "FINAL COMPREHENSIVE VERIFICATION" 7 7
+progress 7 7 "Starting final comprehensive verification"
+milestone "Deployment Verification" 4 4
+
 final_comprehensive_verification() {
     log "=== FINAL COMPREHENSIVE DEPLOYMENT VERIFICATION ==="
     log "This verification checks the entire deployment from end to end"
@@ -3021,9 +3044,17 @@ final_comprehensive_verification() {
                 log "SUCCESS: $addon add-on is enabled"
             else
                 log "WARNING: $addon add-on is not enabled"
-            fi
-        done
     fi
+done
+
+if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+    if vm_running; then
+        handle_vm_readiness_error "$VM_NAME" "not_responsive"
+    else
+        handle_vm_readiness_error "$VM_NAME" "not_running"
+    fi
+fi
+step_complete "VM readiness verification" 4 8
     
     # 4. Verify container image availability
     log "Step 4: Verifying container image availability..."
