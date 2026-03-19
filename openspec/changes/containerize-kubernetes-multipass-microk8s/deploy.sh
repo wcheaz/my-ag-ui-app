@@ -152,7 +152,99 @@ log "SSH access test passed"
 log "VM networking verification completed successfully"
 
 # 3.6 Add VM status monitoring during deployment
-log "VM '$VM_NAME' status:"
-multipass info "$VM_NAME"
+log "=== VM Status Monitoring ==="
+log "VM '$VM_NAME' detailed status:"
+
+# Get comprehensive VM information
+log "VM Basic Information:"
+multipass info "$VM_NAME" | tee -a "$LOG_FILE"
+
+# Get detailed resource information
+log "VM Resource Usage:"
+if multipass exec "$VM_NAME" -- command -v free >/dev/null 2>&1; then
+    log "Memory Usage:"
+    multipass exec "$VM_NAME" -- free -h | tee -a "$LOG_FILE"
+fi
+
+if multipass exec "$VM_NAME" -- command -v df >/dev/null 2>&1; then
+    log "Disk Usage:"
+    multipass exec "$VM_NAME" -- df -h | tee -a "$LOG_FILE"
+fi
+
+if multipass exec "$VM_NAME" -- command -v top >/dev/null 2>&1; then
+    log "CPU Information:"
+    multipass exec "$VM_NAME" -- top -bn1 | head -5 | tee -a "$LOG_FILE"
+fi
+
+# Get network information
+log "VM Network Configuration:"
+VM_IP=$(multipass info "$VM_NAME" | grep "IPv4:" | awk '{print $2}')
+log "VM IP Address: $VM_IP" | tee -a "$LOG_FILE"
+
+if multipass exec "$VM_NAME" -- command -v ip >/dev/null 2>&1; then
+    log "Network Interfaces:"
+    multipass exec "$VM_NAME" -- ip addr show | tee -a "$LOG_FILE"
+fi
+
+# Monitor VM health and readiness
+log "VM Health Status:"
+log "Checking VM responsiveness..."
+if multipass exec "$VM_NAME" -- uptime >/dev/null 2>&1; then
+    UPTIME_OUTPUT=$(multipass exec "$VM_NAME" -- uptime)
+    log "VM is responsive - Uptime: $UPTIME_OUTPUT" | tee -a "$LOG_FILE"
+else
+    handle_error "VM is not responding to commands"
+fi
+
+# Check disk space availability
+log "Checking disk space availability..."
+DISK_USAGE=$(multipass exec "$VM_NAME" -- df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
+if [ "$DISK_USAGE" -gt 90 ]; then
+    log "WARNING: VM disk usage is at ${DISK_USAGE}% - consider cleaning up or increasing disk size"
+else
+    log "VM disk usage is at ${DISK_USAGE}% - acceptable"
+fi
+
+# Check memory availability
+if multipass exec "$VM_NAME" -- command -v free >/dev/null 2>&1; then
+    log "Checking memory availability..."
+    MEMORY_INFO=$(multipass exec "$VM_NAME" -- free -m | awk 'NR==2{printf "%.2f%%", $3/$2*100}')
+    log "VM memory usage: $MEMORY_INFO"
+fi
+
+# Set up continuous monitoring
+log "Setting up continuous VM status monitoring..."
+monitor_vm_status() {
+    local monitor_count=0
+    local max_monitor_count=3
+    
+    while [ $monitor_count -lt $max_monitor_count ]; do
+        log "VM Status Check #$((monitor_count + 1)):"
+        
+        # Check if VM is still running
+        if ! vm_running; then
+            handle_error "VM stopped running during deployment"
+        fi
+        
+        # Check VM responsiveness
+        if ! multipass exec "$VM_NAME" -- echo "VM status check" >/dev/null 2>&1; then
+            handle_error "VM became unresponsive during deployment"
+        fi
+        
+        # Log current status
+        log "VM is running and responsive - continuing with deployment"
+        
+        monitor_count=$((monitor_count + 1))
+        if [ $monitor_count -lt $max_monitor_count ]; then
+            sleep 5
+        fi
+    done
+}
+
+# Run continuous monitoring
+monitor_vm_status
+
+log "=== VM Status Monitoring Complete ==="
+log "All VM status checks passed. VM is ready for microk8s installation."
 
 log "VM provisioning completed successfully"
