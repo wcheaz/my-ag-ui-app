@@ -55,13 +55,13 @@
 - [x] 5.1 Build Docker image in deployment script
 - [x] 5.2 Tag Docker image appropriately
 - [x] 5.3 Load Docker image into microk8s (or configure image pull)
-- [ ] 5.4 Create Kubernetes secrets for sensitive environment variables
-- [ ] 5.5 Apply deployment manifest to microk8s cluster
-- [ ] 5.6 Apply service manifest to microk8s cluster
-- [ ] 5.7 Apply ingress manifest to microk8s cluster
-- [ ] 5.8 Wait for pods to be ready
-- [ ] 5.9 Verify deployment status
-- [ ] 5.10 Verify application is accessible via ingress
+- [x] 5.4 Create Kubernetes secrets for sensitive environment variables
+- [x] 5.5 Apply deployment manifest to microk8s cluster
+- [x] 5.6 Apply service manifest to microk8s cluster
+- [x] 5.7 Apply ingress manifest to microk8s cluster
+- [x] 5.8 Wait for pods to be ready
+- [x] 5.9 Verify deployment status
+- [x] 5.10 Verify application is accessible via ingress
 
 ## 6. Ingress Configuration
 
