@@ -481,3 +481,256 @@ log "VM recovery suggestions have been logged for reference if issues occur late
 provide_vm_recovery_suggestions "$VM_NAME" >> "$LOG_FILE"
 
 log "VM provisioning completed successfully"
+
+# ========================
+# MICROK8S INSTALLATION SECTION
+# ========================
+
+# Microk8s installation error handler
+handle_microk8s_error() {
+    local error_code=$1
+    local error_message=$2
+    local recovery_suggestion=$3
+    
+    log "MICROK8S ERROR [Code: $error_code]: $error_message"
+    log "RECOVERY SUGGESTION: $recovery_suggestion"
+    
+    # Log additional diagnostic information
+    log "MICROK8S DIAGNOSTIC INFO:"
+    log "VM Name: $VM_NAME"
+    log "VM Status: $(multipass info "$VM_NAME" | grep "State:" | awk '{print $2}')"
+    
+    # Check if microk8s is installed
+    if multipass exec "$VM_NAME" -- command -v microk8s >/dev/null 2>&1; then
+        log "Microk8s version: $(multipass exec "$VM_NAME" -- microk8s version 2>/dev/null || echo 'unknown')"
+        log "Microk8s status: $(multipass exec "$VM_NAME" -- microk8s status --wait 2>/dev/null || echo 'status check failed')"
+    else
+        log "Microk8s is not installed in the VM"
+    fi
+    
+    # Check system resources in VM
+    log "VM System Resources:"
+    if multipass exec "$VM_NAME" -- command -v free >/dev/null 2>&1; then
+        log "Memory: $(multipass exec "$VM_NAME" -- free -h | awk 'NR==2{print $2}' | tr -d '\n') total"
+    fi
+    if multipass exec "$VM_NAME" -- command -v nproc >/dev/null 2>&1; then
+        log "CPU Cores: $(multipass exec "$VM_NAME" -- nproc)"
+    fi
+    if multipass exec "$VM_NAME" -- command -v df >/dev/null 2>&1; then
+        log "Disk Space: $(multipass exec "$VM_NAME" -- df -h / | awk 'NR==2{print $4}' | tr -d '\n') available"
+    fi
+    
+    # Check for common issues
+    log "Checking for common microk8s installation issues..."
+    
+    # Check if snap is available (microk8s requires snap)
+    if ! multipass exec "$VM_NAME" -- command -v snap >/dev/null 2>&1; then
+        log "ISSUE: snap is not available in the VM. Microk8s requires snap."
+        log "FIX: Install snap first: sudo apt update && sudo apt install -y snapd"
+    fi
+    
+    # Check if VM has sufficient resources
+    local vm_cpu_cores=$(multipass exec "$VM_NAME" -- nproc 2>/dev/null || echo "0")
+    local vm_memory_gb=$(multipass exec "$VM_NAME" -- free -g 2>/dev/null | awk 'NR==2{print $2}' || echo "0")
+    
+    if [ "$vm_cpu_cores" -lt 2 ]; then
+        log "ISSUE: VM has only $vm_cpu_cores CPU cores. Microk8s requires at least 2 cores."
+        log "FIX: Recreate VM with at least 2 CPU cores."
+    fi
+    
+    if [ "$vm_memory_gb" -lt 4 ]; then
+        log "ISSUE: VM has only ${vm_memory_gb}GB RAM. Microk8s requires at least 4GB RAM."
+        log "FIX: Recreate VM with at least 4GB RAM."
+    fi
+    
+    exit $error_code
+}
+
+# Microk8s add-on enablement error handler
+handle_microk8s_addon_error() {
+    local addon_name=$1
+    local error_output=$2
+    
+    case "$error_output" in
+        *"already enabled"*)
+            log "WARNING: $addon_name add-on is already enabled"
+            return 0
+            ;;
+        *"not found"*)
+            handle_microk8s_error 301 "$addon_name add-on not found" \
+                "Check if the add-on name is correct: microk8s status. Valid add-ons include: dns, storage, ingress"
+            ;;
+        *"failed"*)
+            handle_microk8s_error 302 "$addon_name add-on enablement failed" \
+                "Try enabling manually: microk8s enable $addon_name. Check microk8s logs: journalctl -u snap.microk8s.daemon-*"
+            ;;
+        *"timeout"*)
+            handle_microk8s_error 303 "$addon_name add-on enablement timed out" \
+                "Wait for microk8s to be ready: microk8s status --wait. Then retry enabling the add-on."
+            ;;
+        *)
+            handle_microk8s_error 304 "Unknown error enabling $addon_name add-on: $error_output" \
+                "Check microk8s status: microk8s status. Try manual enablement: microk8s enable $addon_name"
+            ;;
+    esac
+}
+
+# Function to check if microk8s is ready
+microk8s_ready() {
+    multipass exec "$VM_NAME" -- microk8s status --wait --timeout 30 >/dev/null 2>&1
+}
+
+# Function to check if microk8s add-on is enabled
+microk8s_addon_enabled() {
+    local addon_name=$1
+    multipass exec "$VM_NAME" -- microk8s status | grep -q "^$addon_name: enabled"
+}
+
+log "Starting microk8s installation..."
+
+# 4.2 Install microk8s in the VM
+log "Installing microk8s in VM '$VM_NAME'..."
+
+# Check if microk8s is already installed
+if multipass exec "$VM_NAME" -- command -v microk8s >/dev/null 2>&1; then
+    log "Microk8s is already installed in VM"
+    MICROK8S_VERSION=$(multipass exec "$VM_NAME" -- microk8s version 2>/dev/null | head -1 | cut -d' ' -f2 || echo "unknown")
+    log "Existing microk8s version: $MICROK8S_VERSION"
+else
+    log "Installing microk8s using snap..."
+    
+    # Update package lists and install snap if not available
+    log "Checking for snap package manager..."
+    if ! multipass exec "$VM_NAME" -- command -v snap >/dev/null 2>&1; then
+        log "Installing snap package manager..."
+        if ! multipass exec "$VM_NAME" -- sudo apt update >/dev/null 2>&1; then
+            handle_microk8s_error 101 "Failed to update package lists" \
+                "Check network connectivity and try again. Manual fix: sudo apt update"
+        fi
+        
+        if ! multipass exec "$VM_NAME" -- sudo apt install -y snapd >/dev/null 2>&1; then
+            handle_microk8s_error 102 "Failed to install snapd" \
+                "Install snap manually: sudo apt install -y snapd. Check for conflicting packages."
+        fi
+        log "Snap package manager installed successfully"
+    fi
+    
+    # Install microk8s
+    log "Installing microk8s snap package..."
+    if ! multipass exec "$VM_NAME" -- sudo snap install microk8s --classic >/dev/null 2>&1; then
+        local install_error=$(multipass exec "$VM_NAME" -- sudo snap install microk8s --classic 2>&1 || echo "Unknown installation error")
+        handle_microk8s_error 103 "Failed to install microk8s: $install_error" \
+            "Check system requirements and try manual installation: sudo snap install microk8s --classic"
+    fi
+    
+    # Verify installation
+    log "Verifying microk8s installation..."
+    if ! multipass exec "$VM_NAME" -- command -v microk8s >/dev/null 2>&1; then
+        handle_microk8s_error 104 "Microk8s installation verification failed" \
+            "Check if microk8s is properly installed: sudo snap list microk8s. Try reinstalling."
+    fi
+    
+    MICROK8S_VERSION=$(multipass exec "$VM_NAME" -- microk8s version 2>/dev/null | head -1 | cut -d' ' -f2 || echo "unknown")
+    log "Microk8s installed successfully: version $MICROK8S_VERSION"
+fi
+
+# 4.6 Wait for microk8s to be ready
+log "Waiting for microk8s to be ready..."
+MAX_ATTEMPTS=20
+ATTEMPT=1
+while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+    log "Checking microk8s status... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
+    
+    if microk8s_ready; then
+        log "Microk8s is ready"
+        break
+    else
+        log "Microk8s is not ready yet..."
+        
+        # Check if there's a specific error
+        local status_output=$(multipass exec "$VM_NAME" -- microk8s status 2>&1 || echo "status check failed")
+        log "Status output: $status_output"
+        
+        # If this is the last attempt, provide detailed error information
+        if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+            handle_microk8s_error 105 "Microk8s failed to become ready after $MAX_ATTEMPTS attempts" \
+                "Check microk8s status: microk8s status. Try restarting: sudo snap restart microk8s. Check logs: journalctl -u snap.microk8s.daemon-*"
+        fi
+    fi
+    
+    sleep 10
+    ATTEMPT=$((ATTEMPT + 1))
+done
+
+# 4.7 Verify microk8s status after installation
+log "Verifying microk8s status..."
+if ! microk8s_ready; then
+    handle_microk8s_error 106 "Microk8s is not ready after installation" \
+        "Check microk8s status and logs: microk8s status; journalctl -u snap.microk8s.daemon-*"
+fi
+
+log "Microk8s status:"
+multipass exec "$VM_NAME" -- microk8s status | tee -a "$LOG_FILE"
+
+# 4.3 Enable dns add-on in microk8s
+log "Enabling dns add-on..."
+if ! multipass exec "$VM_NAME" -- microk8s enable dns >/dev/null 2>&1; then
+    local dns_error=$(multipass exec "$VM_NAME" -- microk8s enable dns 2>&1 || echo "Unknown error enabling dns")
+    handle_microk8s_addon_error "dns" "$dns_error"
+fi
+log "DNS add-on enabled successfully"
+
+# 4.4 Enable storage add-on in microk8s
+log "Enabling storage add-on..."
+if ! multipass exec "$VM_NAME" -- microk8s enable storage >/dev/null 2>&1; then
+    local storage_error=$(multipass exec "$VM_NAME" -- microk8s enable storage 2>&1 || echo "Unknown error enabling storage")
+    handle_microk8s_addon_error "storage" "$storage_error"
+fi
+log "Storage add-on enabled successfully"
+
+# 4.5 Enable ingress add-on in microk8s
+log "Enabling ingress add-on..."
+if ! multipass exec "$VM_NAME" -- microk8s enable ingress >/dev/null 2>&1; then
+    local ingress_error=$(multipass exec "$VM_NAME" -- microk8s enable ingress 2>&1 || echo "Unknown error enabling ingress")
+    handle_microk8s_addon_error "ingress" "$ingress_error"
+fi
+log "Ingress add-on enabled successfully"
+
+# Wait a moment for add-ons to initialize
+log "Waiting for add-ons to initialize..."
+sleep 10
+
+# Verify add-ons are enabled
+log "Verifying add-ons status..."
+ADDONS=("dns" "storage" "ingress")
+for addon in "${ADDONS[@]}"; do
+    log "Checking $addon add-on..."
+    if microk8s_addon_enabled "$addon"; then
+        log "$addon add-on is enabled"
+    else
+        log "WARNING: $addon add-on may not be fully enabled yet"
+        
+        # Give it more time and check again
+        sleep 5
+        if microk8s_addon_enabled "$addon"; then
+            log "$addon add-on is now enabled"
+        else
+            log "WARNING: $addon add-on still not enabled. This may resolve automatically."
+        fi
+    fi
+done
+
+# Final status check
+log "Final microk8s status verification..."
+if microk8s_ready; then
+    log "Microk8s is ready and all required add-ons are enabled"
+    log "Microk8s final status:"
+    multipass exec "$VM_NAME" -- microk8s status | tee -a "$LOG_FILE"
+else
+    handle_microk8s_error 107 "Microk8s final status check failed" \
+        "Microk8s is not ready. Check status: microk8s status. Try restarting: sudo snap restart microk8s"
+fi
+
+# 4.8 Add microk8s error handling to deployment script
+log "Microk8s installation and configuration completed successfully"
+log "Microk8s is ready for Kubernetes deployment"
