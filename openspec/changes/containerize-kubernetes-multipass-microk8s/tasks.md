@@ -69,7 +69,7 @@
 - [x] 6.2 Get ingress endpoint URL/IP
 - [x] 6.3 Test application access via ingress
 - [x] 6.4 Configure SSL/TLS certificates (if needed)
-- [ ] 6.5 Test HTTPS access (if SSL is configured)
+- [x] 6.5 Test HTTPS access (if SSL is configured)
 - [ ] 6.6 Verify ingress logs are working
 - [ ] 6.7 Test ingress error handling
 - [ ] 6.8 Verify load balancing across pods (if replicas > 1)

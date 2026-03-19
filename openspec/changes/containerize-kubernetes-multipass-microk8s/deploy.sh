@@ -1610,4 +1610,110 @@ if ! multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress my-ag-ui
 fi
 log "Application ingress configuration verified successfully"
 
+# 6.5 Test HTTPS access (if SSL is configured)
+log "Starting HTTPS access testing..."
+
+# Function to test HTTPS access
+test_https_access() {
+    local endpoint="$1"
+    local max_attempts=12
+    local attempt=1
+    
+    log "Testing HTTPS access to https://$endpoint..."
+    
+    while [ $attempt -le $max_attempts ]; do
+        log "HTTPS test attempt $attempt/$max_attempts..."
+        
+        # Test HTTPS access with curl (insecure because we're using self-signed certs)
+        if curl -k -s -f --connect-timeout 5 "https://$endpoint" >/dev/null 2>&1; then
+            log "HTTPS access test PASSED - Successfully connected to https://$endpoint"
+            
+            # Test with more details
+            log "Testing HTTPS response details..."
+            local http_code=$(curl -k -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "https://$endpoint" 2>/dev/null || echo "000")
+            local response_time=$(curl -k -s -o /dev/null -w "%{time_total}" --connect-timeout 5 "https://$endpoint" 2>/dev/null || echo "0.000")
+            
+            log "HTTPS Response Details:"
+            log "  HTTP Status Code: $http_code"
+            log "  Response Time: ${response_time}s"
+            
+            if [ "$http_code" = "200" ]; then
+                log "HTTPS test fully SUCCESSFUL - Received 200 OK response"
+                return 0
+            else
+                log "WARNING: HTTPS connected but received non-200 status code: $http_code"
+            fi
+        else
+            log "HTTPS test attempt $attempt failed - Connection failed or timeout"
+        fi
+        
+        if [ $attempt -lt $max_attempts ]; then
+            log "Waiting 5 seconds before next HTTPS test attempt..."
+            sleep 5
+        fi
+        
+        attempt=$((attempt + 1))
+    done
+    
+    log "ERROR: HTTPS access test FAILED after $max_attempts attempts"
+    return 1
+}
+
+# Test HTTPS access to different endpoints
+HTTPS_ENDPOINTS=("localhost" "127.0.0.1")
+HTTPS_SUCCESS=false
+
+for endpoint in "${HTTPS_ENDPOINTS[@]}"; do
+    log "Testing HTTPS access to $endpoint..."
+    if test_https_access "$endpoint"; then
+        HTTPS_SUCCESS=true
+        log "HTTPS access test successful for $endpoint"
+        break
+    else
+        log "HTTPS access test failed for $endpoint"
+    fi
+done
+
+if [ "$HTTPS_SUCCESS" = "true" ]; then
+    log "HTTPS access test completed successfully"
+    
+    # Additional verification - test SSL certificate details
+    log "Verifying SSL certificate details..."
+    if multipass exec "$VM_NAME" -- bash -c "curl -k -v https://localhost 2>&1 | grep -E 'subject:|issuer:|start date:|expire date:' | head -4" 2>&1 | tee -a "$LOG_FILE"; then
+        log "SSL certificate details verified successfully"
+    else
+        log "WARNING: Could not verify SSL certificate details (this is not critical)"
+    fi
+    
+    # Test HTTP to HTTPS redirect
+    log "Testing HTTP to HTTPS redirect..."
+    local redirect_test=$(curl -k -s -w "%{redirect_url}" -o /dev/null "http://localhost" 2>/dev/null || echo "")
+    if echo "$redirect_test" | grep -q "https://"; then
+        log "HTTP to HTTPS redirect test PASSED - Redirects to HTTPS"
+    else
+        log "INFO: HTTP to HTTPS redirect not active (this may be normal depending on configuration)"
+    fi
+    
+else
+    log "ERROR: All HTTPS access tests failed"
+    log "Possible causes:"
+    log "  1. Application pods are not running or ready"
+    log "  2. Ingress controller is not properly configured"
+    log "  3. SSL/TLS certificates are not properly configured"
+    log "  4. Network connectivity issues"
+    log "  5. Firewall blocking HTTPS traffic"
+    
+    # Provide diagnostic information
+    log "HTTPS Access Test Diagnostic Information:"
+    log "  Ingress endpoint: $ingress_endpoint"
+    log "  Application pods: $(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=my-ag-ui-app 2>/dev/null || echo 'pods not found'")"
+    log "  Ingress status: $(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress my-ag-ui-app-ingress 2>/dev/null || echo 'ingress not found'")"
+    log "  TLS secret: $(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get secret my-ag-ui-app-tls-secret 2>/dev/null || echo 'secret not found'")"
+    
+    handle_k8s_deployment_error 208 "HTTPS access test failed" \
+        "Check application pod status: microk8s kubectl get pods. Check ingress status: microk8s kubectl get ingress. Check TLS secret: microk8s kubectl get secret my-ag-ui-app-tls-secret"
+fi
+
+log "HTTPS access testing completed"
+
 log "Kubernetes manifests deployment completed successfully"
