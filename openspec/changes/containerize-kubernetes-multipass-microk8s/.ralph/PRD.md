@@ -1173,10 +1173,44 @@ multipass purge
 ## Current Task Context
 
 ## Current Task
-- 1.6 Configure environment variable support in Dockerfile
+- 3.9 Test VM creation and deletion
 ## Completed Tasks for Git Commit
 - [x] 1.1 Review and optimize existing Dockerfile for multi-stage builds
 - [x] 1.2 Create build stage with all build dependencies (Node.js, npm)
 - [x] 1.3 Create runtime stage with lightweight Alpine base image
 - [x] 1.4 Configure Dockerfile to expose port 3000
 - [x] 1.5 Add health check endpoint configuration to Dockerfile
+- [x] 1.6 Configure environment variable support in Dockerfile
+- [x] 1.7 Test Docker build locally to ensure it works correctly
+- [x] 1.8 Verify container runs successfully with `docker run`
+- [x] 1.9 Verify container responds to HTTP requests on port 3000
+- [x] 2.1 Create k8s/deployment.yaml with deployment configuration
+- [x] 2.2 Configure deployment with appropriate replica count (start with 1)
+- [x] 2.3 Add resource requests and limits to deployment (CPU and memory)
+- [x] 2.4 Configure liveness probe in deployment manifest
+- [x] 2.5 Configure readiness probe in deployment manifest
+- [x] 2.6 Create k8s/service.yaml with service configuration
+- [x] 2.7 Configure service to listen on port 80 and forward to port 3000
+- [x] 2.8 Set up service selector to match deployment pods
+- [x] 2.9 Create k8s/ingress.yaml with ingress configuration
+- [x] 2.10 Configure ingress to route traffic to the service
+- [x] 2.11 Set up ingress class for microk8s ingress controller
+- [x] 2.12 Add host-based routing configuration (if needed)
+- [x] 2.13 Test Kubernetes manifests locally with `microk8s kubectl apply --dry-run`
+- [x] 3.1 Create VM provisioning script section in deployment script
+- [x] 3.2 Add multipass installation check to deployment script
+- [x] 3.3 Configure VM creation with 4 CPUs, 7.7GiB RAM, 19.3GiB disk
+- [x] 3.4 Add VM readiness verification to deployment script
+- [x] 3.5 Configure VM networking verification
+- [x] 3.6 Add VM status monitoring during deployment
+- [x] 3.7 Implement VM cleanup capability in cleanup script
+- [x] 3.8 Add VM error handling and recovery suggestions
+- [x] 7.1 Create main deployment script (deploy.sh)
+- [x] 7.3 Add VM provisioning section
+- [x] 8.1 Create cleanup script (cleanup.sh)
+- [x] 8.2 Add Kubernetes resource cleanup (delete ingress, service, deployment)
+- [x] 8.3 Add microk8s cleanup (optional)
+- [x] 8.4 Add VM deletion (multipass delete and purge)
+- [x] 8.5 Add cleanup confirmation prompt (or flag for non-interactive)
+- [x] 8.6 Add error handling for cleanup failures
+- [x] 8.7 Make cleanup script executable
