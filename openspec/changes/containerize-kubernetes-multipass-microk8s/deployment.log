@@ -1,0 +1,27 @@
+[2026-03-19 16:34:10] Starting VM provisioning...
+[2026-03-19 16:34:10] Checking multipass installation...
+[2026-03-19 16:34:10] multipass is installed: multipass   1.16.1
+multipassd  1.16.1
+[2026-03-19 16:34:10] Checking if VM 'my-ag-ui-app-k8s' already exists...
+[2026-03-19 16:34:10] Creating VM 'my-ag-ui-app-k8s' with 4 CPUs, 7.7G RAM, 19.3G disk...
+[2026-03-19 16:34:27] Starting VM provisioning...
+[2026-03-19 16:34:27] Checking multipass installation...
+[2026-03-19 16:34:27] multipass is installed: multipass   1.16.1
+multipassd  1.16.1
+[2026-03-19 16:34:27] Checking if VM 'my-ag-ui-app-k8s' already exists...
+[2026-03-19 16:34:27] Creating VM 'my-ag-ui-app-k8s' with 4 CPUs, 7.7G RAM, 19.3G disk...
+[2026-03-19 16:34:28] VM ERROR [Code: 108]: Unknown error creating VM 'my-ag-ui-app-k8s': [2K[0A[0E[2K[0A[0ECreating my-ag-ui-app-k8s  / [2K[0A[0E[2K[0A[0EConfiguring my-ag-ui-app-k8s  / [2K[0A[0Elaunch failed: Cannot resize instance image: qemu-img failed (Process returned exit code: 1) with output:
+qemu-img: The new size must be a multiple of 512
+
+[2K[0A[0E
+[2026-03-19 16:34:28] RECOVERY SUGGESTION: Check multipass logs: journalctl -u multipassd -f or try manual VM creation
+[2026-03-19 16:34:28] DIAGNOSTIC INFO:
+[2026-03-19 16:34:28] System: Linux steamer 6.19.8-061908-generic #202603131837 SMP PREEMPT_DYNAMIC Fri Mar 13 23:26:49 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+[2026-03-19 16:34:28] Multipass version: multipass   1.16.1
+multipassd  1.16.1
+[2026-03-19 16:34:28] Available disk space: 89G
+[2026-03-19 16:34:28] Available memory: 15Gi
+[2026-03-19 16:34:28] Multipass service status: inactive
+unknown
+[2026-03-19 16:34:28] ACTION: Try restarting multipass service: sudo systemctl start multipassd
+[2026-03-19 16:34:28] Existing VMs:

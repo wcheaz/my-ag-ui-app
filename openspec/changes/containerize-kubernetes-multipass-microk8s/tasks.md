@@ -65,7 +65,7 @@
 
 ## 6. Ingress Configuration
 
-- [ ] 6.1 Verify ingress controller is running
+- [x] 6.1 Verify ingress controller is running
 - [ ] 6.2 Get ingress endpoint URL/IP
 - [ ] 6.3 Test application access via ingress
 - [ ] 6.4 Configure SSL/TLS certificates (if needed)

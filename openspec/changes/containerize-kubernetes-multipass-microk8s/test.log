@@ -1,0 +1,70 @@
+[2026-03-19 16:35:37] Starting ingress controller verification...
+[2026-03-19 16:35:37] Microk8s is ready for ingress verification
+[2026-03-19 16:35:37] Checking ingress add-on status...
+[2026-03-19 16:35:37] Ingress add-on is enabled
+[2026-03-19 16:35:37] Checking ingress controller pods...
+[2026-03-19 16:35:37] Found ingress controller pods: Mocked command: -- microk8s kubectl get pods -n ingress -o jsonpath={.items[*].metadata.name}
+[2026-03-19 16:35:37] Ingress pod 'Mocked' status: Mocked command: -- microk8s kubectl get pod Mocked -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod Mocked -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:35:37] WARNING: Ingress pod 'Mocked' is not running or not ready
+[2026-03-19 16:35:37] Ingress pod 'command:' status: Mocked command: -- microk8s kubectl get pod command: -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod command: -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:35:37] WARNING: Ingress pod 'command:' is not running or not ready
+[2026-03-19 16:35:37] Ingress pod '--' status: Mocked command: -- microk8s kubectl get pod -- -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod -- -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:35:37] WARNING: Ingress pod '--' is not running or not ready
+[2026-03-19 16:35:37] Ingress pod 'microk8s' status: Mocked command: -- microk8s kubectl get pod microk8s -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod microk8s -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:35:37] WARNING: Ingress pod 'microk8s' is not running or not ready
+[2026-03-19 16:35:37] Ingress pod 'kubectl' status: Mocked command: -- microk8s kubectl get pod kubectl -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod kubectl -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:35:37] WARNING: Ingress pod 'kubectl' is not running or not ready
+[2026-03-19 16:35:37] Ingress pod 'get' status: Mocked command: -- microk8s kubectl get pod get -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod get -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:35:37] WARNING: Ingress pod 'get' is not running or not ready
+[2026-03-19 16:35:37] Ingress pod 'pods' status: Mocked command: -- microk8s kubectl get pod pods -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod pods -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:35:37] WARNING: Ingress pod 'pods' is not running or not ready
+[2026-03-19 16:35:37] Ingress pod '-n' status: Mocked command: -- microk8s kubectl get pod -n -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod -n -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:35:37] WARNING: Ingress pod '-n' is not running or not ready
+[2026-03-19 16:35:37] Ingress pod 'ingress' status: Mocked command: -- microk8s kubectl get pod ingress -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod ingress -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:35:37] WARNING: Ingress pod 'ingress' is not running or not ready
+[2026-03-19 16:35:37] Ingress pod '-o' status: Mocked command: -- microk8s kubectl get pod -o -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod -o -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:35:37] WARNING: Ingress pod '-o' is not running or not ready
+[2026-03-19 16:35:37] Ingress pod 'jsonpath={.items[*].metadata.name}' status: Mocked command: -- microk8s kubectl get pod jsonpath={.items[*].metadata.name} -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod jsonpath={.items[*].metadata.name} -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:35:37] WARNING: Ingress pod 'jsonpath={.items[*].metadata.name}' is not running or not ready
+[2026-03-19 16:35:37] WARNING: Not all ingress controller pods are running. This may resolve automatically.
+[2026-03-19 16:35:37] Waiting a bit longer for ingress pods to become ready...
+[2026-03-19 16:35:39] INGRESS ERROR [Code: 104]: Ingress controller pods are not running after waiting
+[2026-03-19 16:35:39] RECOVERY SUGGESTION: Check pod status: microk8s kubectl get pods -n ingress. Check pod logs: microk8s kubectl logs <pod-name> -n ingress
+[2026-03-19 16:35:39] INGRESS DIAGNOSTIC INFO:
+[2026-03-19 16:35:39] VM Name: test-vm
+[2026-03-19 16:35:39] Microk8s status: Mocked for testing
+[2026-03-19 16:36:23] Starting ingress controller verification...
+[2026-03-19 16:36:23] Microk8s is ready for ingress verification
+[2026-03-19 16:36:23] Checking ingress add-on status...
+[2026-03-19 16:36:23] Ingress add-on is enabled
+[2026-03-19 16:36:23] Checking ingress controller pods...
+[2026-03-19 16:36:23] Found ingress controller pods: Mocked command: -- microk8s kubectl get pods -n ingress -o jsonpath={.items[*].metadata.name}
+[2026-03-19 16:36:23] Ingress pod 'Mocked' status: Mocked command: -- microk8s kubectl get pod Mocked -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod Mocked -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:36:23] WARNING: Ingress pod 'Mocked' is not running or not ready
+[2026-03-19 16:36:23] Ingress pod 'command:' status: Mocked command: -- microk8s kubectl get pod command: -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod command: -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:36:23] WARNING: Ingress pod 'command:' is not running or not ready
+[2026-03-19 16:36:23] Ingress pod '--' status: Mocked command: -- microk8s kubectl get pod -- -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod -- -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:36:23] WARNING: Ingress pod '--' is not running or not ready
+[2026-03-19 16:36:23] Ingress pod 'microk8s' status: Mocked command: -- microk8s kubectl get pod microk8s -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod microk8s -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:36:23] WARNING: Ingress pod 'microk8s' is not running or not ready
+[2026-03-19 16:36:23] Ingress pod 'kubectl' status: Mocked command: -- microk8s kubectl get pod kubectl -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod kubectl -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:36:23] WARNING: Ingress pod 'kubectl' is not running or not ready
+[2026-03-19 16:36:23] Ingress pod 'get' status: Mocked command: -- microk8s kubectl get pod get -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod get -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:36:23] WARNING: Ingress pod 'get' is not running or not ready
+[2026-03-19 16:36:23] Ingress pod 'pods' status: Mocked command: -- microk8s kubectl get pod pods -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod pods -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:36:23] WARNING: Ingress pod 'pods' is not running or not ready
+[2026-03-19 16:36:23] Ingress pod '-n' status: Mocked command: -- microk8s kubectl get pod -n -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod -n -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:36:23] WARNING: Ingress pod '-n' is not running or not ready
+[2026-03-19 16:36:23] Ingress pod 'ingress' status: Mocked command: -- microk8s kubectl get pod ingress -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod ingress -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:36:23] WARNING: Ingress pod 'ingress' is not running or not ready
+[2026-03-19 16:36:23] Ingress pod '-o' status: Mocked command: -- microk8s kubectl get pod -o -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod -o -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:36:23] WARNING: Ingress pod '-o' is not running or not ready
+[2026-03-19 16:36:23] Ingress pod 'jsonpath={.items[*].metadata.name}' status: Mocked command: -- microk8s kubectl get pod jsonpath={.items[*].metadata.name} -n ingress -o jsonpath={.status.phase}, Ready: Mocked command: -- microk8s kubectl get pod jsonpath={.items[*].metadata.name} -n ingress -o jsonpath={.status.conditions[?(@.type=="Ready")].status}
+[2026-03-19 16:36:23] WARNING: Ingress pod 'jsonpath={.items[*].metadata.name}' is not running or not ready
+[2026-03-19 16:36:23] WARNING: Not all ingress controller pods are running. This may resolve automatically.
+[2026-03-19 16:36:23] Waiting a bit longer for ingress pods to become ready...
+[2026-03-19 16:36:25] INGRESS ERROR [Code: 104]: Ingress controller pods are not running after waiting
+[2026-03-19 16:36:25] RECOVERY SUGGESTION: Check pod status: microk8s kubectl get pods -n ingress. Check pod logs: microk8s kubectl logs <pod-name> -n ingress
+[2026-03-19 16:36:25] INGRESS DIAGNOSTIC INFO:
+[2026-03-19 16:36:25] VM Name: test-vm
+[2026-03-19 16:36:25] Microk8s status: Mocked for testing

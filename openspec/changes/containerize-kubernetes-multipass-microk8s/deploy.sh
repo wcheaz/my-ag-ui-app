@@ -256,7 +256,7 @@ if vm_exists; then
     fi
 else
     log "Creating VM '$VM_NAME' with $VM_CPUS CPUs, $VM_MEMORY RAM, $VM_DISK disk..."
-    local vm_creation_output
+    vm_creation_output=""
     if ! vm_creation_output=$(multipass launch \
         --name "$VM_NAME" \
         --cpus "$VM_CPUS" \
@@ -1217,3 +1217,181 @@ log "Getting image details from microk8s..."
 multipass exec "$VM_NAME" -- bash -c "microk8s ctr image list | grep '$IMAGE_NAME'" | tee -a "$LOG_FILE"
 
 log "Container image deployment to microk8s completed successfully"
+
+# =========================
+# INGRESS CONFIGURATION SECTION
+# =========================
+
+# Ingress configuration error handler
+handle_ingress_error() {
+    local error_code=$1
+    local error_message=$2
+    local recovery_suggestion=$3
+    
+    log "INGRESS ERROR [Code: $error_code]: $error_message"
+    log "RECOVERY SUGGESTION: $recovery_suggestion"
+    
+    # Log additional diagnostic information
+    log "INGRESS DIAGNOSTIC INFO:"
+    log "VM Name: $VM_NAME"
+    log "Microk8s status: $(multipass exec "$VM_NAME" -- microk8s status --wait 2>/dev/null || echo 'microk8s not ready')"
+    
+    # Check ingress add-on status
+    if multipass exec "$VM_NAME" -- command -v microk8s >/dev/null 2>&1; then
+        log "Ingress add-on status: $(multipass exec "$VM_NAME" -- microk8s status | grep ingress || echo 'ingress status not available')"
+    fi
+    
+    exit $error_code
+}
+
+# 6.1 Verify ingress controller is running
+verify_ingress_controller() {
+    log "Starting ingress controller verification..."
+    
+    # Check if microk8s is ready
+    if ! microk8s_ready; then
+        handle_ingress_error 101 "Microk8s is not ready for ingress verification" \
+            "Ensure microk8s is running and ready: microk8s status --wait"
+    fi
+    log "Microk8s is ready for ingress verification"
+    
+    # Check if ingress add-on is enabled
+    log "Checking ingress add-on status..."
+    if ! microk8s_addon_enabled "ingress"; then
+        handle_ingress_error 102 "Ingress add-on is not enabled" \
+            "Enable ingress add-on: microk8s enable ingress"
+    fi
+    log "Ingress add-on is enabled"
+    
+    # Check ingress controller pods
+    log "Checking ingress controller pods..."
+    local ingress_pods=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n ingress -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+    
+    if [ -z "$ingress_pods" ]; then
+        handle_ingress_error 103 "No ingress controller pods found" \
+            "Check if ingress add-on is properly enabled: microk8s status. Try re-enabling: microk8s enable ingress"
+    fi
+    
+    log "Found ingress controller pods: $ingress_pods"
+    
+    # Check each ingress controller pod status
+    local all_pods_running=true
+    for pod in $ingress_pods; do
+        local pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pod "$pod" -n ingress -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+        local pod_ready=$(multipass exec "$VM_NAME" -- microk8s kubectl get pod "$pod" -n ingress -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
+        
+        log "Ingress pod '$pod' status: $pod_status, Ready: $pod_ready"
+        
+        if [ "$pod_status" != "Running" ] || [ "$pod_ready" != "True" ]; then
+            all_pods_running=false
+            log "WARNING: Ingress pod '$pod' is not running or not ready"
+        fi
+    done
+    
+    if [ "$all_pods_running" = "false" ]; then
+        log "WARNING: Not all ingress controller pods are running. This may resolve automatically."
+        log "Waiting a bit longer for ingress pods to become ready..."
+        sleep 10
+        
+        # Check again after waiting
+        for pod in $ingress_pods; do
+            local pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pod "$pod" -n ingress -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+            local pod_ready=$(multipass exec "$VM_NAME" -- microk8s kubectl get pod "$pod" -n ingress -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
+            
+            if [ "$pod_status" = "Running" ] && [ "$pod_ready" = "True" ]; then
+                log "Ingress pod '$pod' is now running and ready"
+            else
+                handle_ingress_error 104 "Ingress controller pods are not running after waiting" \
+                    "Check pod status: microk8s kubectl get pods -n ingress. Check pod logs: microk8s kubectl logs <pod-name> -n ingress"
+            fi
+        done
+    fi
+    
+    log "All ingress controller pods are running and ready"
+    
+    # Check ingress controller service
+    log "Checking ingress controller service..."
+    local ingress_service=$(multipass exec "$VM_NAME" -- microk8s kubectl get service -n ingress -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+    
+    if [ -z "$ingress_service" ]; then
+        handle_ingress_error 105 "No ingress controller service found" \
+            "Check ingress add-on status: microk8s status. The service should be created automatically when ingress add-on is enabled."
+    fi
+    
+    log "Found ingress controller service: $ingress_service"
+    
+    # Get ingress service details
+    local service_type=$(multipass exec "$VM_NAME" -- microk8s kubectl get service "$ingress_service" -n ingress -o jsonpath='{.spec.type}' 2>/dev/null || echo "Unknown")
+    local service_ports=$(multipass exec "$VM_NAME" -- microk8s kubectl get service "$ingress_service" -n ingress -o jsonpath='{.spec.ports[*].port}' 2>/dev/null || echo "Unknown")
+    
+    log "Ingress service details:"
+    log "  Service: $ingress_service"
+    log "  Type: $service_type"
+    log "  Ports: $service_ports"
+    
+    # Check ingress controller deployment
+    log "Checking ingress controller deployment..."
+    local ingress_deployment=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment -n ingress -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+    
+    if [ -n "$ingress_deployment" ]; then
+        log "Found ingress controller deployment: $ingress_deployment"
+        
+        local deployment_replicas=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment "$ingress_deployment" -n ingress -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "Unknown")
+        local deployment_ready=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment "$ingress_deployment" -n ingress -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "Unknown")
+        
+        log "Ingress deployment replica status: $deployment_ready/$deployment_replicas ready"
+        
+        if [ "$deployment_ready" != "$deployment_replicas" ]; then
+            log "WARNING: Not all ingress deployment replicas are ready"
+        fi
+    else
+        log "No ingress controller deployment found (this may be normal for some ingress implementations)"
+    fi
+    
+    # Test ingress controller functionality
+    log "Testing ingress controller functionality..."
+    
+    # Check if ingress class is available
+    local ingress_class=$(multipass exec "$VM_NAME" -- microk8s kubectl get ingressclass -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+    if [ -n "$ingress_class" ]; then
+        log "Found ingress class: $ingress_class"
+        
+        # Get ingress class details
+        local ingress_class_controller=$(multipass exec "$VM_NAME" -- microk8s kubectl get ingressclass "$ingress_class" -o jsonpath='{.spec.controller}' 2>/dev/null || echo "Unknown")
+        log "Ingress class controller: $ingress_class_controller"
+    else
+        log "WARNING: No ingress class found. This may be created when first ingress resource is applied."
+    fi
+    
+    # Test NGINX ingress controller specifically (microk8s uses NGINX)
+    log "Testing NGINX ingress controller health..."
+    if multipass exec "$VM_NAME" -- microk8s kubectl get pods -n ingress | grep -q "nginx-ingress"; then
+        local nginx_pod=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n ingress -l app.kubernetes.io/name=ingress-nginx -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        
+        if [ -n "$nginx_pod" ]; then
+            log "Testing NGINX ingress controller health endpoint..."
+            if multipass exec "$VM_NAME" -- microk8s kubectl get --raw /apis/ingress/v1/namespaces/ingress/services/ingress-nginx-controller:http/proxy >/dev/null 2>&1; then
+                log "NGINX ingress controller health check passed"
+            else
+                log "WARNING: NGINX ingress controller health check failed (this may be normal if no ingress resources exist yet)"
+            fi
+        fi
+    fi
+    
+    # Log final ingress controller status
+    log "=== INGRESS CONTROLLER VERIFICATION SUMMARY ==="
+    log "Ingress controller status: RUNNING"
+    log "  - Ingress add-on: Enabled"
+    log "  - Ingress pods: All running and ready"
+    log "  - Ingress service: Available"
+    log "  - Ingress controller: Functional"
+    log "  - Ready for ingress resource creation"
+    log "=============================================="
+    
+    log "Ingress controller verification completed successfully"
+}
+
+# 6.1 Verify ingress controller is running
+log "Starting ingress configuration verification..."
+verify_ingress_controller
+log "Ingress configuration verification completed"
