@@ -20,11 +20,11 @@
 - [x] 2.6 Create k8s/service.yaml with service configuration
 - [x] 2.7 Configure service to listen on port 80 and forward to port 3000
 - [x] 2.8 Set up service selector to match deployment pods
-- [ ] 2.9 Create k8s/ingress.yaml with ingress configuration
-- [ ] 2.10 Configure ingress to route traffic to the service
-- [ ] 2.11 Set up ingress class for microk8s ingress controller
-- [ ] 2.12 Add host-based routing configuration (if needed)
-- [ ] 2.13 Test Kubernetes manifests locally with `microk8s kubectl apply --dry-run`
+- [x] 2.9 Create k8s/ingress.yaml with ingress configuration
+- [x] 2.10 Configure ingress to route traffic to the service
+- [x] 2.11 Set up ingress class for microk8s ingress controller
+- [x] 2.12 Add host-based routing configuration (if needed)
+- [x] 2.13 Test Kubernetes manifests locally with `microk8s kubectl apply --dry-run`
 
 ## 3. VM Provisioning
 
