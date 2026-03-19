@@ -41,7 +41,7 @@
 ## 4. Microk8s Installation
 
 - [x] 4.1 Create microk8s installation section in deployment script
-- [ ] 4.2 Install microk8s in the VM
+- [x] 4.2 Install microk8s in the VM
 - [ ] 4.3 Enable dns add-on in microk8s
 - [ ] 4.4 Enable storage add-on in microk8s
 - [ ] 4.5 Enable ingress add-on in microk8s
