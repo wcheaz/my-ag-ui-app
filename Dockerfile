@@ -1,32 +1,42 @@
-FROM node:20-alpine AS builder
+# Build stage - includes all build dependencies
+FROM node:20.12.0-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
+# Install build dependencies
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
+RUN npm ci --ignore-scripts && npm cache clean --force
 
-# Copy source code
+# Copy source code and build
 COPY . .
-
-# Build the application
 RUN npm run build
 
-FROM node:20-alpine AS runner
+# Runtime stage - lightweight image with only runtime dependencies
+FROM node:20.12.0-alpine AS runner
 
 WORKDIR /app
 
+# Create non-root user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
 ENV NODE_ENV=production
+ENV PORT=3000
 
-# Copy necessary files from builder
+# Copy necessary files from builder - only what's needed for runtime
 COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Switch to non-root user
+USER nextjs
 
-ENV PORT=3001
-EXPOSE 3001
+# Expose application port
+EXPOSE 3000
 
+# Health check configuration
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+
+# Start the application
 CMD ["node", "server.js"]
