@@ -47,7 +47,19 @@ All development and testing files must be placed in the `test/` directory locate
 - Validate files: Use `validate_*.py` prefix
 
 **Running Tests:**
-When running test files from the `test/` directory, ensure proper import paths. Most files can be run directly with `python test/your_test_file.py` from the project root, or by navigating to the `test/` directory first. 
+When running test files from the `test/` directory, ensure proper import paths. Most files can be run directly with `python test/your_test_file.py` from the project root, or by navigating to the `test/` directory first.
+
+### OpenSpec Development Workflow
+
+Development through OpenSpec is driven by Ralph loops (automated AI-driven development workflows). When creating new OpenSpec changes:
+
+- **Task Design**: Create tasks that can be executed autonomously without human interaction
+- **Clear Instructions**: Provide detailed, unambiguous task descriptions that enable automated execution
+- **Self-Contained Tasks**: Each task should have all necessary information to complete independently
+- **Verifiable Outcomes**: Tasks should produce clear, measurable results that can be automatically validated
+- **Minimal Dependencies**: Design tasks to minimize dependencies on external factors or manual interventions
+
+**Goal**: Enable Ralph loops to implement changes end-to-end with minimal human oversight, accelerating development while maintaining quality.
 
 ### Git Workflow
 [Describe your branching strategy and commit conventions]
