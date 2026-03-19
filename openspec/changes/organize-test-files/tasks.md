@@ -19,7 +19,7 @@
 
 ## 3. Documentation Update
 
-- [ ] 3.1 Update the `Testing Strategy` section in `openspec/project.md` to specify `test/` directory instead of `tests/`
+- [x] 3.1 Update the `Testing Strategy` section in `openspec/project.md` to specify `test/` directory instead of `tests/`
 - [ ] 3.2 Verify the documentation update is clear and accurate: review the updated section in `openspec/project.md`
 
 ## 4. Cleanup

@@ -27,7 +27,7 @@ This project implements an AI agent using Pydantic AI, designed to be served via
 - **RAG**: Use LlamaIndex for Retrieval-Augmented Generation.
 
 ### Testing Strategy
-When a test file is created, please put it in the "tests" directory. 
+When a test file is created, please put it in the "test" directory. 
 
 ### Git Workflow
 [Describe your branching strategy and commit conventions]
