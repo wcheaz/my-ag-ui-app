@@ -1,0 +1,20 @@
+ENVIRONMENT VARIABLE LOADING PERFORMANCE COMPARISON
+============================================================
+
+python-dotenv Performance:
+  Average load time: 0.000552s
+  Minimum load time: 0.000459s
+  Maximum load time: 0.000726s
+
+Custom Loading Performance:
+  Average load time: 0.000025s
+  Minimum load time: 0.000020s
+  Maximum load time: 0.000046s
+
+Performance Comparison:
+  Average difference: 0.000527s
+  Performance difference: +2141.53%
+
+Performance Assessment:
+  Performance degraded: Yes
+  Significantly degraded (>10%): Yes
