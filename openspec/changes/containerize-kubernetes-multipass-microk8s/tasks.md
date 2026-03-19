@@ -72,7 +72,7 @@
 - [x] 6.5 Test HTTPS access (if SSL is configured)
 - [x] 6.6 Verify ingress logs are working
 - [x] 6.7 Test ingress error handling
-- [ ] 6.8 Verify load balancing across pods (if replicas > 1)
+- [x] 6.8 Verify load balancing across pods (if replicas > 1)
 
 ## 7. Deployment Automation Script
 
