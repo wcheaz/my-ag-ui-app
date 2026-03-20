@@ -129,7 +129,7 @@
 - [x] 10.4 Test microk8s installation
 - [x] 10.5 Test Kubernetes deployment
 - [x] 10.6 Test service connectivity
-- [ ] 10.7 Test ingress routing
+- [x] 10.7 Test ingress routing
 - [ ] 10.8 Test application access via ingress
 - [ ] 10.9 Test health checks (liveness and readiness)
 - [ ] 10.10 Test resource limits
