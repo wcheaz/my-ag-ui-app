@@ -6928,3 +6928,221 @@ Tasks: 123 total,   1 running, 122 sleeping,   0 stopped,   0 zombie
 %Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
 MiB Mem :   7631.5 total,   6835.5 free,    400.8 used,    637.5 buff/cache     
 MiB Swap:      0.0 total,      0.0 free,      0.0 used.   7230.7 avail Mem 
+[2026-03-20 16:43:44] ==========================================================
+[2026-03-20 16:43:44] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-20 16:43:44] ==========================================================
+[2026-03-20 16:43:44] Script Configuration:
+[2026-03-20 16:43:44]   - VM Name: my-ag-ui-app-k8s
+[2026-03-20 16:43:44]   - VM CPUs: 4
+[2026-03-20 16:43:44]   - VM Memory: 7.7G
+[2026-03-20 16:43:44]   - VM Disk: 20GiB
+[2026-03-20 16:43:44]   - Log File: deployment.log
+[2026-03-20 16:43:44]   - Start Time: Fri Mar 20 04:43:44 PM EDT 2026
+[2026-03-20 16:43:44]   - User: ncheaz
+[2026-03-20 16:43:44]   - Working Directory: /home/ncheaz/git/my-ag-ui-app
+[2026-03-20 16:43:44] ==========================================================
+[2026-03-20 16:43:44] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-20 16:43:44] ==========================================================
+[2026-03-20 16:43:44] ==========================================================
+[2026-03-20 16:43:44] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-20 16:43:44] ==========================================================
+[2026-03-20 16:43:44] Script Information:
+[2026-03-20 16:43:44]   - Script: ./deploy_test.sh
+[2026-03-20 16:43:44]   - User: ncheaz
+[2026-03-20 16:43:44]   - Working Directory: /home/ncheaz/git/my-ag-ui-app
+[2026-03-20 16:43:44]   - Date: Fri Mar 20 04:43:44 PM EDT 2026
+[2026-03-20 16:43:44]   - Log File: deployment.log
+[2026-03-20 16:43:44] ==========================================================
+[2026-03-20 16:43:44] 📋 SECTION 1/3: PRE-DEPLOYMENT CHECKS
+[2026-03-20 16:43:44] ==========================================================
+[2026-03-20 16:43:44] Checking multipass installation...
+[2026-03-20 16:43:44] SUCCESS: multipass is installed and ready
+[2026-03-20 16:43:44] Checking Docker installation...
+[2026-03-20 16:43:44] SUCCESS: Docker is installed
+[2026-03-20 16:43:44] Checking system resources...
+[2026-03-20 16:43:44] Available CPU cores: 12 (required: 4)
+[2026-03-20 16:43:44] Available memory: 15GB (required: 4GB)
+[2026-03-20 16:43:44] ✅ PRE-DEPLOYMENT CHECKS COMPLETED
+[2026-03-20 16:43:44] 📋 SECTION 2/3: VM PROVISIONING
+[2026-03-20 16:43:44] ==========================================================
+[2026-03-20 16:43:44] Creating VM 'my-ag-ui-app-k8s' with 4 CPUs, 7.7G RAM, 20GiB disk...
+[2026-03-20 16:43:44] Creating new VM...
+[2026-03-20 16:43:44] ERROR: Failed to create VM 'my-ag-ui-app-k8s'
+[2026-03-20 16:44:09] ==========================================================
+[2026-03-20 16:44:09] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-20 16:44:09] ==========================================================
+[2026-03-20 16:44:09] Script Configuration:
+[2026-03-20 16:44:09]   - VM Name: my-ag-ui-app-k8s
+[2026-03-20 16:44:09]   - VM CPUs: 4
+[2026-03-20 16:44:09]   - VM Memory: 7.7G
+[2026-03-20 16:44:09]   - VM Disk: 20GiB
+[2026-03-20 16:44:09]   - Log File: deployment.log
+[2026-03-20 16:44:09]   - Start Time: Fri Mar 20 04:44:09 PM EDT 2026
+[2026-03-20 16:44:09]   - User: ncheaz
+[2026-03-20 16:44:09]   - Working Directory: /home/ncheaz/git/my-ag-ui-app
+[2026-03-20 16:44:09] ==========================================================
+[2026-03-20 16:44:09] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-20 16:44:09] ==========================================================
+[2026-03-20 16:44:09] ==========================================================
+[2026-03-20 16:44:09] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-20 16:44:09] ==========================================================
+[2026-03-20 16:44:09] Script Information:
+[2026-03-20 16:44:09]   - Script: ./deploy_test.sh
+[2026-03-20 16:44:09]   - User: ncheaz
+[2026-03-20 16:44:09]   - Working Directory: /home/ncheaz/git/my-ag-ui-app
+[2026-03-20 16:44:09]   - Date: Fri Mar 20 04:44:09 PM EDT 2026
+[2026-03-20 16:44:09]   - Log File: deployment.log
+[2026-03-20 16:44:09] ==========================================================
+[2026-03-20 16:44:09] 📋 SECTION 1/3: PRE-DEPLOYMENT CHECKS
+[2026-03-20 16:44:09] ==========================================================
+[2026-03-20 16:44:09] Checking multipass installation...
+[2026-03-20 16:44:09] SUCCESS: multipass is installed and ready
+[2026-03-20 16:44:09] Checking Docker installation...
+[2026-03-20 16:44:09] SUCCESS: Docker is installed
+[2026-03-20 16:44:09] Checking system resources...
+[2026-03-20 16:44:09] Available CPU cores: 12 (required: 4)
+[2026-03-20 16:44:09] Available memory: 15GB (required: 4GB)
+[2026-03-20 16:44:09] ✅ PRE-DEPLOYMENT CHECKS COMPLETED
+[2026-03-20 16:44:09] 📋 SECTION 2/3: VM PROVISIONING
+[2026-03-20 16:44:09] ==========================================================
+[2026-03-20 16:44:09] Creating VM 'my-ag-ui-app-k8s' with 4 CPUs, 7.7G RAM, 20GiB disk...
+[2026-03-20 16:44:09] Creating new VM...
+[2026-03-20 16:44:51] SUCCESS: VM 'my-ag-ui-app-k8s' created successfully
+[2026-03-20 16:44:51] Waiting for VM to be ready...
+[2026-03-20 16:45:21] SUCCESS: VM 'my-ag-ui-app-k8s' is running
+[2026-03-20 16:45:21] ✅ VM PROVISIONING COMPLETED
+[2026-03-20 16:45:21] 📋 SECTION 3/3: MICROK8S INSTALLATION
+[2026-03-20 16:45:21] ==========================================================
+[2026-03-20 16:45:21] Installing microk8s in VM 'my-ag-ui-app-k8s'...
+[2026-03-20 16:45:40] SUCCESS: microk8s installed successfully
+[2026-03-20 16:45:40] Waiting for microk8s to be ready...
+[2026-03-20 16:45:40] ERROR: microk8s is not ready
+[2026-03-20 16:56:54] ==========================================================
+[2026-03-20 16:56:54] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-20 16:56:54] ==========================================================
+[2026-03-20 16:56:54] Script Configuration:
+[2026-03-20 16:56:54]   - VM Name: my-ag-ui-app-k8s
+[2026-03-20 16:56:54]   - VM CPUs: 4
+[2026-03-20 16:56:54]   - VM Memory: 7.7G
+[2026-03-20 16:56:54]   - VM Disk: 20GiB
+[2026-03-20 16:56:54]   - Log File: deployment.log
+[2026-03-20 16:56:54]   - Start Time: Fri Mar 20 04:56:54 PM EDT 2026
+[2026-03-20 16:56:54]   - User: ncheaz
+[2026-03-20 16:56:54]   - Working Directory: /home/ncheaz/git/my-ag-ui-app
+[2026-03-20 16:56:54] ==========================================================
+[2026-03-20 16:56:54] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-20 16:56:54] ==========================================================
+[2026-03-20 16:56:54] ==========================================================
+[2026-03-20 16:56:54] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-20 16:56:54] ==========================================================
+[2026-03-20 16:56:54] Script Information:
+[2026-03-20 16:56:54]   - Script: ./deploy_final.sh
+[2026-03-20 16:56:54]   - User: ncheaz
+[2026-03-20 16:56:54]   - Working Directory: /home/ncheaz/git/my-ag-ui-app
+[2026-03-20 16:56:54]   - Date: Fri Mar 20 04:56:54 PM EDT 2026
+[2026-03-20 16:56:54]   - Log File: deployment.log
+[2026-03-20 16:56:54] ==========================================================
+[2026-03-20 16:56:54] 📋 SECTION 1/3: PRE-DEPLOYMENT CHECKS
+[2026-03-20 16:56:54] ==========================================================
+[2026-03-20 16:56:54] Checking multipass installation...
+[2026-03-20 16:56:54] SUCCESS: multipass is installed and ready
+[2026-03-20 16:56:54] Checking Docker installation...
+[2026-03-20 16:56:54] SUCCESS: Docker is installed
+[2026-03-20 16:56:54] Checking system resources...
+[2026-03-20 16:56:54] Available CPU cores: 12 (required: 4)
+[2026-03-20 16:56:54] Available memory: 12GB (required: 4GB)
+[2026-03-20 16:56:54] ✅ PRE-DEPLOYMENT CHECKS COMPLETED
+[2026-03-20 16:56:54] 📋 SECTION 2/3: VM PROVISIONING
+[2026-03-20 16:56:54] ==========================================================
+[2026-03-20 16:56:54] Creating VM 'my-ag-ui-app-k8s' with 4 CPUs, 7.7G RAM, 20GiB disk...
+[2026-03-20 16:56:54] VM 'my-ag-ui-app-k8s' already exists, deleting it first...
+[2026-03-20 16:56:55] Creating new VM...
+[2026-03-20 16:57:21] SUCCESS: VM 'my-ag-ui-app-k8s' created successfully
+[2026-03-20 16:57:21] Waiting for VM to be ready...
+[2026-03-20 16:57:51] SUCCESS: VM 'my-ag-ui-app-k8s' is running
+[2026-03-20 16:57:51] ✅ VM PROVISIONING COMPLETED
+[2026-03-20 16:57:51] 📋 SECTION 3/3: MICROK8S INSTALLATION
+[2026-03-20 16:57:51] ==========================================================
+[2026-03-20 16:57:51] Installing microk8s in VM 'my-ag-ui-app-k8s'...
+[2026-03-20 16:58:12] SUCCESS: microk8s installed successfully
+[2026-03-20 16:58:12] Fixing microk8s permissions...
+[2026-03-20 16:58:53] ==========================================================
+[2026-03-20 16:58:53] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-20 16:58:53] ==========================================================
+[2026-03-20 16:58:53] Script Configuration:
+[2026-03-20 16:58:53]   - VM Name: my-ag-ui-app-k8s
+[2026-03-20 16:58:53]   - VM CPUs: 4
+[2026-03-20 16:58:53]   - VM Memory: 7.7G
+[2026-03-20 16:58:53]   - VM Disk: 20GiB
+[2026-03-20 16:58:53]   - Log File: deployment.log
+[2026-03-20 16:58:53]   - Start Time: Fri Mar 20 04:58:53 PM EDT 2026
+[2026-03-20 16:58:53]   - User: ncheaz
+[2026-03-20 16:58:53]   - Working Directory: /home/ncheaz/git/my-ag-ui-app
+[2026-03-20 16:58:53] ==========================================================
+[2026-03-20 16:58:53] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-20 16:58:53] ==========================================================
+[2026-03-20 16:58:53] ==========================================================
+[2026-03-20 16:58:53] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-20 16:58:53] ==========================================================
+[2026-03-20 16:58:53] Script Information:
+[2026-03-20 16:58:53]   - Script: ./deploy_working.sh
+[2026-03-20 16:58:53]   - User: ncheaz
+[2026-03-20 16:58:53]   - Working Directory: /home/ncheaz/git/my-ag-ui-app
+[2026-03-20 16:58:53]   - Date: Fri Mar 20 04:58:53 PM EDT 2026
+[2026-03-20 16:58:53]   - Log File: deployment.log
+[2026-03-20 16:58:53] ==========================================================
+[2026-03-20 16:58:53] 📋 SECTION 1/3: PRE-DEPLOYMENT CHECKS
+[2026-03-20 16:58:53] ==========================================================
+[2026-03-20 16:58:53] Checking multipass installation...
+[2026-03-20 16:58:53] SUCCESS: multipass is installed and ready
+[2026-03-20 16:58:53] Checking Docker installation...
+[2026-03-20 16:58:53] SUCCESS: Docker is installed
+[2026-03-20 16:58:53] Checking system resources...
+[2026-03-20 16:58:53] Available CPU cores: 12 (required: 4)
+[2026-03-20 16:58:53] Available memory: 12GB (required: 4GB)
+[2026-03-20 16:58:53] ✅ PRE-DEPLOYMENT CHECKS COMPLETED
+[2026-03-20 16:58:53] 📋 SECTION 2/3: VM PROVISIONING
+[2026-03-20 16:58:53] ==========================================================
+[2026-03-20 16:58:53] Creating VM 'my-ag-ui-app-k8s' with 4 CPUs, 7.7G RAM, 20GiB disk...
+[2026-03-20 16:58:53] VM 'my-ag-ui-app-k8s' already exists, deleting it first...
+[2026-03-20 16:58:54] Creating new VM...
+[2026-03-20 16:59:29] SUCCESS: VM 'my-ag-ui-app-k8s' created successfully
+[2026-03-20 16:59:29] Waiting for VM to be ready...
+[2026-03-20 16:59:59] SUCCESS: VM 'my-ag-ui-app-k8s' is running
+[2026-03-20 16:59:59] ✅ VM PROVISIONING COMPLETED
+[2026-03-20 16:59:59] 📋 SECTION 3/3: MICROK8S INSTALLATION
+[2026-03-20 16:59:59] ==========================================================
+[2026-03-20 16:59:59] Installing microk8s in VM 'my-ag-ui-app-k8s'...
+[2026-03-20 17:00:14] SUCCESS: microk8s installed successfully
+[2026-03-20 17:00:14] Fixing microk8s permissions...
+[2026-03-20 17:00:14] SUCCESS: microk8s permissions fixed
+[2026-03-20 17:00:14] Waiting for group changes to take effect...
+[2026-03-20 17:00:19] Waiting for microk8s to be ready...
+[2026-03-20 17:00:42] SUCCESS: microk8s is ready
+[2026-03-20 17:00:42] Enabling dns add-on...
+[2026-03-20 17:00:42] SUCCESS: dns add-on enabled
+[2026-03-20 17:00:42] Enabling storage add-on...
+[2026-03-20 17:00:44] SUCCESS: storage add-on enabled
+[2026-03-20 17:00:44] Enabling ingress add-on...
+[2026-03-20 17:00:45] SUCCESS: ingress add-on enabled
+[2026-03-20 17:00:45] SUCCESS: All microk8s add-ons enabled
+[2026-03-20 17:00:45] ✅ MICROK8S INSTALLATION COMPLETED
+[2026-03-20 17:00:45] ==========================================================
+[2026-03-20 17:00:45] 🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!
+[2026-03-20 17:00:45] ==========================================================
+[2026-03-20 17:00:45] VM Details:
+[2026-03-20 17:00:45]   - Name: my-ag-ui-app-k8s
+[2026-03-20 17:00:45]   - CPUs: 4
+[2026-03-20 17:00:45]   - Memory: 7.7G
+[2026-03-20 17:00:45]   - Disk: 20GiB
+[2026-03-20 17:00:45] 
+[2026-03-20 17:00:45] Microk8s Details:
+[2026-03-20 17:00:45]   - Status: Ready
+[2026-03-20 17:00:45]   - Add-ons: dns, storage, ingress
+[2026-03-20 17:00:45] 
+[2026-03-20 17:00:45] Next Steps:
+[2026-03-20 17:00:45]   1. Verify deployment: multipass exec my-ag-ui-app-k8s -- sudo microk8s kubectl get all
+[2026-03-20 17:00:45]   2. Access VM: multipass shell my-ag-ui-app-k8s
+[2026-03-20 17:00:45]   3. Check microk8s status: multipass exec my-ag-ui-app-k8s -- sudo microk8s status
+[2026-03-20 17:00:45] ==========================================================
+[2026-03-20 17:00:45] SUCCESS: Deployment script completed successfully

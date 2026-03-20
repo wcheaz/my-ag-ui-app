@@ -10,7 +10,7 @@ set -o pipefail  # Exit if any command in a pipeline fails
 VM_NAME="my-ag-ui-app-k8s"
 VM_CPUS=4
 VM_MEMORY="7.7G"
-VM_DISK="20G"
+VM_DISK="20GiB"
 LOG_FILE="deployment.log"
 
 # Logging function
