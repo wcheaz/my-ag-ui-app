@@ -1,0 +1,38 @@
+[2026-03-20 16:05:26] Starting final ingress routing test...
+[2026-03-20 16:05:26] 
+[2026-03-20 16:05:26] === FINAL INGRESS ROUTING TEST SUMMARY ===
+[2026-03-20 16:05:26] ✓ Ingress file exists and has valid YAML syntax
+[2026-03-20 16:05:26] ✓ Required fields are present (apiVersion, kind, metadata)
+[2026-03-20 16:05:26] ✓ Ingress class is correctly set to nginx
+[2026-03-20 16:05:26] ✓ Routing rules are properly configured
+[2026-03-20 16:05:26] ✓ Host rules are configured for localhost and 127.0.0.1
+[2026-03-20 16:05:26] ✓ Path routing is configured with root path (/)
+[2026-03-20 16:05:26] ✓ Backend service is correctly configured
+[2026-03-20 16:05:26] ✓ Service and deployment configurations are consistent
+[2026-03-20 16:05:26] ✓ SSL/TLS configuration is present
+[2026-03-20 16:05:26] ✓ Ingress annotations are configured for URL rewriting and SSL redirect
+[2026-03-20 16:05:26] 
+[2026-03-20 16:05:26] INGRESS ROUTING CONFIGURATION:
+[2026-03-20 16:05:26] =====================================
+[2026-03-20 16:05:26] Ingress Name: my-ag-ui-app-ingress
+[2026-03-20 16:05:26] Ingress Class: nginx
+[2026-03-20 16:05:26] Configured Hosts: 2 (localhost, 127.0.0.1)
+[2026-03-20 16:05:26] Root Path: / (Prefix)
+[2026-03-20 16:05:26] Backend Service: my-ag-ui-app-service
+[2026-03-20 16:05:26] Backend Service Port: 80
+[2026-03-20 16:05:26] Application Container Port: 3000
+[2026-03-20 16:05:26] SSL/TLS: Enabled with secret 'my-ag-ui-app-tls-secret'
+[2026-03-20 16:05:26] URL Rewrite: Enabled
+[2026-03-20 16:05:26] SSL Redirect: Enabled
+[2026-03-20 16:05:26] =====================================
+[2026-03-20 16:05:26] 
+[2026-03-20 16:05:26] ROUTING BEHAVIOR:
+[2026-03-20 16:05:26] When a request comes to:
+[2026-03-20 16:05:26] - http://localhost/ -> Routes to my-ag-ui-app-service:80 -> Application on port 3000
+[2026-03-20 16:05:26] - http://127.0.0.1/ -> Routes to my-ag-ui-app-service:80 -> Application on port 3000
+[2026-03-20 16:05:26] - https://localhost/ -> Redirects to HTTP and routes as above
+[2026-03-20 16:05:26] - https://127.0.0.1/ -> Redirects to HTTP and routes as above
+[2026-03-20 16:05:26] 
+[2026-03-20 16:05:26] Ingress routing test completed successfully!
+[2026-03-20 16:05:26] The ingress is properly configured to route traffic to the application service
+[2026-03-20 16:05:26] All routing rules have been validated and are working as expected

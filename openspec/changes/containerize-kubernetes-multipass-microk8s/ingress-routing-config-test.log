@@ -1,0 +1,123 @@
+[2026-03-20 16:03:12] Starting ingress routing configuration test...
+[2026-03-20 16:03:12] This test validates the ingress configuration without requiring a running cluster
+[2026-03-20 16:03:12] === Test 1: Ingress File Existence ===
+[2026-03-20 16:03:12] SUCCESS: Ingress file k8s/ingress.yaml exists
+[2026-03-20 16:03:12] === Test 2: Ingress YAML Syntax Validation ===
+[2026-03-20 16:03:12] Validating YAML syntax with Python...
+[2026-03-20 16:03:12] SUCCESS: Ingress YAML syntax is valid
+[2026-03-20 16:03:12] === Test 3: Required Ingress Fields ===
+[2026-03-20 16:03:12] Checking for required ingress fields...
+[2026-03-20 16:03:12] SUCCESS: API version is correct
+[2026-03-20 16:03:12] SUCCESS: Kind is correct
+[2026-03-20 16:03:12] SUCCESS: Metadata name is correct
+[2026-03-20 16:03:12] === Test 4: Ingress Class Configuration ===
+[2026-03-20 16:03:12] SUCCESS: Ingress class is correctly set to nginx
+[2026-03-20 16:03:12] === Test 5: Routing Rules Configuration ===
+[2026-03-20 16:03:12] Checking for routing rules...
+[2026-03-20 16:03:12] ERROR: Ingress has no routing rules
+[2026-03-20 16:04:27] Starting ingress routing configuration test...
+[2026-03-20 16:04:27] This test validates the ingress configuration without requiring a running cluster
+[2026-03-20 16:04:27] === Test 1: Ingress File Existence ===
+[2026-03-20 16:04:27] SUCCESS: Ingress file k8s/ingress.yaml exists
+[2026-03-20 16:04:27] === Test 2: Ingress YAML Syntax Validation ===
+[2026-03-20 16:04:27] Validating YAML syntax with Python...
+[2026-03-20 16:04:27] SUCCESS: Ingress YAML syntax is valid
+[2026-03-20 16:04:27] === Test 3: Required Ingress Fields ===
+[2026-03-20 16:04:27] Checking for required ingress fields...
+[2026-03-20 16:04:27] SUCCESS: API version is correct
+[2026-03-20 16:04:27] SUCCESS: Kind is correct
+[2026-03-20 16:04:27] SUCCESS: Metadata name is correct
+[2026-03-20 16:04:27] === Test 4: Ingress Class Configuration ===
+[2026-03-20 16:04:27] SUCCESS: Ingress class is correctly set to nginx
+[2026-03-20 16:04:27] === Test 5: Routing Rules Configuration ===
+[2026-03-20 16:04:27] Checking for routing rules...
+[2026-03-20 16:04:27] SUCCESS: Ingress has routing rules
+[2026-03-20 16:04:27] SUCCESS: Found 2 host rule(s)
+[2026-03-20 16:04:27] SUCCESS: Localhost host rule is configured
+[2026-03-20 16:04:27] SUCCESS: 127.0.0.1 host rule is configured
+[2026-03-20 16:04:27] === Test 6: Path Routing Configuration ===
+[2026-03-20 16:04:28] SUCCESS: Path routing is configured
+[2026-03-20 16:04:28] SUCCESS: Root path (/) is configured
+[2026-03-20 16:04:28] SUCCESS: Prefix path type is configured
+[2026-03-20 16:04:28] === Test 7: Backend Service Configuration ===
+[2026-03-20 16:04:28] SUCCESS: Backend is configured
+[2026-03-20 16:04:28] SUCCESS: Backend service name is correct
+[2026-03-20 16:04:28] SUCCESS: Backend service port is correct (80)
+[2026-03-20 16:04:28] === Test 8: Service File Consistency ===
+[2026-03-20 16:04:28] SUCCESS: Service file k8s/service.yaml exists
+[2026-03-20 16:04:28] SUCCESS: Service name is consistent with ingress backend
+[2026-03-20 16:04:28] SUCCESS: Service port is consistent with ingress backend
+[2026-03-20 16:04:28] === Test 9: Deployment File Consistency ===
+[2026-03-20 16:04:28] SUCCESS: Deployment file k8s/deployment.yaml exists
+[2026-03-20 16:04:28] SUCCESS: Deployment labels match service selector
+[2026-03-20 16:04:28] SUCCESS: Deployment container port is 3000 (application port)
+[2026-03-20 16:04:28] === Test 10: SSL/TLS Configuration ===
+[2026-03-20 16:04:28] SSL/TLS is configured in ingress
+[2026-03-20 16:04:28] SUCCESS: TLS hosts are configured
+[2026-03-20 16:04:28] SUCCESS: TLS secret name is configured
+[2026-03-20 16:04:28] === Test 11: Ingress Annotations ===
+[2026-03-20 16:04:28] Ingress has annotations configured
+[2026-03-20 16:04:28] SUCCESS: URL rewrite annotation is configured
+[2026-03-20 16:04:28] SUCCESS: SSL redirect annotation is configured
+[2026-03-20 16:04:28] === Test 12: Ingress Routing Summary ===
+[2026-03-20 16:04:28] INGRESS ROUTING CONFIGURATION SUMMARY:
+[2026-03-20 16:04:28] =====================================
+[2026-03-20 16:04:28] Ingress Name: my-ag-ui-app-ingress
+[2026-03-20 16:04:28] Ingress Class: nginx
+[2026-03-20 16:04:28] Configured Hosts: 2
+[2026-03-20 16:04:28] Host List:
+  - localhost
+  - 127.0.0.1
+[2026-03-20 16:05:06] Starting ingress routing configuration test...
+[2026-03-20 16:05:06] This test validates the ingress configuration without requiring a running cluster
+[2026-03-20 16:05:06] === Test 1: Ingress File Existence ===
+[2026-03-20 16:05:06] SUCCESS: Ingress file k8s/ingress.yaml exists
+[2026-03-20 16:05:06] === Test 2: Ingress YAML Syntax Validation ===
+[2026-03-20 16:05:06] Validating YAML syntax with Python...
+[2026-03-20 16:05:06] SUCCESS: Ingress YAML syntax is valid
+[2026-03-20 16:05:06] === Test 3: Required Ingress Fields ===
+[2026-03-20 16:05:06] Checking for required ingress fields...
+[2026-03-20 16:05:06] SUCCESS: API version is correct
+[2026-03-20 16:05:06] SUCCESS: Kind is correct
+[2026-03-20 16:05:06] SUCCESS: Metadata name is correct
+[2026-03-20 16:05:06] === Test 4: Ingress Class Configuration ===
+[2026-03-20 16:05:06] SUCCESS: Ingress class is correctly set to nginx
+[2026-03-20 16:05:06] === Test 5: Routing Rules Configuration ===
+[2026-03-20 16:05:06] Checking for routing rules...
+[2026-03-20 16:05:06] SUCCESS: Ingress has routing rules
+[2026-03-20 16:05:06] SUCCESS: Found 2 host rule(s)
+[2026-03-20 16:05:06] SUCCESS: Localhost host rule is configured
+[2026-03-20 16:05:06] SUCCESS: 127.0.0.1 host rule is configured
+[2026-03-20 16:05:06] === Test 6: Path Routing Configuration ===
+[2026-03-20 16:05:06] SUCCESS: Path routing is configured
+[2026-03-20 16:05:06] SUCCESS: Root path (/) is configured
+[2026-03-20 16:05:06] SUCCESS: Prefix path type is configured
+[2026-03-20 16:05:06] === Test 7: Backend Service Configuration ===
+[2026-03-20 16:05:06] SUCCESS: Backend is configured
+[2026-03-20 16:05:06] SUCCESS: Backend service name is correct
+[2026-03-20 16:05:06] SUCCESS: Backend service port is correct (80)
+[2026-03-20 16:05:06] === Test 8: Service File Consistency ===
+[2026-03-20 16:05:06] SUCCESS: Service file k8s/service.yaml exists
+[2026-03-20 16:05:06] SUCCESS: Service name is consistent with ingress backend
+[2026-03-20 16:05:06] SUCCESS: Service port is consistent with ingress backend
+[2026-03-20 16:05:06] === Test 9: Deployment File Consistency ===
+[2026-03-20 16:05:06] SUCCESS: Deployment file k8s/deployment.yaml exists
+[2026-03-20 16:05:06] SUCCESS: Deployment labels match service selector
+[2026-03-20 16:05:06] SUCCESS: Deployment container port is 3000 (application port)
+[2026-03-20 16:05:06] === Test 10: SSL/TLS Configuration ===
+[2026-03-20 16:05:06] SSL/TLS is configured in ingress
+[2026-03-20 16:05:06] SUCCESS: TLS hosts are configured
+[2026-03-20 16:05:06] SUCCESS: TLS secret name is configured
+[2026-03-20 16:05:06] === Test 11: Ingress Annotations ===
+[2026-03-20 16:05:06] Ingress has annotations configured
+[2026-03-20 16:05:06] SUCCESS: URL rewrite annotation is configured
+[2026-03-20 16:05:06] SUCCESS: SSL redirect annotation is configured
+[2026-03-20 16:05:06] === Test 12: Ingress Routing Summary ===
+[2026-03-20 16:05:06] INGRESS ROUTING CONFIGURATION SUMMARY:
+[2026-03-20 16:05:06] =====================================
+[2026-03-20 16:05:06] Ingress Name: my-ag-ui-app-ingress
+[2026-03-20 16:05:06] Ingress Class: nginx
+[2026-03-20 16:05:06] Configured Hosts: 2
+[2026-03-20 16:05:06] Host List:
+  - localhost
+  - 127.0.0.1
