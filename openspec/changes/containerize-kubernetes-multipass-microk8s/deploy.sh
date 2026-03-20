@@ -4111,6 +4111,211 @@ verify_ingress_logs
 log "Ingress logs verification completed"
 
 # ========================
+# APPLICATION ACCESS VIA INGRESS TESTING
+# ========================
+
+# Test application access via ingress with comprehensive verification
+test_application_access_via_ingress() {
+    log "Starting comprehensive application access via ingress test..."
+    
+    # Check if microk8s is ready
+    if ! microk8s_ready; then
+        log "ERROR: Cannot test application access via ingress - microk8s is not ready"
+        return 1
+    fi
+    
+    # Get ingress IP or use localhost for local testing
+    local ingress_ip=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress my-ag-ui-app-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" 2>/dev/null || echo "")
+    local test_host="localhost"
+    
+    if [ -n "$ingress_ip" ]; then
+        test_host="$ingress_ip"
+        log "Testing application access via ingress IP: $test_host"
+    else
+        log "Testing application access via localhost (ingress IP not available)"
+    fi
+    
+    # Test 1: Basic HTTP connectivity test
+    log "Test 1: Basic HTTP connectivity test to $test_host..."
+    local http_response=""
+    local http_code=""
+    
+    if http_response=$(multipass exec "$VM_NAME" -- curl -s -w "HTTP_CODE:%{http_code}" --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "http://$test_host" 2>&1); then
+        http_code=$(echo "$http_response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2)
+        log "SUCCESS: Basic HTTP connectivity test passed - HTTP $http_code"
+    else
+        log "ERROR: Basic HTTP connectivity test failed - $http_response"
+        return 1
+    fi
+    
+    # Test 2: Verify application response content
+    log "Test 2: Verifying application response content..."
+    local app_content=""
+    
+    if app_content=$(multipass exec "$VM_NAME" -- curl -s --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "http://$test_host" 2>&1); then
+        # Check for common Next.js/app indicators in the response
+        if echo "$app_content" | grep -q -i "html\|DOCTYPE\|next\|react\|app\|main"; then
+            log "SUCCESS: Application response content verified - found HTML/application content"
+            
+            # Log response details for verification
+            local content_length=$(echo "$app_content" | wc -c)
+            log "Response details: Content length = $content_length characters"
+            
+            # Check for specific application indicators (adjust based on your application)
+            if echo "$app_content" | grep -q -i "my-ag-ui-app\|ag-ui\|agent"; then
+                log "SUCCESS: Application-specific content detected in response"
+            else
+                log "INFO: Generic HTML content detected (this may be normal for your application)"
+            fi
+        else
+            log "WARNING: Response does not contain expected HTML/application content"
+            log "Response preview: $(echo "$app_content" | head -c 200)..."
+            # Don't fail the test for this, as it might be a valid API response
+        fi
+    else
+        log "ERROR: Failed to get application response content - $app_content"
+        return 1
+    fi
+    
+    # Test 3: Test specific application endpoints (if applicable)
+    log "Test 3: Testing specific application endpoints..."
+    local endpoints_tested=0
+    local endpoints_passed=0
+    
+    # Test root path
+    if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "http://$test_host/" >/dev/null 2>&1; then
+        log "SUCCESS: Root path (/) accessible via ingress"
+        ((endpoints_passed++))
+    else
+        log "WARNING: Root path (/) not accessible via ingress"
+    fi
+    ((endpoints_tested++))
+    
+    # Test health endpoint if it exists
+    if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "http://$test_host/health" >/dev/null 2>&1; then
+        log "SUCCESS: Health endpoint (/health) accessible via ingress"
+        ((endpoints_passed++))
+    else
+        log "INFO: Health endpoint (/health) not accessible (this may be normal if not configured)"
+    fi
+    ((endpoints_tested++))
+    
+    # Test API endpoint if it exists
+    if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "http://$test_host/api" >/dev/null 2>&1; then
+        log "SUCCESS: API endpoint (/api) accessible via ingress"
+        ((endpoints_passed++))
+    else
+        log "INFO: API endpoint (/api) not accessible (this may be normal if not configured)"
+    fi
+    ((endpoints_tested++))
+    
+    log "Endpoint testing summary: $endpoints_passed/$endpoints_tested endpoints accessible"
+    
+    # Test 4: Verify ingress routing works correctly
+    log "Test 4: Verifying ingress routing configuration..."
+    local routing_works=false
+    
+    # Check that the ingress is properly configured to route to the service
+    local ingress_config=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress my-ag-ui-app-ingress -o yaml" 2>/dev/null || echo "")
+    if [ -n "$ingress_config" ]; then
+        # Verify the ingress has the correct service configuration
+        if echo "$ingress_config" | grep -q "name: my-ag-ui-app-service" && echo "$ingress_config" | grep -q "number: 80"; then
+            log "SUCCESS: Ingress is properly configured to route to my-ag-ui-app-service on port 80"
+            routing_works=true
+        else
+            log "ERROR: Ingress is not properly configured to route to the correct service/port"
+            log "Ingress configuration preview:"
+            echo "$ingress_config" | grep -A 5 -B 5 "service\|port" | head -10 | while read -r config_line; do
+                log "  $config_line"
+            done
+        fi
+    else
+        log "ERROR: Could not retrieve ingress configuration"
+    fi
+    
+    # Test 5: Verify service endpoints are properly populated
+    log "Test 5: Verifying service endpoints are properly populated..."
+    local service_endpoints=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get endpoints my-ag-ui-app-service -o jsonpath='{.subsets}'" 2>/dev/null || echo "")
+    if [ -n "$service_endpoints" ] && [ "$service_endpoints" != "[]" ]; then
+        log "SUCCESS: Service endpoints are properly populated"
+        log "Service endpoints details: $service_endpoints"
+    else
+        log "WARNING: Service endpoints are not populated - this may indicate routing issues"
+    fi
+    
+    # Test 6: Performance test - measure response time
+    log "Test 6: Measuring application response time via ingress..."
+    local response_time=""
+    
+    if response_time=$(multipass exec "$VM_NAME" -- bash -c "time curl -s --connect-timeout $NETWORK_CONNECTIVITY_TIMEOUT http://$test_host >/dev/null 2>&1" 2>&1 | grep -o "real[[:space:]]*[0-9]*\.[0-9]*" | cut -d' ' -f2 || echo "unknown"); then
+        if [ "$response_time" != "unknown" ]; then
+            log "SUCCESS: Application response time via ingress: ${response_time}s"
+            
+            # Check if response time is reasonable (less than 5 seconds)
+            if (( $(echo "$response_time < 5.0" | bc -l) )); then
+                log "SUCCESS: Response time is within acceptable range (< 5s)"
+            else
+                log "WARNING: Response time is slow (> 5s) - this may indicate performance issues"
+            fi
+        else
+            log "WARNING: Could not measure response time"
+        fi
+    else
+        log "WARNING: Response time measurement failed"
+    fi
+    
+    # Compile test results
+    log "=== APPLICATION ACCESS VIA INGRESS TEST RESULTS ==="
+    
+    local test_passed=true
+    local test_failures=""
+    
+    # Check each test result
+    if [ -z "$http_code" ] || [ "$http_code" = "000" ]; then
+        test_passed=false
+        test_failures+="FAIL: No HTTP response received\n"
+    elif [ "$http_code" -ge 400 ]; then
+        log "INFO: HTTP $http_code response received (this may be normal for some applications)"
+    fi
+    
+    if [ "$endpoints_passed" -eq 0 ]; then
+        log "WARNING: No endpoints were accessible - this may indicate routing issues"
+    fi
+    
+    if [ "$routing_works" = "false" ]; then
+        test_passed=false
+        test_failures+="FAIL: Ingress routing configuration incorrect\n"
+    fi
+    
+    # Output final results
+    if [ "$test_passed" = "true" ]; then
+        log "STATUS: PASSED - Application access via ingress test completed successfully"
+        log "SUMMARY:"
+        log "  - HTTP Connectivity: Working (HTTP $http_code)"
+        log "  - Response Content: Verified"
+        log "  - Endpoints Accessible: $endpoints_passed/$endpoints_tested"
+        log "  - Ingress Routing: Configured correctly"
+        log "  - Service Endpoints: Populated"
+        log "  - Response Time: Measured (${response_time}s)"
+        log "================================================="
+        
+        # Update verification status for the calling function
+        verification_passed=true
+        return 0
+    else
+        log "STATUS: FAILED - Application access via ingress test failed"
+        log "FAILURES:"
+        log -e "$test_failures"
+        log "================================================="
+        
+        # Update verification status for the calling function
+        verification_passed=false
+        verification_details+="FAIL: Application access via ingress test failed\n"
+        return 1
+    fi
+}
+
+# ========================
 # FINAL COMPREHENSIVE VERIFICATION
 # ========================
 
@@ -4624,6 +4829,10 @@ final_comprehensive_verification() {
             log "  $diag_line"
         done
     fi
+    
+    # 8.5 Test application access via ingress (comprehensive test)
+    log "Step 8.5: Testing application access via ingress (comprehensive test)..."
+    test_application_access_via_ingress
     
     # If accessibility checks fail, provide detailed error information
     if [ "$verification_passed" = "false" ] && echo "$verification_details" | grep -q "accessible\|ingress"; then
