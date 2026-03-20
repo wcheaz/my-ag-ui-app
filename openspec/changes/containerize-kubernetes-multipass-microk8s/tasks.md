@@ -135,7 +135,7 @@
 - [x] 10.10 Test resource limits
 - [x] 10.11 Test deployment script end-to-end
 - [x] 10.12 Test cleanup script
-- [ ] 10.13 Test error handling (simulate failures)
+- [x] 10.13 Test error handling (simulate failures)
 - [ ] 10.14 Test script idempotency
 - [ ] 10.15 Test with ralph-loop automation
 - [ ] 10.16 Verify all requirements from specs are met

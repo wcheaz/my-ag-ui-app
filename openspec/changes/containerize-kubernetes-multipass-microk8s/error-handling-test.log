@@ -1,0 +1,82 @@
+[2026-03-20 17:05:59] Starting Error Handling Tests for my-ag-ui-app Kubernetes Deployment
+[2026-03-20 17:05:59] Test results will be logged to: error-handling-test.log
+[2026-03-20 17:05:59] Detailed results will be saved to: error-handling-test-results.md
+[2026-03-20 17:05:59] === Testing VM Provisioning Failure Scenarios ===
+[2026-03-20 17:05:59] Testing failure scenario: VM Creation - Insufficient CPU
+[2026-03-20 17:05:59] Command: multipass launch --name test-error-vm --cpus 32 --memory 1G --disk 1G 2>&1 || true
+[2026-03-20 17:05:59] Expected error: insufficient\|not enough\|failed
+[2026-03-20 17:05:59] Expected exit code: 1
+[2026-03-20 17:05:59] Actual exit code: 0
+[2026-03-20 17:05:59] Actual result: [2K[0A[0E[2K[0A[0ECreating test-error-vm  / [2K[0A[0Elaunch failed: Requested disk (1073741824 bytes) below minimum for this image (3758096384 bytes)
+[2K[0A[0E
+[2026-03-20 17:05:59] Test FAILED: VM Creation - Insufficient CPU
+[2026-03-20 17:05:59] Testing failure scenario: VM Creation - Invalid Name
+[2026-03-20 17:05:59] Command: multipass launch --name 'invalid@name' --cpus 1 --memory 1G --disk 1G 2>&1 || true
+[2026-03-20 17:05:59] Expected error: invalid\|failed
+[2026-03-20 17:05:59] Expected exit code: 1
+[2026-03-20 17:05:59] Actual exit code: 0
+[2026-03-20 17:05:59] Actual result: [2K[0A[0Elaunch failed: Invalid arguments supplied
+Invalid instance name supplied: invalid@name
+[2K[0A[0E
+[2026-03-20 17:05:59] Test FAILED: VM Creation - Invalid Name
+[2026-03-20 17:05:59] Testing failure scenario: VM Creation - Duplicate Name
+[2026-03-20 17:05:59] Command: multipass launch --name duplicate-test-vm --cpus 1 --memory 1G --disk 1G 2>&1 || true
+[2026-03-20 17:05:59] Expected error: already exists\|duplicate
+[2026-03-20 17:05:59] Expected exit code: 1
+[2026-03-20 17:06:00] Actual exit code: 0
+[2026-03-20 17:06:00] Actual result: [2K[0A[0E[2K[0A[0ECreating duplicate-test-vm  / [2K[0A[0Elaunch failed: Requested disk (1073741824 bytes) below minimum for this image (3758096384 bytes)
+[2K[0A[0E
+[2026-03-20 17:06:00] Test FAILED: VM Creation - Duplicate Name
+[2026-03-20 17:06:00] Testing failure scenario: VM Creation - Timeout
+[2026-03-20 17:06:00] Command: timeout 5 multipass launch --name timeout-test-vm --cpus 1 --memory 1G --disk 1G 2>&1 || true
+[2026-03-20 17:06:00] Expected error: timeout\|timed out
+[2026-03-20 17:06:00] Expected exit code: 124
+[2026-03-20 17:06:00] Actual exit code: 0
+[2026-03-20 17:06:00] Actual result: [2K[0A[0E[2K[0A[0ECreating timeout-test-vm  / [2K[0A[0Elaunch failed: Requested disk (1073741824 bytes) below minimum for this image (3758096384 bytes)
+[2K[0A[0E
+[2026-03-20 17:06:00] Test FAILED: VM Creation - Timeout
+[2026-03-20 17:06:00] === Testing microk8s Installation Failure Scenarios ===
+[2026-03-20 17:06:25] Testing failure scenario: microk8s Installation - Snap Not Available
+[2026-03-20 17:06:25] Command: multipass exec test-vm -- sudo apt remove -y snapd && sudo microk8s 2>&1 || true
+[2026-03-20 17:06:25] Expected error: not found\|command not found
+[2026-03-20 17:06:25] Expected exit code: 1
+[2026-03-20 17:06:29] Actual exit code: 0
+[2026-03-20 17:06:29] Actual result: 
+WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following package was automatically installed and is no longer required:
+  squashfs-tools
+Use 'sudo apt autoremove' to remove it.
+The following packages will be REMOVED:
+  snapd
+0 upgraded, 0 newly installed, 1 to remove and 44 not upgraded.
+After this operation, 128 MB disk space will be freed.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 74832 files and directories currently installed.)
+Removing snapd (2.73+ubuntu24.04) ...
+Stopping 'snapd.service', but its triggering units are still active:
+snapd.socket
+Processing triggers for dbus (1.14.10-4ubuntu4.1) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+sudo: a terminal is required to read the password; either use the -S option to read from standard input or configure an askpass helper
+sudo: a password is required
+[2026-03-20 17:06:29] Test FAILED: microk8s Installation - Snap Not Available
+[2026-03-20 17:06:30] Testing failure scenario: microk8s Installation - Network Issues
+[2026-03-20 17:06:30] Command: multipass exec test-vm -- sudo iptables -A OUTPUT -p tcp --dport 53 -j DROP && timeout 10 sudo snap install microk8s --classic 2>&1 || multipass exec test-vm -- sudo iptables -D OUTPUT -p tcp --dport 53 -j DROP; true
+[2026-03-20 17:06:30] Expected error: timeout\|network\|connection
+[2026-03-20 17:06:30] Expected exit code: 1\|124
+[2026-03-20 17:06:30] Actual exit code: 0
+[2026-03-20 17:06:30] Actual result: sudo: a terminal is required to read the password; either use the -S option to read from standard input or configure an askpass helper
+sudo: a password is required
+[2026-03-20 17:06:30] Test FAILED: microk8s Installation - Network Issues
+[2026-03-20 17:06:30] Testing failure scenario: microk8s Add-on - Invalid Add-on
+[2026-03-20 17:06:30] Command: multipass exec test-vm -- sudo snap install microk8s --classic 2>/dev/null && multipass exec test-vm -- microk8s enable nonexistent-addon 2>&1 || true
+[2026-03-20 17:06:30] Expected error: not found\|invalid
+[2026-03-20 17:06:30] Expected exit code: 1
+[2026-03-20 17:06:30] Actual exit code: 0
+[2026-03-20 17:06:30] Actual result: 
+[2026-03-20 17:06:30] Test FAILED: microk8s Add-on - Invalid Add-on
+[2026-03-20 17:06:31] === Testing Container Build Failure Scenarios ===
+[2026-03-20 17:06:31] === Testing Kubernetes Deployment Failure Scenarios ===
