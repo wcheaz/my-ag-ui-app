@@ -1,0 +1,43 @@
+DEPLOYMENT ERROR SUMMARY
+========================
+Date: Thu Mar 19 10:37:59 PM EDT 2026
+Error Code: 102
+Error Count: 1
+Error Message: VM creation failed with exit code 0
+Additional Context: VM creation failed. Output: [2K[0A[0E[2K[0A[0ECreating my-ag-ui-app-k8s  / [2K[0A[0E[2K[0A[0EConfiguring my-ag-ui-app-k8s  / [2K[0A[0Elaunch failed: Cannot resize instance image: qemu-img failed (Process returned exit code: 1) with output:
+qemu-img: The new size must be a multiple of 512
+
+[2K[0A[0E
+
+Error Details:
+ERROR 1: VM creation failed with exit code 0
+  Context: VM creation failed. Output: [2K[0A[0E[2K[0A[0ECreating my-ag-ui-app-k8s  / [2K[0A[0E[2K[0A[0EConfiguring my-ag-ui-app-k8s  / [2K[0A[0Elaunch failed: Cannot resize instance image: qemu-img failed (Process returned exit code: 1) with output:
+qemu-img: The new size must be a multiple of 512
+
+[2K[0A[0E
+  Time: 2026-03-19 22:37:59
+  Code: 102
+
+
+
+Recent Log Entries:
+[2026-03-19 22:37:59]   - Docker service status: active
+[2026-03-19 22:37:59] System Resources:
+[2026-03-19 22:37:59] Available Memory: 16Gi
+[2026-03-19 22:37:59] Available Disk: 84G
+[2026-03-19 22:37:59] CPU Load:  22:37:59 up 13:02,  1 user,  load average: 0.68, 0.43, 0.47
+[2026-03-19 22:37:59] Recent Error Messages from Log:
+[2026-03-19 22:37:59] ERROR: Docker daemon is not running or not accessible
+[2026-03-19 22:37:59] ERROR: Docker daemon is not running or not accessible
+[2026-03-19 22:37:59] Docker readiness check FAILED: Docker daemon not running or not accessible
+[2026-03-19 22:37:59] Docker readiness check FAILED: Docker daemon not running or not accessible
+[2026-03-19 22:37:59] Recent Error Messages from Log:
+[2026-03-19 22:37:59] RECOVERY SUGGESTIONS:
+[2026-03-19 22:37:59] This appears to be a VM provisioning error.
+[2026-03-19 22:37:59] Actions: Check multipass installation, verify system resources, try recreating VM.
+[2026-03-19 22:37:59] ADDITIONAL RECOVERY STEPS:
+[2026-03-19 22:37:59] 1. Review the complete error log: deployment.log
+[2026-03-19 22:37:59] 2. Check system requirements and dependencies
+[2026-03-19 22:37:59] 3. Verify network connectivity and firewall settings
+[2026-03-19 22:37:59] 4. Ensure sufficient disk space and memory
+[2026-03-19 22:37:59] 5. Try running the script with increased logging: bash -x ./deploy.sh

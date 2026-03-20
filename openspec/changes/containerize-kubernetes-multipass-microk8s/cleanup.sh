@@ -52,7 +52,7 @@ vm_exists() {
 
 # Function to check if VM is running
 vm_running() {
-    multipass info "$VM_NAME" 2>/dev/null | grep -q "State: Running"
+    multipass info "$VM_NAME" 2>/dev/null | grep -q "State:[[:space:]]*Running"
 }
 
 # Function to confirm cleanup
