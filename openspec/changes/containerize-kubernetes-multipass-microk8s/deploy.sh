@@ -3559,6 +3559,218 @@ section_header "FINAL COMPREHENSIVE VERIFICATION" 7 7
 progress 7 7 "Starting final comprehensive verification"
 milestone "Deployment Verification" 4 4
 
+# Final verification error handler with comprehensive diagnostic reporting
+handle_final_verification_error() {
+    local error_code=$1
+    local error_message=$2
+    local recovery_suggestion=$3
+    
+    log "FINAL VERIFICATION ERROR [Code: $error_code]: $error_message"
+    log "RECOVERY SUGGESTION: $recovery_suggestion"
+    
+    # Log additional diagnostic information
+    log "FINAL VERIFICATION DIAGNOSTIC INFO:"
+    log "VM Name: $VM_NAME"
+    log "Image name: $FULL_IMAGE_NAME"
+    log "Microk8s status: $(multipass exec "$VM_NAME" -- microk8s status --wait 2>/dev/null || echo 'microk8s not ready')"
+    
+    # Generate comprehensive diagnostic report
+    log "=== COMPREHENSIVE DIAGNOSTIC REPORT ==="
+    
+    # 1. Host System Diagnostics
+    log "1. HOST SYSTEM DIAGNOSTICS:"
+    log "  - OS: $(uname -a)"
+    log "  - Docker: $(command -v docker >/dev/null 2>&1 && docker version | grep "Version" | head -1 || echo 'not available')"
+    log "  - Multipass: $(command -v multipass >/dev/null 2>&1 && multipass version | head -1 || echo 'not available')"
+    
+    # 2. VM Diagnostics
+    log "2. VM DIAGNOSTICS:"
+    if vm_exists; then
+        log "  - VM exists: YES"
+        if vm_running; then
+            log "  - VM running: YES"
+            log "  - VM IP: $(multipass info "$VM_NAME" | grep "IPv4:" | awk '{print $2}' || echo 'unknown')"
+            
+            # Check VM resources
+            if multipass exec "$VM_NAME" -- command -v free >/dev/null 2>&1; then
+                local vm_memory=$(multipass exec "$VM_NAME" -- free -h | awk 'NR==2{print $2}')
+                local vm_used=$(multipass exec "$VM_NAME" -- free -h | awk 'NR==2{print $3}')
+                log "  - VM Memory: $vm_used/$vm_memory"
+            fi
+            
+            if multipass exec "$VM_NAME" -- command -v df >/dev/null 2>&1; then
+                local vm_disk=$(multipass exec "$VM_NAME" -- df -h / | awk 'NR==2{print $2}')
+                local vm_disk_used=$(multipass exec "$VM_NAME" -- df -h / | awk 'NR==2{print $3}')
+                log "  - VM Disk: $vm_disk_used/$vm_disk"
+            fi
+        else
+            log "  - VM running: NO"
+        fi
+    else
+        log "  - VM exists: NO"
+    fi
+    
+    # 3. Microk8s Diagnostics
+    log "3. MICROK8S DIAGNOSTICS:"
+    if multipass exec "$VM_NAME" -- command -v microk8s >/dev/null 2>&1; then
+        log "  - Microk8s installed: YES"
+        if microk8s_ready; then
+            log "  - Microk8s ready: YES"
+            log "  - Microk8s version: $(multipass exec "$VM_NAME" -- microk8s version | head -1 | cut -d' ' -f2 || echo 'unknown')"
+            
+            # Check add-ons
+            log "  - Add-ons status:"
+            local addons=("dns" "storage" "ingress")
+            for addon in "${addons[@]}"; do
+                if microk8s_addon_enabled "$addon"; then
+                    log "    - $addon: ENABLED"
+                else
+                    log "    - $addon: DISABLED/NOT READY"
+                fi
+            done
+        else
+            log "  - Microk8s ready: NO"
+        fi
+    else
+        log "  - Microk8s installed: NO"
+    fi
+    
+    # 4. Kubernetes Resources Diagnostics
+    log "4. KUBERNETES RESOURCES DIAGNOSTICS:"
+    if multipass exec "$VM_NAME" -- command -v microk8s >/dev/null 2>&1 && microk8s_ready; then
+        local resources=("deployment" "service" "ingress")
+        for resource in "${resources[@]}"; do
+            local resource_name="my-ag-ui-app-$resource"
+            if multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get $resource $resource_name" >/dev/null 2>&1; then
+                log "  - $resource '$resource_name': EXISTS"
+                
+                # Get resource details
+                case $resource in
+                    "deployment")
+                        local replicas=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get deployment $resource_name -o jsonpath='{.spec.replicas}'" 2>/dev/null || echo "unknown")
+                        local ready=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get deployment $resource_name -o jsonpath='{.status.readyReplicas}'" 2>/dev/null || echo "unknown")
+                        log "    - Replicas: $ready/$replicas"
+                        ;;
+                    "service")
+                        local type=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get service $resource_name -o jsonpath='{.spec.type}'" 2>/dev/null || echo "unknown")
+                        local port=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get service $resource_name -o jsonpath='{.spec.ports[0].port}'" 2>/dev/null || echo "unknown")
+                        log "    - Type: $type, Port: $port"
+                        ;;
+                    "ingress")
+                        local host=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress $resource_name -o jsonpath='{.spec.rules[0].host}'" 2>/dev/null || echo "unknown")
+                        log "    - Host: $host"
+                        ;;
+                esac
+            else
+                log "  - $resource '$resource_name': MISSING"
+            fi
+        done
+        
+        # Check pods
+        local pod_count=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items.length}'" 2>/dev/null || echo "0")
+        local ready_pods=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{range .items[*]}{.status.containerStatuses[0].ready}{'\"\\n\"'\"}'\" | grep -c true" 2>/dev/null || echo "0")
+        log "  - Application pods: $ready_pods/$pod_count ready"
+        
+        # Check for pod issues
+        if [ "$pod_count" -gt 0 ]; then
+            log "  - Pod details:"
+            multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=my-ag-ui-app -o wide" 2>&1 | head -10 | while read -r pod_line; do
+                log "    $pod_line"
+            done
+        fi
+    else
+        log "  - Kubernetes: NOT ACCESSIBLE"
+    fi
+    
+    # 5. Application Accessibility Diagnostics
+    log "5. APPLICATION ACCESSIBILITY DIAGNOSTICS:"
+    if multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress my-ag-ui-app-ingress" >/dev/null 2>&1; then
+        local ingress_ip=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress my-ag-ui-app-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" 2>/dev/null || echo "")
+        if [ -n "$ingress_ip" ]; then
+            log "  - Ingress IP: $ingress_ip"
+            
+            # Test accessibility
+            if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout 3 "http://$ingress_ip" >/dev/null 2>&1; then
+                log "  - HTTP accessibility: YES"
+            else
+                log "  - HTTP accessibility: NO"
+            fi
+            
+            if multipass exec "$VM_NAME" -- curl -k -s -f --connect-timeout 3 "https://$ingress_ip" >/dev/null 2>&1; then
+                log "  - HTTPS accessibility: YES"
+            else
+                log "  - HTTPS accessibility: NO"
+            fi
+        else
+            log "  - Ingress IP: NOT AVAILABLE"
+        fi
+    else
+        log "  - Ingress resource: NOT FOUND"
+    fi
+    
+    # 6. Error Log Summary
+    log "6. ERROR LOG SUMMARY:"
+    if [ -f "$LOG_FILE" ]; then
+        local error_count=$(grep -c "ERROR\|FAILED" "$LOG_FILE" 2>/dev/null || echo "0")
+        local warning_count=$(grep -c "WARNING" "$LOG_FILE" 2>/dev/null || echo "0")
+        log "  - Total errors: $error_count"
+        log "  - Total warnings: $warning_count"
+        
+        if [ $error_count -gt 0 ]; then
+            log "  - Recent errors:"
+            grep -E "ERROR|FAILED" "$LOG_FILE" | tail -5 | while read -r error_line; do
+                log "    $error_line"
+            done
+        fi
+    else
+        log "  - Log file: NOT FOUND"
+    fi
+    
+    # 7. Recovery Recommendations
+    log "7. RECOVERY RECOMMENDATIONS:"
+    case $error_code in
+        901)
+            log "  - Host system issues detected"
+            log "  - Check Docker and Multipass installation"
+            log "  - Verify system resources and permissions"
+            ;;
+        902)
+            log "  - VM issues detected"
+            log "  - Check VM status: multipass info $VM_NAME"
+            log "  - Restart VM if needed: multipass restart $VM_NAME"
+            log "  - Recreate VM if persistent issues: multipass delete $VM_NAME && multipass purge"
+            ;;
+        903)
+            log "  - Microk8s issues detected"
+            log "  - Check microk8s status: multipass exec $VM_NAME -- microk8s status"
+            log "  - Restart microk8s: multipass exec $VM_NAME -- sudo snap restart microk8s"
+            log "  - Check microk8s logs: multipass exec $VM_NAME -- journalctl -u snap.microk8s.daemon-*"
+            ;;
+        904)
+            log "  - Kubernetes deployment issues detected"
+            log "  - Check resource status: multipass exec $VM_NAME -- microk8s kubectl get all -l app=my-ag-ui-app"
+            log "  - Check pod logs: multipass exec $VM_NAME -- microk8s kubectl logs <pod-name>"
+            log "  - Check events: multipass exec $VM_NAME -- microk8s kubectl get events"
+            ;;
+        905)
+            log "  - Application accessibility issues detected"
+            log "  - Check ingress configuration: multipass exec $VM_NAME -- microk8s kubectl get ingress my-ag-ui-app-ingress"
+            log "  - Check ingress logs: multipass exec $VM_NAME -- microk8s kubectl logs -n ingress <ingress-pod>"
+            log "  - Check service endpoints: multipass exec $VM_NAME -- microk8s kubectl get endpoints my-ag-ui-app-service"
+            ;;
+        *)
+            log "  - General verification failure"
+            log "  - Review the diagnostic information above"
+            log "  - Check the deployment log: $LOG_FILE"
+            log "  - Try running individual verification functions"
+            ;;
+    esac
+    
+    log "=== END COMPREHENSIVE DIAGNOSTIC REPORT ==="
+    
+    exit $error_code
+}
+
 final_comprehensive_verification() {
     log "=== FINAL COMPREHENSIVE DEPLOYMENT VERIFICATION ==="
     log "This verification checks the entire deployment from end to end"
@@ -3572,6 +3784,7 @@ final_comprehensive_verification() {
     if ! command_exists multipass; then
         verification_passed=false
         verification_details+="FAIL: multipass not found on host\n"
+        log "ERROR: Host system prerequisite check failed - multipass not found"
     else
         log "SUCCESS: multipass available on host"
     fi
@@ -3579,8 +3792,15 @@ final_comprehensive_verification() {
     if ! docker_ready; then
         verification_passed=false
         verification_details+="FAIL: Docker not ready on host\n"
+        log "ERROR: Host system prerequisite check failed - Docker not ready"
     else
         log "SUCCESS: Docker ready on host"
+    fi
+    
+    # If host system checks fail, provide detailed error information
+    if [ "$verification_passed" = "false" ]; then
+        handle_final_verification_error 901 "Host system prerequisite verification failed" \
+            "The host system does not meet the required prerequisites for deployment. Install Docker and Multipass before continuing."
     fi
     
     # 2. Verify VM status
@@ -3588,22 +3808,31 @@ final_comprehensive_verification() {
     if ! vm_exists; then
         verification_passed=false
         verification_details+="FAIL: VM '$VM_NAME' does not exist\n"
+        log "ERROR: VM status verification failed - VM does not exist"
     else
         log "SUCCESS: VM '$VM_NAME' exists"
         
         if ! vm_running; then
             verification_passed=false
             verification_details+="FAIL: VM '$VM_NAME' is not running\n"
+            log "ERROR: VM status verification failed - VM is not running"
         else
             log "SUCCESS: VM '$VM_NAME' is running"
             
             if ! multipass exec "$VM_NAME" -- uptime >/dev/null 2>&1; then
                 verification_passed=false
                 verification_details+="FAIL: VM '$VM_NAME' is not responsive\n"
+                log "ERROR: VM status verification failed - VM is not responsive"
             else
                 log "SUCCESS: VM '$VM_NAME' is responsive"
             fi
         fi
+    fi
+    
+    # If VM checks fail, provide detailed error information
+    if [ "$verification_passed" = "false" ] && echo "$verification_details" | grep -q "VM\|multipass"; then
+        handle_final_verification_error 902 "VM status verification failed" \
+            "The VM infrastructure is not properly configured or accessible. Check VM status and resources before continuing."
     fi
     
     # 3. Verify microk8s cluster status
@@ -3611,24 +3840,39 @@ final_comprehensive_verification() {
     if ! microk8s_ready; then
         verification_passed=false
         verification_details+="FAIL: microk8s cluster is not ready\n"
+        log "ERROR: Microk8s cluster status verification failed - cluster not ready"
     else
         log "SUCCESS: microk8s cluster is ready"
         
         # Verify add-ons
         local required_addons=("dns" "storage" "ingress")
+        local addons_ready=true
         for addon in "${required_addons[@]}"; do
             if microk8s_addon_enabled "$addon"; then
                 log "SUCCESS: $addon add-on is enabled"
             else
                 log "WARNING: $addon add-on is not enabled"
+                addons_ready=false
             fi
         done
+        
+        if [ "$addons_ready" = "false" ]; then
+            log "ERROR: Microk8s add-ons verification failed - some add-ons not enabled"
+            # This is not a fatal error but should be noted
+        fi
+    fi
+    
+    # If microk8s checks fail, provide detailed error information
+    if [ "$verification_passed" = "false" ] && echo "$verification_details" | grep -q "microk8s\|cluster"; then
+        handle_final_verification_error 903 "Microk8s cluster status verification failed" \
+            "The microk8s cluster is not properly configured or accessible. Check microk8s status and enable required add-ons before continuing."
     fi
     
     # 4. Verify container image availability
     log "Step 4: Verifying container image availability..."
     if ! docker images | grep -q "^$IMAGE_NAME[[:space:]]*$IMAGE_TAG"; then
         log "WARNING: Docker image '$FULL_IMAGE_NAME' not found locally"
+        log "ERROR: Container image availability verification failed - image not found locally"
     else
         log "SUCCESS: Docker image '$FULL_IMAGE_NAME' available locally"
     fi
@@ -3636,8 +3880,15 @@ final_comprehensive_verification() {
     if ! multipass exec "$VM_NAME" -- bash -c "microk8s ctr image list | grep -q '$IMAGE_NAME'" 2>/dev/null; then
         verification_passed=false
         verification_details+="FAIL: Image '$FULL_IMAGE_NAME' not found in microk8s\n"
+        log "ERROR: Container image availability verification failed - image not found in microk8s"
     else
         log "SUCCESS: Image '$FULL_IMAGE_NAME' available in microk8s"
+    fi
+    
+    # If container image checks fail, provide detailed error information
+    if [ "$verification_passed" = "false" ] && echo "$verification_details" | grep -q "Image\|container"; then
+        handle_final_verification_error 904 "Container image availability verification failed" \
+            "The container image is not available in microk8s. Check the image build process and ensure it was properly imported into the cluster."
     fi
     
     # 5. Verify Kubernetes deployment
@@ -3648,10 +3899,37 @@ final_comprehensive_verification() {
         if ! multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get $resource $resource_name" >/dev/null 2>&1; then
             verification_passed=false
             verification_details+="FAIL: Kubernetes $resource '$resource_name' not found\n"
+            log "ERROR: Kubernetes deployment verification failed - $resource '$resource_name' not found"
         else
             log "SUCCESS: Kubernetes $resource '$resource_name' exists"
+            
+            # Get additional resource details
+            case $resource in
+                "deployment")
+                    local replicas=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get deployment $resource_name -o jsonpath='{.spec.replicas}'" 2>/dev/null || echo "unknown")
+                    local ready=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get deployment $resource_name -o jsonpath='{.status.readyReplicas}'" 2>/dev/null || echo "0")
+                    if [ "$ready" != "$replicas" ] || [ "$ready" = "0" ]; then
+                        log "WARNING: Deployment '$resource_name' replicas not ready: $ready/$replicas"
+                    fi
+                    ;;
+                "service")
+                    local type=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get service $resource_name -o jsonpath='{.spec.type}'" 2>/dev/null || echo "unknown")
+                    local port=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get service $resource_name -o jsonpath='{.spec.ports[0].port}'" 2>/dev/null || echo "unknown")
+                    log "  - Service type: $type, Port: $port"
+                    ;;
+                "ingress")
+                    local host=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress $resource_name -o jsonpath='{.spec.rules[0].host}'" 2>/dev/null || echo "unknown")
+                    log "  - Ingress host: $host"
+                    ;;
+            esac
         fi
     done
+    
+    # If Kubernetes deployment checks fail, provide detailed error information
+    if [ "$verification_passed" = "false" ] && echo "$verification_details" | grep -q "Kubernetes\|deployment\|service\|ingress"; then
+        handle_final_verification_error 904 "Kubernetes deployment verification failed" \
+            "The Kubernetes deployment resources are not properly configured or accessible. Check the Kubernetes manifests and cluster status before continuing."
+    fi
     
     # 6. Verify application health
     log "Step 6: Verifying application health..."
@@ -3660,24 +3938,78 @@ final_comprehensive_verification() {
     
     if [ "$pod_count" -gt 0 ] && [ "$ready_pods" -eq "$pod_count" ]; then
         log "SUCCESS: All application pods are healthy ($ready_pods/$pod_count)"
+        
+        # Log detailed pod information
+        log "Application pod details:"
+        multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=my-ag-ui-app -o wide" 2>&1 | head -10 | while read -r pod_line; do
+            log "  $pod_line"
+        done
     else
         verification_passed=false
         verification_details+="FAIL: Application pods are not healthy ($ready_pods/$pod_count)\n"
+        log "ERROR: Application health verification failed - pods not healthy"
+        
+        # Log problematic pod details
+        if [ "$pod_count" -gt 0 ]; then
+            log "Problematic pod details:"
+            multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=my-ag-ui-app -o wide" 2>&1 | while read -r pod_line; do
+                log "  $pod_line"
+            done
+            
+            # Log recent events for troubleshooting
+            log "Recent events for application pods:"
+            multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get events --field-selector involvedObject.name!=,involvedObject.namespace=default | sort-by=.lastTimestamp | tail -10" 2>&1 | while read -r event_line; do
+                log "  $event_line"
+            done
+        else
+            log "No application pods found"
+        fi
     fi
     
-    # 7. Verify ingress functionality
+    # If application health checks fail, provide detailed error information
+    if [ "$verification_passed" = "false" ] && echo "$verification_details" | grep -q "Application\|pods\|healthy"; then
+        handle_final_verification_error 904 "Application health verification failed" \
+            "The application pods are not running or healthy. Check pod logs, events, and resource status before continuing."
+    fi
+    
+# 7. Verify ingress functionality
     log "Step 7: Verifying ingress functionality..."
-    local ingress_pods=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n ingress -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+    local ingress_pods=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -n ingress -o jsonpath='{.items[*].metadata.name}'" 2>/dev/null || echo "")
     if [ -n "$ingress_pods" ]; then
         log "SUCCESS: Ingress controller pods exist"
         
         # Check ingress controller health
         local ingress_healthy=true
         for pod in $ingress_pods; do
-            local pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pod "$pod" -n ingress -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+            local pod_status=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pod "$pod" -n ingress -o jsonpath='{.status.phase}'" 2>/dev/null || echo "Unknown")
             if [ "$pod_status" != "Running" ]; then
                 ingress_healthy=false
+                log "ERROR: Ingress controller pod '$pod' is not healthy - status: $pod_status"
+            else
+                log "SUCCESS: Ingress controller pod '$pod' is healthy"
             fi
+        done
+        
+        if [ "$ingress_healthy" = "true" ]; then
+            log "SUCCESS: All ingress controller pods are healthy"
+        else
+            log "WARNING: Some ingress controller pods are not healthy"
+        fi
+    else
+        log "ERROR: Ingress functionality verification failed - no ingress controller pods found"
+        verification_passed=false
+        verification_details+="FAIL: No ingress controller pods found\n"
+    fi
+    
+    # Check ingress controller logs for errors
+    if [ -n "$ingress_pods" ]; then
+        local first_pod=$(echo "$ingress_pods" | cut -d' ' -f1)
+        local ingress_errors=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl logs $first_pod -n ingress --tail=20 2>&1 | grep -i 'error\|failed\|warning'" || echo "")
+        if [ -n "$ingress_errors" ]; then
+            log "WARNING: Found errors in ingress controller logs:"
+            log "$ingress_errors"
+        fi
+    fi
         done
         
         if [ "$ingress_healthy" = "true" ]; then
@@ -3695,14 +4027,48 @@ final_comprehensive_verification() {
     if [ -n "$ingress_ip" ]; then
         log "SUCCESS: Ingress has IP: $ingress_ip"
         
-        # Test accessibility (basic check)
+        # Test HTTP accessibility (basic check)
+        local http_accessible=false
         if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout 3 "http://$ingress_ip" >/dev/null 2>&1; then
-            log "SUCCESS: Application accessible via ingress"
+            log "SUCCESS: Application accessible via HTTP"
+            http_accessible=true
         else
-            log "WARNING: Application may not be accessible via ingress"
+            log "WARNING: Application may not be accessible via HTTP"
+        fi
+        
+        # Test HTTPS accessibility (if SSL is configured)
+        local https_accessible=false
+        if multipass exec "$VM_NAME" -- curl -k -s -f --connect-timeout 3 "https://$ingress_ip" >/dev/null 2>&1; then
+            log "SUCCESS: Application accessible via HTTPS"
+            https_accessible=true
+        else
+            log "INFO: HTTPS accessibility test failed (may be normal if SSL not configured)"
+        fi
+        
+        # If neither HTTP nor HTTPS is accessible, mark as failed
+        if [ "$http_accessible" = "false" ] && [ "$https_accessible" = "false" ]; then
+            log "ERROR: End-to-end accessibility verification failed - application not accessible via ingress"
+            verification_passed=false
+            verification_details+="FAIL: Application not accessible via ingress\n"
+            
+            # Provide diagnostic information
+            log "DIAGNOSTIC: Testing connectivity to ingress..."
+            multipass exec "$VM_NAME" -- bash -c "curl -v --connect-timeout 3 http://$ingress_ip" 2>&1 | head -10 | while read -r diag_line; do
+                log "  $diag_line"
+            done
         fi
     else
         log "INFO: Ingress IP not available (may be normal in local deployment)"
+        log "DIAGNOSTIC: Checking ingress resource details..."
+        multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress my-ag-ui-app-ingress -o yaml" 2>&1 | head -20 | while read -r diag_line; do
+            log "  $diag_line"
+        done
+    fi
+    
+    # If accessibility checks fail, provide detailed error information
+    if [ "$verification_passed" = "false" ] && echo "$verification_details" | grep -q "accessible\|ingress"; then
+        handle_final_verification_error 905 "End-to-end accessibility verification failed" \
+            "The application is not accessible via the ingress endpoint. Check ingress configuration, service endpoints, and application health before continuing."
     fi
     
     # 9. Verify SSL/TLS configuration (if applicable)
@@ -3713,8 +4079,21 @@ final_comprehensive_verification() {
         # Test HTTPS access
         if multipass exec "$VM_NAME" -- curl -k -s -f --connect-timeout 3 "https://localhost" >/dev/null 2>&1; then
             log "SUCCESS: HTTPS access is working"
+            
+            # Get SSL certificate details
+            log "SSL Certificate Details:"
+            multipass exec "$VM_NAME" -- bash -c "curl -k -v https://localhost 2>&1 | grep -E 'subject:|issuer:|start date:|expire date:' | head -4" 2>&1 | while read -r cert_line; do
+                log "  $cert_line"
+            done
         else
             log "WARNING: HTTPS access test failed"
+            log "ERROR: SSL/TLS configuration verification failed - HTTPS access not working"
+            
+            # Provide diagnostic information for SSL/TLS issues
+            log "DIAGNOSTIC: Testing SSL/TLS configuration..."
+            multipass exec "$VM_NAME" -- bash -c "curl -k -v https://localhost 2>&1 | head -20" 2>&1 | while read -r diag_line; do
+                log "  $diag_line"
+            done
         fi
     else
         log "INFO: TLS secret not configured (HTTP access only)"
@@ -3726,22 +4105,48 @@ final_comprehensive_verification() {
         local log_size=$(stat -c%s "$LOG_FILE" 2>/dev/null || echo "0")
         if [ "$log_size" -gt 0 ]; then
             log "SUCCESS: Deployment log file exists and has content (${log_size} bytes)"
+            
+            # Check for critical errors in the log
+            local critical_errors=$(grep -c "CRITICAL\|FATAL\|ERROR.*[0-9][0-9][0-9]" "$LOG_FILE" 2>/dev/null || echo "0")
+            if [ "$critical_errors" -gt 0 ]; then
+                log "WARNING: Found $critical_errors critical errors in deployment log"
+                log "Recent critical errors:"
+                grep -E "CRITICAL|FATAL|ERROR.*[0-9][0-9][0-9]" "$LOG_FILE" | tail -5 | while read -r error_line; do
+                    log "  $error_line"
+                done
+            else
+                log "SUCCESS: No critical errors found in deployment log"
+            fi
         else
-            log "WARNING: Deployment log file is empty"
+            log "ERROR: Logs and monitoring verification failed - deployment log file is empty"
+            verification_passed=false
+            verification_details+="FAIL: Deployment log file is empty\n"
         fi
     else
-        log "WARNING: Deployment log file not found"
+        log "ERROR: Logs and monitoring verification failed - deployment log file not found"
+        verification_passed=false
+        verification_details+="FAIL: Deployment log file not found\n"
     fi
     
     # 11. Verify resource utilization
     log "Step 11: Verifying resource utilization..."
+    local resource_issues=false
+    
     if multipass exec "$VM_NAME" -- command -v free >/dev/null 2>&1; then
         local vm_memory_percent=$(multipass exec "$VM_NAME" -- free -m | awk 'NR==2{printf "%.0f", $3/$2*100}')
         if [ "$vm_memory_percent" -lt 90 ]; then
             log "SUCCESS: VM memory usage is acceptable (${vm_memory_percent}%)"
         else
             log "WARNING: VM memory usage is high (${vm_memory_percent}%)"
+            if [ "$vm_memory_percent" -ge 95 ]; then
+                log "ERROR: Resource utilization verification failed - memory usage critically high"
+                verification_passed=false
+                verification_details+="FAIL: VM memory usage critically high (${vm_memory_percent}%)\n"
+                resource_issues=true
+            fi
         fi
+    else
+        log "WARNING: Cannot check VM memory utilization - free command not available"
     fi
     
     if multipass exec "$VM_NAME" -- command -v df >/dev/null 2>&1; then
@@ -3750,15 +4155,58 @@ final_comprehensive_verification() {
             log "SUCCESS: VM disk usage is acceptable (${vm_disk_percent}%)"
         else
             log "WARNING: VM disk usage is high (${vm_disk_percent}%)"
+            if [ "$vm_disk_percent" -ge 95 ]; then
+                log "ERROR: Resource utilization verification failed - disk usage critically high"
+                verification_passed=false
+                verification_details+="FAIL: VM disk usage critically high (${vm_disk_percent}%)\n"
+                resource_issues=true
+            fi
         fi
+    else
+        log "WARNING: Cannot check VM disk utilization - df command not available"
+    fi
+    
+    # Check CPU utilization if possible
+    if multipass exec "$VM_NAME" -- command -v top >/dev/null 2>&1; then
+        local cpu_usage=$(multipass exec "$VM_NAME" -- top -bn1 | grep "Cpu(s)" | awk '{print $2}' | sed 's/%us,//' | cut -d'.' -f1 2>/dev/null || echo "0")
+        if [ -n "$cpu_usage" ] && [ "$cpu_usage" -lt 90 ]; then
+            log "SUCCESS: VM CPU usage is acceptable (${cpu_usage}%)"
+        else
+            log "WARNING: VM CPU usage is high (${cpu_usage}%)"
+            if [ -n "$cpu_usage" ] && [ "$cpu_usage" -ge 95 ]; then
+                log "ERROR: Resource utilization verification failed - CPU usage critically high"
+                verification_passed=false
+                verification_details+="FAIL: VM CPU usage critically high (${cpu_usage}%)\n"
+                resource_issues=true
+            fi
+        fi
+    fi
+    
+    # If resource utilization checks fail, provide detailed error information
+    if [ "$resource_issues" = "true" ]; then
+        handle_final_verification_error 902 "Resource utilization verification failed" \
+            "The VM is critically low on resources. This may impact application performance and stability. Consider upgrading VM resources or cleaning up unused applications."
     fi
     
     # 12. Compile final summary
     log "Step 12: Compiling final verification summary..."
     if [ "$verification_passed" = "true" ]; then
         final_summary="✅ DEPLOYMENT SUCCESSFUL - All verification checks passed"
+        log "SUCCESS: Final verification completed without any issues"
     else
         final_summary="❌ DEPLOYMENT ISSUES DETECTED - Some verification checks failed"
+        log "ERROR: Final verification completed with issues"
+        
+        # Count the number of failed checks
+        local failed_checks=$(echo "$verification_details" | grep -c "FAIL:" || echo "0")
+        log "Total failed verification checks: $failed_checks"
+        
+        # If there are critical failures, trigger comprehensive error reporting
+        if [ $failed_checks -ge 3 ]; then
+            log "ERROR: Multiple verification failures detected - triggering comprehensive error reporting"
+            handle_final_verification_error 999 "Multiple verification failures detected" \
+                "Multiple verification checks failed during final comprehensive verification. Review the failed checks and address each issue before redeploying."
+        fi
     fi
     
     # Output final verification summary
@@ -3809,14 +4257,97 @@ final_comprehensive_verification() {
     fi
 }
 
+# Set up error traps for the entire script
+trap 'handle_script_error 130 "Script interrupted by user" "The script was interrupted. Check the deployment log: $LOG_FILE"' INT
+trap 'handle_script_error 143 "Script terminated" "The script was terminated. Check the deployment log: $LOG_FILE"' TERM
+
+# Script error handler for unexpected issues
+handle_script_error() {
+    local error_code=$1
+    local error_message=$2
+    local recovery_suggestion=$3
+    
+    log "=== SCRIPT EXECUTION ERROR ==="
+    log "ERROR [Code: $error_code]: $error_message"
+    log "RECOVERY SUGGESTION: $recovery_suggestion"
+    
+    # Generate emergency diagnostic report
+    log "EMERGENCY DIAGNOSTIC REPORT:"
+    log "  - Script: ${BASH_SOURCE[0]}"
+    log "  - Line: ${BASH_LINENO[0]}"
+    log "  - Function: ${FUNCNAME[0]:-main}"
+    log "  - Time: $(date)"
+    log "  - VM Name: $VM_NAME"
+    log "  - Image Name: $FULL_IMAGE_NAME"
+    
+    # Check if we have a log file
+    if [ -f "$LOG_FILE" ]; then
+        log "  - Log file: $LOG_FILE ($(stat -c%s "$LOG_FILE" 2>/dev/null || echo "unknown") bytes)"
+        
+        # Get last 10 lines from log
+        log "  - Recent log entries:"
+        tail -10 "$LOG_FILE" 2>/dev/null | while read -r log_line; do
+            log "    $log_line"
+        done
+    else
+        log "  - Log file: NOT FOUND"
+    fi
+    
+    log "=== END EMERGENCY DIAGNOSTIC REPORT ==="
+    
+    exit $error_code
+}
+
 # Run final comprehensive verification
 log "Starting final comprehensive deployment verification..."
 if final_comprehensive_verification; then
     log "🎉 FINAL VERIFICATION: PASSED"
     log "✅ Deployment completed successfully!"
+    
+    # Create success summary file
+    {
+        echo "DEPLOYMENT SUCCESS SUMMARY"
+        echo "========================"
+        echo "Date: $(date)"
+        echo "Application: my-ag-ui-app"
+        echo "VM: $VM_NAME"
+        echo "Status: SUCCESS"
+        echo ""
+        echo "Access Information:"
+        echo "- VM IP: $(multipass info "$VM_NAME" | grep "IPv4:" | awk '{print $2}' || echo 'unknown')"
+        echo "- Ingress: $(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get ingress my-ag-ui-app-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" 2>/dev/null || echo 'unknown')"
+        echo ""
+        echo "Verification: All checks passed"
+        echo "Log: $LOG_FILE"
+    } > "deployment-success-$(date +%Y%m%d-%H%M%S).txt"
+    
+    log "Success summary saved to: deployment-success-$(date +%Y%m%d-%H%M%S).txt"
     exit 0
 else
     log "❌ FINAL VERIFICATION: FAILED"
     log "❌ Deployment completed with issues"
+    
+    # Create failure summary file
+    {
+        echo "DEPLOYMENT FAILURE SUMMARY"
+        echo "========================"
+        echo "Date: $(date)"
+        echo "Application: my-ag-ui-app"
+        echo "VM: $VM_NAME"
+        echo "Status: FAILED"
+        echo ""
+        echo "Failed Checks:"
+        echo "$verification_details"
+        echo ""
+        echo "Recovery Actions:"
+        echo "1. Review the failed checks above"
+        echo "2. Check the deployment log: $LOG_FILE"
+        echo "3. Address each issue before retrying"
+        echo "4. Consider running cleanup script: ./cleanup.sh"
+        echo ""
+        echo "Log: $LOG_FILE"
+    } > "deployment-failure-$(date +%Y%m%d-%H%M%S).txt"
+    
+    log "Failure summary saved to: deployment-failure-$(date +%Y%m%d-%H%M%S).txt"
     exit 1
 fi
