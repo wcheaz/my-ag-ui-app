@@ -6,12 +6,28 @@
 set -e  # Exit on any error
 set -o pipefail  # Exit if any command in a pipeline fails
 
-# Configuration
+# Configuration with timeout settings
 VM_NAME="my-ag-ui-app-k8s"
 VM_CPUS=4
 VM_MEMORY="7.7G"
 VM_DISK="19.3G"
 LOG_FILE="deployment.log"
+
+# Global timeout configuration (in seconds)
+VM_CREATION_TIMEOUT=600
+VM_READINESS_TIMEOUT=300
+MICROK8S_INSTALLATION_TIMEOUT=600
+MICROK8S_READINESS_TIMEOUT=300
+CONTAINER_BUILD_TIMEOUT=1800
+IMAGE_TRANSFER_TIMEOUT=300
+KUBERNETES_DEPLOYMENT_TIMEOUT=600
+INGRESS_VERIFICATION_TIMEOUT=300
+NETWORK_CONNECTIVITY_TIMEOUT=10
+POD_READINESS_TIMEOUT=300
+
+# Error tracking
+ERROR_COUNT=0
+ERROR_DETAILS=""
 
 # Logging function
 log() {
@@ -70,10 +86,148 @@ milestone() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] ------------------------------------------------------" | tee -a "$LOG_FILE"
 }
 
-# Error handling function
+# Enhanced error handling function with cleanup and detailed reporting
 handle_error() {
-    log "ERROR: $1"
-    exit 1
+    local error_message="$1"
+    local error_code="${2:-1}"
+    local additional_context="$3"
+    
+    # Increment error count
+    ERROR_COUNT=$((ERROR_COUNT + 1))
+    
+    # Log the error with timestamp and context
+    log "======================================================"
+    log "ERROR DETECTED [Code: $error_code, Count: $ERROR_COUNT]"
+    log "Error Message: $error_message"
+    log "Error Context: ${additional_context:-"No additional context provided"}"
+    log "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
+    log "Current Working Directory: $(pwd)"
+    log "Script Location: ${BASH_SOURCE[0]}"
+    log "======================================================"
+    
+    # Add error details to the error details variable
+    ERROR_DETAILS+="ERROR $ERROR_COUNT: $error_message\n"
+    ERROR_DETAILS+="  Context: ${additional_context:-"No additional context provided"}\n"
+    ERROR_DETAILS+="  Time: $(date '+%Y-%m-%d %H:%M:%S')\n"
+    ERROR_DETAILS+="  Code: $error_code\n\n"
+    
+    # Log diagnostic information based on the current deployment phase
+    log "DIAGNOSTIC INFORMATION:"
+    
+    # Check if we're in a VM-related phase
+    if vm_exists; then
+        log "VM Status:"
+        multipass info "$VM_NAME" 2>&1 | head -10 | tee -a "$LOG_FILE" || log "Could not get VM info"
+    fi
+    
+    # Check if we're in a microk8s-related phase
+    if vm_exists && vm_running; then
+        log "Microk8s Status:"
+        multipass exec "$VM_NAME" -- microk8s status 2>&1 | head -10 | tee -a "$LOG_FILE" || log "Could not get microk8s status"
+    fi
+    
+    # Check if we're in a container-related phase
+    if docker_ready; then
+        log "Docker Status:"
+        docker info 2>&1 | head -10 | tee -a "$LOG_FILE" || log "Could not get Docker info"
+        
+        # Log any existing containers
+        log "Running Containers:"
+        docker ps 2>&1 | head -10 | tee -a "$LOG_FILE" || log "Could not list containers"
+    fi
+    
+    # Check available system resources
+    log "System Resources:"
+    log "Available Memory: $(free -h | awk 'NR==2 {print $7}' || echo 'unknown')"
+    log "Available Disk: $(df -h . | awk 'NR==2 {print $4}' || echo 'unknown')"
+    log "CPU Load: $(uptime || echo 'unknown')"
+    
+    # Log recent error messages from the log file
+    if [ -f "$LOG_FILE" ]; then
+        log "Recent Error Messages from Log:"
+        grep -i "error\|failed\|warning" "$LOG_FILE" | tail -5 | tee -a "$LOG_FILE" || log "No recent error messages found in log"
+    fi
+    
+    # Suggest recovery actions based on error code
+    log "RECOVERY SUGGESTIONS:"
+    case $error_code in
+        101)
+            log "This appears to be a pre-deployment check error."
+            log "Actions: Check system requirements, install missing dependencies, verify permissions."
+            ;;
+        102)
+            log "This appears to be a VM provisioning error."
+            log "Actions: Check multipass installation, verify system resources, try recreating VM."
+            ;;
+        103)
+            log "This appears to be a microk8s installation error."
+            log "Actions: Check VM resources, verify microk8s installation, try reinstalling microk8s."
+            ;;
+        104)
+            log "This appears to be a container build error."
+            log "Actions: Check Dockerfile, verify build context, check Docker installation."
+            ;;
+        105)
+            log "This appears to be a Kubernetes deployment error."
+            log "Actions: Check Kubernetes manifests, verify cluster status, check pod logs."
+            ;;
+        *)
+            log "General error detected."
+            log "Actions: Review the error message above, check the deployment log: $LOG_FILE"
+            ;;
+    esac
+    
+    log "ADDITIONAL RECOVERY STEPS:"
+    log "1. Review the complete error log: $LOG_FILE"
+    log "2. Check system requirements and dependencies"
+    log "3. Verify network connectivity and firewall settings"
+    log "4. Ensure sufficient disk space and memory"
+    log "5. Try running the script with increased logging: bash -x $0"
+    
+    # Create error summary file
+    local error_summary_file="deployment-error-summary-$(date +%Y%m%d-%H%M%S).txt"
+    {
+        echo "DEPLOYMENT ERROR SUMMARY"
+        echo "========================"
+        echo "Date: $(date)"
+        echo "Error Code: $error_code"
+        echo "Error Count: $ERROR_COUNT"
+        echo "Error Message: $error_message"
+        echo "Additional Context: ${additional_context:-"No additional context provided"}"
+        echo ""
+        echo "Error Details:"
+        echo -e "$ERROR_DETAILS"
+        echo ""
+        echo "Recent Log Entries:"
+        if [ -f "$LOG_FILE" ]; then
+            tail -20 "$LOG_FILE" || echo "Could not read log file"
+        fi
+    } > "$error_summary_file"
+    
+    log "Error summary saved to: $error_summary_file"
+    
+    # If this is a critical error, perform emergency cleanup
+    if [ "$error_code" -ge 200 ]; then
+        log "CRITICAL ERROR DETECTED - Performing emergency cleanup..."
+        
+        # Try to clean up any temporary files
+        if [ -f "$IMAGE_TAR_FILE" ]; then
+            log "Cleaning up temporary image file: $IMAGE_TAR_FILE"
+            rm -f "$IMAGE_TAR_FILE" || log "Could not clean up temporary image file"
+        fi
+        
+        # Try to stop any running test containers
+        if docker_ready; then
+            log "Cleaning up any running test containers..."
+            docker ps -q --filter "name=test-" | xargs -r docker stop >/dev/null 2>&1 || true
+            docker ps -aq --filter "name=test-" | xargs -r docker rm -f >/dev/null 2>&1 || true
+        fi
+        
+        log "Emergency cleanup completed"
+    fi
+    
+    log "Exiting with error code: $error_code"
+    exit $error_code
 }
 
 # VM-specific error handling function with recovery suggestions
@@ -333,14 +487,120 @@ handle_microk8s_addon_error() {
     esac
 }
 
-# Function to check if command exists
+# Function to check if command exists with enhanced error handling
 command_exists() {
-    command -v "$1" >/dev/null 2>&1
+    if [ -z "$1" ]; then
+        log "ERROR: command_exists() called with empty parameter"
+        return 1
+    fi
+    
+    if command -v "$1" >/dev/null 2>&1; then
+        return 0
+    else
+        log "INFO: Command '$1' not found in PATH"
+        return 1
+    fi
 }
 
-# Function to check if microk8s is ready
+# Function to test network connectivity with error handling
+test_network_connectivity() {
+    local target_url=${1:-"https://www.google.com"}
+    local timeout_seconds=${2:-5}
+    local operation_name=${3:-"network connectivity test"}
+    
+    log "Testing $operation_name to $target_url (timeout: ${timeout_seconds}s)..."
+    
+    # Check if curl is available
+    if ! command_exists curl; then
+        log "ERROR: Cannot test network connectivity - curl command not found"
+        return 1
+    fi
+    
+    # Test connectivity with timeout
+    local connect_result=""
+    local connect_error=""
+    if ! connect_result=$(curl -s --connect-timeout "$timeout_seconds" --max-time "$((timeout_seconds * 2))" "$target_url" 2>&1); then
+        connect_error="$connect_result"
+        log "ERROR: $operation_name failed to $target_url: $connect_error"
+        
+        # Provide diagnostic information
+        log "DIAGNOSTIC: Network connectivity troubleshooting info:"
+        log "  - Target URL: $target_url"
+        log "  - Timeout: ${timeout_seconds}s"
+        log "  - Error: $connect_error"
+        
+        # Check for common network issues
+        if echo "$connect_error" | grep -q "Connection timed out"; then
+            log "  - Issue: Connection timeout - check network connection and firewall"
+        elif echo "$connect_error" | grep -q "Name resolution failed"; then
+            log "  - Issue: DNS resolution failure - check DNS configuration"
+        elif echo "$connect_error" | grep -q "Connection refused"; then
+            log "  - Issue: Connection refused - target may be down or not accepting connections"
+        fi
+        
+        return 1
+    fi
+    
+    # Check if we got a valid HTTP response
+    local http_code=$(echo "$connect_result" | head -1 | grep -oE "HTTP/[0-9.]+ [0-9]+" | cut -d' ' -f2 2>/dev/null || echo "000")
+    if [ "$http_code" = "000" ]; then
+        log "ERROR: $operation_name received no HTTP response from $target_url"
+        return 1
+    fi
+    
+    log "SUCCESS: $operation_name completed successfully (HTTP $http_code)"
+    return 0
+}
+
+# Function to test port accessibility with error handling
+test_port_accessibility() {
+    local host=$1
+    local port=$2
+    local timeout_seconds=${3:-5}
+    local operation_name=${4:-"port accessibility test"}
+    
+    if [ -z "$host" ] || [ -z "$port" ]; then
+        log "ERROR: test_port_accessibility() requires host and port parameters"
+        return 1
+    fi
+    
+    log "Testing $operation_name to $host:$port (timeout: ${timeout_seconds}s)..."
+    
+    # Try netcat if available, fallback to telnet, then to timeout with bash
+    if command_exists nc; then
+        if nc -z -w "$timeout_seconds" "$host" "$port" >/dev/null 2>&1; then
+            log "SUCCESS: $operation_name completed successfully using nc"
+            return 0
+        fi
+    elif command_exists telnet; then
+        if timeout "$timeout_seconds" bash -c "</dev/tcp/$host/$port" >/dev/null 2>&1; then
+            log "SUCCESS: $operation_name completed successfully using telnet"
+            return 0
+        fi
+    else
+        # Fallback to timeout with bash TCP connection
+        if timeout "$timeout_seconds" bash -c "</dev/tcp/$host/$port" >/dev/null 2>&1; then
+            log "SUCCESS: $operation_name completed successfully using bash TCP"
+            return 0
+        fi
+    fi
+    
+    log "ERROR: $operation_name failed to $host:$port"
+    log "DIAGNOSTIC: Port accessibility troubleshooting info:"
+    log "  - Host: $host"
+    log "  - Port: $port"
+    log "  - Possible causes: firewall, host not reachable, service not running"
+    
+    return 1
+}
+
+# Function to check if microk8s is ready with error handling
 microk8s_ready() {
-    multipass exec "$VM_NAME" -- microk8s status --wait-ready >/dev/null 2>&1
+    if ! multipass exec "$VM_NAME" -- microk8s status --wait-ready >/dev/null 2>&1; then
+        log "ERROR: microk8s is not ready - status check failed"
+        return 1
+    fi
+    return 0
 }
 
 # Function to check if microk8s addon is enabled
@@ -622,14 +882,24 @@ if vm_exists; then
 else
     log "Creating VM '$VM_NAME' with $VM_CPUS CPUs, $VM_MEMORY RAM, $VM_DISK disk..."
     vm_creation_output=""
-    if ! vm_creation_output=$(multipass launch \
+    
+    # Apply global timeout configuration
+    log "Creating VM with timeout: ${VM_CREATION_TIMEOUT}s"
+    if ! vm_creation_output=$(timeout "$VM_CREATION_TIMEOUT" multipass launch \
         --name "$VM_NAME" \
         --cpus "$VM_CPUS" \
         --memory "$VM_MEMORY" \
         --disk "$VM_DISK" \
-        --timeout 600 \
+        --timeout "$VM_CREATION_TIMEOUT" \
         2>&1); then
-        handle_vm_creation_error "$VM_NAME" "$vm_creation_output"
+        local exit_code=$?
+        if [ $exit_code -eq 124 ]; then
+            handle_error "VM creation timed out after ${VM_CREATION_TIMEOUT} seconds" 102 \
+                "VM creation timed out. This may indicate insufficient system resources or network issues. Try increasing VM_CREATION_TIMEOUT in the script or check system resources."
+        else
+            handle_error "VM creation failed with exit code $exit_code" 102 \
+                "VM creation failed. Output: $vm_creation_output"
+        fi
     fi
     log "VM '$VM_NAME' created successfully"
 fi
@@ -1023,13 +1293,23 @@ else
         log "Snap package manager installed successfully"
     fi
     
-    # Install microk8s
-    log "Installing microk8s snap package..."
-    if ! multipass exec "$VM_NAME" -- sudo snap install microk8s --classic >/dev/null 2>&1; then
-        local install_error=$(multipass exec "$VM_NAME" -- sudo snap install microk8s --classic 2>&1 || echo "Unknown installation error")
-        handle_microk8s_error 103 "Failed to install microk8s: $install_error" \
-            "Check system requirements and try manual installation: sudo snap install microk8s --classic"
+    # Install microk8s with timeout and enhanced error handling
+    log "Installing microk8s snap package with timeout: ${MICROK8S_INSTALLATION_TIMEOUT}s..."
+    local install_output=""
+    if ! install_output=$(timeout "$MICROK8S_INSTALLATION_TIMEOUT" multipass exec "$VM_NAME" -- sudo snap install microk8s --classic 2>&1); then
+        local exit_code=$?
+        if [ $exit_code -eq 124 ]; then
+            handle_error "microk8s installation timed out after ${MICROK8S_INSTALLATION_TIMEOUT} seconds" 103 \
+                "microk8s installation timed out. This may indicate slow network connectivity or insufficient VM resources. Try increasing MICROK8S_INSTALLATION_TIMEOUT or check VM network connectivity."
+        else
+            # Try to get more detailed error information
+            local detailed_error=$(multipass exec "$VM_NAME" -- sudo snap install microk8s --classic 2>&1 || echo "Unknown installation error")
+            handle_error "microk8s installation failed with exit code $exit_code" 103 \
+                "microk8s installation failed. Error: $detailed_error\n\nTROUBLESHOOTING:\n1. Check VM network connectivity: multipass exec $VM_NAME -- curl -s https://snapcraft.io\n2. Check VM disk space: multipass exec $VM_NAME -- df -h\n3. Try manual installation: multipass exec $VM_NAME -- sudo snap install microk8s --classic"
+        fi
     fi
+    
+    log "microk8s installation output: $install_output"
     
     # Verify installation
     log "Verifying microk8s installation..."
@@ -1553,9 +1833,19 @@ handle_container_build_error() {
     exit $error_code
 }
 
-# Function to check if Docker is installed and running
+# Function to check if Docker is installed and running with error handling
 docker_ready() {
-    command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1
+    if ! command -v docker >/dev/null 2>&1; then
+        log "ERROR: Docker command not found"
+        return 1
+    fi
+    
+    if ! docker info >/dev/null 2>&1; then
+        log "ERROR: Docker daemon is not running or not accessible"
+        return 1
+    fi
+    
+    return 0
 }
 
 # 5.1 Build Docker image in deployment script
@@ -1590,14 +1880,48 @@ FULL_IMAGE_NAME="$IMAGE_NAME:$IMAGE_TAG"
 
 log "Building Docker image: $FULL_IMAGE_NAME"
 
-# Set build arguments with default values
-OPENAI_API_KEY="${OPENAI_API_KEY:-}"
-OPENAI_BASE_URL="${OPENAI_BASE_URL:-}"
-OPENAI_MODEL="${OPENAI_MODEL:-}"
-LLM_MAX_TOKENS="${LLM_MAX_TOKENS:-}"
-LLM_CONTEXT_WINDOW="${LLM_CONTEXT_WINDOW:-}"
-EMBEDDING_MODEL="${EMBEDDING_MODEL:-}"
-LOGFIRE_TOKEN="${LOGFIRE_TOKEN:-}"
+# Set build arguments with default values and validation
+log "Setting up build arguments with environment variable validation..."
+
+# Define required and optional environment variables
+declare -A required_vars=()
+declare -a all_vars=("OPENAI_API_KEY" "OPENAI_BASE_URL" "OPENAI_MODEL" "LLM_MAX_TOKENS" "LLM_CONTEXT_WINDOW" "EMBEDDING_MODEL" "LOGFIRE_TOKEN")
+
+# Set build arguments with validation
+for var_name in "${all_vars[@]}"; do
+    local var_value="${!var_name:-}"
+    
+    # Validate environment variable format (no spaces, special characters that could break build)
+    if [ -n "$var_value" ]; then
+        if [[ "$var_value" == *" "* ]] || [[ "$var_value" == *$'\n'* ]] || [[ "$var_value" == *$'\t'* ]]; then
+            log "WARNING: Environment variable $var_name contains whitespace characters that may cause build issues"
+        fi
+        
+        # Truncate very long values for logging
+        local log_value="$var_value"
+        if [ ${#log_value} -gt 50 ]; then
+            log_value="${log_value:0:50}..."
+        fi
+        
+        log "Set environment variable: $var_name = $log_value"
+    else
+        log "INFO: Environment variable $var_name is not set (using default/empty value)"
+    fi
+    
+    # Export for build
+    export "$var_name"="$var_value"
+done
+
+# Validate critical environment variables
+if [ -n "$OPENAI_API_KEY" ] && [ ${#OPENAI_API_KEY} -lt 10 ]; then
+    log "WARNING: OPENAI_API_KEY appears to be too short (length: ${#OPENAI_API_KEY})"
+fi
+
+if [ -n "$OPENAI_BASE_URL" ] && [[ ! "$OPENAI_BASE_URL" =~ ^https?:// ]]; then
+    log "WARNING: OPENAI_BASE_URL does not start with http:// or https://: $OPENAI_BASE_URL"
+fi
+
+log "Environment variable setup completed"
 
 # Build the Docker image with build args
 log "Starting Docker build process..."
@@ -1890,13 +2214,77 @@ log "Docker image saved to: $IMAGE_TAR_FILE"
 TAR_FILE_SIZE=$(du -h "$IMAGE_TAR_FILE" | cut -f1)
 log "Image tar file size: $TAR_FILE_SIZE"
 
-# Copy the tar file to the VM
+# Copy the tar file to the VM with enhanced error handling
 log "Copying image tar file to VM '$VM_NAME'..."
-if ! multipass copy-file "$IMAGE_TAR_FILE" "$VM_NAME:/tmp/$IMAGE_TAR_FILE" 2>&1 | tee -a "$LOG_FILE"; then
-    handle_image_deployment_error 203 "Failed to copy image tar file to VM" \
-        "Check if VM is running and accessible: multipass info $VM_NAME. Check disk space in VM."
+
+# Validate source file exists and is readable before copying
+if [ ! -f "$IMAGE_TAR_FILE" ]; then
+    handle_image_deployment_error 203 "Source image tar file does not exist: $IMAGE_TAR_FILE" \
+        "Check if the image was saved correctly: docker save -o $IMAGE_TAR_FILE $FULL_IMAGE_NAME"
 fi
-log "Image tar file copied to VM"
+
+if [ ! -r "$IMAGE_TAR_FILE" ]; then
+    handle_image_deployment_error 203 "Source image tar file is not readable: $IMAGE_TAR_FILE" \
+        "Check file permissions: chmod +r $IMAGE_TAR_FILE"
+fi
+
+# Check source file size
+local source_size=$(stat -c%s "$IMAGE_TAR_FILE" 2>/dev/null || echo "0")
+if [ "$source_size" -eq 0 ]; then
+    handle_image_deployment_error 203 "Source image tar file is empty: $IMAGE_TAR_FILE" \
+        "The image save process may have failed. Try saving the image again: docker save -o $IMAGE_TAR_FILE $FULL_IMAGE_NAME"
+fi
+
+log "Source tar file details: $IMAGE_TAR_FILE (size: $((source_size / 1024 / 1024))MB)"
+
+# Verify VM is running and accessible before copying
+if ! vm_running; then
+    handle_image_deployment_error 203 "VM '$VM_NAME' is not running" \
+        "Start VM first: multipass start $VM_NAME"
+fi
+
+if ! vm_exists; then
+    handle_image_deployment_error 203 "VM '$VM_NAME' does not exist" \
+        "Check VM name and recreate if necessary"
+fi
+
+# Test VM connectivity before attempting file transfer
+log "Testing VM connectivity before file transfer..."
+if ! multipass exec "$VM_NAME" -- echo "VM connectivity test" >/dev/null 2>&1; then
+    handle_image_deployment_error 203 "VM '$VM_NAME' is not accessible for file transfer" \
+        "Check VM status: multipass info $VM_NAME. Ensure SSH access is working."
+fi
+
+# Check available disk space in VM before copying
+log "Checking available disk space in VM..."
+local vm_disk_info=$(multipass exec "$VM_NAME" -- df -h /tmp 2>/dev/null || echo "")
+if [ -n "$vm_disk_info" ]; then
+    local vm_available_space=$(echo "$vm_disk_info" | awk 'NR==2 {print $4}' | sed 's/G//' || echo "0")
+    local source_size_gb=$((source_size / 1024 / 1024 / 1024))
+    
+    if [ "$vm_available_space" -lt "$source_size_gb" ]; then
+        log "WARNING: VM may have insufficient disk space (available: ${vm_available_space}GB, needed: ${source_size_gb}GB)"
+        log "Attempting file transfer anyway, but it may fail..."
+    else
+        log "VM has sufficient disk space for file transfer (available: ${vm_available_space}GB, needed: ${source_size_gb}GB)"
+    fi
+fi
+
+# Perform the file copy with detailed error handling
+log "Starting file copy from $IMAGE_TAR_FILE to $VM_NAME:/tmp/$IMAGE_TAR_FILE..."
+local copy_start_time=$(date +%s)
+local copy_output=""
+if ! copy_output=$(multipass copy-file "$IMAGE_TAR_FILE" "$VM_NAME:/tmp/$IMAGE_TAR_FILE" 2>&1); then
+    local copy_end_time=$(date +%s)
+    local copy_duration=$((copy_end_time - copy_start_time))
+    
+    handle_image_deployment_error 203 "Failed to copy image tar file to VM (duration: ${copy_duration}s)" \
+        "DIAGNOSTIC INFO:\n  - Source: $IMAGE_TAR_FILE (size: $((source_size / 1024 / 1024))MB)\n  - Destination: $VM_NAME:/tmp/$IMAGE_TAR_FILE\n  - Duration: ${copy_duration}s\n  - Error: $copy_output\n\nTROUBLESHOOTING:\n  1. Check VM status: multipass info $VM_NAME\n  2. Check disk space in VM: multipass exec $VM_NAME -- df -h\n  3. Check VM connectivity: multipass exec $VM_NAME -- uptime\n  4. Try manual copy: multipass copy-file $IMAGE_TAR_FILE $VM_NAME:/tmp/"
+fi
+
+local copy_end_time=$(date +%s)
+local copy_duration=$((copy_end_time - copy_start_time))
+log "Image tar file copied successfully to VM (duration: ${copy_duration}s)"
 
 # Clean up local tar file
 log "Cleaning up local tar file..."
@@ -2107,7 +2495,7 @@ handle_k8s_deployment_error() {
     exit $error_code
 }
 
-# Function to verify Kubernetes resources
+# Function to verify Kubernetes resources with enhanced error handling
 verify_k8s_resource() {
     local resource_type=$1
     local resource_name=$2
@@ -2115,7 +2503,19 @@ verify_k8s_resource() {
     local max_attempts=${4:-10}
     local wait_time=${5:-3}
     
+    # Validate input parameters
+    if [ -z "$resource_type" ] || [ -z "$resource_name" ]; then
+        log "ERROR: Missing required parameters for verify_k8s_resource: resource_type='$resource_type', resource_name='$resource_name'"
+        return 1
+    fi
+    
     log "Verifying $resource_type '$resource_name' in namespace '$namespace'..."
+    
+    # Check if microk8s is ready before attempting verification
+    if ! microk8s_ready; then
+        log "ERROR: Cannot verify $resource_type '$resource_name' - microk8s is not ready"
+        return 1
+    fi
     
     local attempt=1
     while [ $attempt -le $max_attempts ]; do
@@ -2129,6 +2529,12 @@ verify_k8s_resource() {
             
             if [ $attempt -eq $max_attempts ]; then
                 log "ERROR: $resource_type '$resource_name' verification failed after $max_attempts attempts"
+                log "DIAGNOSTIC: Attempting to get detailed error information..."
+                
+                # Try to get more diagnostic information
+                local diagnostic_info=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get $resource_type -n $namespace" 2>&1 | head -10 || echo "Cannot get resource list")
+                log "Available $resource_type resources in namespace '$namespace': $diagnostic_info"
+                
                 return 1
             fi
             
@@ -2138,7 +2544,7 @@ verify_k8s_resource() {
     done
 }
 
-# Function to wait for pods to be ready
+# Function to wait for pods to be ready with enhanced error handling
 wait_for_pods_ready() {
     local app_label=$1
     local namespace=${2:-default}
@@ -2146,36 +2552,95 @@ wait_for_pods_ready() {
     local wait_time=${4:-5}
     local min_ready=${5:-1}
     
+    # Validate input parameters
+    if [ -z "$app_label" ]; then
+        log "ERROR: Missing required parameter 'app_label' for wait_for_pods_ready function"
+        return 1
+    fi
+    
+    # Validate numeric parameters
+    if ! [[ "$max_attempts" =~ ^[0-9]+$ ]] || [ "$max_attempts" -le 0 ]; then
+        log "ERROR: Invalid max_attempts parameter: $max_attempts (must be positive integer)"
+        return 1
+    fi
+    
+    if ! [[ "$min_ready" =~ ^[0-9]+$ ]] || [ "$min_ready" -lt 0 ]; then
+        log "ERROR: Invalid min_ready parameter: $min_ready (must be non-negative integer)"
+        return 1
+    fi
+    
     log "Waiting for pods with label '$app_label' to be ready in namespace '$namespace'..."
     log "Minimum required ready pods: $min_ready"
+    
+    # Check if microk8s is ready before checking pods
+    if ! microk8s_ready; then
+        log "ERROR: Cannot wait for pods to be ready - microk8s is not ready"
+        return 1
+    fi
     
     local attempt=1
     while [ $attempt -le $max_attempts ]; do
         log "Checking pod readiness... (attempt $attempt/$max_attempts)"
         
-        # Get pod information
-        local pod_info=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=$app_label -n $namespace -o json" 2>/dev/null || echo "")
+        # Get pod information with error handling
+        local pod_info=""
+        local get_pods_error=""
+        if ! pod_info=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=$app_label -n $namespace -o json" 2>&1); then
+            get_pods_error="$pod_info"
+            log "WARNING: Could not get pod information: $get_pods_error"
+        fi
         
-        if [ -n "$pod_info" ]; then
-            # Count total and ready pods
+        if [ -n "$pod_info" ] && [ -z "$get_pods_error" ]; then
+            # Count total and ready pods with error handling
             local total_pods=$(echo "$pod_info" | jq '.items | length' 2>/dev/null || echo "0")
             local ready_pods=$(echo "$pod_info" | jq '.items[].status.containerStatuses[0].ready // false' | grep -c true 2>/dev/null || echo "0")
             local running_pods=$(echo "$pod_info" | jq '.items[].status.phase' | grep -c Running 2>/dev/null || echo "0")
+            
+            # Validate pod counts are numeric
+            if ! [[ "$total_pods" =~ ^[0-9]+$ ]]; then total_pods=0; fi
+            if ! [[ "$ready_pods" =~ ^[0-9]+$ ]]; then ready_pods=0; fi
+            if ! [[ "$running_pods" =~ ^[0-9]+$ ]]; then running_pods=0; fi
             
             log "Pod status: $ready_pods/$total_pods ready, $running_pods/$total_pods running"
             
             if [ "$ready_pods" -ge "$min_ready" ] && [ "$running_pods" -ge "$min_ready" ] && [ "$total_pods" -ge "$min_ready" ]; then
                 log "SUCCESS: Required pods are ready ($ready_pods/$total_pods ready, $running_pods/$total_pods running)"
                 return 0
+            else
+                # Log detailed pod information for debugging
+                log "Pod details for debugging:"
+                echo "$pod_info" | jq -r '.items[] | "Pod: \(.metadata.name), Phase: \(.status.phase), Ready: \(.status.containerStatuses[0].ready // false)"' 2>/dev/null | head -5 | while read -r pod_detail; do
+                    log "  $pod_detail"
+                done
             fi
         else
-            log "WARNING: No pods found with label '$app_label' in namespace '$namespace'"
+            log "WARNING: No pods found with label '$app_label' in namespace '$namespace' (attempt $attempt/$max_attempts)"
+            
+            # Check if deployment exists
+            local deployment_exists=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get deployment -l app=$app_label -n $namespace -o name" 2>/dev/null || echo "")
+            if [ -z "$deployment_exists" ]; then
+                log "ERROR: No deployment found with label '$app_label' in namespace '$namespace'"
+                log "Available deployments in namespace '$namespace':"
+                multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get deployments -n $namespace" 2>&1 | tee -a "$LOG_FILE" || log "Could not list deployments"
+                return 1
+            fi
         fi
         
         if [ $attempt -eq $max_attempts ]; then
             log "ERROR: Pods did not become ready after $max_attempts attempts"
-            log "Current pod status:"
-            multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=$app_label -n $namespace" 2>&1 | tee -a "$LOG_FILE" || log "Could not get pod status"
+            log "DIAGNOSTIC: Detailed pod status information:"
+            
+            # Get detailed pod status
+            multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get pods -l app=$app_label -n $namespace -o wide" 2>&1 | tee -a "$LOG_FILE" || log "Could not get detailed pod status"
+            
+            # Get pod events for troubleshooting
+            log "Recent pod events:"
+            multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get events -n $namespace --field-selector involvedObject.name!=,involvedObject.namespace=$namespace | sort-by=.lastTimestamp | tail -10" 2>&1 | tee -a "$LOG_FILE" || log "Could not get pod events"
+            
+            # Get pod descriptions
+            log "Pod descriptions:"
+            multipass exec "$VM_NAME" -- bash -c "microk8s kubectl describe pods -l app=$app_label -n $namespace" 2>&1 | head -20 | tee -a "$LOG_FILE" || log "Could not get pod descriptions"
+            
             return 1
         fi
         
@@ -2202,17 +2667,65 @@ if ! multipass exec "$VM_NAME" -- bash -c "microk8s ctr image list | grep -q '$I
 fi
 log "Docker image '$FULL_IMAGE_NAME' is available in microk8s"
 
-# 7.6.3 Verify Kubernetes manifests exist
+# 7.6.3 Verify Kubernetes manifests exist with enhanced error handling
 log "Step 3: Verifying Kubernetes manifests exist..."
+
+# Check if k8s directory exists first
+if [ ! -d "k8s" ]; then
+    handle_k8s_deployment_error 103 "k8s directory not found" \
+        "Ensure k8s directory exists in project root: $(pwd)/k8s/"
+fi
+log "k8s directory found: $(pwd)/k8s/"
+
 K8S_MANIFESTS=("deployment.yaml" "service.yaml" "ingress.yaml" "secrets.yaml")
 for manifest in "${K8S_MANIFESTS[@]}"; do
+    log "Checking manifest: k8s/$manifest"
+    
+    # Check if manifest file exists
     if [ ! -f "k8s/$manifest" ]; then
         handle_k8s_deployment_error 103 "Kubernetes manifest '$manifest' not found" \
             "Ensure manifest exists in k8s/ directory: $(pwd)/k8s/$manifest"
     fi
-    log "Manifest '$manifest' found and accessible"
+    
+    # Check if manifest file is readable
+    if [ ! -r "k8s/$manifest" ]; then
+        handle_k8s_deployment_error 103 "Kubernetes manifest '$manifest' is not readable" \
+            "Check file permissions: chmod +r k8s/$manifest"
+    fi
+    
+    # Check if manifest file is not empty
+    if [ ! -s "k8s/$manifest" ]; then
+        handle_k8s_deployment_error 103 "Kubernetes manifest '$manifest' is empty" \
+            "Ensure manifest file has content: k8s/$manifest"
+    fi
+    
+    # Validate YAML syntax if jq is available
+    if command -v jq >/dev/null 2>&1 && command -v yq >/dev/null 2>&1; then
+        if ! yq eval '.' "k8s/$manifest" >/dev/null 2>&1; then
+            log "WARNING: YAML syntax validation failed for k8s/$manifest - proceeding anyway"
+        fi
+    fi
+    
+    # Basic content validation
+    local manifest_content=$(head -10 "k8s/$manifest" 2>/dev/null || echo "")
+    if [ -z "$manifest_content" ]; then
+        handle_k8s_deployment_error 103 "Kubernetes manifest '$manifest' appears to be corrupted or unreadable" \
+            "Check file integrity and permissions: k8s/$manifest"
+    fi
+    
+    # Check for required Kubernetes API fields
+    if ! echo "$manifest_content" | grep -q -E "apiVersion|kind"; then
+        log "WARNING: Manifest '$manifest' may not be a valid Kubernetes manifest (missing apiVersion or kind)"
+    fi
+    
+    log "Manifest '$manifest' found and accessible (size: $(wc -l < "k8s/$manifest" 2>/dev/null || echo "unknown") lines)"
 done
-log "All required Kubernetes manifests are available"
+
+# Log all available manifest files for reference
+log "All available files in k8s directory:"
+ls -la k8s/ 2>/dev/null | tee -a "$LOG_FILE" || log "Could not list k8s directory contents"
+
+log "All required Kubernetes manifests are available and validated"
 
 # 7.6.4 Apply secrets manifest (if sensitive data needs to be configured)
 log "Step 4: Applying Kubernetes secrets manifest..."
