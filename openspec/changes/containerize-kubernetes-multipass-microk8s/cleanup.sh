@@ -108,8 +108,18 @@ if ! command_exists multipass; then
 fi
 log "multipass is installed: $(multipass version)"
 
-# Confirm cleanup
-confirm_cleanup
+# Check if running in automation mode (non-interactive)
+if [ -z "$RALPH_LOOP_AUTOMATION" ] && [ "$FORCE_CLEANUP" != true ]; then
+    # Interactive mode - ask for confirmation
+    confirm_cleanup
+else
+    # Automation mode - log that we're proceeding without confirmation
+    if [ -n "$RALPH_LOOP_AUTOMATION" ]; then
+        log "Running in ralph-loop automation mode - proceeding with cleanup without confirmation"
+    else
+        log "Force cleanup mode enabled - proceeding with cleanup without confirmation"
+    fi
+fi
 
 # 8.2 Add Kubernetes resource cleanup (delete ingress, service, deployment)
 log "Cleaning up Kubernetes resources..."
