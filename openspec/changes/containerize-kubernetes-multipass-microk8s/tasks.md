@@ -131,7 +131,7 @@
 - [x] 10.6 Test service connectivity
 - [x] 10.7 Test ingress routing
 - [x] 10.8 Test application access via ingress
-- [ ] 10.9 Test health checks (liveness and readiness)
+- [x] 10.9 Test health checks (liveness and readiness)
 - [ ] 10.10 Test resource limits
 - [ ] 10.11 Test deployment script end-to-end
 - [ ] 10.12 Test cleanup script
