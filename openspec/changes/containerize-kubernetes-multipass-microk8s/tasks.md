@@ -134,7 +134,7 @@
 - [x] 10.9 Test health checks (liveness and readiness)
 - [x] 10.10 Test resource limits
 - [x] 10.11 Test deployment script end-to-end
-- [ ] 10.12 Test cleanup script
+- [x] 10.12 Test cleanup script
 - [ ] 10.13 Test error handling (simulate failures)
 - [ ] 10.14 Test script idempotency
 - [ ] 10.15 Test with ralph-loop automation
