@@ -264,9 +264,89 @@ provide_vm_recovery_suggestions() {
     log "=== END RECOVERY SUGGESTIONS ==="
 }
 
+# Microk8s-specific error handling function
+handle_microk8s_error() {
+    local error_code=$1
+    local error_message=$2
+    local recovery_suggestion=$3
+    
+    log "MICROK8S ERROR [Code: $error_code]: $error_message"
+    log "RECOVERY SUGGESTION: $recovery_suggestion"
+    
+    # Log additional diagnostic information
+    log "MICROK8S DIAGNOSTIC INFO:"
+    log "VM Name: $VM_NAME"
+    log "Microk8s status: $(multipass exec "$VM_NAME" -- microk8s status 2>&1 || echo 'microk8s not responding')"
+    
+    # Check if microk8s is installed
+    if multipass exec "$VM_NAME" -- command -v microk8s >/dev/null 2>&1; then
+        log "Microk8s version: $(multipass exec "$VM_NAME" -- microk8s version 2>/dev/null | head -1 || echo 'unknown')"
+    else
+        log "Microk8s is not installed in VM"
+    fi
+    
+    # Check microk8s service status
+    if multipass exec "$VM_NAME" -- command -v systemctl >/dev/null 2>&1; then
+        local microk8s_service_status=$(multipass exec "$VM_NAME" -- systemctl is-active snap.microk8s.daemon-*.service 2>/dev/null || echo "unknown")
+        log "Microk8s service status: $microk8s_service_status"
+    fi
+    
+    # Check cluster nodes
+    if multipass exec "$VM_NAME" -- command -v microk8s >/dev/null 2>&1; then
+        log "Cluster nodes status:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get nodes 2>&1 | head -5 | tee -a "$LOG_FILE" || log "Could not get cluster nodes"
+    fi
+    
+    exit $error_code
+}
+
+# Microk8s add-on specific error handling function
+handle_microk8s_addon_error() {
+    local addon_name=$1
+    local error_output=$2
+    
+    case "$error_output" in
+        *"already enabled"*)
+            handle_microk8s_error 301 "$addon_name add-on is already enabled" \
+                "This is not an error. The $addon_name add-on is already enabled and ready to use."
+            ;;
+        *"not found"*)
+            handle_microk8s_error 302 "$addon_name add-on not found" \
+                "The $addon_name add-on may not be available in this version of microk8s. Check available add-ons: microk8s status"
+            ;;
+        *"timeout"*)
+            handle_microk8s_error 303 "$addon_name add-on enablement timed out" \
+                "The $addon_name add-on is taking too long to enable. Try enabling it manually: microk8s enable $addon_name"
+            ;;
+        *"permission denied"*)
+            handle_microk8s_error 304 "Permission denied enabling $addon_name add-on" \
+                "Run with appropriate permissions: sudo microk8s enable $addon_name"
+            ;;
+        *"dependency"*)
+            handle_microk8s_error 305 "Dependency error enabling $addon_name add-on" \
+                "The $addon_name add-on has unresolved dependencies. Check microk8s status for details."
+            ;;
+        *)
+            handle_microk8s_error 306 "Unknown error enabling $addon_name add-on: $error_output" \
+                "Try enabling the add-on manually: microk8s enable $addon_name. Check microk8s logs: journalctl -u snap.microk8s.daemon-*"
+            ;;
+    esac
+}
+
 # Function to check if command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
+}
+
+# Function to check if microk8s is ready
+microk8s_ready() {
+    multipass exec "$VM_NAME" -- microk8s status --wait-ready >/dev/null 2>&1
+}
+
+# Function to check if microk8s addon is enabled
+microk8s_addon_enabled() {
+    local addon_name=$1
+    multipass exec "$VM_NAME" -- microk8s status | grep -q "$addon_name.*enabled" 2>/dev/null
 }
 
 # Function to check if VM exists
@@ -801,22 +881,6 @@ verify_vm_provisioning_completion() {
         log "VM '$VM_NAME' is running"
         step_complete "VM startup" 2 8
     fi
-else
-    progress 3 8 "Creating new VM with specified resources"
-    log "Creating VM '$VM_NAME' with $VM_CPUS CPUs, $VM_MEMORY RAM, $VM_DISK disk..."
-    vm_creation_output=""
-    if ! vm_creation_output=$(multipass launch \
-        --name "$VM_NAME" \
-        --cpus "$VM_CPUS" \
-        --memory "$VM_MEMORY" \
-        --disk "$VM_DISK" \
-        --timeout 600 \
-        2>&1); then
-        handle_vm_creation_error "$VM_NAME" "$vm_creation_output"
-    fi
-    log "VM '$VM_NAME' created successfully"
-    step_complete "VM creation" 3 8
-fi
     
     # Verify VM is responsive
     log "Verifying VM responsiveness..."
@@ -3044,17 +3108,9 @@ final_comprehensive_verification() {
                 log "SUCCESS: $addon add-on is enabled"
             else
                 log "WARNING: $addon add-on is not enabled"
+            fi
+        done
     fi
-done
-
-if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
-    if vm_running; then
-        handle_vm_readiness_error "$VM_NAME" "not_responsive"
-    else
-        handle_vm_readiness_error "$VM_NAME" "not_running"
-    fi
-fi
-step_complete "VM readiness verification" 4 8
     
     # 4. Verify container image availability
     log "Step 4: Verifying container image availability..."
