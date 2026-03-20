@@ -4,6 +4,7 @@ This is a starter template for building AI agents using [PydanticAI](https://ai.
 
 ## Prerequisites
 
+### For Development
 - OpenAI API Key (for the PydanticAI agent)
 - Python 3.12+
 - uv
@@ -13,6 +14,11 @@ This is a starter template for building AI agents using [PydanticAI](https://ai.
   - npm
   - yarn
   - bun
+
+### For Kubernetes Deployment
+- [Multipass](https://multipass.run/) - For VM management
+- [Docker](https://www.docker.com/) - For containerization
+- Microk8s (automatically installed by deployment script)
 
 > **Note:** This repository ignores lock files (package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lockb) to avoid conflicts between different package managers. Each developer should generate their own lock file using their preferred package manager. After that, make sure to delete it from the .gitignore.
 

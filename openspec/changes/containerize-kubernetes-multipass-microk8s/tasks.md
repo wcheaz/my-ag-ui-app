@@ -91,7 +91,7 @@
 - [x] 7.13 Test full deployment script execution
 - [x] 7.14 Verify script is idempotent (can run multiple times)
 - [x] 7.15 Verify script works with ralph-loop (no human interaction)
-- [ ] 7.16 Verify appropriate exit codes (0 for success, non-zero for failure)
+- [x] 7.16 Verify appropriate exit codes (0 for success, non-zero for failure)
 
 ## 8. Cleanup Script
 
@@ -102,11 +102,11 @@
 - [x] 8.5 Add cleanup confirmation prompt (or flag for non-interactive)
 - [x] 8.6 Add error handling for cleanup failures
 - [x] 8.7 Make cleanup script executable
-- [ ] 8.8 Test cleanup script
+- [x] 8.8 Test cleanup script
 
 ## 9. Documentation
 
-- [ ] 9.1 Update README.md with deployment prerequisites (multipass, Docker)
+- [x] 9.1 Update README.md with deployment prerequisites (multipass, Docker)
 - [ ] 9.2 Add deployment instructions to README.md
 - [ ] 9.3 Add application access instructions to README.md (URL, hostname)
 - [ ] 9.4 Add troubleshooting section to README.md
