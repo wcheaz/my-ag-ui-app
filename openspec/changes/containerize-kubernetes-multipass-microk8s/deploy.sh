@@ -505,7 +505,7 @@ command_exists() {
 # Function to test network connectivity with error handling
 test_network_connectivity() {
     local target_url=${1:-"https://www.google.com"}
-    local timeout_seconds=${2:-5}
+    local timeout_seconds=${2:-$NETWORK_CONNECTIVITY_TIMEOUT}
     local operation_name=${3:-"network connectivity test"}
     
     log "Testing $operation_name to $target_url (timeout: ${timeout_seconds}s)..."
@@ -556,7 +556,7 @@ test_network_connectivity() {
 test_port_accessibility() {
     local host=$1
     local port=$2
-    local timeout_seconds=${3:-5}
+    local timeout_seconds=${3:-$NETWORK_CONNECTIVITY_TIMEOUT}
     local operation_name=${4:-"port accessibility test"}
     
     if [ -z "$host" ] || [ -z "$port" ]; then
@@ -715,7 +715,7 @@ fi
 # Check network connectivity (required for downloading images and packages)
 progress 4 9 "Checking network connectivity"
 log "Checking network connectivity..."
-if ! curl -s --connect-timeout 5 https://www.google.com >/dev/null 2>&1; then
+if ! curl -s --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" https://www.google.com >/dev/null 2>&1; then
     log "WARNING: Cannot reach internet - this may be required for downloading dependencies"
     log "The deployment may fail if images or packages need to be downloaded"
     # Don't fail here, as it might be a temporary issue or behind a proxy
@@ -804,7 +804,7 @@ verify_predeployment_completion() {
     
     # Verify network connectivity
     log "Verifying network connectivity..."
-    if curl -s --connect-timeout 5 https://www.google.com >/dev/null 2>&1; then
+    if curl -s --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" https://www.google.com >/dev/null 2>&1; then
         log "SUCCESS: Network connectivity verified"
     else
         log "WARNING: Network connectivity issues detected, but continuing"
@@ -907,9 +907,9 @@ fi
 # 3.4 Add VM readiness verification to deployment script
 progress 4 8 "Verifying VM readiness"
 log "Waiting for VM to be ready..."
-MAX_ATTEMPTS=30
+MAX_VM_ATTEMPTS=$((VM_READINESS_TIMEOUT / 5))  # 5-second intervals
 ATTEMPT=1
-while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+while [ $ATTEMPT -le $MAX_VM_ATTEMPTS ]; do
     if vm_running; then
         # Test if VM is responsive by running a simple command
         if multipass exec "$VM_NAME" -- uptime >/dev/null 2>&1; then
@@ -921,12 +921,12 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     else
         log "VM is not running yet..."
     fi
-    log "Waiting for VM to be ready... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
-    sleep 2
+    log "Waiting for VM to be ready... (attempt $ATTEMPT/$MAX_VM_ATTEMPTS, timeout: ${VM_READINESS_TIMEOUT}s)"
+    sleep 5
     ATTEMPT=$((ATTEMPT + 1))
 done
 
-if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+if [ $ATTEMPT -gt $MAX_VM_ATTEMPTS ]; then
     if vm_running; then
         handle_vm_readiness_error "$VM_NAME" "not_responsive"
     else
@@ -954,7 +954,7 @@ log "DNS resolution test passed"
 
 # Test outbound connectivity
 log "Testing outbound connectivity from VM..."
-if ! multipass exec "$VM_NAME" -- curl -s --connect-timeout 5 https://www.google.com >/dev/null 2>&1; then
+if ! multipass exec "$VM_NAME" -- curl -s --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" https://www.google.com >/dev/null 2>&1; then
     log "ERROR: Outbound connectivity test failed in VM"
     log "This will prevent Kubernetes from pulling container images"
     handle_vm_networking_error "$VM_NAME" "outbound_connectivity"
@@ -974,7 +974,7 @@ fi
 
 # Test connectivity from host to VM
 log "Testing connectivity from host to VM..."
-if ! ping -c 1 -W 5 "$VM_IP" >/dev/null 2>&1; then
+if ! ping -c 1 -W "$NETWORK_CONNECTIVITY_TIMEOUT" "$VM_IP" >/dev/null 2>&1; then
     log "WARNING: Cannot ping VM from host"
     log "This may be due to firewall restrictions but should not prevent Kubernetes operation"
 else
@@ -1179,7 +1179,7 @@ verify_vm_provisioning_completion() {
         log "SUCCESS: VM DNS resolution working"
     fi
     
-    if ! multipass exec "$VM_NAME" -- curl -s --connect-timeout 5 https://www.google.com >/dev/null 2>&1; then
+if ! multipass exec "$VM_NAME" -- curl -s --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" https://www.google.com >/dev/null 2>&1; then
         log "WARNING: VM outbound connectivity failed - may impact microk8s installation"
     else
         log "SUCCESS: VM outbound connectivity working"
@@ -1324,10 +1324,10 @@ fi
 
 # 4.6 Wait for microk8s to be ready
 log "Waiting for microk8s to be ready..."
-MAX_ATTEMPTS=20
+MAX_MICROK8S_ATTEMPTS=$((MICROK8S_READINESS_TIMEOUT / 10))  # 10-second intervals
 ATTEMPT=1
-while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-    log "Checking microk8s status... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
+while [ $ATTEMPT -le $MAX_MICROK8S_ATTEMPTS ]; do
+    log "Checking microk8s status... (attempt $ATTEMPT/$MAX_MICROK8S_ATTEMPTS, timeout: ${MICROK8S_READINESS_TIMEOUT}s)"
     
     if microk8s_ready; then
         log "Microk8s is ready"
@@ -1340,8 +1340,8 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
         log "Status output: $status_output"
         
         # If this is the last attempt, provide detailed error information
-        if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-            handle_microk8s_error 105 "Microk8s failed to become ready after $MAX_ATTEMPTS attempts" \
+        if [ $ATTEMPT -eq $MAX_MICROK8S_ATTEMPTS ]; then
+            handle_microk8s_error 105 "Microk8s failed to become ready after $MAX_MICROK8S_ATTEMPTS attempts" \
                 "Check microk8s status: microk8s status. Try restarting: sudo snap restart microk8s. Check logs: journalctl -u snap.microk8s.daemon-*"
         fi
     fi
@@ -1577,11 +1577,11 @@ spec:
         - containerPort: 80
 EOF' >/dev/null 2>&1 || true
     
-    # Wait for the test deployment to be ready
-    log "Waiting for test deployment to be ready..."
-    local test_deployment_attempts=0
-    local max_test_deployment_attempts=15
-    while [ $test_deployment_attempts -lt $max_test_deployment_attempts ]; do
+# Wait for the test deployment to be ready
+log "Waiting for test deployment to be ready..."
+local test_deployment_attempts=0
+local max_test_deployment_attempts=$((POD_READINESS_TIMEOUT / 2))  # 2-second intervals
+while [ $test_deployment_attempts -lt $max_test_deployment_attempts ]; do
         local deployment_ready=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment nginx-test -n microk8s-test -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
         if [ "$deployment_ready" = "1" ]; then
             log "Test deployment is ready"
@@ -2548,7 +2548,7 @@ verify_k8s_resource() {
 wait_for_pods_ready() {
     local app_label=$1
     local namespace=${2:-default}
-    local max_attempts=${3:-30}
+    local max_attempts=${3:-$((POD_READINESS_TIMEOUT / 5))}  # 5-second intervals
     local wait_time=${4:-5}
     local min_ready=${5:-1}
     
@@ -2810,7 +2810,7 @@ log "Ingress verified successfully"
 
 # 7.6.11 Wait for application pods to be ready
 log "Step 11: Waiting for application pods to be ready..."
-if ! wait_for_pods_ready "my-ag-ui-app" "default" 30 5 1; then
+if ! wait_for_pods_ready "my-ag-ui-app" "default" $((POD_READINESS_TIMEOUT / 5)) 5 1; then
     handle_k8s_deployment_error 111 "Application pods did not become ready" \
         "Check pod status: microk8s kubectl get pods -l app=my-ag-ui-app. Check pod logs: microk8s kubectl logs <pod-name>. Check events: microk8s kubectl get events"
 fi
@@ -3044,13 +3044,13 @@ test_https_access() {
         log "HTTPS test attempt $attempt/$max_attempts..."
         
         # Test HTTPS access with curl (insecure because we're using self-signed certs)
-        if curl -k -s -f --connect-timeout 5 "https://$endpoint" >/dev/null 2>&1; then
+        if curl -k -s -f --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "https://$endpoint" >/dev/null 2>&1; then
             log "HTTPS access test PASSED - Successfully connected to https://$endpoint"
             
             # Test with more details
             log "Testing HTTPS response details..."
-            local http_code=$(curl -k -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "https://$endpoint" 2>/dev/null || echo "000")
-            local response_time=$(curl -k -s -o /dev/null -w "%{time_total}" --connect-timeout 5 "https://$endpoint" 2>/dev/null || echo "0.000")
+            local http_code=$(curl -k -s -o /dev/null -w "%{http_code}" --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "https://$endpoint" 2>/dev/null || echo "000")
+            local response_time=$(curl -k -s -o /dev/null -w "%{time_total}" --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "https://$endpoint" 2>/dev/null || echo "0.000")
             
             log "HTTPS Response Details:"
             log "  HTTP Status Code: $http_code"
@@ -3256,7 +3256,7 @@ verify_ingress_configuration_completion() {
         log "SUCCESS: Ingress has IP address: $ingress_ip"
         
         # Test basic connectivity to ingress
-        if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout 3 "http://$ingress_ip" >/dev/null 2>&1; then
+        if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "http://$ingress_ip" >/dev/null 2>&1; then
             log "SUCCESS: Ingress endpoint is accessible"
         else
             log "WARNING: Ingress endpoint accessibility test failed (may be normal if app not ready)"
@@ -3398,7 +3398,7 @@ verify_ingress_logs() {
     
     # Make a test request to trigger log entries
     log "Making test request to $ingress_ip to generate log entries..."
-    if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout 5 "http://$ingress_ip" >/dev/null 2>&1; then
+    if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "http://$ingress_ip" >/dev/null 2>&1; then
         log "Test request completed successfully"
     else
         log "WARNING: Test request failed (this may be normal if the application is not yet fully ready)"
@@ -3690,13 +3690,13 @@ handle_final_verification_error() {
             log "  - Ingress IP: $ingress_ip"
             
             # Test accessibility
-            if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout 3 "http://$ingress_ip" >/dev/null 2>&1; then
+            if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "http://$ingress_ip" >/dev/null 2>&1; then
                 log "  - HTTP accessibility: YES"
             else
                 log "  - HTTP accessibility: NO"
             fi
             
-            if multipass exec "$VM_NAME" -- curl -k -s -f --connect-timeout 3 "https://$ingress_ip" >/dev/null 2>&1; then
+if multipass exec "$VM_NAME" -- curl -k -s -f --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "https://$ingress_ip" >/dev/null 2>&1; then
                 log "  - HTTPS accessibility: YES"
             else
                 log "  - HTTPS accessibility: NO"
@@ -4029,7 +4029,7 @@ final_comprehensive_verification() {
         
         # Test HTTP accessibility (basic check)
         local http_accessible=false
-        if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout 3 "http://$ingress_ip" >/dev/null 2>&1; then
+        if multipass exec "$VM_NAME" -- curl -s -f --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "http://$ingress_ip" >/dev/null 2>&1; then
             log "SUCCESS: Application accessible via HTTP"
             http_accessible=true
         else
@@ -4038,7 +4038,7 @@ final_comprehensive_verification() {
         
         # Test HTTPS accessibility (if SSL is configured)
         local https_accessible=false
-        if multipass exec "$VM_NAME" -- curl -k -s -f --connect-timeout 3 "https://$ingress_ip" >/dev/null 2>&1; then
+        if multipass exec "$VM_NAME" -- curl -k -s -f --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "https://$ingress_ip" >/dev/null 2>&1; then
             log "SUCCESS: Application accessible via HTTPS"
             https_accessible=true
         else
@@ -4053,7 +4053,7 @@ final_comprehensive_verification() {
             
             # Provide diagnostic information
             log "DIAGNOSTIC: Testing connectivity to ingress..."
-            multipass exec "$VM_NAME" -- bash -c "curl -v --connect-timeout 3 http://$ingress_ip" 2>&1 | head -10 | while read -r diag_line; do
+            multipass exec "$VM_NAME" -- bash -c "curl -v --connect-timeout $NETWORK_CONNECTIVITY_TIMEOUT http://$ingress_ip" 2>&1 | head -10 | while read -r diag_line; do
                 log "  $diag_line"
             done
         fi
@@ -4077,7 +4077,7 @@ final_comprehensive_verification() {
         log "SUCCESS: TLS secret is configured"
         
         # Test HTTPS access
-        if multipass exec "$VM_NAME" -- curl -k -s -f --connect-timeout 3 "https://localhost" >/dev/null 2>&1; then
+        if multipass exec "$VM_NAME" -- curl -k -s -f --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "https://localhost" >/dev/null 2>&1; then
             log "SUCCESS: HTTPS access is working"
             
             # Get SSL certificate details
@@ -4091,7 +4091,7 @@ final_comprehensive_verification() {
             
             # Provide diagnostic information for SSL/TLS issues
             log "DIAGNOSTIC: Testing SSL/TLS configuration..."
-            multipass exec "$VM_NAME" -- bash -c "curl -k -v https://localhost 2>&1 | head -20" 2>&1 | while read -r diag_line; do
+            multipass exec "$VM_NAME" -- bash -c "curl -k -v --connect-timeout $NETWORK_CONNECTIVITY_TIMEOUT https://localhost 2>&1 | head -20" 2>&1 | while read -r diag_line; do
                 log "  $diag_line"
             done
         fi
