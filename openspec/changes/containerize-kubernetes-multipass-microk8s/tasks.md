@@ -127,7 +127,7 @@
 - [x] 10.2 Test container execution locally
 - [x] 10.3 Test VM creation and deletion
 - [x] 10.4 Test microk8s installation
-- [ ] 10.5 Test Kubernetes deployment
+- [x] 10.5 Test Kubernetes deployment
 - [ ] 10.6 Test service connectivity
 - [ ] 10.7 Test ingress routing
 - [ ] 10.8 Test application access via ingress
