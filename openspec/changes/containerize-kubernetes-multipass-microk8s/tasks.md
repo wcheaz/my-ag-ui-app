@@ -110,16 +110,16 @@
 - [x] 9.2 Add deployment instructions to README.md
 - [x] 9.3 Add application access instructions to README.md (URL, hostname)
 - [x] 9.4 Add troubleshooting section to README.md
-- [ ] 9.5 Create hidden/KUBERNETES-EXPLANATION.md
-- [ ] 9.6 Document VM configuration in KUBERNETES-EXPLANATION.md
-- [ ] 9.7 Document microk8s configuration in KUBERNETES-EXPLANATION.md
-- [ ] 9.8 Document Kubernetes manifests in KUBERNETES-EXPLANATION.md
-- [ ] 9.9 Document ingress configuration in KUBERNETES-EXPLANATION.md
-- [ ] 9.10 Document deployment script usage in KUBERNETES-EXPLANATION.md
-- [ ] 9.11 Document environment variables in KUBERNETES-EXPLANATION.md
-- [ ] 9.12 Document resource scaling recommendations in KUBERNETES-EXPLANATION.md
-- [ ] 9.13 Document rollback procedures in KUBERNETES-EXPLANATION.md
-- [ ] 9.14 Document common issues and solutions in KUBERNETES-EXPLANATION.md
+- [x] 9.5 Create hidden/KUBERNETES-EXPLANATION.md
+- [x] 9.6 Document VM configuration in KUBERNETES-EXPLANATION.md
+- [x] 9.7 Document microk8s configuration in KUBERNETES-EXPLANATION.md
+- [x] 9.8 Document Kubernetes manifests in KUBERNETES-EXPLANATION.md
+- [x] 9.9 Document ingress configuration in KUBERNETES-EXPLANATION.md
+- [x] 9.10 Document deployment script usage in KUBERNETES-EXPLANATION.md
+- [x] 9.11 Document environment variables in KUBERNETES-EXPLANATION.md
+- [x] 9.12 Document resource scaling recommendations in KUBERNETES-EXPLANATION.md
+- [x] 9.13 Document rollback procedures in KUBERNETES-EXPLANATION.md
+- [x] 9.14 Document common issues and solutions in KUBERNETES-EXPLANATION.md
 
 ## 10. Testing and Validation
 
