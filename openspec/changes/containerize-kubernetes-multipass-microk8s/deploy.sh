@@ -1885,27 +1885,39 @@ multipass exec "$VM_NAME" -- microk8s status | tee -a "$LOG_FILE"
 
 # 4.3 Enable dns add-on in microk8s
 log "Enabling dns add-on..."
-if ! multipass exec "$VM_NAME" -- microk8s enable dns >/dev/null 2>&1; then
-    local dns_error=$(multipass exec "$VM_NAME" -- microk8s enable dns 2>&1 || echo "Unknown error enabling dns")
-    handle_microk8s_addon_error "dns" "$dns_error"
+if microk8s_addon_enabled "dns"; then
+    log "DNS add-on is already enabled - skipping"
+else
+    if ! multipass exec "$VM_NAME" -- microk8s enable dns >/dev/null 2>&1; then
+        local dns_error=$(multipass exec "$VM_NAME" -- microk8s enable dns 2>&1 || echo "Unknown error enabling dns")
+        handle_microk8s_addon_error "dns" "$dns_error"
+    fi
+    log "DNS add-on enabled successfully"
 fi
-log "DNS add-on enabled successfully"
 
 # 4.4 Enable storage add-on in microk8s
 log "Enabling storage add-on..."
-if ! multipass exec "$VM_NAME" -- microk8s enable storage >/dev/null 2>&1; then
-    local storage_error=$(multipass exec "$VM_NAME" -- microk8s enable storage 2>&1 || echo "Unknown error enabling storage")
-    handle_microk8s_addon_error "storage" "$storage_error"
+if microk8s_addon_enabled "storage"; then
+    log "Storage add-on is already enabled - skipping"
+else
+    if ! multipass exec "$VM_NAME" -- microk8s enable storage >/dev/null 2>&1; then
+        local storage_error=$(multipass exec "$VM_NAME" -- microk8s enable storage 2>&1 || echo "Unknown error enabling storage")
+        handle_microk8s_addon_error "storage" "$storage_error"
+    fi
+    log "Storage add-on enabled successfully"
 fi
-log "Storage add-on enabled successfully"
 
 # 4.5 Enable ingress add-on in microk8s
 log "Enabling ingress add-on..."
-if ! multipass exec "$VM_NAME" -- microk8s enable ingress >/dev/null 2>&1; then
-    local ingress_error=$(multipass exec "$VM_NAME" -- microk8s enable ingress 2>&1 || echo "Unknown error enabling ingress")
-    handle_microk8s_addon_error "ingress" "$ingress_error"
+if microk8s_addon_enabled "ingress"; then
+    log "Ingress add-on is already enabled - skipping"
+else
+    if ! multipass exec "$VM_NAME" -- microk8s enable ingress >/dev/null 2>&1; then
+        local ingress_error=$(multipass exec "$VM_NAME" -- microk8s enable ingress 2>&1 || echo "Unknown error enabling ingress")
+        handle_microk8s_addon_error "ingress" "$ingress_error"
+    fi
+    log "Ingress add-on enabled successfully"
 fi
-log "Ingress add-on enabled successfully"
 
 # Wait a moment for add-ons to initialize
 log "Waiting for add-ons to initialize..."
@@ -2389,6 +2401,40 @@ IMAGE_NAME="my-ag-ui-app"
 IMAGE_TAG="latest"
 FULL_IMAGE_NAME="$IMAGE_NAME:$IMAGE_TAG"
 
+# Check if Docker image already exists (idempotency check)
+log "Checking if Docker image already exists: $FULL_IMAGE_NAME"
+if docker images | grep -q "^$IMAGE_NAME[[:space:]]*$IMAGE_TAG"; then
+    log "Docker image $FULL_IMAGE_NAME already exists locally"
+    
+    # Get existing image details
+    EXISTING_IMAGE_ID=$(docker images | grep "^$IMAGE_NAME[[:space:]]*$IMAGE_TAG" | awk '{print $3}' | head -1)
+    EXISTING_IMAGE_SIZE=$(docker images | grep "^$IMAGE_NAME[[:space:]]*$IMAGE_TAG" | awk '{print $5,$6}' | head -1)
+    log "Existing image details - ID: $EXISTING_IMAGE_ID, Size: $EXISTING_IMAGE_SIZE"
+    
+    # Check if we should force rebuild (optional environment variable)
+    if [ "${FORCE_REBUILD:-false}" = "true" ]; then
+        log "FORCE_REBUILD is set to true - rebuilding image anyway"
+        log "Removing existing image: $FULL_IMAGE_NAME"
+        docker rmi -f "$FULL_IMAGE_NAME" >/dev/null 2>&1 || true
+    else
+        log "Using existing image (set FORCE_REBUILD=true to force rebuild)"
+        log "Skipping image build - $FULL_IMAGE_NAME already exists"
+        
+        # Verify the existing image is not corrupted
+        log "Verifying existing image integrity..."
+        if docker inspect "$FULL_IMAGE_NAME" >/dev/null 2>&1; then
+            log "Existing image integrity verified - ready for deployment"
+        else
+            log "WARNING: Existing image appears to be corrupted - rebuilding"
+            docker rmi -f "$FULL_IMAGE_NAME" >/dev/null 2>&1 || true
+            NEEDS_BUILD=true
+        fi
+    fi
+else
+    log "Docker image $FULL_IMAGE_NAME does not exist locally - will build"
+    NEEDS_BUILD=true
+fi
+
 log "Building Docker image: $FULL_IMAGE_NAME"
 
 # Set build arguments with default values and validation
@@ -2434,31 +2480,35 @@ fi
 
 log "Environment variable setup completed"
 
-# Build the Docker image with build args
-log "Starting Docker build process..."
-log "Build context directory: $(pwd)"
-log "Build args: OPENAI_API_KEY=${OPENAI_API_KEY:0:10}..., OPENAI_BASE_URL=$OPENAI_BASE_URL, OPENAI_MODEL=$OPENAI_MODEL"
+# Build the Docker image with build args (only if needed)
+if [ "${NEEDS_BUILD:-false}" = "true" ] || [ "${FORCE_REBUILD:-false}" = "true" ]; then
+    log "Starting Docker build process..."
+    log "Build context directory: $(pwd)"
+    log "Build args: OPENAI_API_KEY=${OPENAI_API_KEY:0:10}..., OPENAI_BASE_URL=$OPENAI_BASE_URL, OPENAI_MODEL=$OPENAI_MODEL"
 
-if ! docker build \
-    --build-arg "OPENAI_API_KEY=$OPENAI_API_KEY" \
-    --build-arg "OPENAI_BASE_URL=$OPENAI_BASE_URL" \
-    --build-arg "OPENAI_MODEL=$OPENAI_MODEL" \
-    --build-arg "LLM_MAX_TOKENS=$LLM_MAX_TOKENS" \
-    --build-arg "LLM_CONTEXT_WINDOW=$LLM_CONTEXT_WINDOW" \
-    --build-arg "EMBEDDING_MODEL=$EMBEDDING_MODEL" \
-    --build-arg "LOGFIRE_TOKEN=$LOGFIRE_TOKEN" \
-    -t "$FULL_IMAGE_NAME" \
-    . 2>&1 | tee -a "$LOG_FILE"; then
-    handle_container_build_error 104 "Docker build failed" \
-        "Check the build output above for errors. Common issues include:\n1. Network connectivity issues\n2. Missing dependencies\n3. Insufficient disk space\n4. Build context issues"
+    if ! docker build \
+        --build-arg "OPENAI_API_KEY=$OPENAI_API_KEY" \
+        --build-arg "OPENAI_BASE_URL=$OPENAI_BASE_URL" \
+        --build-arg "OPENAI_MODEL=$OPENAI_MODEL" \
+        --build-arg "LLM_MAX_TOKENS=$LLM_MAX_TOKENS" \
+        --build-arg "LLM_CONTEXT_WINDOW=$LLM_CONTEXT_WINDOW" \
+        --build-arg "EMBEDDING_MODEL=$EMBEDDING_MODEL" \
+        --build-arg "LOGFIRE_TOKEN=$LOGFIRE_TOKEN" \
+        -t "$FULL_IMAGE_NAME" \
+        . 2>&1 | tee -a "$LOG_FILE"; then
+        handle_container_build_error 104 "Docker build failed" \
+            "Check the build output above for errors. Common issues include:\n1. Network connectivity issues\n2. Missing dependencies\n3. Insufficient disk space\n4. Build context issues"
+    fi
+
+    log "Docker image built successfully: $FULL_IMAGE_NAME"
+else
+    log "Docker image build skipped - using existing image: $FULL_IMAGE_NAME"
 fi
 
-log "Docker image built successfully: $FULL_IMAGE_NAME"
-
-# Verify the image was created
+# Verify the image exists (whether built or existing)
 log "Verifying Docker image..."
 if ! docker images | grep -q "^$IMAGE_NAME[[:space:]]*$IMAGE_TAG"; then
-    handle_container_build_error 105 "Built Docker image not found in local registry" \
+    handle_container_build_error 105 "Docker image not found in local registry" \
         "Check if the build completed successfully: docker images | grep $IMAGE_NAME"
 fi
 
@@ -2469,6 +2519,7 @@ log "Docker image details:"
 log "  Image: $FULL_IMAGE_NAME"
 log "  ID: $IMAGE_ID"
 log "  Size: $IMAGE_SIZE"
+log "  Status: $([ "${NEEDS_BUILD:-false}" = "true" ] || [ "${FORCE_REBUILD:-false}" = "true" ] && echo "Newly built" || echo "Using existing")"
 
 # Test the image locally (optional but recommended)
 log "Testing Docker image locally..."
