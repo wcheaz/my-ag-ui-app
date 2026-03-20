@@ -1,0 +1,864 @@
+[2026-03-20 17:15:37] Initializing deployment log file...
+[2026-03-20 17:15:37] Initializing deployment log file...
+[2026-03-20 17:15:37] ==========================================================
+[2026-03-20 17:15:37] ==========================================================
+[2026-03-20 17:15:37] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-20 17:15:37] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-20 17:15:37] ==========================================================
+[2026-03-20 17:15:37] ==========================================================
+[2026-03-20 17:15:37] Script Configuration:
+[2026-03-20 17:15:37] Script Configuration:
+[2026-03-20 17:15:37]   - VM Name: my-ag-ui-app-k8s
+[2026-03-20 17:15:37]   - VM Name: my-ag-ui-app-k8s
+[2026-03-20 17:15:37]   - VM CPUs: 4
+[2026-03-20 17:15:37]   - VM CPUs: 4
+[2026-03-20 17:15:37]   - VM Memory: 7.7G
+[2026-03-20 17:15:37]   - VM Memory: 7.7G
+[2026-03-20 17:15:37]   - VM Disk: 20GiB
+[2026-03-20 17:15:37]   - VM Disk: 20GiB
+[2026-03-20 17:15:37]   - Log File: deployment.log
+[2026-03-20 17:15:37]   - Log File: deployment.log
+[2026-03-20 17:15:37]   - Start Time: Fri Mar 20 05:15:37 PM EDT 2026
+[2026-03-20 17:15:37]   - Start Time: Fri Mar 20 05:15:37 PM EDT 2026
+[2026-03-20 17:15:37]   - User: ncheaz
+[2026-03-20 17:15:37]   - User: ncheaz
+[2026-03-20 17:15:37]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:15:37]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:15:37] ==========================================================
+[2026-03-20 17:15:37] ==========================================================
+[2026-03-20 17:15:37] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-20 17:15:37] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-20 17:15:37] ==========================================================
+[2026-03-20 17:15:37] ==========================================================
+[2026-03-20 17:15:37] Log file initialization completed
+[2026-03-20 17:15:37] Log file initialization completed
+[2026-03-20 17:15:37] ==========================================================
+[2026-03-20 17:15:37] ==========================================================
+[2026-03-20 17:15:37] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-20 17:15:37] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-20 17:15:37] ==========================================================
+[2026-03-20 17:15:37] ==========================================================
+[2026-03-20 17:15:37] Script Information:
+[2026-03-20 17:15:37] Script Information:
+[2026-03-20 17:15:37]   - Script: ./deploy.sh
+[2026-03-20 17:15:37]   - Script: ./deploy.sh
+[2026-03-20 17:15:37]   - User: ncheaz
+[2026-03-20 17:15:37]   - User: ncheaz
+[2026-03-20 17:15:37]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:15:37]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:15:37]   - Date: Fri Mar 20 05:15:37 PM EDT 2026
+[2026-03-20 17:15:37]   - Date: Fri Mar 20 05:15:37 PM EDT 2026
+[2026-03-20 17:15:37]   - Log File: deployment.log
+[2026-03-20 17:15:37]   - Log File: deployment.log
+[2026-03-20 17:15:37] ==========================================================
+[2026-03-20 17:15:37] ==========================================================
+
+
+[2026-03-20 17:15:37] ======================================================
+[2026-03-20 17:15:37] 📋 SECTION 1/7: PRE-DEPLOYMENT CHECKS
+[2026-03-20 17:15:37] ======================================================
+
+[2026-03-20 17:15:37] 🚀 PROGRESS: [███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 14% (1/7) - Starting pre-deployment checks
+[2026-03-20 17:15:37] Starting pre-deployment checks...
+[2026-03-20 17:15:37] Starting pre-deployment checks...
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECKS: Beginning comprehensive system validation
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECKS: Beginning comprehensive system validation
+
+[2026-03-20 17:15:37] 🚀 PROGRESS: [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 11% (1/9) - Checking multipass installation
+[2026-03-20 17:15:37] Checking multipass installation...
+[2026-03-20 17:15:37] Checking multipass installation...
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 1/9: Multipass installation validation
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 1/9: Multipass installation validation
+[2026-03-20 17:15:37] Multipass installation check: purpose=verify multipass CLI availability for VM management
+[2026-03-20 17:15:37] Multipass installation check: purpose=verify multipass CLI availability for VM management
+[2026-03-20 17:15:37] Verifying multipass command availability...
+[2026-03-20 17:15:37] Verifying multipass command availability...
+[2026-03-20 17:15:37] SUCCESS: multipass command is available
+[2026-03-20 17:15:37] SUCCESS: multipass command is available
+[2026-03-20 17:15:37] Getting multipass version information...
+[2026-03-20 17:15:37] Getting multipass version information...
+[2026-03-20 17:15:37] Multipass version information retrieved successfully
+[2026-03-20 17:15:37] Multipass version information retrieved successfully
+[2026-03-20 17:15:37] Multipass version details:
+[2026-03-20 17:15:37] Multipass version details:
+multipass   1.16.1
+multipassd  1.16.1
+[2026-03-20 17:15:37] Multipass version: 
+[2026-03-20 17:15:37] Multipass version: 
+[2026-03-20 17:15:37] ✅ STEP 1/9 COMPLETED: Multipass installation check
+[2026-03-20 17:15:37] multipass is installed and ready for VM management: multipass   1.16.1
+[2026-03-20 17:15:37] multipass is installed and ready for VM management: multipass   1.16.1
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 1/9: COMPLETED - Multipass installation verified
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 1/9: COMPLETED - Multipass installation verified
+
+[2026-03-20 17:15:37] 🚀 PROGRESS: [███████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 22% (2/9) - Checking Docker installation
+[2026-03-20 17:15:37] Checking Docker installation...
+[2026-03-20 17:15:37] Checking Docker installation...
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 2/9: Docker installation and daemon validation
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 2/9: Docker installation and daemon validation
+[2026-03-20 17:15:37] Docker installation check: purpose=verify Docker CLI and daemon availability for container operations
+[2026-03-20 17:15:37] Docker installation check: purpose=verify Docker CLI and daemon availability for container operations
+[2026-03-20 17:15:37] Verifying Docker CLI installation...
+[2026-03-20 17:15:37] Verifying Docker CLI installation...
+[2026-03-20 17:15:37] SUCCESS: Docker CLI is installed
+[2026-03-20 17:15:37] SUCCESS: Docker CLI is installed
+[2026-03-20 17:15:37] ✅ STEP 2/9 COMPLETED: Docker installation check
+[2026-03-20 17:15:37] Verifying Docker daemon status...
+[2026-03-20 17:15:37] Verifying Docker daemon status...
+[2026-03-20 17:15:37] ERROR: Docker daemon is not running or not accessible
+[2026-03-20 17:15:37] ERROR: Docker daemon is not running or not accessible
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK FAILED: Docker daemon not running
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK FAILED: Docker daemon not running
+[2026-03-20 17:15:37] Docker info command output: Client: Docker Engine - Community
+ Version:    29.3.0
+ Context:    default
+ Debug Mode: false
+ Plugins:
+  ai: Ask Gordon - Docker Agent (Docker Inc.)
+    Version:  v0.5.1
+    Path:     /usr/lib/docker/cli-plugins/docker-ai
+  buildx: Docker Buildx (Docker Inc.)
+    Version:  v0.19.2-desktop.1
+    Path:     /usr/lib/docker/cli-plugins/docker-buildx
+  compose: Docker Compose (Docker Inc.)
+    Version:  v2.31.0-desktop.2
+    Path:     /usr/lib/docker/cli-plugins/docker-compose
+  debug: Get a shell into any image or container (Docker Inc.)
+    Version:  0.0.37
+    Path:     /usr/lib/docker/cli-plugins/docker-debug
+  desktop: Docker Desktop commands (Beta) (Docker Inc.)
+    Version:  v0.1.0
+    Path:     /usr/lib/docker/cli-plugins/docker-desktop
+  dev: Docker Dev Environments (Docker Inc.)
+    Version:  v0.1.2
+[2026-03-20 17:15:37] Docker info command output: Client: Docker Engine - Community
+ Version:    29.3.0
+ Context:    default
+ Debug Mode: false
+ Plugins:
+  ai: Ask Gordon - Docker Agent (Docker Inc.)
+    Version:  v0.5.1
+    Path:     /usr/lib/docker/cli-plugins/docker-ai
+  buildx: Docker Buildx (Docker Inc.)
+    Version:  v0.19.2-desktop.1
+    Path:     /usr/lib/docker/cli-plugins/docker-buildx
+  compose: Docker Compose (Docker Inc.)
+    Version:  v2.31.0-desktop.2
+    Path:     /usr/lib/docker/cli-plugins/docker-compose
+  debug: Get a shell into any image or container (Docker Inc.)
+    Version:  0.0.37
+    Path:     /usr/lib/docker/cli-plugins/docker-debug
+  desktop: Docker Desktop commands (Beta) (Docker Inc.)
+    Version:  v0.1.0
+    Path:     /usr/lib/docker/cli-plugins/docker-desktop
+  dev: Docker Dev Environments (Docker Inc.)
+    Version:  v0.1.2
+    Path:     /usr/lib/docker/cli-plugins/docker-dev
+  extension: Manages Docker extensions (Docker Inc.)
+    Version:  v0.2.27
+    Path:     /usr/lib/docker/cli-plugins/docker-extension
+  feedback: Provide feedback, right in your terminal! (Docker Inc.)
+    Version:  v1.0.5
+    Path:     /usr/lib/docker/cli-plugins/docker-feedback
+  init: Creates Docker-related starter files for your project (Docker Inc.)
+    Version:  v1.4.0
+    Path:     /usr/lib/docker/cli-plugins/docker-init
+  sbom: View the packaged-based Software Bill Of Materials (SBOM) for an image (Anchore Inc.)
+    Version:  0.6.0
+    Path:     /usr/lib/docker/cli-plugins/docker-sbom
+  scout: Docker Scout (Docker Inc.)
+    Version:  v1.15.1
+    Path:     /usr/lib/docker/cli-plugins/docker-scout
+
+Server:
+permission denied while trying to connect to the docker API at unix:///var/run/docker.sock
+    Path:     /usr/lib/docker/cli-plugins/docker-dev
+  extension: Manages Docker extensions (Docker Inc.)
+    Version:  v0.2.27
+    Path:     /usr/lib/docker/cli-plugins/docker-extension
+  feedback: Provide feedback, right in your terminal! (Docker Inc.)
+    Version:  v1.0.5
+    Path:     /usr/lib/docker/cli-plugins/docker-feedback
+  init: Creates Docker-related starter files for your project (Docker Inc.)
+    Version:  v1.4.0
+    Path:     /usr/lib/docker/cli-plugins/docker-init
+  sbom: View the packaged-based Software Bill Of Materials (SBOM) for an image (Anchore Inc.)
+    Version:  0.6.0
+    Path:     /usr/lib/docker/cli-plugins/docker-sbom
+  scout: Docker Scout (Docker Inc.)
+    Version:  v1.15.1
+    Path:     /usr/lib/docker/cli-plugins/docker-scout
+
+Server:
+permission denied while trying to connect to the docker API at unix:///var/run/docker.sock
+[2026-03-20 17:15:37] DIAGNOSTIC: Docker daemon is required for container operations
+[2026-03-20 17:15:37] DIAGNOSTIC: Docker daemon is required for container operations
+[2026-03-20 17:15:37] DIAGNOSTIC: Docker daemon troubleshooting info:
+[2026-03-20 17:15:37] DIAGNOSTIC: Docker daemon troubleshooting info:
+[2026-03-20 17:15:37]   - Current user: ncheaz
+[2026-03-20 17:15:37]   - Current user: ncheaz
+[2026-03-20 17:15:37]   - User groups: ncheaz adm cdrom sudo dip video plugdev users render lpadmin ollama
+[2026-03-20 17:15:37]   - User groups: ncheaz adm cdrom sudo dip video plugdev users render lpadmin ollama
+[2026-03-20 17:15:37]   - User in docker group: NO
+[2026-03-20 17:15:37]   - User in docker group: NO
+[2026-03-20 17:15:37] RECOVERY: Add user to docker group: sudo usermod -aG docker $USER && newgrp docker
+[2026-03-20 17:15:37] RECOVERY: Add user to docker group: sudo usermod -aG docker $USER && newgrp docker
+[2026-03-20 17:15:37]   - Docker service status: active
+[2026-03-20 17:15:37]   - Docker service status: active
+[2026-03-20 17:15:37] WARNING: Docker daemon is not running or not accessible (continuing for testing)
+[2026-03-20 17:15:37] WARNING: Docker daemon is not running or not accessible (continuing for testing)
+[2026-03-20 17:15:37] DIAGNOSTIC: Container build operations will be skipped
+[2026-03-20 17:15:37] DIAGNOSTIC: Container build operations will be skipped
+[2026-03-20 17:15:37] SUCCESS: Docker daemon is running and accessible
+[2026-03-20 17:15:37] SUCCESS: Docker daemon is running and accessible
+[2026-03-20 17:15:37] Getting Docker version information...
+[2026-03-20 17:15:37] Getting Docker version information...
+[2026-03-20 17:15:37] WARNING: Could not retrieve Docker version information
+[2026-03-20 17:15:37] WARNING: Could not retrieve Docker version information
+[2026-03-20 17:15:37] Docker version command output: Client: Docker Engine - Community
+ Version:           29.3.0
+ API version:       1.54
+ Go version:        go1.25.7
+ Git commit:        5927d80
+ Built:             Thu Mar  5 14:25:48 2026
+ OS/Arch:           linux/amd64
+ Context:           default
+permission denied while trying to connect to the docker API at unix:///var/run/docker.sock
+[2026-03-20 17:15:37] Docker version command output: Client: Docker Engine - Community
+ Version:           29.3.0
+ API version:       1.54
+ Go version:        go1.25.7
+ Git commit:        5927d80
+ Built:             Thu Mar  5 14:25:48 2026
+ OS/Arch:           linux/amd64
+ Context:           default
+permission denied while trying to connect to the docker API at unix:///var/run/docker.sock
+[2026-03-20 17:15:37] Docker is installed and running:  Version: 29.3.0
+[2026-03-20 17:15:37] Docker is installed and running:  Version: 29.3.0
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 2/9: COMPLETED - Docker installation and daemon verified
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 2/9: COMPLETED - Docker installation and daemon verified
+
+[2026-03-20 17:15:37] 🚀 PROGRESS: [████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 33% (3/9) - Checking system resources
+[2026-03-20 17:15:37] Checking system resources...
+[2026-03-20 17:15:37] Checking system resources...
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 3/9: System resources validation
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 3/9: System resources validation
+[2026-03-20 17:15:37] System resources check: purpose=verify sufficient CPU, memory, and disk for VM and Kubernetes operations
+[2026-03-20 17:15:37] System resources check: purpose=verify sufficient CPU, memory, and disk for VM and Kubernetes operations
+[2026-03-20 17:15:37] Gathering system resource information...
+[2026-03-20 17:15:37] Gathering system resource information...
+[2026-03-20 17:15:37] System details:
+[2026-03-20 17:15:37] System details:
+[2026-03-20 17:15:37]   - OS: Linux steamer 6.19.8-061908-generic #202603131837 SMP PREEMPT_DYNAMIC Fri Mar 13 23:26:49 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+[2026-03-20 17:15:37]   - OS: Linux steamer 6.19.8-061908-generic #202603131837 SMP PREEMPT_DYNAMIC Fri Mar 13 23:26:49 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+[2026-03-20 17:15:37]   - Architecture: x86_64
+[2026-03-20 17:15:37]   - Architecture: x86_64
+[2026-03-20 17:15:37]   - Kernel: 6.19.8-061908-generic
+[2026-03-20 17:15:37]   - Kernel: 6.19.8-061908-generic
+[2026-03-20 17:15:37] Checking CPU resources...
+[2026-03-20 17:15:37] Checking CPU resources...
+[2026-03-20 17:15:37] Available CPU cores: 12 (recommended: 4)
+[2026-03-20 17:15:37] Available CPU cores: 12 (recommended: 4)
+[2026-03-20 17:15:37] CPU core analysis:
+[2026-03-20 17:15:37] CPU core analysis:
+[2026-03-20 17:15:37] SUCCESS: Sufficient CPU cores available for deployment
+[2026-03-20 17:15:37] SUCCESS: Sufficient CPU cores available for deployment
+[2026-03-20 17:15:37]   - Performance impact: Low - adequate CPU resources
+[2026-03-20 17:15:37]   - Performance impact: Low - adequate CPU resources
+[2026-03-20 17:15:37] Detailed CPU information:
+[2026-03-20 17:15:37] Detailed CPU information:
+CPU(s):                                  12
+On-line CPU(s) list:                     0-11
+Model name:                              AMD Ryzen 5 7600X 6-Core Processor
+Thread(s) per core:                      2
+Core(s) per socket:                      6
+CPU(s) scaling MHz:                      88%
+[2026-03-20 17:15:37] ✅ STEP 3/9 COMPLETED: System resources check
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 3/9: COMPLETED - System CPU resources verified
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 3/9: COMPLETED - System CPU resources verified
+[2026-03-20 17:15:37] Checking memory resources...
+[2026-03-20 17:15:37] Checking memory resources...
+[2026-03-20 17:15:37] Total system memory: 30GB (recommended: 8GB)
+[2026-03-20 17:15:37] Total system memory: 30GB (recommended: 8GB)
+[2026-03-20 17:15:37] Memory analysis:
+[2026-03-20 17:15:37] Memory analysis:
+[2026-03-20 17:15:37] SUCCESS: Sufficient memory available for deployment
+[2026-03-20 17:15:37] SUCCESS: Sufficient memory available for deployment
+[2026-03-20 17:15:37]   - Performance impact: Low - adequate memory resources
+[2026-03-20 17:15:37]   - Performance impact: Low - adequate memory resources
+[2026-03-20 17:15:37] Detailed memory information:
+[2026-03-20 17:15:37] Detailed memory information:
+               total        used        free      shared  buff/cache   available
+Mem:            30Gi        18Gi       2.6Gi       619Mi        10Gi        12Gi
+Swap:           31Gi       3.0Gi        28Gi
+[2026-03-20 17:15:37] Checking disk space resources...
+[2026-03-20 17:15:37] Checking disk space resources...
+[2026-03-20 17:15:37] Available disk space: 66GB (recommended: 20GB)
+[2026-03-20 17:15:37] Available disk space: 66GB (recommended: 20GB)
+[2026-03-20 17:15:37] Disk space analysis:
+[2026-03-20 17:15:37] Disk space analysis:
+[2026-03-20 17:15:37] SUCCESS: Sufficient disk space available for deployment
+[2026-03-20 17:15:37] SUCCESS: Sufficient disk space available for deployment
+[2026-03-20 17:15:37]   - Performance impact: Low - adequate disk resources
+[2026-03-20 17:15:37]   - Performance impact: Low - adequate disk resources
+[2026-03-20 17:15:37] Detailed disk information:
+[2026-03-20 17:15:37] Detailed disk information:
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1  1.8T  1.7T   67G  97% /home
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 3/9: COMPLETED - System memory and disk resources verified
+[2026-03-20 17:15:37] PRE-DEPLOYMENT CHECK 3/9: COMPLETED - System memory and disk resources verified
+
+[2026-03-20 17:15:37] 🚀 PROGRESS: [██████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 44% (4/9) - Checking network connectivity
+[2026-03-20 17:15:37] Checking network connectivity...
+[2026-03-20 17:15:37] Network connectivity check passed
+[2026-03-20 17:15:37] ✅ STEP 4/9 COMPLETED: Network connectivity check
+
+[2026-03-20 17:15:37] 🚀 PROGRESS: [███████████████████████████░░░░░░░░░░░░░░░░░░░░░░░] 55% (5/9) - Checking user permissions
+[2026-03-20 17:15:37] Checking user permissions...
+[2026-03-20 17:15:37] WARNING: Current user is not in docker group
+[2026-03-20 17:15:37] You may need to: sudo usermod -aG docker $USER && newgrp docker
+[2026-03-20 17:15:37] Or run the script with sudo if you encounter permission issues
+[2026-03-20 17:15:37] ✅ STEP 5/9 COMPLETED: User permissions check
+
+[2026-03-20 17:15:37] 🚀 PROGRESS: [█████████████████████████████████░░░░░░░░░░░░░░░░░] 66% (6/9) - Checking for existing VM
+[2026-03-20 17:15:37] Checking for existing VM...
+[2026-03-20 17:15:37] WARNING: VM 'my-ag-ui-app-k8s' already exists
+[2026-03-20 17:15:37] The script will attempt to use the existing VM or recreate it if needed
+[2026-03-20 17:15:37] To use a clean environment, delete the existing VM first: multipass delete my-ag-ui-app-k8s && multipass purge
+[2026-03-20 17:15:37] ✅ STEP 6/9 COMPLETED: Existing VM check
+[2026-03-20 17:15:37] All pre-deployment checks completed successfully
+[2026-03-20 17:15:37] System is ready for deployment
+[2026-03-20 17:15:37] ✅ STEP 7/9 COMPLETED: Pre-deployment checks completion
+
+[2026-03-20 17:15:37] 🚀 PROGRESS: [████████████████████████████████████████████░░░░░░] 88% (8/9) - Running pre-deployment verification
+[2026-03-20 17:15:37] Running pre-deployment completion verification...
+[2026-03-20 17:15:37] === VERIFYING PRE-DEPLOYMENT COMPLETION ===
+[2026-03-20 17:15:37] Verifying multipass availability...
+[2026-03-20 17:15:38] SUCCESS: multipass is available: multipass   1.16.1
+[2026-03-20 17:15:38] Verifying Docker availability...
+[2026-03-20 17:15:38] WARNING: Docker is not accessible (continuing for testing)
+[2026-03-20 17:15:38] Verifying system resources...
+[2026-03-20 17:15:38] Current resources: CPU=12, Memory=30GB, Disk=66GB
+[2026-03-20 17:15:38] Required resources: CPU=4, Memory=8GB, Disk=20GB
+[2026-03-20 17:15:38] Verifying network connectivity...
+[2026-03-20 17:15:38] SUCCESS: Network connectivity verified
+[2026-03-20 17:15:38] Verifying VM environment...
+[2026-03-20 17:15:38] INFO: VM 'my-ag-ui-app-k8s' already exists - will use existing or recreate
+[2026-03-20 17:15:38] === PRE-DEPLOYMENT VERIFICATION SUMMARY ===
+[2026-03-20 17:15:38] STATUS: PASSED - All pre-deployment checks verified
+[2026-03-20 17:15:38] DETAILS: System is ready for VM provisioning
+[2026-03-20 17:15:38] ===========================================
+[2026-03-20 17:15:38] Pre-deployment verification completed successfully
+[2026-03-20 17:15:38] ✅ STEP 8/9 COMPLETED: Pre-deployment verification
+
+[2026-03-20 17:15:38] 🚀 PROGRESS: [██████████████████████████████████████████████████] 100% (9/9) - Pre-deployment phase completed - 100% ready for VM provisioning
+[2026-03-20 17:15:38] Proceeding to VM provisioning section
+[2026-03-20 17:15:38] ✅ STEP 1/7 COMPLETED: Pre-deployment checks
+
+
+[2026-03-20 17:15:38] ======================================================
+[2026-03-20 17:15:38] 📋 SECTION 2/7: VM PROVISIONING
+[2026-03-20 17:15:38] ======================================================
+
+[2026-03-20 17:15:38] 🚀 PROGRESS: [██████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 28% (2/7) - Starting VM provisioning
+
+[2026-03-20 17:15:38] 🎯 MILESTONE 1/4: Infrastructure Setup
+[2026-03-20 17:15:38] ------------------------------------------------------
+[2026-03-20 17:15:38] Starting VM provisioning...
+
+[2026-03-20 17:15:38] 🚀 PROGRESS: [██████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 12% (1/8) - Checking multipass installation for VM provisioning
+[2026-03-20 17:15:38] Checking multipass installation...
+[2026-03-20 17:15:38] ✅ STEP 1/8 COMPLETED: Multipass installation verified
+[2026-03-20 17:15:38] multipass is installed: multipass   1.16.1
+multipassd  1.16.1
+
+[2026-03-20 17:15:38] 🚀 PROGRESS: [████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 25% (2/8) - Checking for existing VM
+[2026-03-20 17:15:38] Checking if VM 'my-ag-ui-app-k8s' already exists...
+[2026-03-20 17:15:38] Checking if VM exists: my-ag-ui-app-k8s
+[2026-03-20 17:15:38] Checking if VM exists: my-ag-ui-app-k8s
+[2026-03-20 17:15:38] VM existence check: VM_NAME=my-ag-ui-app-k8s, command='multipass list | grep "^my-ag-ui-app-k8s "'
+[2026-03-20 17:15:38] VM existence check: VM_NAME=my-ag-ui-app-k8s, command='multipass list | grep "^my-ag-ui-app-k8s "'
+[2026-03-20 17:15:38] VM name parameter validated: my-ag-ui-app-k8s
+[2026-03-20 17:15:38] VM name parameter validated: my-ag-ui-app-k8s
+[2026-03-20 17:15:38] Checking multipass availability for VM existence check...
+[2026-03-20 17:15:38] Checking multipass availability for VM existence check...
+[2026-03-20 17:15:38] Multipass command is available for VM existence check
+[2026-03-20 17:15:38] Multipass command is available for VM existence check
+[2026-03-20 17:15:38] Executing multipass list command...
+[2026-03-20 17:15:38] Executing multipass list command...
+[2026-03-20 17:15:38] Multipass list command executed successfully
+[2026-03-20 17:15:38] Multipass list command executed successfully
+[2026-03-20 17:15:38] Full multipass list output:
+[2026-03-20 17:15:38] Full multipass list output:
+[2026-03-20 17:15:38] Name                    State             IPv4             Image
+microk8s                Running           10.237.212.34    Ubuntu 24.04 LTS
+                                          192.168.58.1
+                                          172.17.0.1
+                                          192.168.49.1
+my-ag-ui-app-k8s        Stopped           --               Ubuntu 22.04 LTS
+outlook-monitor-vm      Running           10.237.212.223   Ubuntu 22.04 LTS
+                                          10.0.1.1
+                                          10.1.41.128
+test-vm                 Running           10.237.212.205   Ubuntu 24.04 LTS
+                                          10.1.227.64
+[2026-03-20 17:15:38] Name                    State             IPv4             Image
+microk8s                Running           10.237.212.34    Ubuntu 24.04 LTS
+                                          192.168.58.1
+                                          172.17.0.1
+                                          192.168.49.1
+my-ag-ui-app-k8s        Stopped           --               Ubuntu 22.04 LTS
+outlook-monitor-vm      Running           10.237.212.223   Ubuntu 22.04 LTS
+                                          10.0.1.1
+                                          10.1.41.128
+test-vm                 Running           10.237.212.205   Ubuntu 24.04 LTS
+                                          10.1.227.64
+[2026-03-20 17:15:38] Checking for VM 'my-ag-ui-app-k8s' in multipass list...
+[2026-03-20 17:15:38] Checking for VM 'my-ag-ui-app-k8s' in multipass list...
+[2026-03-20 17:15:38] SUCCESS: VM 'my-ag-ui-app-k8s' exists in multipass list
+[2026-03-20 17:15:38] SUCCESS: VM 'my-ag-ui-app-k8s' exists in multipass list
+[2026-03-20 17:15:38] VM existence check PASSED: my-ag-ui-app-k8s exists
+[2026-03-20 17:15:38] VM existence check PASSED: my-ag-ui-app-k8s exists
+[2026-03-20 17:15:38] VM details: my-ag-ui-app-k8s        Stopped           --               Ubuntu 22.04 LTS
+[2026-03-20 17:15:38] VM details: my-ag-ui-app-k8s        Stopped           --               Ubuntu 22.04 LTS
+[2026-03-20 17:15:38] VM 'my-ag-ui-app-k8s' already exists
+[2026-03-20 17:15:38] Checking if VM is running: my-ag-ui-app-k8s
+[2026-03-20 17:15:38] Checking if VM is running: my-ag-ui-app-k8s
+[2026-03-20 17:15:38] VM running check: VM_NAME=my-ag-ui-app-k8s, command='multipass info my-ag-ui-app-k8s | grep "State:[[:space:]]*Running"'
+[2026-03-20 17:15:38] VM running check: VM_NAME=my-ag-ui-app-k8s, command='multipass info my-ag-ui-app-k8s | grep "State:[[:space:]]*Running"'
+[2026-03-20 17:15:38] VM name parameter validated: my-ag-ui-app-k8s
+[2026-03-20 17:15:38] VM name parameter validated: my-ag-ui-app-k8s
+[2026-03-20 17:15:38] Checking VM existence before running status check...
+[2026-03-20 17:15:38] Checking VM existence before running status check...
+[2026-03-20 17:15:38] Checking if VM exists: my-ag-ui-app-k8s
+[2026-03-20 17:15:38] Checking if VM exists: my-ag-ui-app-k8s
+[2026-03-20 17:15:38] VM existence check: VM_NAME=my-ag-ui-app-k8s, command='multipass list | grep "^my-ag-ui-app-k8s "'
+[2026-03-20 17:15:38] VM existence check: VM_NAME=my-ag-ui-app-k8s, command='multipass list | grep "^my-ag-ui-app-k8s "'
+[2026-03-20 17:15:38] VM name parameter validated: my-ag-ui-app-k8s
+[2026-03-20 17:15:38] VM name parameter validated: my-ag-ui-app-k8s
+[2026-03-20 17:15:38] Checking multipass availability for VM existence check...
+[2026-03-20 17:15:38] Checking multipass availability for VM existence check...
+[2026-03-20 17:15:38] Multipass command is available for VM existence check
+[2026-03-20 17:15:38] Multipass command is available for VM existence check
+[2026-03-20 17:15:38] Executing multipass list command...
+[2026-03-20 17:15:38] Executing multipass list command...
+[2026-03-20 17:15:38] Multipass list command executed successfully
+[2026-03-20 17:15:38] Multipass list command executed successfully
+[2026-03-20 17:15:38] Full multipass list output:
+[2026-03-20 17:15:38] Full multipass list output:
+[2026-03-20 17:15:38] Name                    State             IPv4             Image
+microk8s                Running           10.237.212.34    Ubuntu 24.04 LTS
+                                          192.168.58.1
+                                          172.17.0.1
+                                          192.168.49.1
+my-ag-ui-app-k8s        Stopped           --               Ubuntu 22.04 LTS
+outlook-monitor-vm      Running           10.237.212.223   Ubuntu 22.04 LTS
+                                          10.0.1.1
+                                          10.1.41.128
+test-vm                 Running           10.237.212.205   Ubuntu 24.04 LTS
+                                          10.1.227.64
+[2026-03-20 17:15:38] Name                    State             IPv4             Image
+microk8s                Running           10.237.212.34    Ubuntu 24.04 LTS
+                                          192.168.58.1
+                                          172.17.0.1
+                                          192.168.49.1
+my-ag-ui-app-k8s        Stopped           --               Ubuntu 22.04 LTS
+outlook-monitor-vm      Running           10.237.212.223   Ubuntu 22.04 LTS
+                                          10.0.1.1
+                                          10.1.41.128
+test-vm                 Running           10.237.212.205   Ubuntu 24.04 LTS
+                                          10.1.227.64
+[2026-03-20 17:15:38] Checking for VM 'my-ag-ui-app-k8s' in multipass list...
+[2026-03-20 17:15:38] Checking for VM 'my-ag-ui-app-k8s' in multipass list...
+[2026-03-20 17:15:38] SUCCESS: VM 'my-ag-ui-app-k8s' exists in multipass list
+[2026-03-20 17:15:38] SUCCESS: VM 'my-ag-ui-app-k8s' exists in multipass list
+[2026-03-20 17:15:38] VM existence check PASSED: my-ag-ui-app-k8s exists
+[2026-03-20 17:15:38] VM existence check PASSED: my-ag-ui-app-k8s exists
+[2026-03-20 17:15:38] VM details: my-ag-ui-app-k8s        Stopped           --               Ubuntu 22.04 LTS
+[2026-03-20 17:15:38] VM details: my-ag-ui-app-k8s        Stopped           --               Ubuntu 22.04 LTS
+[2026-03-20 17:15:38] VM 'my-ag-ui-app-k8s' exists - proceeding with running status check
+[2026-03-20 17:15:38] VM 'my-ag-ui-app-k8s' exists - proceeding with running status check
+[2026-03-20 17:15:38] Checking multipass availability for VM running check...
+[2026-03-20 17:15:38] Checking multipass availability for VM running check...
+[2026-03-20 17:15:38] Multipass command is available for VM running check
+[2026-03-20 17:15:38] Multipass command is available for VM running check
+[2026-03-20 17:15:38] Executing multipass info command for VM 'my-ag-ui-app-k8s'...
+[2026-03-20 17:15:38] Executing multipass info command for VM 'my-ag-ui-app-k8s'...
+[2026-03-20 17:15:38] Multipass info command executed successfully
+[2026-03-20 17:15:38] Multipass info command executed successfully
+[2026-03-20 17:15:38] Full multipass info output:
+[2026-03-20 17:15:38] Full multipass info output:
+[2026-03-20 17:15:38] Name:           my-ag-ui-app-k8s
+State:          Stopped
+Snapshots:      0
+IPv4:           --
+Release:        --
+Image hash:     e66ef756881b (Ubuntu 22.04 LTS)
+CPU(s):         --
+Load:           --
+Disk usage:     --
+Memory usage:   --
+Mounts:         --
+[2026-03-20 17:15:38] Name:           my-ag-ui-app-k8s
+State:          Stopped
+Snapshots:      0
+IPv4:           --
+Release:        --
+Image hash:     e66ef756881b (Ubuntu 22.04 LTS)
+CPU(s):         --
+Load:           --
+Disk usage:     --
+Memory usage:   --
+Mounts:         --
+[2026-03-20 17:15:38] Checking for 'State: Running' in multipass info output...
+[2026-03-20 17:15:38] Checking for 'State: Running' in multipass info output...
+[2026-03-20 17:15:38] WARNING: VM 'my-ag-ui-app-k8s' is not running
+[2026-03-20 17:15:38] WARNING: VM 'my-ag-ui-app-k8s' is not running
+[2026-03-20 17:15:38] VM running check FAILED: my-ag-ui-app-k8s is not running
+[2026-03-20 17:15:38] VM running check FAILED: my-ag-ui-app-k8s is not running
+[2026-03-20 17:15:38] Actual VM state: State:          Stopped
+[2026-03-20 17:15:38] Actual VM state: State:          Stopped
+[2026-03-20 17:15:38] Starting existing VM 'my-ag-ui-app-k8s'...
+[2026-03-20 17:15:51] VM 'my-ag-ui-app-k8s' started successfully
+
+[2026-03-20 17:15:51] 🚀 PROGRESS: [█████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░] 50% (4/8) - Verifying VM readiness
+[2026-03-20 17:15:51] Waiting for VM to be ready...
+[2026-03-20 17:15:51] Checking if VM is running: my-ag-ui-app-k8s
+[2026-03-20 17:15:51] Checking if VM is running: my-ag-ui-app-k8s
+[2026-03-20 17:15:51] VM running check: VM_NAME=my-ag-ui-app-k8s, command='multipass info my-ag-ui-app-k8s | grep "State:[[:space:]]*Running"'
+[2026-03-20 17:15:51] VM running check: VM_NAME=my-ag-ui-app-k8s, command='multipass info my-ag-ui-app-k8s | grep "State:[[:space:]]*Running"'
+[2026-03-20 17:15:51] VM name parameter validated: my-ag-ui-app-k8s
+[2026-03-20 17:15:51] VM name parameter validated: my-ag-ui-app-k8s
+[2026-03-20 17:15:51] Checking VM existence before running status check...
+[2026-03-20 17:15:51] Checking VM existence before running status check...
+[2026-03-20 17:15:51] Checking if VM exists: my-ag-ui-app-k8s
+[2026-03-20 17:15:51] Checking if VM exists: my-ag-ui-app-k8s
+[2026-03-20 17:15:51] VM existence check: VM_NAME=my-ag-ui-app-k8s, command='multipass list | grep "^my-ag-ui-app-k8s "'
+[2026-03-20 17:15:51] VM existence check: VM_NAME=my-ag-ui-app-k8s, command='multipass list | grep "^my-ag-ui-app-k8s "'
+[2026-03-20 17:15:51] VM name parameter validated: my-ag-ui-app-k8s
+[2026-03-20 17:15:51] VM name parameter validated: my-ag-ui-app-k8s
+[2026-03-20 17:15:51] Checking multipass availability for VM existence check...
+[2026-03-20 17:15:51] Checking multipass availability for VM existence check...
+[2026-03-20 17:15:51] Multipass command is available for VM existence check
+[2026-03-20 17:15:51] Multipass command is available for VM existence check
+[2026-03-20 17:15:51] Executing multipass list command...
+[2026-03-20 17:15:51] Executing multipass list command...
+[2026-03-20 17:15:51] Multipass list command executed successfully
+[2026-03-20 17:15:51] Multipass list command executed successfully
+[2026-03-20 17:15:51] Full multipass list output:
+[2026-03-20 17:15:51] Full multipass list output:
+[2026-03-20 17:15:51] Name                    State             IPv4             Image
+microk8s                Running           10.237.212.34    Ubuntu 24.04 LTS
+                                          192.168.58.1
+                                          172.17.0.1
+                                          192.168.49.1
+my-ag-ui-app-k8s        Running           10.237.212.160   Ubuntu 22.04 LTS
+outlook-monitor-vm      Running           10.237.212.223   Ubuntu 22.04 LTS
+                                          10.0.1.1
+                                          10.1.41.128
+test-vm                 Running           10.237.212.205   Ubuntu 24.04 LTS
+                                          10.1.227.64
+[2026-03-20 17:15:51] Name                    State             IPv4             Image
+microk8s                Running           10.237.212.34    Ubuntu 24.04 LTS
+                                          192.168.58.1
+                                          172.17.0.1
+                                          192.168.49.1
+my-ag-ui-app-k8s        Running           10.237.212.160   Ubuntu 22.04 LTS
+outlook-monitor-vm      Running           10.237.212.223   Ubuntu 22.04 LTS
+                                          10.0.1.1
+                                          10.1.41.128
+test-vm                 Running           10.237.212.205   Ubuntu 24.04 LTS
+                                          10.1.227.64
+[2026-03-20 17:15:51] Checking for VM 'my-ag-ui-app-k8s' in multipass list...
+[2026-03-20 17:15:51] Checking for VM 'my-ag-ui-app-k8s' in multipass list...
+[2026-03-20 17:15:51] SUCCESS: VM 'my-ag-ui-app-k8s' exists in multipass list
+[2026-03-20 17:15:51] SUCCESS: VM 'my-ag-ui-app-k8s' exists in multipass list
+[2026-03-20 17:15:51] VM existence check PASSED: my-ag-ui-app-k8s exists
+[2026-03-20 17:15:51] VM existence check PASSED: my-ag-ui-app-k8s exists
+[2026-03-20 17:15:51] VM details: my-ag-ui-app-k8s        Running           10.237.212.160   Ubuntu 22.04 LTS
+[2026-03-20 17:15:51] VM details: my-ag-ui-app-k8s        Running           10.237.212.160   Ubuntu 22.04 LTS
+[2026-03-20 17:15:51] VM 'my-ag-ui-app-k8s' exists - proceeding with running status check
+[2026-03-20 17:15:51] VM 'my-ag-ui-app-k8s' exists - proceeding with running status check
+[2026-03-20 17:15:51] Checking multipass availability for VM running check...
+[2026-03-20 17:15:51] Checking multipass availability for VM running check...
+[2026-03-20 17:15:51] Multipass command is available for VM running check
+[2026-03-20 17:15:51] Multipass command is available for VM running check
+[2026-03-20 17:15:51] Executing multipass info command for VM 'my-ag-ui-app-k8s'...
+[2026-03-20 17:15:51] Executing multipass info command for VM 'my-ag-ui-app-k8s'...
+[2026-03-20 17:15:51] Multipass info command executed successfully
+[2026-03-20 17:15:51] Multipass info command executed successfully
+[2026-03-20 17:15:51] Full multipass info output:
+[2026-03-20 17:15:51] Full multipass info output:
+[2026-03-20 17:15:51] Name:           my-ag-ui-app-k8s
+State:          Running
+Snapshots:      0
+IPv4:           10.237.212.160
+Release:        Ubuntu 22.04.5 LTS
+Image hash:     e66ef756881b (Ubuntu 22.04 LTS)
+CPU(s):         4
+Load:           0.00 0.00 0.00
+Disk usage:     3.6GiB out of 19.3GiB
+Memory usage:   219.6MiB out of 7.4GiB
+Mounts:         --
+[2026-03-20 17:15:51] Name:           my-ag-ui-app-k8s
+State:          Running
+Snapshots:      0
+IPv4:           10.237.212.160
+Release:        Ubuntu 22.04.5 LTS
+Image hash:     e66ef756881b (Ubuntu 22.04 LTS)
+CPU(s):         4
+Load:           0.00 0.00 0.00
+Disk usage:     3.6GiB out of 19.3GiB
+Memory usage:   219.6MiB out of 7.4GiB
+Mounts:         --
+[2026-03-20 17:15:51] Checking for 'State: Running' in multipass info output...
+[2026-03-20 17:15:51] Checking for 'State: Running' in multipass info output...
+[2026-03-20 17:15:51] SUCCESS: VM 'my-ag-ui-app-k8s' is running
+[2026-03-20 17:15:51] SUCCESS: VM 'my-ag-ui-app-k8s' is running
+[2026-03-20 17:15:51] VM running check PASSED: my-ag-ui-app-k8s is running
+[2026-03-20 17:15:51] VM running check PASSED: my-ag-ui-app-k8s is running
+[2026-03-20 17:15:51] VM state details: State:          Running
+[2026-03-20 17:15:51] VM state details: State:          Running
+[2026-03-20 17:15:51] VM IP information: IPv4:           10.237.212.160
+[2026-03-20 17:15:51] VM IP information: IPv4:           10.237.212.160
+[2026-03-20 17:15:51] VM release information: Release:        Ubuntu 22.04.5 LTS
+[2026-03-20 17:15:51] VM release information: Release:        Ubuntu 22.04.5 LTS
+[2026-03-20 17:15:51] VM 'my-ag-ui-app-k8s' is ready and responsive
+
+[2026-03-20 17:15:51] 🚀 PROGRESS: [███████████████████████████████░░░░░░░░░░░░░░░░░░░] 62% (5/8) - Verifying VM networking
+[2026-03-20 17:15:51] Verifying VM networking...
+[2026-03-20 17:15:51] VM 'my-ag-ui-app-k8s' IP address: 10.237.212.160
+[2026-03-20 17:15:51] Testing DNS resolution in VM...
+[2026-03-20 17:15:52] DNS resolution test passed
+[2026-03-20 17:15:52] Testing outbound connectivity from VM...
+[2026-03-20 17:15:52] Outbound connectivity test passed
+[2026-03-20 17:15:52] Testing container image pulling capability...
+[2026-03-20 17:15:52] WARNING: Could not test Docker image pulling (Docker may not be installed yet)
+[2026-03-20 17:15:52] This is expected if Docker hasn't been installed in the VM yet
+[2026-03-20 17:15:52] Testing connectivity from host to VM...
+[2026-03-20 17:15:52] Host to VM connectivity test passed
+[2026-03-20 17:15:52] Testing SSH access to VM...
+[2026-03-20 17:15:52] SSH access test passed
+[2026-03-20 17:15:52] ✅ STEP 5/8 COMPLETED: VM networking verification
+[2026-03-20 17:15:52] VM networking verification completed successfully
+
+[2026-03-20 17:15:52] 🚀 PROGRESS: [█████████████████████████████████████░░░░░░░░░░░░░] 75% (6/8) - Monitoring VM status during deployment
+[2026-03-20 17:15:52] === VM Status Monitoring ===
+[2026-03-20 17:15:52] VM 'my-ag-ui-app-k8s' detailed status:
+[2026-03-20 17:15:52] VM Basic Information:
+Name:           my-ag-ui-app-k8s
+State:          Running
+Snapshots:      0
+IPv4:           10.237.212.160
+Release:        Ubuntu 22.04.5 LTS
+Image hash:     e66ef756881b (Ubuntu 22.04 LTS)
+CPU(s):         4
+Load:           0.00 0.00 0.00
+Disk usage:     3.6GiB out of 19.3GiB
+Memory usage:   195.8MiB out of 7.4GiB
+Mounts:         --
+[2026-03-20 17:15:53] VM Resource Usage:
+[2026-03-20 17:15:53] Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           7.4Gi       196Mi       7.0Gi       0.0Ki       290Mi       7.0Gi
+Swap:             0B          0B          0B
+[2026-03-20 17:15:53] Disk Usage:
+Filesystem      Size  Used Avail Use% Mounted on
+tmpfs           763M 1004K  762M   1% /run
+/dev/sda1        20G  3.6G   16G  19% /
+tmpfs           3.8G     0  3.8G   0% /dev/shm
+tmpfs           5.0M     0  5.0M   0% /run/lock
+/dev/sda15      105M  6.1M   99M   6% /boot/efi
+tmpfs           763M  4.0K  763M   1% /run/user/1000
+[2026-03-20 17:15:54] CPU Information:
+top - 17:15:53 up 0 min,  0 users,  load average: 0.00, 0.00, 0.00
+Tasks: 157 total,   3 running, 154 sleeping,   0 stopped,   0 zombie
+%Cpu(s): 22.0 us, 27.1 sy,  0.0 ni, 45.8 id,  5.1 wa,  0.0 hi,  0.0 si,  0.0 st
+MiB Mem :   7627.6 total,   7084.6 free,    218.3 used,    324.7 buff/cache
+MiB Swap:      0.0 total,      0.0 free,      0.0 used.   7170.4 avail Mem 
+[2026-03-20 17:16:23] Initializing deployment log file...
+[2026-03-20 17:16:23] Initializing deployment log file...
+[2026-03-20 17:16:23] ==========================================================
+[2026-03-20 17:16:23] ==========================================================
+[2026-03-20 17:16:23] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-20 17:16:23] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-20 17:16:23] ==========================================================
+[2026-03-20 17:16:23] ==========================================================
+[2026-03-20 17:16:23] Script Configuration:
+[2026-03-20 17:16:23] Script Configuration:
+[2026-03-20 17:16:23]   - VM Name: my-ag-ui-app-k8s
+[2026-03-20 17:16:23]   - VM Name: my-ag-ui-app-k8s
+[2026-03-20 17:16:23]   - VM CPUs: 4
+[2026-03-20 17:16:23]   - VM CPUs: 4
+[2026-03-20 17:16:23]   - VM Memory: 7.7G
+[2026-03-20 17:16:23]   - VM Memory: 7.7G
+[2026-03-20 17:16:23]   - VM Disk: 20GiB
+[2026-03-20 17:16:23]   - VM Disk: 20GiB
+[2026-03-20 17:16:23]   - Log File: deployment.log
+[2026-03-20 17:16:23]   - Log File: deployment.log
+[2026-03-20 17:16:23]   - Start Time: Fri Mar 20 05:16:23 PM EDT 2026
+[2026-03-20 17:16:23]   - Start Time: Fri Mar 20 05:16:23 PM EDT 2026
+[2026-03-20 17:16:23]   - User: ncheaz
+[2026-03-20 17:16:23]   - User: ncheaz
+[2026-03-20 17:16:23]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:16:23]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:16:23] ==========================================================
+[2026-03-20 17:16:23] ==========================================================
+[2026-03-20 17:16:23] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-20 17:16:23] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-20 17:16:23] ==========================================================
+[2026-03-20 17:16:23] ==========================================================
+[2026-03-20 17:16:23] Log file initialization completed
+[2026-03-20 17:16:23] Log file initialization completed
+[2026-03-20 17:16:23] ==========================================================
+[2026-03-20 17:16:23] ==========================================================
+[2026-03-20 17:16:23] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-20 17:16:23] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-20 17:16:23] ==========================================================
+[2026-03-20 17:16:23] ==========================================================
+[2026-03-20 17:16:23] Script Information:
+[2026-03-20 17:16:23] Script Information:
+[2026-03-20 17:16:23]   - Script: ./deploy.sh
+[2026-03-20 17:16:23]   - Script: ./deploy.sh
+[2026-03-20 17:16:23]   - User: ncheaz
+[2026-03-20 17:16:23]   - User: ncheaz
+[2026-03-20 17:16:23]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:16:23]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:16:23]   - Date: Fri Mar 20 05:16:23 PM EDT 2026
+[2026-03-20 17:16:23]   - Date: Fri Mar 20 05:16:23 PM EDT 2026
+[2026-03-20 17:16:23]   - Log File: deployment.log
+[2026-03-20 17:16:23]   - Log File: deployment.log
+[2026-03-20 17:16:23] ==========================================================
+[2026-03-20 17:16:23] ==========================================================
+
+
+[2026-03-20 17:16:23] ======================================================
+[2026-03-20 17:16:23] 📋 SECTION 1/7: PRE-DEPLOYMENT CHECKS
+[2026-03-20 17:16:23] ======================================================
+
+[2026-03-20 17:16:23] 🚀 PROGRESS: [███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 14% (1/7) - Starting pre-deployment checks
+[2026-03-20 17:16:23] Starting pre-deployment checks...
+[2026-03-20 17:16:23] Starting pre-deployment checks...
+[2026-03-20 17:16:23] PRE-DEPLOYMENT CHECKS: Beginning comprehensive system validation
+[2026-03-20 17:16:23] PRE-DEPLOYMENT CHECKS: Beginning comprehensive system validation
+
+[2026-03-20 17:16:23] 🚀 PROGRESS: [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 11% (1/9) - Checking multipass installation
+[2026-03-20 17:16:23] Checking multipass installation...
+[2026-03-20 17:16:23] Checking multipass installation...
+[2026-03-20 17:16:23] PRE-DEPLOYMENT CHECK 1/9: Multipass installation validation
+[2026-03-20 17:16:23] PRE-DEPLOYMENT CHECK 1/9: Multipass installation validation
+[2026-03-20 17:16:23] Multipass installation check: purpose=verify multipass CLI availability for VM management
+[2026-03-20 17:16:23] Multipass installation check: purpose=verify multipass CLI availability for VM management
+[2026-03-20 17:16:23] Verifying multipass command availability...
+[2026-03-20 17:16:23] Verifying multipass command availability...
+[2026-03-20 17:16:23] SUCCESS: multipass command is available
+[2026-03-20 17:16:23] SUCCESS: multipass command is available
+[2026-03-20 17:16:23] Getting multipass version information...
+[2026-03-20 17:16:23] Getting multipass version information...
+[2026-03-20 17:16:23] Multipass version information retrieved successfully
+[2026-03-20 17:16:23] Multipass version information retrieved successfully
+[2026-03-20 17:16:23] Multipass version details:
+[2026-03-20 17:16:23] Multipass version details:
+multipass   1.16.1
+multipassd  1.16.1
+[2026-03-20 17:16:23] Multipass version: 
+[2026-03-20 17:16:23] Multipass version: 
+[2026-03-20 17:16:23] ✅ STEP 1/9 COMPLETED: Multipass installation check
+[2026-03-20 17:16:23] multipass is installed and ready for VM management: multipass   1.16.1
+[2026-03-20 17:17:05] Initializing deployment log file...
+[2026-03-20 17:17:05] Initializing deployment log file...
+[2026-03-20 17:17:05] ==========================================================
+[2026-03-20 17:17:05] ==========================================================
+[2026-03-20 17:17:05] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-20 17:17:05] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-20 17:17:05] ==========================================================
+[2026-03-20 17:17:05] ==========================================================
+[2026-03-20 17:17:05] Script Configuration:
+[2026-03-20 17:17:05] Script Configuration:
+[2026-03-20 17:17:05]   - VM Name: my-ag-ui-app-k8s
+[2026-03-20 17:17:05]   - VM Name: my-ag-ui-app-k8s
+[2026-03-20 17:17:05]   - VM CPUs: 4
+[2026-03-20 17:17:05]   - VM CPUs: 4
+[2026-03-20 17:17:05]   - VM Memory: 7.7G
+[2026-03-20 17:17:05]   - VM Memory: 7.7G
+[2026-03-20 17:17:05]   - VM Disk: 20GiB
+[2026-03-20 17:17:05]   - VM Disk: 20GiB
+[2026-03-20 17:17:05]   - Log File: deployment.log
+[2026-03-20 17:17:05]   - Log File: deployment.log
+[2026-03-20 17:17:05]   - Start Time: Fri Mar 20 05:17:05 PM EDT 2026
+[2026-03-20 17:17:05]   - Start Time: Fri Mar 20 05:17:05 PM EDT 2026
+[2026-03-20 17:17:05]   - User: ncheaz
+[2026-03-20 17:17:05]   - User: ncheaz
+[2026-03-20 17:17:05]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:17:05]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:17:05] ==========================================================
+[2026-03-20 17:17:05] ==========================================================
+[2026-03-20 17:17:05] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-20 17:17:05] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-20 17:17:05] ==========================================================
+[2026-03-20 17:17:05] ==========================================================
+[2026-03-20 17:17:05] Log file initialization completed
+[2026-03-20 17:17:05] Log file initialization completed
+[2026-03-20 17:17:05] ==========================================================
+[2026-03-20 17:17:05] ==========================================================
+[2026-03-20 17:17:05] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-20 17:17:05] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-20 17:17:05] ==========================================================
+[2026-03-20 17:17:05] ==========================================================
+[2026-03-20 17:17:05] Script Information:
+[2026-03-20 17:17:05] Script Information:
+[2026-03-20 17:17:05]   - Script: ./deploy.sh
+[2026-03-20 17:17:05]   - Script: ./deploy.sh
+[2026-03-20 17:17:05]   - User: ncheaz
+[2026-03-20 17:17:05]   - User: ncheaz
+[2026-03-20 17:17:05]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:17:05]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:17:05]   - Date: Fri Mar 20 05:17:05 PM EDT 2026
+[2026-03-20 17:17:05]   - Date: Fri Mar 20 05:17:05 PM EDT 2026
+[2026-03-20 17:17:05]   - Log File: deployment.log
+[2026-03-20 17:17:05]   - Log File: deployment.log
+[2026-03-20 17:17:05] ==========================================================
+[2026-03-20 17:17:05] ==========================================================
+
+
+[2026-03-20 17:17:05] ======================================================
+[2026-03-20 17:17:37] Initializing deployment log file...
+[2026-03-20 17:17:37] Initializing deployment log file...
+[2026-03-20 17:17:37] ==========================================================
+[2026-03-20 17:17:37] ==========================================================
+[2026-03-20 17:17:37] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-20 17:17:37] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-20 17:17:37] ==========================================================
+[2026-03-20 17:17:37] ==========================================================
+[2026-03-20 17:17:37] Script Configuration:
+[2026-03-20 17:17:37] Script Configuration:
+[2026-03-20 17:17:37]   - VM Name: my-ag-ui-app-k8s
+[2026-03-20 17:17:37]   - VM Name: my-ag-ui-app-k8s
+[2026-03-20 17:17:37]   - VM CPUs: 4
+[2026-03-20 17:17:37]   - VM CPUs: 4
+[2026-03-20 17:17:37]   - VM Memory: 7.7G
+[2026-03-20 17:17:37]   - VM Memory: 7.7G
+[2026-03-20 17:17:37]   - VM Disk: 20GiB
+[2026-03-20 17:17:37]   - VM Disk: 20GiB
+[2026-03-20 17:17:37]   - Log File: deployment.log
+[2026-03-20 17:17:37]   - Log File: deployment.log
+[2026-03-20 17:17:37]   - Start Time: Fri Mar 20 05:17:37 PM EDT 2026
+[2026-03-20 17:17:37]   - Start Time: Fri Mar 20 05:17:37 PM EDT 2026
+[2026-03-20 17:17:37]   - User: ncheaz
+[2026-03-20 17:17:37]   - User: ncheaz
+[2026-03-20 17:17:37]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:17:37]   - Working Directory: /home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s
+[2026-03-20 17:17:37] ==========================================================
+[2026-03-20 17:17:37] ==========================================================
+[2026-03-20 17:17:37] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-20 17:17:37] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-20 17:17:37] ==========================================================
+[2026-03-20 17:17:37] ==========================================================
+[2026-03-20 17:17:37] Log file initialization completed
+[2026-03-20 17:17:37] Log file initialization completed
+[2026-03-20 17:17:37] ==========================================================
+[2026-03-20 17:17:37] ==========================================================
+[2026-03-20 17:17:37] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-20 17:17:37] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-20 17:17:37] ==========================================================
+[2026-03-20 17:17:37] ==========================================================
+[2026-03-20 17:17:37] Script Information:
