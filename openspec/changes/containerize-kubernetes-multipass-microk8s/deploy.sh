@@ -13,6 +13,25 @@ VM_MEMORY="7.7G"
 VM_DISK="19.3G"
 LOG_FILE="deployment.log"
 
+# Initialize log file with header information
+init_log_file() {
+    log "==========================================================" | tee -a "$LOG_FILE"
+    log "🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED" | tee -a "$LOG_FILE"
+    log "==========================================================" | tee -a "$LOG_FILE"
+    log "Script Configuration:" | tee -a "$LOG_FILE"
+    log "  - VM Name: $VM_NAME" | tee -a "$LOG_FILE"
+    log "  - VM CPUs: $VM_CPUS" | tee -a "$LOG_FILE"
+    log "  - VM Memory: $VM_MEMORY" | tee -a "$LOG_FILE"
+    log "  - VM Disk: $VM_DISK" | tee -a "$LOG_FILE"
+    log "  - Log File: $LOG_FILE" | tee -a "$LOG_FILE"
+    log "  - Start Time: $(date)" | tee -a "$LOG_FILE"
+    log "  - User: $(whoami)" | tee -a "$LOG_FILE"
+    log "  - Working Directory: $(pwd)" | tee -a "$LOG_FILE"
+    log "==========================================================" | tee -a "$LOG_FILE"
+    log "📝 LOGGING INITIALIZED - All operations will be logged to this file" | tee -a "$LOG_FILE"
+    log "==========================================================" | tee -a "$LOG_FILE"
+}
+
 # Global timeout configuration (in seconds)
 VM_CREATION_TIMEOUT=600
 VM_READINESS_TIMEOUT=300
@@ -28,6 +47,11 @@ POD_READINESS_TIMEOUT=300
 # Error tracking
 ERROR_COUNT=0
 ERROR_DETAILS=""
+
+# Initialize log file
+log "Initializing deployment log file..." | tee -a "$LOG_FILE"
+init_log_file
+log "Log file initialization completed" | tee -a "$LOG_FILE"
 
 # Logging function
 log() {
@@ -509,46 +533,58 @@ test_network_connectivity() {
     local operation_name=${3:-"network connectivity test"}
     
     log "Testing $operation_name to $target_url (timeout: ${timeout_seconds}s)..."
+    log "Network connectivity test details: target=$target_url, timeout=${timeout_seconds}s, operation=$operation_name" | tee -a "$LOG_FILE"
     
     # Check if curl is available
+    log "Checking curl availability for network test..." | tee -a "$LOG_FILE"
     if ! command_exists curl; then
-        log "ERROR: Cannot test network connectivity - curl command not found"
+        log "ERROR: Cannot test network connectivity - curl command not found" | tee -a "$LOG_FILE"
+        log "Network connectivity test FAILED: curl command not found" | tee -a "$LOG_FILE"
         return 1
     fi
+    log "Curl command is available for network testing" | tee -a "$LOG_FILE"
     
     # Test connectivity with timeout
+    log "Executing network connectivity test..." | tee -a "$LOG_FILE"
     local connect_result=""
     local connect_error=""
     if ! connect_result=$(curl -s --connect-timeout "$timeout_seconds" --max-time "$((timeout_seconds * 2))" "$target_url" 2>&1); then
         connect_error="$connect_result"
-        log "ERROR: $operation_name failed to $target_url: $connect_error"
+        log "ERROR: $operation_name failed to $target_url: $connect_error" | tee -a "$LOG_FILE"
         
         # Provide diagnostic information
-        log "DIAGNOSTIC: Network connectivity troubleshooting info:"
-        log "  - Target URL: $target_url"
-        log "  - Timeout: ${timeout_seconds}s"
-        log "  - Error: $connect_error"
+        log "DIAGNOSTIC: Network connectivity troubleshooting info:" | tee -a "$LOG_FILE"
+        log "  - Target URL: $target_url" | tee -a "$LOG_FILE"
+        log "  - Timeout: ${timeout_seconds}s" | tee -a "$LOG_FILE"
+        log "  - Error: $connect_error" | tee -a "$LOG_FILE"
         
         # Check for common network issues
+        log "Analyzing network error type..." | tee -a "$LOG_FILE"
         if echo "$connect_error" | grep -q "Connection timed out"; then
-            log "  - Issue: Connection timeout - check network connection and firewall"
+            log "  - Issue: Connection timeout - check network connection and firewall" | tee -a "$LOG_FILE"
         elif echo "$connect_error" | grep -q "Name resolution failed"; then
-            log "  - Issue: DNS resolution failure - check DNS configuration"
+            log "  - Issue: DNS resolution failure - check DNS configuration" | tee -a "$LOG_FILE"
         elif echo "$connect_error" | grep -q "Connection refused"; then
-            log "  - Issue: Connection refused - target may be down or not accepting connections"
+            log "  - Issue: Connection refused - target may be down or not accepting connections" | tee -a "$LOG_FILE"
+        else
+            log "  - Issue: Unknown network error - see error details above" | tee -a "$LOG_FILE"
         fi
         
+        log "Network connectivity test FAILED: $connect_error" | tee -a "$LOG_FILE"
         return 1
     fi
     
     # Check if we got a valid HTTP response
+    log "Analyzing HTTP response from connectivity test..." | tee -a "$LOG_FILE"
     local http_code=$(echo "$connect_result" | head -1 | grep -oE "HTTP/[0-9.]+ [0-9]+" | cut -d' ' -f2 2>/dev/null || echo "000")
     if [ "$http_code" = "000" ]; then
-        log "ERROR: $operation_name received no HTTP response from $target_url"
+        log "ERROR: $operation_name received no HTTP response from $target_url" | tee -a "$LOG_FILE"
+        log "Network connectivity test FAILED: No HTTP response received" | tee -a "$LOG_FILE"
         return 1
     fi
     
-    log "SUCCESS: $operation_name completed successfully (HTTP $http_code)"
+    log "SUCCESS: $operation_name completed successfully (HTTP $http_code)" | tee -a "$LOG_FILE"
+    log "Network connectivity test PASSED: HTTP $http_code" | tee -a "$LOG_FILE"
     return 0
 }
 
@@ -596,36 +632,268 @@ test_port_accessibility() {
 
 # Function to check if microk8s is ready with error handling
 microk8s_ready() {
-    if ! multipass exec "$VM_NAME" -- microk8s status --wait-ready >/dev/null 2>&1; then
-        log "ERROR: microk8s is not ready - status check failed"
+    log "Checking microk8s readiness status..." | tee -a "$LOG_FILE"
+    log "Microk8s readiness check: VM=$VM_NAME, command='multipass exec $VM_NAME -- microk8s status --wait-ready'" | tee -a "$LOG_FILE"
+    
+    # Check if VM exists and is running first
+    log "Verifying VM existence before microk8s readiness check..." | tee -a "$LOG_FILE"
+    if ! vm_exists; then
+        log "ERROR: microk8s readiness check failed - VM '$VM_NAME' does not exist" | tee -a "$LOG_FILE"
+        log "Microk8s readiness check FAILED: VM does not exist" | tee -a "$LOG_FILE"
         return 1
     fi
+    
+    if ! vm_running; then
+        log "ERROR: microk8s readiness check failed - VM '$VM_NAME' is not running" | tee -a "$LOG_FILE"
+        log "Microk8s readiness check FAILED: VM is not running" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    log "VM '$VM_NAME' exists and is running - proceeding with microk8s readiness check" | tee -a "$LOG_FILE"
+    
+    # Execute microk8s status check with detailed logging
+    log "Executing microk8s status check command..." | tee -a "$LOG_FILE"
+    local status_output=""
+    if ! status_output=$(multipass exec "$VM_NAME" -- microk8s status --wait-ready 2>&1); then
+        log "ERROR: microk8s is not ready - status check failed" | tee -a "$LOG_FILE"
+        log "Microk8s status command output: $status_output" | tee -a "$LOG_FILE"
+        log "Microk8s readiness check FAILED: status command returned non-zero exit code" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    
+    log "Microk8s status command executed successfully" | tee -a "$LOG_FILE"
+    log "Microk8s status output: $status_output" | tee -a "$LOG_FILE"
+    
+    # Parse the status output to verify it's actually ready
+    if echo "$status_output" | grep -q "is not ready\|waiting\|error\|failed"; then
+        log "ERROR: microk8s is not ready - status indicates issues" | tee -a "$LOG_FILE"
+        log "Microk8s readiness check FAILED: status indicates readiness issues" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    
+    log "SUCCESS: microk8s is ready - status check passed" | tee -a "$LOG_FILE"
+    log "Microk8s readiness check PASSED" | tee -a "$LOG_FILE"
     return 0
 }
 
 # Function to check if microk8s addon is enabled
 microk8s_addon_enabled() {
     local addon_name=$1
-    multipass exec "$VM_NAME" -- microk8s status | grep -q "$addon_name.*enabled" 2>/dev/null
+    log "Checking microk8s addon status: $addon_name" | tee -a "$LOG_FILE"
+    log "Microk8s addon check: VM=$VM_NAME, addon=$addon_name" | tee -a "$LOG_FILE"
+    
+    # Validate addon name parameter
+    if [ -z "$addon_name" ]; then
+        log "ERROR: microk8s addon check failed - no addon name specified" | tee -a "$LOG_FILE"
+        log "Microk8s addon check FAILED: missing addon name parameter" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    log "Addon name parameter validated: $addon_name" | tee -a "$LOG_FILE"
+    
+    # Check if VM exists and is running first
+    log "Verifying VM existence before microk8s addon check..." | tee -a "$LOG_FILE"
+    if ! vm_exists; then
+        log "ERROR: microk8s addon check failed - VM '$VM_NAME' does not exist" | tee -a "$LOG_FILE"
+        log "Microk8s addon check FAILED: VM does not exist" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    
+    if ! vm_running; then
+        log "ERROR: microk8s addon check failed - VM '$VM_NAME' is not running" | tee -a "$LOG_FILE"
+        log "Microk8s addon check FAILED: VM is not running" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    log "VM '$VM_NAME' exists and is running - proceeding with microk8s addon check" | tee -a "$LOG_FILE"
+    
+    # Execute microk8s status command to get addon information
+    log "Executing microk8s status command to check addon status..." | tee -a "$LOG_FILE"
+    local status_output=""
+    if ! status_output=$(multipass exec "$VM_NAME" -- microk8s status 2>&1); then
+        log "ERROR: microk8s addon check failed - could not get microk8s status" | tee -a "$LOG_FILE"
+        log "Microk8s status command output: $status_output" | tee -a "$LOG_FILE"
+        log "Microk8s addon check FAILED: status command failed" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    
+    log "Microk8s status command executed successfully" | tee -a "$LOG_FILE"
+    log "Full microk8s status output:" | tee -a "$LOG_FILE"
+    log "$status_output" | tee -a "$LOG_FILE"
+    
+    # Check if the addon is enabled
+    log "Checking if addon '$addon_name' is enabled..." | tee -a "$LOG_FILE"
+    if echo "$status_output" | grep -q "$addon_name.*enabled"; then
+        log "SUCCESS: microk8s addon '$addon_name' is enabled" | tee -a "$LOG_FILE"
+        log "Microk8s addon check PASSED: $addon_name is enabled" | tee -a "$LOG_FILE"
+        return 0
+    else
+        log "WARNING: microk8s addon '$addon_name' is not enabled" | tee -a "$LOG_FILE"
+        log "Microk8s addon check FAILED: $addon_name is not enabled" | tee -a "$LOG_FILE"
+        
+        # Log available addons for debugging
+        log "Available addons in microk8s status:" | tee -a "$LOG_FILE"
+        echo "$status_output" | grep -E "^[a-z].*:" | tee -a "$LOG_FILE" || log "Could not extract addon list from status output" | tee -a "$LOG_FILE"
+        
+        return 1
+    fi
 }
 
 # Function to check if VM exists
 vm_exists() {
-    multipass list | grep -q "^$VM_NAME "
+    log "Checking if VM exists: $VM_NAME" | tee -a "$LOG_FILE"
+    log "VM existence check: VM_NAME=$VM_NAME, command='multipass list | grep \"^$VM_NAME \"'" | tee -a "$LOG_FILE"
+    
+    # Validate VM name parameter
+    if [ -z "$VM_NAME" ]; then
+        log "ERROR: VM existence check failed - no VM name specified" | tee -a "$LOG_FILE"
+        log "VM existence check FAILED: missing VM name parameter" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    log "VM name parameter validated: $VM_NAME" | tee -a "$LOG_FILE"
+    
+    # Check if multipass command is available
+    log "Checking multipass availability for VM existence check..." | tee -a "$LOG_FILE"
+    if ! command_exists multipass; then
+        log "ERROR: VM existence check failed - multipass command not found" | tee -a "$LOG_FILE"
+        log "VM existence check FAILED: multipass command not found" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    log "Multipass command is available for VM existence check" | tee -a "$LOG_FILE"
+    
+    # Execute multipass list command
+    log "Executing multipass list command..." | tee -a "$LOG_FILE"
+    local list_output=""
+    if ! list_output=$(multipass list 2>&1); then
+        log "ERROR: VM existence check failed - multipass list command failed" | tee -a "$LOG_FILE"
+        log "Multipass list command output: $list_output" | tee -a "$LOG_FILE"
+        log "VM existence check FAILED: multipass list command failed" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    
+    log "Multipass list command executed successfully" | tee -a "$LOG_FILE"
+    log "Full multipass list output:" | tee -a "$LOG_FILE"
+    log "$list_output" | tee -a "$LOG_FILE"
+    
+    # Check if VM exists in the list
+    log "Checking for VM '$VM_NAME' in multipass list..." | tee -a "$LOG_FILE"
+    if echo "$list_output" | grep -q "^$VM_NAME "; then
+        log "SUCCESS: VM '$VM_NAME' exists in multipass list" | tee -a "$LOG_FILE"
+        log "VM existence check PASSED: $VM_NAME exists" | tee -a "$LOG_FILE"
+        
+        # Extract and log VM details
+        local vm_info=$(echo "$list_output" | grep "^$VM_NAME " || echo "")
+        log "VM details: $vm_info" | tee -a "$LOG_FILE"
+        
+        return 0
+    else
+        log "WARNING: VM '$VM_NAME' does not exist in multipass list" | tee -a "$LOG_FILE"
+        log "VM existence check FAILED: $VM_NAME does not exist" | tee -a "$LOG_FILE"
+        
+        # Log available VMs for debugging
+        log "Available VMs in multipass:" | tee -a "$LOG_FILE"
+        echo "$list_output" | grep -v "Name\|----" | tee -a "$LOG_FILE" || log "Could not extract VM list from multipass output" | tee -a "$LOG_FILE"
+        
+        return 1
+    fi
 }
 
 # Function to check if VM is running
 vm_running() {
-    multipass info "$VM_NAME" | grep -q "State: Running"
+    log "Checking if VM is running: $VM_NAME" | tee -a "$LOG_FILE"
+    log "VM running check: VM_NAME=$VM_NAME, command='multipass info $VM_NAME | grep \"State: Running\"'" | tee -a "$LOG_FILE"
+    
+    # Validate VM name parameter
+    if [ -z "$VM_NAME" ]; then
+        log "ERROR: VM running check failed - no VM name specified" | tee -a "$LOG_FILE"
+        log "VM running check FAILED: missing VM name parameter" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    log "VM name parameter validated: $VM_NAME" | tee -a "$LOG_FILE"
+    
+    # Check if VM exists first
+    log "Checking VM existence before running status check..." | tee -a "$LOG_FILE"
+    if ! vm_exists; then
+        log "ERROR: VM running check failed - VM '$VM_NAME' does not exist" | tee -a "$LOG_FILE"
+        log "VM running check FAILED: VM does not exist" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    log "VM '$VM_NAME' exists - proceeding with running status check" | tee -a "$LOG_FILE"
+    
+    # Check if multipass command is available
+    log "Checking multipass availability for VM running check..." | tee -a "$LOG_FILE"
+    if ! command_exists multipass; then
+        log "ERROR: VM running check failed - multipass command not found" | tee -a "$LOG_FILE"
+        log "VM running check FAILED: multipass command not found" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    log "Multipass command is available for VM running check" | tee -a "$LOG_FILE"
+    
+    # Execute multipass info command
+    log "Executing multipass info command for VM '$VM_NAME'..." | tee -a "$LOG_FILE"
+    local info_output=""
+    if ! info_output=$(multipass info "$VM_NAME" 2>&1); then
+        log "ERROR: VM running check failed - multipass info command failed" | tee -a "$LOG_FILE"
+        log "Multipass info command output: $info_output" | tee -a "$LOG_FILE"
+        log "VM running check FAILED: multipass info command failed" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    
+    log "Multipass info command executed successfully" | tee -a "$LOG_FILE"
+    log "Full multipass info output:" | tee -a "$LOG_FILE"
+    log "$info_output" | tee -a "$LOG_FILE"
+    
+    # Check if VM is running
+    log "Checking for 'State: Running' in multipass info output..." | tee -a "$LOG_FILE"
+    if echo "$info_output" | grep -q "State: Running"; then
+        log "SUCCESS: VM '$VM_NAME' is running" | tee -a "$LOG_FILE"
+        log "VM running check PASSED: $VM_NAME is running" | tee -a "$LOG_FILE"
+        
+        # Extract and log additional VM state information
+        local state_line=$(echo "$info_output" | grep "State:" || echo "")
+        log "VM state details: $state_line" | tee -a "$LOG_FILE"
+        
+        # Extract and log VM IP if available
+        local ip_line=$(echo "$info_output" | grep "IPv4:" || echo "")
+        if [ -n "$ip_line" ]; then
+            log "VM IP information: $ip_line" | tee -a "$LOG_FILE"
+        fi
+        
+        # Extract and log VM release if available
+        local release_line=$(echo "$info_output" | grep "Release:" || echo "")
+        if [ -n "$release_line" ]; then
+            log "VM release information: $release_line" | tee -a "$LOG_FILE"
+        fi
+        
+        return 0
+    else
+        log "WARNING: VM '$VM_NAME' is not running" | tee -a "$LOG_FILE"
+        log "VM running check FAILED: $VM_NAME is not running" | tee -a "$LOG_FILE"
+        
+        # Extract and log actual VM state for debugging
+        local actual_state=$(echo "$info_output" | grep "State:" || echo "State: Unknown")
+        log "Actual VM state: $actual_state" | tee -a "$LOG_FILE"
+        
+        return 1
+    fi
 }
 
 # ========================
 # PRE-DEPLOYMENT CHECKS SECTION
 # ========================
 
+log "==========================================================" | tee -a "$LOG_FILE"
+log "🚀 STARTING DEPLOYMENT SCRIPT EXECUTION" | tee -a "$LOG_FILE"
+log "==========================================================" | tee -a "$LOG_FILE"
+log "Script Information:" | tee -a "$LOG_FILE"
+log "  - Script: ${BASH_SOURCE[0]}" | tee -a "$LOG_FILE"
+log "  - User: $(whoami)" | tee -a "$LOG_FILE"
+log "  - Working Directory: $(pwd)" | tee -a "$LOG_FILE"
+log "  - Date: $(date)" | tee -a "$LOG_FILE"
+log "  - Log File: $LOG_FILE" | tee -a "$LOG_FILE"
+log "==========================================================" | tee -a "$LOG_FILE"
+
 section_header "PRE-DEPLOYMENT CHECKS" 1 7
 progress 1 7 "Starting pre-deployment checks"
-log "Starting pre-deployment checks..."
+log "Starting pre-deployment checks..." | tee -a "$LOG_FILE"
+log "PRE-DEPLOYMENT CHECKS: Beginning comprehensive system validation" | tee -a "$LOG_FILE"
 
 # Pre-deployment checks error handler
 handle_predeployment_error() {
@@ -648,69 +916,213 @@ handle_predeployment_error() {
 
 # 7.2.1 Check multipass installation
 progress 1 9 "Checking multipass installation"
-log "Checking multipass installation..."
+log "Checking multipass installation..." | tee -a "$LOG_FILE"
+log "PRE-DEPLOYMENT CHECK 1/9: Multipass installation validation" | tee -a "$LOG_FILE"
+log "Multipass installation check: purpose=verify multipass CLI availability for VM management" | tee -a "$LOG_FILE"
+
+log "Verifying multipass command availability..." | tee -a "$LOG_FILE"
 if ! command_exists multipass; then
+    log "ERROR: multipass command not found in PATH" | tee -a "$LOG_FILE"
+    log "PRE-DEPLOYMENT CHECK FAILED: multipass installation not found" | tee -a "$LOG_FILE"
+    log "DIAGNOSTIC: Multipass CLI is required for VM creation and management" | tee -a "$LOG_FILE"
+    log "RECOVERY: Install multipass from https://multipass.run/install" | tee -a "$LOG_FILE"
     handle_predeployment_error 201 "multipass is not installed" \
         "Please install multipass before running this script. Installation instructions: https://multipass.run/install"
 fi
+
+log "SUCCESS: multipass command is available" | tee -a "$LOG_FILE"
+log "Getting multipass version information..." | tee -a "$LOG_FILE"
+local multipass_version_output=""
+if multipass_version_output=$(multipass version 2>&1); then
+    log "Multipass version information retrieved successfully" | tee -a "$LOG_FILE"
+    log "Multipass version details:" | tee -a "$LOG_FILE"
+    echo "$multipass_version_output" | head -5 | tee -a "$LOG_FILE"
+    
+    local multipass_version=$(echo "$multipass_version_output" | head -1 | cut -d' ' -f2 || echo "unknown")
+    log "Multipass version: $multipass_version" | tee -a "$LOG_FILE"
+else
+    log "WARNING: Could not retrieve multipass version information" | tee -a "$LOG_FILE"
+    log "Multipass version command output: $multipass_version_output" | tee -a "$LOG_FILE"
+fi
+
 step_complete "Multipass installation check" 1 9
-log "multipass is installed: $(multipass version | head -1)"
+log "multipass is installed and ready for VM management: $(multipass version | head -1)" | tee -a "$LOG_FILE"
+log "PRE-DEPLOYMENT CHECK 1/9: COMPLETED - Multipass installation verified" | tee -a "$LOG_FILE"
 
 # 7.2.2 Check Docker installation
 progress 2 9 "Checking Docker installation"
-log "Checking Docker installation..."
+log "Checking Docker installation..." | tee -a "$LOG_FILE"
+log "PRE-DEPLOYMENT CHECK 2/9: Docker installation and daemon validation" | tee -a "$LOG_FILE"
+log "Docker installation check: purpose=verify Docker CLI and daemon availability for container operations" | tee -a "$LOG_FILE"
+
+log "Verifying Docker CLI installation..." | tee -a "$LOG_FILE"
 if ! command_exists docker; then
+    log "ERROR: Docker command not found in PATH" | tee -a "$LOG_FILE"
+    log "PRE-DEPLOYMENT CHECK FAILED: Docker installation not found" | tee -a "$LOG_FILE"
+    log "DIAGNOSTIC: Docker CLI is required for building and managing container images" | tee -a "$LOG_FILE"
+    log "RECOVERY: Install Docker from https://docs.docker.com/get-docker/" | tee -a "$LOG_FILE"
     handle_predeployment_error 202 "Docker is not installed" \
         "Please install Docker before running this script. Installation instructions: https://docs.docker.com/get-docker/"
 fi
+log "SUCCESS: Docker CLI is installed" | tee -a "$LOG_FILE"
+
 step_complete "Docker installation check" 2 9
 
 # Check if Docker daemon is running
-if ! docker info >/dev/null 2>&1; then
+log "Verifying Docker daemon status..." | tee -a "$LOG_FILE"
+local docker_daemon_check_output=""
+if ! docker_daemon_check_output=$(docker info 2>&1); then
+    log "ERROR: Docker daemon is not running or not accessible" | tee -a "$LOG_FILE"
+    log "PRE-DEPLOYMENT CHECK FAILED: Docker daemon not running" | tee -a "$LOG_FILE"
+    log "Docker info command output: $docker_daemon_check_output" | tee -a "$LOG_FILE"
+    log "DIAGNOSTIC: Docker daemon is required for container operations" | tee -a "$LOG_FILE"
+    
+    # Provide detailed diagnostic information
+    log "DIAGNOSTIC: Docker daemon troubleshooting info:" | tee -a "$LOG_FILE"
+    log "  - Current user: $(whoami)" | tee -a "$LOG_FILE"
+    log "  - User groups: $(groups)" | tee -a "$LOG_FILE"
+    
+    # Check if user is in docker group
+    if groups | grep -q docker; then
+        log "  - User in docker group: YES" | tee -a "$LOG_FILE"
+    else
+        log "  - User in docker group: NO" | tee -a "$LOG_FILE"
+        log "RECOVERY: Add user to docker group: sudo usermod -aG docker \$USER && newgrp docker" | tee -a "$LOG_FILE"
+    fi
+    
+    # Check Docker service status
+    if command -v systemctl >/dev/null 2>&1; then
+        local docker_service_status=$(systemctl is-active docker 2>/dev/null || echo "unknown")
+        log "  - Docker service status: $docker_service_status" | tee -a "$LOG_FILE"
+        if [ "$docker_service_status" != "active" ]; then
+            log "RECOVERY: Start Docker service: sudo systemctl start docker" | tee -a "$LOG_FILE"
+        fi
+    fi
+    
     handle_predeployment_error 203 "Docker daemon is not running" \
         "Please start Docker daemon: sudo systemctl start docker or sudo service docker start"
 fi
-log "Docker is installed and running: $(docker version | grep "Version" | head -1 | tr -s ' ')"
+
+log "SUCCESS: Docker daemon is running and accessible" | tee -a "$LOG_FILE"
+
+# Get Docker version for logging
+log "Getting Docker version information..." | tee -a "$LOG_FILE"
+local docker_version_info=""
+if docker_version_info=$(docker version 2>&1); then
+    log "Docker version information retrieved successfully" | tee -a "$LOG_FILE"
+    log "Docker version details:" | tee -a "$LOG_FILE"
+    echo "$docker_version_info" | grep -E "Server:|Version:" | head -5 | tee -a "$LOG_FILE"
+else
+    log "WARNING: Could not retrieve Docker version information" | tee -a "$LOG_FILE"
+    log "Docker version command output: $docker_version_info" | tee -a "$LOG_FILE"
+fi
+
+log "Docker is installed and running: $(docker version | grep "Version" | head -1 | tr -s ' ')" | tee -a "$LOG_FILE"
+log "PRE-DEPLOYMENT CHECK 2/9: COMPLETED - Docker installation and daemon verified" | tee -a "$LOG_FILE"
 
 # 7.2.3 Check system resources
 progress 3 9 "Checking system resources"
-log "Checking system resources..."
+log "Checking system resources..." | tee -a "$LOG_FILE"
+log "PRE-DEPLOYMENT CHECK 3/9: System resources validation" | tee -a "$LOG_FILE"
+log "System resources check: purpose=verify sufficient CPU, memory, and disk for VM and Kubernetes operations" | tee -a "$LOG_FILE"
+
+log "Gathering system resource information..." | tee -a "$LOG_FILE"
+log "System details:" | tee -a "$LOG_FILE"
+log "  - OS: $(uname -a)" | tee -a "$LOG_FILE"
+log "  - Architecture: $(uname -m)" | tee -a "$LOG_FILE"
+log "  - Kernel: $(uname -r)" | tee -a "$LOG_FILE"
 
 # Check CPU cores (minimum 4 recommended for VM + microk8s)
+log "Checking CPU resources..." | tee -a "$LOG_FILE"
 AVAILABLE_CPUS=$(nproc)
 REQUIRED_CPUS=4
-log "Available CPU cores: $AVAILABLE_CPUS (recommended: $REQUIRED_CPUS)"
+log "Available CPU cores: $AVAILABLE_CPUS (recommended: $REQUIRED_CPUS)" | tee -a "$LOG_FILE"
+log "CPU core analysis:" | tee -a "$LOG_FILE"
 if [ "$AVAILABLE_CPUS" -lt "$REQUIRED_CPUS" ]; then
-    log "WARNING: System has only $AVAILABLE_CPUS CPU cores, $REQUIRED_CPUS are recommended"
-    log "This may impact VM and microk8s performance, but deployment will continue"
+    log "WARNING: System has only $AVAILABLE_CPUS CPU cores, $REQUIRED_CPUS are recommended" | tee -a "$LOG_FILE"
+    log "  - Impact: VM and microk8s performance may be degraded" | tee -a "$LOG_FILE"
+    log "  - Recommendation: Close other CPU-intensive applications during deployment" | tee -a "$LOG_FILE"
+    log "  - Risk: Medium - deployment will continue but may experience performance issues" | tee -a "$LOG_FILE"
+else
+    log "SUCCESS: Sufficient CPU cores available for deployment" | tee -a "$LOG_FILE"
+    log "  - Performance impact: Low - adequate CPU resources" | tee -a "$LOG_FILE"
 fi
+
+# Get detailed CPU information
+if command -v lscpu >/dev/null 2>&1; then
+    log "Detailed CPU information:" | tee -a "$LOG_FILE"
+    lscpu | grep -E "Model name|CPU\(s\)|Thread|Core" | head -6 | tee -a "$LOG_FILE" || log "Could not get detailed CPU information" | tee -a "$LOG_FILE"
+fi
+
 step_complete "System resources check" 3 9
+log "PRE-DEPLOYMENT CHECK 3/9: COMPLETED - System CPU resources verified" | tee -a "$LOG_FILE"
 
 # Check available memory (minimum 8GB recommended for VM + microk8s)
+log "Checking memory resources..." | tee -a "$LOG_FILE"
 TOTAL_MEMORY_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
 TOTAL_MEMORY_GB=$((TOTAL_MEMORY_KB / 1024 / 1024))
 REQUIRED_MEMORY_GB=8
-log "Total system memory: ${TOTAL_MEMORY_GB}GB (recommended: ${REQUIRED_MEMORY_GB}GB)"
+log "Total system memory: ${TOTAL_MEMORY_GB}GB (recommended: ${REQUIRED_MEMORY_GB}GB)" | tee -a "$LOG_FILE"
+log "Memory analysis:" | tee -a "$LOG_FILE"
 if [ "$TOTAL_MEMORY_GB" -lt "$REQUIRED_MEMORY_GB" ]; then
-    log "WARNING: System has only ${TOTAL_MEMORY_GB}GB RAM, ${REQUIRED_MEMORY_GB}GB are recommended"
-    log "This may impact VM and microk8s performance, but deployment will continue"
+    log "WARNING: System has only ${TOTAL_MEMORY_GB}GB RAM, ${REQUIRED_MEMORY_GB}GB are recommended" | tee -a "$LOG_FILE"
+    log "  - Impact: VM and microk8s performance will be significantly impacted" | tee -a "$LOG_FILE"
+    log "  - Recommendation: Close memory-intensive applications or add more RAM" | tee -a "$LOG_FILE"
+    log "  - Risk: High - deployment may fail or be extremely slow" | tee -a "$LOG_FILE"
+    
+    # Check if critically low memory
+    if [ "$TOTAL_MEMORY_GB" -lt 4 ]; then
+        log "CRITICAL: System has critically low memory for deployment" | tee -a "$LOG_FILE"
+        log "  - Required minimum: 4GB, Available: ${TOTAL_MEMORY_GB}GB" | tee -a "$LOG_FILE"
+        log "  - Impact: Deployment will likely fail" | tee -a "$LOG_FILE"
+        handle_predeployment_error 204 "Critically low memory: ${TOTAL_MEMORY_GB}GB" \
+            "Add more RAM or use a system with at least 4GB RAM. Close all other applications before running deployment."
+    fi
+else
+    log "SUCCESS: Sufficient memory available for deployment" | tee -a "$LOG_FILE"
+    log "  - Performance impact: Low - adequate memory resources" | tee -a "$LOG_FILE"
+fi
+
+# Get detailed memory information
+log "Detailed memory information:" | tee -a "$LOG_FILE"
+if command -v free >/dev/null 2>&1; then
+    free -h | tee -a "$LOG_FILE" || log "Could not get detailed memory information" | tee -a "$LOG_FILE"
 fi
 
 # Check available disk space (minimum 20GB recommended for VM + images + build cache)
+log "Checking disk space resources..." | tee -a "$LOG_FILE"
 AVAILABLE_DISK=$(df -k . | awk 'NR==2 {print $4}')
 AVAILABLE_DISK_GB=$((AVAILABLE_DISK / 1024 / 1024))
 REQUIRED_DISK_GB=20
-log "Available disk space: ${AVAILABLE_DISK_GB}GB (recommended: ${REQUIRED_DISK_GB}GB)"
+log "Available disk space: ${AVAILABLE_DISK_GB}GB (recommended: ${REQUIRED_DISK_GB}GB)" | tee -a "$LOG_FILE"
+log "Disk space analysis:" | tee -a "$LOG_FILE"
 if [ "$AVAILABLE_DISK_GB" -lt "$REQUIRED_DISK_GB" ]; then
-    log "WARNING: System has only ${AVAILABLE_DISK_GB}GB disk space, ${REQUIRED_DISK_GB}GB are recommended"
-    log "This may cause deployment to fail due to insufficient space"
+    log "WARNING: System has only ${AVAILABLE_DISK_GB}GB disk space, ${REQUIRED_DISK_GB}GB are recommended" | tee -a "$LOG_FILE"
+    log "  - Impact: Deployment may fail due to insufficient space for VM, images, and cache" | tee -a "$LOG_FILE"
+    log "  - Recommendation: Free up disk space or use a drive with more space" | tee -a "$LOG_FILE"
+    log "  - Risk: Medium to High - depends on how much below recommendation" | tee -a "$LOG_FILE"
     
     # Check if critically low disk space
     if [ "$AVAILABLE_DISK_GB" -lt 10 ]; then
+        log "CRITICAL: System has critically low disk space for deployment" | tee -a "$LOG_FILE"
+        log "  - Required minimum: 10GB, Available: ${AVAILABLE_DISK_GB}GB" | tee -a "$LOG_FILE"
+        log "  - Impact: Deployment will almost certainly fail" | tee -a "$LOG_FILE"
         handle_predeployment_error 204 "Critically low disk space: ${AVAILABLE_DISK_GB}GB" \
             "Free up at least 10GB disk space before running deployment. Clean up old files, containers, and images."
+    elif [ "$AVAILABLE_DISK_GB" -lt 15 ]; then
+        log "WARNING: Approaching critically low disk space" | tee -a "$LOG_FILE"
+        log "  - Consider cleaning up disk space even if deployment proceeds" | tee -a "$LOG_FILE"
     fi
+else
+    log "SUCCESS: Sufficient disk space available for deployment" | tee -a "$LOG_FILE"
+    log "  - Performance impact: Low - adequate disk resources" | tee -a "$LOG_FILE"
 fi
+
+# Get detailed disk information
+log "Detailed disk information:" | tee -a "$LOG_FILE"
+df -h . | tee -a "$LOG_FILE" || log "Could not get detailed disk information" | tee -a "$LOG_FILE"
+
+log "PRE-DEPLOYMENT CHECK 3/9: COMPLETED - System memory and disk resources verified" | tee -a "$LOG_FILE"
 
 # Check network connectivity (required for downloading images and packages)
 progress 4 9 "Checking network connectivity"
@@ -1835,16 +2247,75 @@ handle_container_build_error() {
 
 # Function to check if Docker is installed and running with error handling
 docker_ready() {
+    log "Checking Docker readiness..." | tee -a "$LOG_FILE"
+    log "Docker readiness check: command='docker info', purpose=verify Docker installation and daemon status" | tee -a "$LOG_FILE"
+    
+    # Check if Docker command is available
+    log "Checking Docker command availability..." | tee -a "$LOG_FILE"
     if ! command -v docker >/dev/null 2>&1; then
-        log "ERROR: Docker command not found"
+        log "ERROR: Docker command not found" | tee -a "$LOG_FILE"
+        log "Docker readiness check FAILED: Docker command not found" | tee -a "$LOG_FILE"
+        log "DIAGNOSTIC: Docker installation may be missing or not in PATH" | tee -a "$LOG_FILE"
+        log "RECOVERY: Install Docker from https://docs.docker.com/get-docker/" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    log "Docker command is available" | tee -a "$LOG_FILE"
+    
+    # Get Docker version for logging
+    log "Getting Docker version information..." | tee -a "$LOG_FILE"
+    local docker_version=""
+    if docker_version=$(docker version 2>&1); then
+        log "Docker version information retrieved successfully" | tee -a "$LOG_FILE"
+        log "Docker version details:" | tee -a "$LOG_FILE"
+        echo "$docker_version" | head -5 | tee -a "$LOG_FILE"
+    else
+        log "WARNING: Could not retrieve Docker version information" | tee -a "$LOG_FILE"
+        log "Docker version command output: $docker_version" | tee -a "$LOG_FILE"
+    fi
+    
+    # Check if Docker daemon is running
+    log "Checking Docker daemon status..." | tee -a "$LOG_FILE"
+    local docker_info=""
+    if ! docker_info=$(docker info 2>&1); then
+        log "ERROR: Docker daemon is not running or not accessible" | tee -a "$LOG_FILE"
+        log "Docker info command output: $docker_info" | tee -a "$LOG_FILE"
+        log "Docker readiness check FAILED: Docker daemon not running or not accessible" | tee -a "$LOG_FILE"
+        
+        # Provide diagnostic information
+        log "DIAGNOSTIC: Docker daemon troubleshooting info:" | tee -a "$LOG_FILE"
+        log "  - Docker command: $(command -v docker)" | tee -a "$LOG_FILE"
+        log "  - Current user: $(whoami)" | tee -a "$LOG_FILE"
+        log "  - User groups: $(groups)" | tee -a "$LOG_FILE"
+        
+        # Check if user is in docker group
+        if groups | grep -q docker; then
+            log "  - User is in docker group: YES" | tee -a "$LOG_FILE"
+        else
+            log "  - User is in docker group: NO" | tee -a "$LOG_FILE"
+            log "RECOVERY: Add user to docker group: sudo usermod -aG docker \$USER && newgrp docker" | tee -a "$LOG_FILE"
+        fi
+        
+        # Check if Docker service is running
+        if command -v systemctl >/dev/null 2>&1; then
+            local docker_service_status=$(systemctl is-active docker 2>/dev/null || echo "unknown")
+            log "  - Docker service status: $docker_service_status" | tee -a "$LOG_FILE"
+            if [ "$docker_service_status" != "active" ]; then
+                log "RECOVERY: Start Docker service: sudo systemctl start docker" | tee -a "$LOG_FILE"
+            fi
+        fi
+        
         return 1
     fi
     
-    if ! docker info >/dev/null 2>&1; then
-        log "ERROR: Docker daemon is not running or not accessible"
-        return 1
-    fi
+    log "SUCCESS: Docker daemon is running and accessible" | tee -a "$LOG_FILE"
     
+    # Extract and log key Docker information
+    log "Docker daemon information:" | tee -a "$LOG_FILE"
+    echo "$docker_info" | grep -E "Server:|Containers:|Running:|Images:|Storage Driver:" | head -10 | while read -r info_line; do
+        log "  $info_line" | tee -a "$LOG_FILE"
+    done
+    
+    log "Docker readiness check PASSED: Docker is installed and running" | tee -a "$LOG_FILE"
     return 0
 }
 
@@ -4299,12 +4770,22 @@ handle_script_error() {
 }
 
 # Run final comprehensive verification
-log "Starting final comprehensive deployment verification..."
+log "Starting final comprehensive deployment verification..." | tee -a "$LOG_FILE"
+log "FINAL DEPLOYMENT VERIFICATION: Beginning comprehensive end-to-end validation" | tee -a "$LOG_FILE"
+log "Final verification details:" | tee -a "$LOG_FILE"
+log "  - Log file: $LOG_FILE" | tee -a "$LOG_FILE"
+log "  - Script: ${BASH_SOURCE[0]}" | tee -a "$LOG_FILE"
+log "  - VM name: $VM_NAME" | tee -a "$LOG_FILE"
+log "  - Application: my-ag-ui-app" | tee -a "$LOG_FILE"
+
+log "Executing final comprehensive verification function..." | tee -a "$LOG_FILE"
 if final_comprehensive_verification; then
-    log "🎉 FINAL VERIFICATION: PASSED"
-    log "✅ Deployment completed successfully!"
+    log "🎉 FINAL VERIFICATION: PASSED" | tee -a "$LOG_FILE"
+    log "✅ Deployment completed successfully!" | tee -a "$LOG_FILE"
     
-    # Create success summary file
+    # Create success summary file with comprehensive logging
+    log "Creating deployment success summary file..." | tee -a "$LOG_FILE"
+    local success_file="deployment-success-$(date +%Y%m%d-%H%M%S).txt"
     {
         echo "DEPLOYMENT SUCCESS SUMMARY"
         echo "========================"
@@ -4319,15 +4800,41 @@ if final_comprehensive_verification; then
         echo ""
         echo "Verification: All checks passed"
         echo "Log: $LOG_FILE"
-    } > "deployment-success-$(date +%Y%m%d-%H%M%S).txt"
+        echo ""
+        echo "Deployment Summary:"
+        echo "- All pre-deployment checks: PASSED"
+        echo "- VM provisioning: COMPLETED"
+        echo "- Microk8s installation: COMPLETED"
+        echo "- Container build: COMPLETED"
+        echo "- Kubernetes deployment: COMPLETED"
+        echo "- Ingress configuration: COMPLETED"
+        echo "- Final verification: PASSED"
+    } > "$success_file"
     
-    log "Success summary saved to: deployment-success-$(date +%Y%m%d-%H%M%S).txt"
+    log "Success summary saved to: $success_file" | tee -a "$LOG_FILE"
+    log "DEPLOYMENT SUCCESS: All components deployed successfully and verified" | tee -a "$LOG_FILE"
+    
+    # Final logging summary
+    log "==========================================================" | tee -a "$LOG_FILE"
+    log "🎉 DEPLOYMENT COMPLETED SUCCESSFULLY" | tee -a "$LOG_FILE"
+    log "==========================================================" | tee -a "$LOG_FILE"
+    log "Final Status: SUCCESS" | tee -a "$LOG_FILE"
+    log "Next Steps:" | tee -a "$LOG_FILE"
+    log "  1. Access your application via the ingress endpoint" | tee -a "$LOG_FILE"
+    log "  2. Monitor application health and logs" | tee -a "$LOG_FILE"
+    log "  3. Test all application functionality" | tee -a "$LOG_FILE"
+    log "  4. Configure DNS if needed for production use" | tee -a "$LOG_FILE"
+    log "  5. Set up monitoring and alerting for production" | tee -a "$LOG_FILE"
+    log "==========================================================" | tee -a "$LOG_FILE"
+    
     exit 0
 else
-    log "❌ FINAL VERIFICATION: FAILED"
-    log "❌ Deployment completed with issues"
+    log "❌ FINAL VERIFICATION: FAILED" | tee -a "$LOG_FILE"
+    log "❌ Deployment completed with issues" | tee -a "$LOG_FILE"
     
-    # Create failure summary file
+    # Create failure summary file with comprehensive logging
+    log "Creating deployment failure summary file..." | tee -a "$LOG_FILE"
+    local failure_file="deployment-failure-$(date +%Y%m%d-%H%M%S).txt"
     {
         echo "DEPLOYMENT FAILURE SUMMARY"
         echo "========================"
@@ -4346,8 +4853,24 @@ else
         echo "4. Consider running cleanup script: ./cleanup.sh"
         echo ""
         echo "Log: $LOG_FILE"
-    } > "deployment-failure-$(date +%Y%m%d-%H%M%S).txt"
+    } > "$failure_file"
     
-    log "Failure summary saved to: deployment-failure-$(date +%Y%m%d-%H%M%S).txt"
+    log "Failure summary saved to: $failure_file" | tee -a "$LOG_FILE"
+    log "DEPLOYMENT FAILURE: One or more verification checks failed" | tee -a "$LOG_FILE"
+    
+    # Final logging summary for failure
+    log "==========================================================" | tee -a "$LOG_FILE"
+    log "❌ DEPLOYMENT COMPLETED WITH ISSUES" | tee -a "$LOG_FILE"
+    log "==========================================================" | tee -a "$LOG_FILE"
+    log "Final Status: FAILED" | tee -a "$LOG_FILE"
+    log "Failed Checks: $verification_details" | tee -a "$LOG_FILE"
+    log "Recovery Actions:" | tee -a "$LOG_FILE"
+    log "  1. Review the failure summary: $failure_file" | tee -a "$LOG_FILE"
+    log "  2. Check the deployment log: $LOG_FILE" | tee -a "$LOG_FILE"
+    log "  3. Address each issue before retrying" | tee -a "$LOG_FILE"
+    log "  4. Consider running cleanup script: ./cleanup.sh" | tee -a "$LOG_FILE"
+    log "  5. Verify system requirements and dependencies" | tee -a "$LOG_FILE"
+    log "==========================================================" | tee -a "$LOG_FILE"
+    
     exit 1
 fi

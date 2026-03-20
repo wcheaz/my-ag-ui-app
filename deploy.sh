@@ -243,7 +243,7 @@ log "Access URL saved to /tmp/my-ag-ui-app-access-url.txt"
 
 # Test basic connectivity to the VM
 log "Testing basic connectivity to VM..."
-if ping -c 1 -W 5 "$VM_IP" >/dev/null 2>&1; then
+if ping -c 1 -W "$NETWORK_CONNECTIVITY_TIMEOUT" "$VM_IP" >/dev/null 2>&1; then
     log "VM is reachable at $VM_IP"
 else
     log "WARNING: VM is not reachable at $VM_IP"
@@ -258,7 +258,7 @@ if multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o
     log "Application pod IP: $POD_IP"
     
     # Try to access the application from within the cluster
-    if multipass exec "$VM_NAME" -- microk8s kubectl run temp-curl --image=curlimages/curl --rm -it --restart=Never -- curl -s --connect-timeout 5 "http://$POD_IP:3000/health" >/dev/null 2>&1; then
+    if multipass exec "$VM_NAME" -- microk8s kubectl run temp-curl --image=curlimages/curl --rm -it --restart=Never -- curl -s --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "http://$POD_IP:3000/health" >/dev/null 2>&1; then
         log "✓ Application internal health check passed"
     else
         log "WARNING: Application internal health check failed"
@@ -277,7 +277,7 @@ if command_exists curl; then
     sleep 10
     
     # Test the ingress endpoint
-    if curl -s --connect-timeout 10 --max-time 30 "$ACCESS_URL" >/dev/null 2>&1; then
+    if curl -s --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" --max-time 30 "$ACCESS_URL" >/dev/null 2>&1; then
         log "✓ Ingress endpoint is accessible: $ACCESS_URL"
         
         # Test with the configured hostname if different from IP
