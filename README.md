@@ -74,6 +74,56 @@ bun run dev
 
 This will start both the UI and agent servers concurrently.
 
+## Kubernetes Deployment
+
+### Automated Deployment
+
+The project includes an automated deployment script that sets up the entire Kubernetes infrastructure:
+
+```bash
+./deploy.sh
+```
+
+The deployment script will:
+1. **Provision a VM** using Multipass with 4 CPUs, 7.7GiB RAM, and 19.3GiB disk
+2. **Install Microk8s** in the VM and enable required add-ons (dns, storage, ingress)
+3. **Build the Docker image** using the optimized multi-stage Dockerfile
+4. **Deploy to Kubernetes** using the provided manifests (deployment, service, ingress)
+5. **Verify the deployment** and provide access information
+
+### Prerequisites
+
+Before running the deployment script, ensure you have:
+- [Multipass](https://multipass.run/) installed
+- [Docker](https://www.docker.com/) installed
+- Sufficient system resources (the VM requires 4 CPUs, 7.7GiB RAM, 19.3GiB disk)
+
+### Accessing the Application
+
+After successful deployment, the application will be accessible via:
+- **HTTP**: `http://localhost` (if ingress is properly configured)
+- **Alternative**: Check the deployment script output for the specific ingress endpoint
+
+### Cleanup
+
+To remove all deployed resources and clean up the environment:
+
+```bash
+./cleanup.sh
+```
+
+The cleanup script will:
+1. **Remove Kubernetes resources** (deployment, service, ingress)
+2. **Delete the Multipass VM** (confirm when prompted)
+3. **Clean up any temporary files**
+
+### Manual Deployment (Advanced)
+
+For manual deployment or troubleshooting, you can:
+1. Create the VM: `multipass launch --name my-ag-ui-app-vm --cpus 4 --memory 7.7G --disk 19.3G`
+2. Install microk8s: Follow microk8s installation guide
+3. Build and deploy: Use the individual Kubernetes manifests in the `k8s/` directory
+
 ## Available Scripts
 The following scripts can also be run using your preferred package manager:
 - `dev` - Starts both UI and agent servers in development mode
