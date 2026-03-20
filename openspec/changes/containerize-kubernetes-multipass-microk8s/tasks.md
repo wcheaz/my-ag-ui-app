@@ -109,7 +109,7 @@
 - [x] 9.1 Update README.md with deployment prerequisites (multipass, Docker)
 - [x] 9.2 Add deployment instructions to README.md
 - [x] 9.3 Add application access instructions to README.md (URL, hostname)
-- [ ] 9.4 Add troubleshooting section to README.md
+- [x] 9.4 Add troubleshooting section to README.md
 - [ ] 9.5 Create hidden/KUBERNETES-EXPLANATION.md
 - [ ] 9.6 Document VM configuration in KUBERNETES-EXPLANATION.md
 - [ ] 9.7 Document microk8s configuration in KUBERNETES-EXPLANATION.md

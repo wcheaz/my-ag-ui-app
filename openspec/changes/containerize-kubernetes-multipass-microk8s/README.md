@@ -132,13 +132,41 @@ The application is exposed through a Kubernetes ingress with the following confi
      ```bash
      multipass exec my-ag-ui-app-vm -- microk8s kubectl get pods
      ```
+   - Verify service endpoints:
+     ```bash
+     multipass exec my-ag-ui-app-vm -- microk8s kubectl get endpoints
+     ```
 
-2. **SSL certificate warnings:**
+2. **Deployment script failures:**
+   - **VM creation fails:**
+     - Verify multipass is installed: `multipass version`
+     - Check available system resources: `free -h` and `df -h`
+     - Ensure no existing VM with same name: `multipass list`
+     - Increase VM resources if needed: `multipass delete my-ag-ui-app-vm && multipass purge`
+
+   - **Microk8s installation fails:**
+     - Check microk8s status: `multipass exec my-ag-ui-app-vm -- microk8s status`
+     - Verify required add-ons are enabled:
+       ```bash
+       multipass exec my-ag-ui-app-vm -- microk8s status --wait-ready
+       multipass exec my-ag-ui-app-vm -- sudo microk8s enable dns storage ingress
+       ```
+     - Check microk8s logs: `multipass exec my-ag-ui-app-vm -- sudo journalctl -u snap.microk8s.daemon-k8s-controller-manager`
+
+   - **Container build fails:**
+     - Verify Docker is installed: `docker --version`
+     - Check Docker daemon is running: `docker info`
+     - Ensure Dockerfile exists and is valid
+     - Check for syntax errors in Dockerfile
+     - Verify all required files are present in build context
+
+3. **SSL certificate warnings:**
    - The deployment uses self-signed certificates for local development
    - This is normal for local testing
    - In production, use proper certificates (Let's Encrypt, etc.)
+   - To bypass certificate warning in browser, click "Advanced" and "Proceed to localhost"
 
-3. **Connection timeouts:**
+4. **Connection timeouts:**
    - Ensure the deployment completed successfully
    - Check if the application pods are running:
      ```bash
@@ -148,6 +176,191 @@ The application is exposed through a Kubernetes ingress with the following confi
      ```bash
      multipass exec my-ag-ui-app-vm -- microk8s kubectl get endpoints
      ```
+   - Check ingress controller status:
+     ```bash
+     multipass exec my-ag-ui-app-vm -- microk8s kubectl get pods -n ingress
+     ```
+
+5. **Pod stuck in pending/ContainerCreating state:**
+   - Check for resource constraints:
+     ```bash
+     multipass exec my-ag-ui-app-vm -- microk8s kubectl describe pod <pod-name>
+     ```
+   - Verify sufficient resources in VM: `multipass exec my-ag-ui-app-vm -- free -h`
+   - Check if image pull is failing:
+     ```bash
+     multipass exec my-ag-ui-app-vm -- microk8s kubectl describe pod <pod-name> | grep -i image
+     ```
+
+6. **Network connectivity issues:**
+   - Verify VM networking: `multipass exec my-ag-ui-app-vm -- ping 8.8.8.8`
+   - Check DNS resolution: `multipass exec my-ag-ui-app-vm -- nslookup google.com`
+   - Verify ingress controller can route traffic:
+     ```bash
+     multipass exec my-ag-ui-app-vm -- microk8s kubectl get ingress
+     multipass exec my-ag-ui-app-vm -- microk8s kubectl describe ingress <ingress-name>
+     ```
+
+### Debugging Steps
+
+#### 1. Check Deployment Logs
+```bash
+# View deployment script logs
+tail -f deployment.log
+
+# View application logs
+POD_NAME=$(multipass exec my-ag-ui-app-vm -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}')
+multipass exec my-ag-ui-app-vm -- microk8s kubectl logs $POD_NAME
+multipass exec my-ag-ui-app-vm -- microk8s kubectl logs -f $POD_NAME
+
+# View previous logs if pod crashed
+multipass exec my-ag-ui-app-vm -- microk8s kubectl logs $POD_NAME --previous
+```
+
+#### 2. Verify Component Status
+```bash
+# Check VM status
+multipass list
+
+# Check microk8s status
+multipass exec my-ag-ui-app-vm -- microk8s status
+
+# Check all Kubernetes resources
+multipass exec my-ag-ui-app-vm -- microk8s kubectl get all
+
+# Check ingress controller
+multipass exec my-ag-ui-app-vm -- microk8s kubectl get pods -n ingress
+```
+
+#### 3. Network and Connectivity Tests
+```bash
+# Test application access from VM
+multipass exec my-ag-ui-app-vm -- curl http://localhost
+multipass exec my-ag-ui-app-vm -- curl -k https://localhost
+
+# Test service connectivity
+multipass exec my-ag-ui-app-vm -- microk8s kubectl get service
+multipass exec my-ag-ui-app-vm -- microk8s kubectl describe service <service-name>
+```
+
+#### 4. Resource Usage
+```bash
+# Check VM resources
+multipass exec my-ag-ui-app-vm -- free -h
+multipass exec my-ag-ui-app-vm -- df -h
+multipass exec my-ag-ui-app-vm -- top
+
+# Check Kubernetes resource usage
+multipass exec my-ag-ui-app-vm -- microk8s kubectl top pods
+multipass exec my-ag-ui-app-vm -- microk8s kubectl describe nodes
+```
+
+### Ralph-loop Execution Issues
+
+#### 1. Script Timeout
+- Check deployment logs: `cat deployment.log`
+- Verify script execution time: `time ./deploy.sh`
+- Increase timeout values in script if needed
+- Break deployment into smaller phases if timeout persists
+
+#### 2. Missing Dependencies
+- Verify multipass: `multipass version`
+- Verify Docker: `docker --version`
+- Check script permissions: `ls -la deploy.sh`
+- Ensure script is executable: `chmod +x deploy.sh`
+
+#### 3. Non-zero Exit Codes
+- Check last command exit code: `echo $?`
+- Review deployment logs for errors: `cat deployment.log | grep ERROR`
+- Verify script completion status in logs
+
+### Common Error Messages and Solutions
+
+#### Error: "multipass: command not found"
+- **Cause**: Multipass is not installed
+- **Solution**: Install multipass from https://multipass.run/install
+
+#### Error: "Error: instance already exists"
+- **Cause**: VM with same name already exists
+- **Solution**: Delete existing VM: `multipass delete my-ag-ui-app-vm && multipass purge`
+
+#### Error: "Insufficient resources"
+- **Cause**: System lacks required resources
+- **Solution**: Free up system resources or reduce VM specifications
+
+#### Error: "Failed to pull image"
+- **Cause**: Image not found or network issues
+- **Solution**: Check image name, verify network connectivity, build image locally
+
+#### Error: "pods are pending"
+- **Cause**: Insufficient resources in cluster
+- **Solution**: Scale up VM or reduce resource requests in deployment
+
+### Performance Issues
+
+#### 1. Slow Deployment
+- Check system resources: `free -h`, `df -h`
+- Monitor network speed: `multipass exec my-ag-ui-app-vm -- speedtest-cli` (if installed)
+- Optimize Docker build with layer caching
+- Reduce VM resources if over-provisioned
+
+#### 2. High CPU/Memory Usage
+- Identify resource-hungry pods:
+  ```bash
+  multipass exec my-ag-ui-app-vm -- microk8s kubectl top pods
+  ```
+- Check application logs for memory leaks
+- Adjust resource limits in deployment manifest
+- Consider scaling the deployment
+
+### Environment Variables and Configuration
+
+#### 1. Missing Environment Variables
+- Check required environment variables in application
+- Verify Kubernetes secrets:
+  ```bash
+  multipass exec my-ag-ui-app-vm -- microk8s kubectl get secrets
+  multipass exec my-ag-ui-app-vm -- microk8s kubectl describe secret <secret-name>
+  ```
+- Update secrets if needed
+
+#### 2. Configuration Issues
+- Verify Kubernetes manifests are correct
+- Check deployment configuration:
+  ```bash
+  multipass exec my-ag-ui-app-vm -- microk8s kubectl describe deployment <deployment-name>
+  ```
+- Compare with expected configuration in design documentation
+
+### Cleanup and Reset
+
+#### 1. Complete Reset
+```bash
+# Run cleanup script
+./cleanup.sh
+
+# Manual cleanup if script fails
+multipass exec my-ag-ui-app-vm -- microk8s kubectl delete -f k8s/
+multipass delete my-ag-ui-app-vm
+multipass purge
+```
+
+#### 2. Selective Cleanup
+```bash
+# Delete only Kubernetes resources
+multipass exec my-ag-ui-app-vm -- microk8s kubectl delete deployment,service,ingress --all
+
+# Reset microk8s (last resort)
+multipass exec my-ag-ui-app-vm -- sudo microk8s reset
+```
+
+### Getting Help
+
+1. **Check Logs First**: Always review deployment.log and application logs
+2. **Verify Prerequisites**: Ensure all required tools are installed and working
+3. **Consult Documentation**: Review this README and hidden/KUBERNETES-EXPLANATION.md
+4. **Test Components Individually**: Test VM, microk8s, and deployment separately
+5. **Check Online Resources**: Consult multipass, microk8s, and Kubernetes documentation
 
 ### Cleanup
 
