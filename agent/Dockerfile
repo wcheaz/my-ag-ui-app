@@ -2,6 +2,10 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Create non-root user for security
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 appuser
+
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
@@ -14,8 +18,12 @@ RUN uv sync --frozen --no-install-project
 # Copy agent source code
 COPY . .
 
-# Install the project itself
-RUN uv sync --frozen
+# Install the project itself and set permissions for non-root user
+RUN uv sync --frozen && \
+    chown -R appuser:appgroup /app
+
+# Switch to non-root user
+USER appuser
 
 EXPOSE 8000
 

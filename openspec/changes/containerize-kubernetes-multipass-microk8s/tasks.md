@@ -151,7 +151,7 @@
 
 ## 12. Security and Best Practices
 
-- [ ] 12.1 Ensure Dockerfile uses non-root user if possible
+- [x] 12.1 Ensure Dockerfile uses non-root user if possible
 - [ ] 12.2 Ensure no sensitive information is hardcoded in manifests
 - [ ] 12.3 Use secrets for sensitive data (API keys, passwords)
 - [ ] 12.4 Configure network policies if needed
