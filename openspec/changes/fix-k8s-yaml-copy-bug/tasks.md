@@ -4,7 +4,7 @@
 - [x] 1.2 Implement file transfer for secrets.yaml using multipass transfer command
 - [x] 1.3 Implement file transfer for deployment.yaml using multipass transfer command
 - [x] 1.4 Implement file transfer for service.yaml using multipass transfer command
-- [ ] 1.5 Implement file transfer for ingress.yaml using multipass transfer command
+- [x] 1.5 Implement file transfer for ingress.yaml using multipass transfer command
 
 ## 2. File Validation Implementation
 
