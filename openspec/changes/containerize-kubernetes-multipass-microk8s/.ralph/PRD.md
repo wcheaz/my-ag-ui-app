@@ -1173,7 +1173,7 @@ multipass purge
 ## Current Task Context
 
 ## Current Task
-- 7.14 Verify script is idempotent (can run multiple times)
+- 11.1 Identify required environment variables for the application
 ## Completed Tasks for Git Commit
 - [x] 1.1 Review and optimize existing Dockerfile for multi-stage builds
 - [x] 1.2 Create build stage with all build dependencies (Node.js, npm)
@@ -1246,6 +1246,9 @@ multipass purge
 - [x] 7.11 Add logging to file throughout script
 - [x] 7.12 Make script executable
 - [x] 7.13 Test full deployment script execution
+- [x] 7.14 Verify script is idempotent (can run multiple times)
+- [x] 7.15 Verify script works with ralph-loop (no human interaction)
+- [x] 7.16 Verify appropriate exit codes (0 for success, non-zero for failure)
 - [x] 8.1 Create cleanup script (cleanup.sh)
 - [x] 8.2 Add Kubernetes resource cleanup (delete ingress, service, deployment)
 - [x] 8.3 Add microk8s cleanup (optional)
@@ -1253,3 +1256,34 @@ multipass purge
 - [x] 8.5 Add cleanup confirmation prompt (or flag for non-interactive)
 - [x] 8.6 Add error handling for cleanup failures
 - [x] 8.7 Make cleanup script executable
+- [x] 8.8 Test cleanup script
+- [x] 9.1 Update README.md with deployment prerequisites (multipass, Docker)
+- [x] 9.2 Add deployment instructions to README.md
+- [x] 9.3 Add application access instructions to README.md (URL, hostname)
+- [x] 9.4 Add troubleshooting section to README.md
+- [x] 9.5 Create hidden/KUBERNETES-EXPLANATION.md
+- [x] 9.6 Document VM configuration in KUBERNETES-EXPLANATION.md
+- [x] 9.7 Document microk8s configuration in KUBERNETES-EXPLANATION.md
+- [x] 9.8 Document Kubernetes manifests in KUBERNETES-EXPLANATION.md
+- [x] 9.9 Document ingress configuration in KUBERNETES-EXPLANATION.md
+- [x] 9.10 Document deployment script usage in KUBERNETES-EXPLANATION.md
+- [x] 9.11 Document environment variables in KUBERNETES-EXPLANATION.md
+- [x] 9.12 Document resource scaling recommendations in KUBERNETES-EXPLANATION.md
+- [x] 9.13 Document rollback procedures in KUBERNETES-EXPLANATION.md
+- [x] 9.14 Document common issues and solutions in KUBERNETES-EXPLANATION.md
+- [x] 10.1 Test container build process
+- [x] 10.2 Test container execution locally
+- [x] 10.3 Test VM creation and deletion
+- [x] 10.4 Test microk8s installation
+- [x] 10.5 Test Kubernetes deployment
+- [x] 10.6 Test service connectivity
+- [x] 10.7 Test ingress routing
+- [x] 10.8 Test application access via ingress
+- [x] 10.9 Test health checks (liveness and readiness)
+- [x] 10.10 Test resource limits
+- [x] 10.11 Test deployment script end-to-end
+- [x] 10.12 Test cleanup script
+- [x] 10.13 Test error handling (simulate failures)
+- [x] 10.14 Test script idempotency
+- [x] 10.15 Test with ralph-loop automation
+- [x] 10.16 Verify all requirements from specs are met
