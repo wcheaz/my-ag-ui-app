@@ -12,7 +12,7 @@
 - [x] 2.2 Add validation logic to verify secrets.yaml exists in VM after transfer
 - [x] 2.3 Add validation logic to verify deployment.yaml exists in VM after transfer
 - [x] 2.4 Add validation logic to verify service.yaml exists in VM after transfer
-- [ ] 2.5 Add validation logic to verify ingress.yaml exists in VM after transfer
+- [x] 2.5 Add validation logic to verify ingress.yaml exists in VM after transfer
 
 ## 3. Error Handling Enhancement
 
