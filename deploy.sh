@@ -148,6 +148,14 @@ if ! multipass transfer k8s/deployment.yaml "$VM_NAME":/home/ubuntu/k8s/deployme
 fi
 log "deployment.yaml transferred successfully to VM"
 
+# Transfer service.yaml to VM
+log "Transferring service.yaml to VM..."
+if ! multipass transfer k8s/service.yaml "$VM_NAME":/home/ubuntu/k8s/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
+    log "ERROR: Failed to transfer service.yaml to VM"
+    exit 113
+fi
+log "service.yaml transferred successfully to VM"
+
 log "Applying Kubernetes secrets..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_secrets_error 105 "Failed to apply Kubernetes secrets" \
