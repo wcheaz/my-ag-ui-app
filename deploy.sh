@@ -30,11 +30,44 @@ handle_secrets_error() {
     log "SECRETS SETUP ERROR [Code: $error_code]: $error_message"
     log "RECOVERY SUGGESTION: $recovery_suggestion"
     
-    # Log additional diagnostic information
+    # Log additional diagnostic information based on error code ranges
     log "SECRETS SETUP DIAGNOSTIC INFO:"
     log "Current directory: $(pwd)"
     log "Environment file exists: $([ -f ".env" ] && echo "yes" || echo "no")"
     log "k8s directory exists: $([ -d "k8s" ] && echo "yes" || echo "no")"
+    
+    # Enhanced diagnostics for file transfer errors (110-119)
+    if [ "$error_code" -ge 110 ] && [ "$error_code" -le 119 ]; then
+        log "FILE TRANSFER DIAGNOSTIC INFO:"
+        log "VM_NAME: $VM_NAME"
+        log "VM status: $(multipass info "$VM_NAME" 2>/dev/null || echo 'Unable to get VM status')"
+        log "VM IP: $(multipass info "$VM_NAME" | grep -E "IPv4:" | awk '{print $2}' | cut -d',' -f1 | head -n1 2>/dev/null || echo 'Unable to get VM IP')"
+        
+        # Check if k8s directory exists in VM
+        log "k8s directory in VM: $(multipass exec "$VM_NAME" -- test -d /home/ubuntu/k8s 2>/dev/null && echo 'yes' || echo 'no')"
+        
+        # List files in VM k8s directory if it exists
+        if multipass exec "$VM_NAME" -- test -d /home/ubuntu/k8s 2>/dev/null; then
+            log "Files in VM k8s directory:"
+            multipass exec "$VM_NAME" -- ls -la /home/ubuntu/k8s/ 2>/dev/null || log "Unable to list files in VM k8s directory"
+        fi
+        
+        # Check specific file based on error code
+        case $error_code in
+            111|115)
+                log "secrets.yaml in host k8s/: $([ -f "k8s/secrets.yaml" ] && echo 'yes' || echo 'no')"
+                ;;
+            112|116)
+                log "deployment.yaml in host k8s/: $([ -f "k8s/deployment.yaml" ] && echo 'yes' || echo 'no')"
+                ;;
+            113|117)
+                log "service.yaml in host k8s/: $([ -f "k8s/service.yaml" ] && echo 'yes' || echo 'no')"
+                ;;
+            114|118)
+                log "ingress.yaml in host k8s/: $([ -f "k8s/ingress.yaml" ] && echo 'yes' || echo 'no')"
+                ;;
+        esac
+    fi
     
     exit $error_code
 }
