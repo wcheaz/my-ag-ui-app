@@ -3450,24 +3450,42 @@ ls -la "$K8S_DIR/" 2>/dev/null | tee -a "$LOG_FILE" || log "Could not list k8s d
 
 log "All required Kubernetes manifests are available and validated"
 
+# 16.2.1 Add a step to create k8s directory inside the VM
+log "Step 4: Creating k8s directory inside VM..."
+if ! multipass exec "$VM_NAME" -- mkdir -p /home/ubuntu/k8s 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 104 "Failed to create k8s directory inside VM" \
+        "Check VM permissions: multipass exec $VM_NAME -- ls -la /home/ubuntu/"
+fi
+log "k8s directory created inside VM: /home/ubuntu/k8s"
+
+# 16.2.5 Ensure secrets.yaml is generated on the host in the correct location before being copied to VM
 # 7.6.4 Apply secrets manifest (if sensitive data needs to be configured)
-log "Step 4: Applying Kubernetes secrets manifest..."
+log "Step 5: Applying Kubernetes secrets manifest..."
 if [ -f "$K8S_DIR/secrets.yaml" ]; then
     log "Found secrets.yaml, applying secrets configuration..."
     
-    # Copy secrets manifest to VM first
-    log "Copying secrets manifest to VM..."
-    if ! multipass copy-file "$K8S_DIR/secrets.yaml" "$VM_NAME:/tmp/secrets.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+    # 16.2.6 Copy secrets.yaml from host to VM using multipass transfer
+    log "Copying secrets manifest to VM k8s directory..."
+    if ! multipass transfer "$K8S_DIR/secrets.yaml" "$VM_NAME:/home/ubuntu/k8s/secrets.yaml" 2>&1 | tee -a "$LOG_FILE"; then
         handle_k8s_deployment_error 104 "Failed to copy secrets manifest to VM" \
             "Check if secrets manifest exists: $K8S_DIR/secrets.yaml. Check VM connectivity: multipass info $VM_NAME"
     fi
-    log "Secrets manifest copied to VM"
+    log "Secrets manifest copied to VM: /home/ubuntu/k8s/secrets.yaml"
     
+    # Validate that secrets.yaml exists in VM before applying
+    log "Validating secrets.yaml exists in VM..."
+    if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
+        handle_k8s_deployment_error 104 "secrets.yaml not found in VM after copy" \
+            "Check file transfer: multipass exec $VM_NAME -- ls -la /home/ubuntu/k8s/"
+    fi
+    log "secrets.yaml validated in VM"
+    
+    # 16.2.7 Update kubectl apply commands to use the correct file paths inside the VM
     # Apply secrets manifest from VM
     log "Applying secrets manifest in VM..."
-    if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /tmp/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
+    if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /home/ubuntu/k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
         handle_k8s_deployment_error 104 "Failed to apply secrets manifest" \
-            "Check secrets manifest: k8s/secrets.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /tmp/secrets.yaml"
+            "Check secrets manifest: k8s/secrets.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /home/ubuntu/k8s/secrets.yaml"
     fi
     log "Secrets manifest applied successfully"
     
@@ -3477,40 +3495,41 @@ if [ -f "$K8S_DIR/secrets.yaml" ]; then
     else
         log "Secrets verified successfully"
     fi
-    
-    # Clean up secrets manifest from VM
-    log "Cleaning up secrets manifest from VM..."
-    multipass exec "$VM_NAME" -- rm -f /tmp/secrets.yaml 2>&1 | tee -a "$LOG_FILE" || true
 else
     log "No secrets.yaml found, skipping secrets configuration"
 fi
 
 # 7.6.5 Apply deployment manifest
-log "Step 5: Applying Kubernetes deployment manifest..."
+log "Step 6: Applying Kubernetes deployment manifest..."
 log "Creating deployment for application '$IMAGE_NAME'..."
 
-# Copy deployment manifest to VM first
-log "Copying deployment manifest to VM..."
-if ! multipass copy-file "$K8S_DIR/deployment.yaml" "$VM_NAME:/tmp/deployment.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+# 16.2.2 Copy deployment.yaml from openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/ to VM using multipass transfer
+log "Copying deployment manifest to VM k8s directory..."
+if ! multipass transfer "$K8S_DIR/deployment.yaml" "$VM_NAME:/home/ubuntu/k8s/deployment.yaml" 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 105 "Failed to copy deployment manifest to VM" \
         "Check if deployment manifest exists: $K8S_DIR/deployment.yaml. Check VM connectivity: multipass info $VM_NAME"
 fi
-log "Deployment manifest copied to VM"
+log "Deployment manifest copied to VM: /home/ubuntu/k8s/deployment.yaml"
 
+# Validate that deployment.yaml exists in VM before applying
+log "Validating deployment.yaml exists in VM..."
+if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/deployment.yaml 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 105 "deployment.yaml not found in VM after copy" \
+        "Check file transfer: multipass exec $VM_NAME -- ls -la /home/ubuntu/k8s/"
+fi
+log "deployment.yaml validated in VM"
+
+# 16.2.7 Update kubectl apply commands to use the correct file paths inside the VM
 # Apply deployment manifest from VM
 log "Applying deployment manifest in VM..."
-if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /tmp/deployment.yaml 2>&1 | tee -a "$LOG_FILE"; then
+if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /home/ubuntu/k8s/deployment.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 105 "Failed to apply deployment manifest" \
-        "Check deployment manifest: k8s/deployment.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /tmp/deployment.yaml"
+        "Check deployment manifest: k8s/deployment.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /home/ubuntu/k8s/deployment.yaml"
 fi
 log "Deployment manifest applied successfully"
 
-# Clean up deployment manifest from VM
-log "Cleaning up deployment manifest from VM..."
-multipass exec "$VM_NAME" -- rm -f /tmp/deployment.yaml 2>&1 | tee -a "$LOG_FILE" || true
-
 # 7.6.6 Verify deployment was created
-log "Step 6: Verifying Kubernetes deployment..."
+log "Step 7: Verifying Kubernetes deployment..."
 if ! verify_k8s_resource "deployment" "my-ag-ui-app-deployment" "default" 10 3; then
     handle_k8s_deployment_error 106 "Deployment verification failed" \
         "Check deployment status: microk8s kubectl get deployment my-ag-ui-app-deployment. Check events: microk8s kubectl get events"
@@ -3518,30 +3537,35 @@ fi
 log "Deployment verified successfully"
 
 # 7.6.7 Apply service manifest
-log "Step 7: Applying Kubernetes service manifest..."
+log "Step 8: Applying Kubernetes service manifest..."
 
-# Copy service manifest to VM first
-log "Copying service manifest to VM..."
-if ! multipass copy-file "$K8S_DIR/service.yaml" "$VM_NAME:/tmp/service.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+# 16.2.3 Copy service.yaml from openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/ to VM using multipass transfer
+log "Copying service manifest to VM k8s directory..."
+if ! multipass transfer "$K8S_DIR/service.yaml" "$VM_NAME:/home/ubuntu/k8s/service.yaml" 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 107 "Failed to copy service manifest to VM" \
         "Check if service manifest exists: $K8S_DIR/service.yaml. Check VM connectivity: multipass info $VM_NAME"
 fi
-log "Service manifest copied to VM"
+log "Service manifest copied to VM: /home/ubuntu/k8s/service.yaml"
 
+# Validate that service.yaml exists in VM before applying
+log "Validating service.yaml exists in VM..."
+if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 107 "service.yaml not found in VM after copy" \
+        "Check file transfer: multipass exec $VM_NAME -- ls -la /home/ubuntu/k8s/"
+fi
+log "service.yaml validated in VM"
+
+# 16.2.7 Update kubectl apply commands to use the correct file paths inside the VM
 # Apply service manifest from VM
 log "Applying service manifest in VM..."
-if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /tmp/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
+if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /home/ubuntu/k8s/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 107 "Failed to apply service manifest" \
-        "Check service manifest: k8s/service.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /tmp/service.yaml"
+        "Check service manifest: k8s/service.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /home/ubuntu/k8s/service.yaml"
 fi
 log "Service manifest applied successfully"
 
-# Clean up service manifest from VM
-log "Cleaning up service manifest from VM..."
-multipass exec "$VM_NAME" -- rm -f /tmp/service.yaml 2>&1 | tee -a "$LOG_FILE" || true
-
 # 7.6.8 Verify service was created
-log "Step 8: Verifying Kubernetes service..."
+log "Step 9: Verifying Kubernetes service..."
 if ! verify_k8s_resource "service" "my-ag-ui-app-service" "default" 10 3; then
     handle_k8s_deployment_error 108 "Service verification failed" \
         "Check service status: microk8s kubectl get service my-ag-ui-app-service. Check endpoints: microk8s kubectl get endpoints my-ag-ui-app-service"
@@ -3549,30 +3573,35 @@ fi
 log "Service verified successfully"
 
 # 7.6.9 Apply ingress manifest
-log "Step 9: Applying Kubernetes ingress manifest..."
+log "Step 10: Applying Kubernetes ingress manifest..."
 
-# Copy ingress manifest to VM first
-log "Copying ingress manifest to VM..."
-if ! multipass copy-file "$K8S_DIR/ingress.yaml" "$VM_NAME:/tmp/ingress.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+# 16.2.4 Copy ingress.yaml from openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/ to VM using multipass transfer
+log "Copying ingress manifest to VM k8s directory..."
+if ! multipass transfer "$K8S_DIR/ingress.yaml" "$VM_NAME:/home/ubuntu/k8s/ingress.yaml" 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 109 "Failed to copy ingress manifest to VM" \
         "Check if ingress manifest exists: $K8S_DIR/ingress.yaml. Check VM connectivity: multipass info $VM_NAME"
 fi
-log "Ingress manifest copied to VM"
+log "Ingress manifest copied to VM: /home/ubuntu/k8s/ingress.yaml"
 
+# Validate that ingress.yaml exists in VM before applying
+log "Validating ingress.yaml exists in VM..."
+if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/ingress.yaml 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 109 "ingress.yaml not found in VM after copy" \
+        "Check file transfer: multipass exec $VM_NAME -- ls -la /home/ubuntu/k8s/"
+fi
+log "ingress.yaml validated in VM"
+
+# 16.2.7 Update kubectl apply commands to use the correct file paths inside the VM
 # Apply ingress manifest from VM
 log "Applying ingress manifest in VM..."
-if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /tmp/ingress.yaml 2>&1 | tee -a "$LOG_FILE"; then
+if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /home/ubuntu/k8s/ingress.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 109 "Failed to apply ingress manifest" \
-        "Check ingress manifest: k8s/ingress.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /tmp/ingress.yaml"
+        "Check ingress manifest: k8s/ingress.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /home/ubuntu/k8s/ingress.yaml"
 fi
 log "Ingress manifest applied successfully"
 
-# Clean up ingress manifest from VM
-log "Cleaning up ingress manifest from VM..."
-multipass exec "$VM_NAME" -- rm -f /tmp/ingress.yaml 2>&1 | tee -a "$LOG_FILE" || true
-
 # 7.6.10 Verify ingress was created
-log "Step 10: Verifying Kubernetes ingress..."
+log "Step 11: Verifying Kubernetes ingress..."
 if ! verify_k8s_resource "ingress" "my-ag-ui-app-ingress" "default" 10 3; then
     handle_k8s_deployment_error 110 "Ingress verification failed" \
         "Check ingress status: microk8s kubectl get ingress my-ag-ui-app-ingress. Check ingress class: microk8s kubectl get ingressclass"
@@ -3580,7 +3609,7 @@ fi
 log "Ingress verified successfully"
 
 # 7.6.11 Wait for application pods to be ready
-log "Step 11: Waiting for application pods to be ready..."
+log "Step 12: Waiting for application pods to be ready..."
 if ! wait_for_pods_ready "my-ag-ui-app" "default" $((POD_READINESS_TIMEOUT / 5)) 5 1; then
     handle_k8s_deployment_error 111 "Application pods did not become ready" \
         "Check pod status: microk8s kubectl get pods -l app=my-ag-ui-app. Check pod logs: microk8s kubectl logs <pod-name>. Check events: microk8s kubectl get events"
@@ -3588,7 +3617,7 @@ fi
 log "Application pods are ready and running"
 
 # 7.6.12 Verify deployment rollout status
-log "Step 12: Verifying deployment rollout status..."
+log "Step 13: Verifying deployment rollout status..."
 if ! multipass exec "$VM_NAME" -- bash -c "microk8s kubectl rollout status deployment/my-ag-ui-app-deployment" 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 112 "Deployment rollout verification failed" \
         "Check deployment rollout: microk8s kubectl rollout status deployment/my-ag-ui-app-deployment. Check deployment details: microk8s kubectl describe deployment my-ag-ui-app-deployment"
@@ -3596,7 +3625,7 @@ fi
 log "Deployment rollout completed successfully"
 
 # 7.6.13 Verify service endpoints are populated
-log "Step 13: Verifying service endpoints are populated..."
+log "Step 14: Verifying service endpoints are populated..."
 endpoints_check=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl get endpoints my-ag-ui-app-service -o jsonpath='{.subsets}'" 2>/dev/null || echo "")
 if [ -z "$endpoints_check" ] || [ "$endpoints_check" = "[]" ]; then
     log "WARNING: Service endpoints are not populated yet"
@@ -3612,7 +3641,7 @@ fi
 log "Service endpoints are populated and ready"
 
 # 7.6.14 Verify application is accessible through service
-log "Step 14: Verifying application accessibility through service..."
+log "Step 15: Verifying application accessibility through service..."
 service_test=$(multipass exec "$VM_NAME" -- bash -c "microk8s kubectl run temp-access-test --image=curlimages/curl --rm -i --restart=Never -- curl -s -f http://my-ag-ui-app-service:3000" 2>&1 || echo "")
 if echo "$service_test" | grep -q "200\|OK\|healthy" 2>/dev/null; then
     log "SUCCESS: Application is accessible through service"
@@ -3622,7 +3651,7 @@ else
 fi
 
 # 7.6.15 Comprehensive deployment verification
-log "Step 15: Performing comprehensive deployment verification..."
+log "Step 16: Performing comprehensive deployment verification..."
 log "=== KUBERNETES DEPLOYMENT VERIFICATION SUMMARY ==="
 
 # Verify all resources are present and healthy
