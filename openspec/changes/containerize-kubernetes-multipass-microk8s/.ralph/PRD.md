@@ -1172,8 +1172,6 @@ multipass purge
 
 ## Current Task Context
 
-## Current Task
-- 17.1 Review deploy.sh script structure and flow
 ## Completed Tasks for Git Commit
 - [x] 1.1 Review and optimize existing Dockerfile for multi-stage builds
 - [x] 1.2 Create build stage with all build dependencies (Node.js, npm)
@@ -1328,3 +1326,9 @@ multipass purge
 - [x] 16.2 Fix the YAML file path issues
 - [x] 16.3 Test the fix
 - [x] 16.4 Document the fix
+- [x] 17.1 Review deploy.sh script structure and flow
+- [x] 17.2 Identify the root cause of YAML path errors
+- [x] 17.3 Add debugging and validation to deploy.sh
+- [x] 17.4 Fix the deploy.sh script based on findings
+- [x] 17.5 Test the fixed deploy.sh script
+- [x] 17.6 Document the findings and fix

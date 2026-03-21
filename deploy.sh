@@ -124,6 +124,14 @@ if [ -z "$VM_NAME" ]; then
 fi
 log "Using VM_NAME: $VM_NAME for Kubernetes deployment"
 
+# Create k8s directory in VM before file transfer
+log "Creating k8s directory in VM..."
+if ! multipass exec "$VM_NAME" -- mkdir -p /home/ubuntu/k8s 2>&1 | tee -a "$LOG_FILE"; then
+    log "ERROR: Failed to create k8s directory in VM"
+    exit 110
+fi
+log "k8s directory created successfully in VM"
+
 log "Applying Kubernetes secrets..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_secrets_error 105 "Failed to apply Kubernetes secrets" \
