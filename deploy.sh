@@ -164,6 +164,14 @@ if ! multipass transfer k8s/ingress.yaml "$VM_NAME":/home/ubuntu/k8s/ingress.yam
 fi
 log "ingress.yaml transferred successfully to VM"
 
+# Validate that secrets.yaml exists in VM after transfer
+log "Validating that secrets.yaml exists in VM..."
+if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
+    log "ERROR: secrets.yaml does not exist in VM after transfer"
+    exit 115
+fi
+log "secrets.yaml validation successful - file exists in VM"
+
 log "Applying Kubernetes secrets..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_secrets_error 105 "Failed to apply Kubernetes secrets" \
