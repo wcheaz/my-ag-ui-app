@@ -218,32 +218,43 @@
 ## 16. Bug Fix: Kubernetes Manifest File Path Errors
 
 - [x] 16.1 Diagnose the "path does not exist" errors for YAML files
-  - [x] 16.1.1 Review deploy.sh to identify where kubectl apply commands are executed
-  - [x] 16.1.2 Check if YAML files are being copied to the VM before kubectl apply
-  - [x] 16.1.3 Verify the working directory when kubectl commands are run
-  - [x] 16.1.4 Check if YAML files exist in the openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/ directory
-  - [x] 16.1.5 Identify if the script is looking for files in the wrong location (project root vs change directory)
-  - [x] 16.1.6 Review how secrets.yaml is generated and where it's created
-- [x] 16.2 Fix the YAML file path issues
-  - [x] 16.2.1 Ensure YAML files are copied from openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/ to the VM
-  - [x] 16.2.2 Verify secrets.yaml is generated in the correct location before being applied
-  - [x] 16.2.3 Update kubectl apply commands to use correct file paths in the VM
-  - [x] 16.2.4 Add validation to check if YAML files exist before attempting to apply them
-  - [x] 16.2.5 Add error handling for missing YAML files with clear error messages
-  - [x] 16.2.6 Ensure the script runs from the correct working directory
-- [x] 16.3 Test the fix
-  - [x] 16.3.1 Run deploy.sh and verify YAML files are copied to the VM
-  - [x] 16.3.2 Verify secrets.yaml is generated successfully
-  - [x] 16.3.3 Verify kubectl apply commands find the YAML files
-  - [x] 16.3.4 Verify Kubernetes secrets are applied without "path does not exist" errors
-  - [x] 16.3.5 Verify deployment manifest is applied without errors
-  - [x] 16.3.6 Verify service manifest is applied without errors
-  - [x] 16.3.7 Verify ingress manifest is applied without errors
-  - [x] 16.3.8 Verify pods are created successfully (not "No resources found")
-  - [x] 16.3.9 Verify deployment becomes ready
-  - [x] 16.3.10 Verify application is accessible after deployment
-- [x] 16.4 Document the fix
-  - [x] 16.4.1 Update KUBERNETES-EXPLANATION.md with YAML file path details
-  - [x] 16.4.2 Add troubleshooting entry for "path does not exist" errors
-  - [x] 16.4.3 Document the fix in CHANGELOG.md
-  - [x] 16.4.4 Update README.md if needed with file path requirements
+  - [x] 16.1.1 Review deploy.sh to identify where kubectl apply commands are executed (inside VM via multipass exec)
+  - [x] 16.1.2 Check if YAML files are being copied to the VM before kubectl apply commands run
+  - [x] 16.1.3 Verify the working directory when kubectl commands are run inside the VM
+  - [x] 16.1.4 Check if YAML files exist on the host in openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/ directory
+  - [x] 16.1.5 Identify if the script is looking for files in the VM's filesystem (where they don't exist) instead of copying them first
+  - [x] 16.1.6 Review how secrets.yaml is generated and where it's created (likely generated on host but not copied to VM)
+  - [x] 16.1.7 Check if multipass transfer commands are used to copy files to the VM
+  - [x] 16.1.8 Verify the order of operations: files must be copied to VM before kubectl apply is run inside VM
+  - [x] 16.1.9 Identify all YAML files that need to be copied: deployment.yaml, service.yaml, ingress.yaml, secrets.yaml
+  - [x] 16.1.10 Check if the script creates a k8s directory inside the VM before copying files
+- [ ] 16.2 Fix the YAML file path issues
+  - [ ] 16.2.1 Add a step to create k8s directory inside the VM (e.g., `multipass exec $VM_NAME -- mkdir -p ~/k8s`)
+  - [ ] 16.2.2 Copy deployment.yaml from openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/ to VM using multipass transfer
+  - [ ] 16.2.3 Copy service.yaml from openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/ to VM using multipass transfer
+  - [ ] 16.2.4 Copy ingress.yaml from openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/ to VM using multipass transfer
+  - [ ] 16.2.5 Ensure secrets.yaml is generated on the host in the correct location before being copied to VM
+  - [ ] 16.2.6 Copy secrets.yaml from host to VM using multipass transfer
+  - [ ] 16.2.7 Update kubectl apply commands to use the correct file paths inside the VM (e.g., `~/k8s/secrets.yaml`)
+  - [ ] 16.2.8 Add validation to check if YAML files exist inside the VM before attempting to apply them
+  - [ ] 16.2.9 Add error handling for missing YAML files with clear error messages
+  - [ ] 16.2.10 Add logging to confirm files are successfully copied to the VM
+  - [ ] 16.2.11 Ensure the file copy step happens BEFORE the kubectl apply step in the script flow
+- [ ] 16.3 Test the fix
+  - [ ] 16.3.1 Run deploy.sh and verify k8s directory is created inside the VM
+  - [ ] 16.3.2 Verify YAML files are copied from host to VM successfully
+  - [ ] 16.3.3 Verify secrets.yaml is generated successfully on the host
+  - [ ] 16.3.4 Verify secrets.yaml is copied to the VM
+  - [ ] 16.3.5 Verify kubectl apply commands find the YAML files inside the VM
+  - [ ] 16.3.6 Verify Kubernetes secrets are applied without "path does not exist" errors
+  - [ ] 16.3.7 Verify deployment manifest is applied without errors
+  - [ ] 16.3.8 Verify service manifest is applied without errors
+  - [ ] 16.3.9 Verify ingress manifest is applied without errors
+  - [ ] 16.3.10 Verify pods are created successfully (not "No resources found")
+  - [ ] 16.3.11 Verify deployment becomes ready
+  - [ ] 16.3.12 Verify application is accessible after deployment
+- [ ] 16.4 Document the fix
+  - [ ] 16.4.1 Update KUBERNETES-EXPLANATION.md with YAML file copy process details
+  - [ ] 16.4.2 Add troubleshooting entry for "path does not exist" errors
+  - [ ] 16.4.3 Document the fix in CHANGELOG.md
+  - [ ] 16.4.4 Update README.md if needed with file copy requirements
