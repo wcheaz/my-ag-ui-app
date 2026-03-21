@@ -1365,6 +1365,166 @@ verify_predeployment_completion
 
 log "Pre-deployment verification completed successfully"
 step_complete "Pre-deployment verification" 8 9
+
+# ========================
+# ENVIRONMENT VARIABLE VALIDATION SECTION
+# ========================
+
+progress 9 9 "Validating environment variables"
+log "Starting environment variable validation..." | tee -a "$LOG_FILE"
+log "ENVIRONMENT VARIABLE VALIDATION: Checking required configuration" | tee -a "$LOG_FILE"
+
+# Environment variable validation function
+validate_environment_variables() {
+    log "Validating required environment variables..." | tee -a "$LOG_FILE"
+    
+    # Define required environment variables
+    local required_vars=(
+        "NODE_ENV"
+        "PORT"
+        "OPENAI_API_KEY"
+        "OPENAI_BASE_URL"
+        "OPENAI_MODEL"
+        "LLM_MAX_TOKENS"
+        "LLM_CONTEXT_WINDOW"
+        "EMBEDDING_MODEL"
+    )
+    
+    # Define optional environment variables
+    local optional_vars=(
+        "LOGFIRE_TOKEN"
+    )
+    
+    # Define placeholder patterns to detect
+    local placeholder_patterns=(
+        "your-key-here"
+        "your-token-here"
+        "replace-this"
+        "example"
+        "placeholder"
+        "your-.*-here"
+    )
+    
+    local validation_passed=true
+    local validation_errors=""
+    local env_file_found=false
+    local env_file_name=""
+    
+    # Check for .env file existence
+    log "Checking for .env file..." | tee -a "$LOG_FILE"
+    if [ -f ".env" ]; then
+        env_file_found=true
+        env_file_name=".env"
+        log "SUCCESS: .env file found in current directory" | tee -a "$LOG_FILE"
+    elif [ -f "config/.env" ]; then
+        env_file_found=true
+        env_file_name="config/.env"
+        log "SUCCESS: .env file found in config/ directory" | tee -a "$LOG_FILE"
+    else
+        log "WARNING: No .env file found in current directory or config/" | tee -a "$LOG_FILE"
+        log "INFO: Environment variables can be set directly in the shell instead of .env file" | tee -a "$LOG_FILE"
+    fi
+    
+    # Source the .env file if found
+    if [ "$env_file_found" = "true" ]; then
+        log "Loading environment variables from $env_file_name..." | tee -a "$LOG_FILE"
+        set -a  # Automatically export all variables
+        source "$env_file_name"
+        set +a  # Disable automatic export
+        log "Environment variables loaded from $env_file_name" | tee -a "$LOG_FILE"
+    fi
+    
+    # Validate required environment variables
+    log "Validating required environment variables..." | tee -a "$LOG_FILE"
+    for var_name in "${required_vars[@]}"; do
+        log "Checking required variable: $var_name" | tee -a "$LOG_FILE"
+        
+        if [ -z "${!var_name+x}" ]; then
+            # Variable is not set
+            log "ERROR: Required environment variable '$var_name' is not set" | tee -a "$LOG_FILE"
+            validation_passed=false
+            validation_errors+="ERROR: Required environment variable '$var_name' is not set\n"
+            validation_errors+="  Fix: Set '$var_name' in $env_file_name or export it in your shell\n\n"
+        elif [ -z "${!var_name}" ]; then
+            # Variable is set but empty
+            log "ERROR: Required environment variable '$var_name' is empty" | tee -a "$LOG_FILE"
+            validation_passed=false
+            validation_errors+="ERROR: Required environment variable '$var_name' is empty\n"
+            validation_errors+="  Fix: Provide a value for '$var_name' in $env_file_name or export it in your shell\n\n"
+        else
+            # Variable is set and not empty, check if it's a placeholder
+            local var_value="${!var_name}"
+            log "Variable '$var_name' is set to: $var_value" | tee -a "$LOG_FILE"
+            
+            # Check for placeholder values
+            local is_placeholder=false
+            for pattern in "${placeholder_patterns[@]}"; do
+                if echo "$var_value" | grep -qiE "$pattern"; then
+                    is_placeholder=true
+                    break
+                fi
+            done
+            
+            if [ "$is_placeholder" = "true" ]; then
+                log "ERROR: Required environment variable '$var_name' contains a placeholder value" | tee -a "$LOG_FILE"
+                validation_passed=false
+                validation_errors+="ERROR: Required environment variable '$var_name' contains a placeholder value\n"
+                validation_errors+="  Current value: '$var_value'\n"
+                validation_errors+="  Fix: Replace the placeholder value for '$var_name' with the actual value\n\n"
+            else
+                log "SUCCESS: Required environment variable '$var_name' is properly configured" | tee -a "$LOG_FILE"
+            fi
+        fi
+    done
+    
+    # Check optional environment variables (only log if missing, don't fail)
+    log "Checking optional environment variables..." | tee -a "$LOG_FILE"
+    for var_name in "${optional_vars[@]}"; do
+        if [ -z "${!var_name+x}" ] || [ -z "${!var_name}" ]; then
+            log "INFO: Optional environment variable '$var_name' is not set (this is OK)" | tee -a "$LOG_FILE"
+        else
+            log "SUCCESS: Optional environment variable '$var_name' is set" | tee -a "$LOG_FILE"
+        fi
+    done
+    
+    # Log validation summary
+    log "=== ENVIRONMENT VARIABLE VALIDATION SUMMARY ===" | tee -a "$LOG_FILE"
+    if [ "$validation_passed" = "true" ]; then
+        log "STATUS: PASSED - All required environment variables are properly configured" | tee -a "$LOG_FILE"
+        log "Required variables checked: ${#required_vars[@]}"
+        log "Optional variables checked: ${#optional_vars[@]}"
+        log "=============================================="
+        return 0
+    else
+        log "STATUS: FAILED - Environment variable validation failed" | tee -a "$LOG_FILE"
+        log "Required variables checked: ${#required_vars[@]}"
+        log "Optional variables checked: ${#optional_vars[@]}"
+        log "Errors found:"
+        log -e "$validation_errors"
+        log "=============================================="
+        
+        # Provide recovery suggestions
+        log "RECOVERY SUGGESTIONS:" | tee -a "$LOG_FILE"
+        log "1. Copy .env.example to .env: cp .env.example .env" | tee -a "$LOG_FILE"
+        log "2. Edit .env file and replace all placeholder values with actual values" | tee -a "$LOG_FILE"
+        log "3. Ensure all required environment variables are properly set" | tee -a "$LOG_FILE"
+        log "4. Required variables: ${required_vars[*]}" | tee -a "$LOG_FILE"
+        log "5. Optional variables: ${optional_vars[*]}" | tee -a "$LOG_FILE"
+        
+        return 1
+    fi
+}
+
+# Run environment variable validation
+log "Running environment variable validation..."
+if validate_environment_variables; then
+    step_complete "Environment variable validation" 9 9
+    log "Environment variable validation completed successfully" | tee -a "$LOG_FILE"
+else
+    handle_predeployment_error 205 "Environment variable validation failed" \
+        "Fix the environment variable issues above before continuing with deployment. See .env.example for reference."
+fi
+
 progress 9 9 "Pre-deployment phase completed - 100% ready for VM provisioning"
 log "Proceeding to VM provisioning section"
 

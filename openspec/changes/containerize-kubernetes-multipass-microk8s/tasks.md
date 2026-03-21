@@ -144,8 +144,8 @@
 
 - [x] 11.1 Identify required environment variables for the application
 - [x] 11.2 Create .env.example file with required variables
-- [ ] 11.3 Configure environment variable injection in deployment manifest
-- [ ] 11.4 Add environment variable validation to deployment script
+- [x] 11.3 Configure environment variable injection in deployment manifest
+- [x] 11.4 Add environment variable validation to deployment script
 - [ ] 11.5 Document environment variables in KUBERNETES-EXPLANATION.md
 - [ ] 11.6 Test environment variable configuration
 
