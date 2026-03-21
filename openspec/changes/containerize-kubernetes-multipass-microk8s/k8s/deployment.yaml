@@ -32,13 +32,13 @@ spec:
               key: openai-api-key
         - name: OPENAI_BASE_URL
           valueFrom:
-            configMapKeyRef:
-              name: my-ag-ui-app-config
+            secretKeyRef:
+              name: my-ag-ui-app-secrets
               key: openai-base-url
         - name: OPENAI_MODEL
           valueFrom:
-            configMapKeyRef:
-              name: my-ag-ui-app-config
+            secretKeyRef:
+              name: my-ag-ui-app-secrets
               key: openai-model
         # Procurement Agent Configuration
         - name: LLM_MAX_TOKENS
@@ -53,8 +53,8 @@ spec:
               key: llm-context-window
         - name: EMBEDDING_MODEL
           valueFrom:
-            configMapKeyRef:
-              name: my-ag-ui-app-config
+            secretKeyRef:
+              name: my-ag-ui-app-secrets
               key: embedding-model
         # Logging Configuration
         - name: LOGFIRE_TOKEN
