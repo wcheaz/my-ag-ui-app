@@ -168,3 +168,19 @@
 - [x] 13.6 Verify all file permissions are correct
 - [x] 13.7 Create summary of what was implemented
 - [x] 13.8 Prepare for archiving the change
+
+## 14. Cleanup and Organization
+
+- [/] 14.1 Verify deploy.sh is the working deployment script (2,376 lines, per IMPLEMENTATION_SUMMARY.md)
+- [ ] 14.2 Remove unnecessary deployment scripts (deploy_app.sh, deploy_final.sh, deploy_fixed.sh, deploy_test.sh, deploy_working.sh)
+- [ ] 14.3 Keep only working deployment script (deploy.sh)
+- [ ] 14.4 Create test/kubernetes/ directory if it doesn't exist
+- [ ] 14.5 Move test scripts to test/kubernetes/ directory (test_script_idempotency.sh, test_script.sh, test-container-build.sh, test-docker-build.sh)
+- [ ] 14.6 Clean up log files (deployment_test.log, deployment.log, test_deployment.log, vm-test.log, service-connectivity-test.log)
+- [ ] 14.7 Remove SCRIPT_IDEMPOTENCY_TEST_RESULTS.md if no longer needed
+- [ ] 14.8 Remove performance_analysis.md if no longer needed
+- [ ] 14.9 Remove env_loading_performance_results.txt if no longer needed
+- [ ] 14.10 Remove tls.crt if no longer needed
+- [ ] 14.11 Verify project root directory is clean and organized
+- [ ] 14.12 Update .gitignore if needed to exclude test/kubernetes/ directory
+- [ ] 14.13 Document cleanup changes in CHANGELOG.md
