@@ -135,32 +135,32 @@ log "k8s directory created successfully in VM"
 # Transfer secrets.yaml to VM
 log "Transferring secrets.yaml to VM..."
 if ! multipass transfer k8s/secrets.yaml "$VM_NAME":/home/ubuntu/k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    log "ERROR: Failed to transfer secrets.yaml to VM"
-    exit 111
+    handle_secrets_error 111 "Failed to transfer secrets.yaml to VM" \
+        "Check if secrets.yaml exists in k8s directory: $(pwd)/k8s/secrets.yaml. Ensure VM is running and accessible: multipass info '$VM_NAME'."
 fi
 log "secrets.yaml transferred successfully to VM"
 
 # Transfer deployment.yaml to VM
 log "Transferring deployment.yaml to VM..."
 if ! multipass transfer k8s/deployment.yaml "$VM_NAME":/home/ubuntu/k8s/deployment.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    log "ERROR: Failed to transfer deployment.yaml to VM"
-    exit 112
+    handle_secrets_error 112 "Failed to transfer deployment.yaml to VM" \
+        "Check if deployment.yaml exists in k8s directory: $(pwd)/k8s/deployment.yaml. Ensure VM is running and accessible: multipass info '$VM_NAME'."
 fi
 log "deployment.yaml transferred successfully to VM"
 
 # Transfer service.yaml to VM
 log "Transferring service.yaml to VM..."
 if ! multipass transfer k8s/service.yaml "$VM_NAME":/home/ubuntu/k8s/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    log "ERROR: Failed to transfer service.yaml to VM"
-    exit 113
+    handle_secrets_error 113 "Failed to transfer service.yaml to VM" \
+        "Check if service.yaml exists in k8s directory: $(pwd)/k8s/service.yaml. Ensure VM is running and accessible: multipass info '$VM_NAME'."
 fi
 log "service.yaml transferred successfully to VM"
 
 # Transfer ingress.yaml to VM
 log "Transferring ingress.yaml to VM..."
 if ! multipass transfer k8s/ingress.yaml "$VM_NAME":/home/ubuntu/k8s/ingress.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    log "ERROR: Failed to transfer ingress.yaml to VM"
-    exit 114
+    handle_secrets_error 114 "Failed to transfer ingress.yaml to VM" \
+        "Check if ingress.yaml exists in k8s directory: $(pwd)/k8s/ingress.yaml. Ensure VM is running and accessible: multipass info '$VM_NAME'."
 fi
 log "ingress.yaml transferred successfully to VM"
 
