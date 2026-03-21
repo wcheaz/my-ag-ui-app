@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Kubernetes manifest file path errors causing "path does not exist" errors during kubectl apply
 - YAML file copy and generation process in deployment script
 - Working directory and file path validation in VM
+- File transfer mechanism for copying YAML files from host to VM before kubectl operations
 
 ## [1.0.0] - 2026-03-21
 

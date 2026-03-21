@@ -298,8 +298,9 @@ multipass exec my-ag-ui-app-k8s -- microk8s kubectl describe nodes
 
 #### Error: "path does not exist" for YAML files
 - **Cause**: YAML files not properly copied to VM or generated in wrong location
-- **Solution**: The deployment script now handles file copying and generation automatically
+- **Solution**: The deployment script now handles file copying and generation automatically using multipass transfer
 - **Prevention**: Ensure k8s/ directory exists with all required YAML files before running deployment
+- **File Copy Process**: The script automatically copies YAML files from the host k8s/ directory to the VM's /home/ubuntu/k8s/ directory before running kubectl commands
 - **Verification**: Check files are properly copied to VM with `multipass exec my-ag-ui-app-k8s -- ls -la /home/ubuntu/k8s/`
 
 ### Performance Issues

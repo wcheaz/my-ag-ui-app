@@ -880,6 +880,12 @@ if ! multipass transfer k8s/ "$VM_NAME":/home/ubuntu/; then
 fi
 ```
 
+2. **File Transfer Mechanism**: The script uses multipass transfer to reliably copy files from the host system to the VM:
+   - Source: `k8s/` directory on the host (relative to openspec/changes/containerize-kubernetes-multipass-microk8s/)
+   - Destination: `/home/ubuntu/k8s/` directory inside the VM
+   - Validation: The script verifies the transfer succeeded before proceeding
+   - Error handling: If transfer fails, the script exits with an appropriate error message
+
 2. **Pro secrets.yaml Generation**: secrets.yaml is now generated in the correct location on the VM before being applied:
 ```bash
 # Generate secrets.yaml on VM
