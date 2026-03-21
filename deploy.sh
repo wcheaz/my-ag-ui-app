@@ -180,6 +180,14 @@ if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/deployment.yaml 2>&1 
 fi
 log "deployment.yaml validation successful - file exists in VM"
 
+# Validate that service.yaml exists in VM after transfer
+log "Validating that service.yaml exists in VM..."
+if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
+    log "ERROR: service.yaml does not exist in VM after transfer"
+    exit 117
+fi
+log "service.yaml validation successful - file exists in VM"
+
 log "Applying Kubernetes secrets..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_secrets_error 105 "Failed to apply Kubernetes secrets" \
