@@ -3412,12 +3412,20 @@ log "All required Kubernetes manifests are available and validated"
 log "Step 4: Applying Kubernetes secrets manifest..."
 if [ -f "k8s/secrets.yaml" ]; then
     log "Found secrets.yaml, applying secrets configuration..."
-    if ! multipass exec "$VM_NAME" -- bash -c "cd /tmp && microk8s kubectl apply -f <(cat <<'EOF'
-$(cat k8s/secrets.yaml)
-EOF
-)" 2>&1 | tee -a "$LOG_FILE"; then
+    
+    # Copy secrets manifest to VM first
+    log "Copying secrets manifest to VM..."
+    if ! multipass copy-file "k8s/secrets.yaml" "$VM_NAME:/tmp/secrets.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+        handle_k8s_deployment_error 104 "Failed to copy secrets manifest to VM" \
+            "Check if secrets manifest exists: k8s/secrets.yaml. Check VM connectivity: multipass info $VM_NAME"
+    fi
+    log "Secrets manifest copied to VM"
+    
+    # Apply secrets manifest from VM
+    log "Applying secrets manifest in VM..."
+    if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /tmp/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
         handle_k8s_deployment_error 104 "Failed to apply secrets manifest" \
-            "Check secrets manifest: k8s/secrets.yaml. Apply manually: microk8s kubectl apply -f k8s/secrets.yaml"
+            "Check secrets manifest: k8s/secrets.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /tmp/secrets.yaml"
     fi
     log "Secrets manifest applied successfully"
     
@@ -3427,6 +3435,10 @@ EOF
     else
         log "Secrets verified successfully"
     fi
+    
+    # Clean up secrets manifest from VM
+    log "Cleaning up secrets manifest from VM..."
+    multipass exec "$VM_NAME" -- rm -f /tmp/secrets.yaml 2>&1 | tee -a "$LOG_FILE" || true
 else
     log "No secrets.yaml found, skipping secrets configuration"
 fi
@@ -3434,14 +3446,26 @@ fi
 # 7.6.5 Apply deployment manifest
 log "Step 5: Applying Kubernetes deployment manifest..."
 log "Creating deployment for application '$IMAGE_NAME'..."
-if ! multipass exec "$VM_NAME" -- bash -c "cd /tmp && microk8s kubectl apply -f <(cat <<'EOF'
-$(cat k8s/deployment.yaml)
-EOF
-)" 2>&1 | tee -a "$LOG_FILE"; then
+
+# Copy deployment manifest to VM first
+log "Copying deployment manifest to VM..."
+if ! multipass copy-file "k8s/deployment.yaml" "$VM_NAME:/tmp/deployment.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 105 "Failed to copy deployment manifest to VM" \
+        "Check if deployment manifest exists: k8s/deployment.yaml. Check VM connectivity: multipass info $VM_NAME"
+fi
+log "Deployment manifest copied to VM"
+
+# Apply deployment manifest from VM
+log "Applying deployment manifest in VM..."
+if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /tmp/deployment.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 105 "Failed to apply deployment manifest" \
-        "Check deployment manifest: k8s/deployment.yaml. Apply manually: microk8s kubectl apply -f k8s/deployment.yaml"
+        "Check deployment manifest: k8s/deployment.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /tmp/deployment.yaml"
 fi
 log "Deployment manifest applied successfully"
+
+# Clean up deployment manifest from VM
+log "Cleaning up deployment manifest from VM..."
+multipass exec "$VM_NAME" -- rm -f /tmp/deployment.yaml 2>&1 | tee -a "$LOG_FILE" || true
 
 # 7.6.6 Verify deployment was created
 log "Step 6: Verifying Kubernetes deployment..."
@@ -3453,14 +3477,26 @@ log "Deployment verified successfully"
 
 # 7.6.7 Apply service manifest
 log "Step 7: Applying Kubernetes service manifest..."
-if ! multipass exec "$VM_NAME" -- bash -c "cd /tmp && microk8s kubectl apply -f <(cat <<'EOF'
-$(cat k8s/service.yaml)
-EOF
-)" 2>&1 | tee -a "$LOG_FILE"; then
+
+# Copy service manifest to VM first
+log "Copying service manifest to VM..."
+if ! multipass copy-file "k8s/service.yaml" "$VM_NAME:/tmp/service.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 107 "Failed to copy service manifest to VM" \
+        "Check if service manifest exists: k8s/service.yaml. Check VM connectivity: multipass info $VM_NAME"
+fi
+log "Service manifest copied to VM"
+
+# Apply service manifest from VM
+log "Applying service manifest in VM..."
+if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /tmp/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 107 "Failed to apply service manifest" \
-        "Check service manifest: k8s/service.yaml. Apply manually: microk8s kubectl apply -f k8s/service.yaml"
+        "Check service manifest: k8s/service.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /tmp/service.yaml"
 fi
 log "Service manifest applied successfully"
+
+# Clean up service manifest from VM
+log "Cleaning up service manifest from VM..."
+multipass exec "$VM_NAME" -- rm -f /tmp/service.yaml 2>&1 | tee -a "$LOG_FILE" || true
 
 # 7.6.8 Verify service was created
 log "Step 8: Verifying Kubernetes service..."
@@ -3472,14 +3508,26 @@ log "Service verified successfully"
 
 # 7.6.9 Apply ingress manifest
 log "Step 9: Applying Kubernetes ingress manifest..."
-if ! multipass exec "$VM_NAME" -- bash -c "cd /tmp && microk8s kubectl apply -f <(cat <<'EOF'
-$(cat k8s/ingress.yaml)
-EOF
-)" 2>&1 | tee -a "$LOG_FILE"; then
+
+# Copy ingress manifest to VM first
+log "Copying ingress manifest to VM..."
+if ! multipass copy-file "k8s/ingress.yaml" "$VM_NAME:/tmp/ingress.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 109 "Failed to copy ingress manifest to VM" \
+        "Check if ingress manifest exists: k8s/ingress.yaml. Check VM connectivity: multipass info $VM_NAME"
+fi
+log "Ingress manifest copied to VM"
+
+# Apply ingress manifest from VM
+log "Applying ingress manifest in VM..."
+if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /tmp/ingress.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 109 "Failed to apply ingress manifest" \
-        "Check ingress manifest: k8s/ingress.yaml. Apply manually: microk8s kubectl apply -f k8s/ingress.yaml"
+        "Check ingress manifest: k8s/ingress.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /tmp/ingress.yaml"
 fi
 log "Ingress manifest applied successfully"
+
+# Clean up ingress manifest from VM
+log "Cleaning up ingress manifest from VM..."
+multipass exec "$VM_NAME" -- rm -f /tmp/ingress.yaml 2>&1 | tee -a "$LOG_FILE" || true
 
 # 7.6.10 Verify ingress was created
 log "Step 10: Verifying Kubernetes ingress..."

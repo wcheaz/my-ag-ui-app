@@ -1,5 +1,23 @@
 
 # ===========================
+# LOGGING FUNCTIONS
+# ===========================
+
+# Log file location
+LOG_FILE="/tmp/deploy-$(date +%Y%m%d-%H%M%S).log"
+
+# VM configuration
+VM_NAME="my-ag-ui-app-k8s"
+
+# Logging function - prints to both stdout and log file
+log() {
+    local message="$1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$timestamp] $message"
+    echo "[$timestamp] $message" >> "$LOG_FILE"
+}
+
+# ===========================
 # KUBERNETES SECRETS SETUP SECTION
 # ===========================
 

@@ -184,3 +184,33 @@
 - [x] 14.11 Verify project root directory is clean and organized
 - [x] 14.12 Update .gitignore if needed to exclude test/kubernetes/ directory
 - [x] 14.13 Document cleanup changes in CHANGELOG.md
+
+## 15. Bug Fix: Multipass Instance Name Error
+
+- [ ] 15.1 Diagnose the "instance "" does not exist" error in deploy.sh
+  - [ ] 15.1.1 Review deploy.sh to identify where VM name variable is defined
+  - [ ] 15.1.2 Check if VM name variable is properly initialized before use
+  - [ ] 15.1.3 Identify all locations where multipass exec is called with VM name
+  - [ ] 15.1.4 Determine if VM name variable is being overwritten or cleared
+  - [ ] 15.1.5 Review the script flow to understand when VM name should be available
+- [ ] 15.2 Fix the VM name variable issue
+  - [ ] 15.2.1 Ensure VM name is defined and exported early in the script
+  - [ ] 15.2.2 Add validation to check VM name is set before using multipass exec
+  - [ ] 15.2.3 Add error handling for empty VM name scenarios
+  - [ ] 15.2.4 Verify VM name is consistent throughout all script sections
+  - [ ] 15.2.5 Add logging to track VM name variable state during execution
+- [ ] 15.3 Test the fix
+  - [ ] 15.3.1 Run deploy.sh and verify VM name is properly set
+  - [ ] 15.3.2 Verify multipass exec commands execute successfully
+  - [ ] 15.3.3 Verify Kubernetes secrets are applied without errors
+  - [ ] 15.3.4 Verify deployment manifest is applied without errors
+  - [ ] 15.3.5 Verify service manifest is applied without errors
+  - [ ] 15.3.6 Verify ingress manifest is applied without errors
+  - [ ] 15.3.7 Verify pod status checks work correctly
+  - [ ] 15.3.8 Verify deployment completes successfully
+  - [ ] 15.3.9 Verify application is accessible after deployment
+- [ ] 15.4 Document the fix
+  - [ ] 15.4.1 Update KUBERNETES-EXPLANATION.md with VM name variable details
+  - [ ] 15.4.2 Add troubleshooting entry for "instance "" does not exist" error
+  - [ ] 15.4.3 Document the fix in CHANGELOG.md
+  - [ ] 15.4.4 Update README.md if needed with VM name requirements

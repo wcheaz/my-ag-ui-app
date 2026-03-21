@@ -1,5 +1,5 @@
 {
-  "active": true,
+  "active": false,
   "iteration": 143,
   "minIterations": 1,
   "maxIterations": 150,
@@ -12,5 +12,6 @@
   "noCommit": false,
   "model": "",
   "startedAt": "2026-03-21T18:41:31.155Z",
-  "resumedAt": "2026-03-21T18:41:31.155Z"
+  "resumedAt": "2026-03-21T18:41:31.155Z",
+  "completedAt": "2026-03-21T18:55:39.380Z"
 }
