@@ -1,3 +1,0 @@
-[2026-03-20 15:42:24] Starting service connectivity test for my-ag-ui-app-service
-[2026-03-20 15:42:24] Checking if VM my-ag-ui-app-vm exists...
-[2026-03-20 15:42:24] ERROR: VM my-ag-ui-app-vm does not exist. Please run the deployment script first.

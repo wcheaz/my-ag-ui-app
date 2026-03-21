@@ -14,6 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Replaced manual parsing with industry-standard `load_dotenv()` function
   - Improved support for complex `.env` file formats (multiline values, quoted strings, comments)
 
+### Cleanup
+- **Project Organization**: Cleaned up project root directory and organized test files
+  - Created `test/kubernetes/` directory for Kubernetes-related test scripts
+  - Moved test scripts (`test_script_idempotency.sh`, `test_script.sh`, `test-container-build.sh`, `test-docker-build.sh`) to `test/kubernetes/` directory
+  - Removed unnecessary deployment scripts (kept only `deploy.sh`)
+  - Cleaned up log files (`deployment_test.log`, `deployment.log`, `test_deployment.log`, `vm-test.log`, `service-connectivity-test.log`)
+  - Removed temporary files (`SCRIPT_IDEMPOTENCY_TEST_RESULTS.md`, `performance_analysis.md`, `env_loading_performance_results.txt`)
+  - Removed TLS certificate files (`tls.crt`, `tls.key`)
+  - Updated `.gitignore` to exclude `test/kubernetes/` directory
+  - Verified project root directory is clean and organized
+
 ### Migration Notes
 - **No Breaking Changes**: Existing `.env` files will continue to work without modification
 - **Enhanced Compatibility**: The new parser supports additional `.env` file features:

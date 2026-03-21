@@ -79,3 +79,6 @@ agent/uv.lock
 
 # Kubernetes secrets (should be generated, not committed)
 k8s/secrets.yaml
+
+# Kubernetes test scripts (moved to test/kubernetes/ directory)
+test/kubernetes/
