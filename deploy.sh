@@ -228,6 +228,7 @@ fi
 log "Using VM_NAME: $VM_NAME for Kubernetes deployment"
 
 # Create k8s directory in VM before file transfer
+log "Preparing to create k8s directory in VM..."
 log "Creating k8s directory in VM..."
 if ! multipass exec "$VM_NAME" -- mkdir -p /home/ubuntu/k8s 2>&1 | tee -a "$LOG_FILE"; then
     handle_secrets_error 110 "Failed to create k8s directory in VM" \

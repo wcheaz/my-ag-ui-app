@@ -24,7 +24,7 @@
 
 ## 4. Logging Enhancement
 
-- [ ] 4.1 Add log message before directory creation in VM
+- [x] 4.1 Add log message before directory creation in VM
 - [ ] 4.2 Add success log message after directory creation
 - [ ] 4.3 Add log message before each file transfer
 - [ ] 4.4 Add success log message after each file transfer
