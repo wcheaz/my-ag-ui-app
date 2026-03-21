@@ -344,37 +344,48 @@ The `cleanup.sh` script removes all deployed resources:
 
 ### Required Environment Variables
 
-The application requires the following environment variables:
+The application requires the following environment variables for proper functionality:
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| NODE_ENV | Node.js environment | `production` |
-| PORT | Application port | `3000` |
-| API_BASE_URL | Base URL for API calls | `http://localhost:3001/api` |
-| DATABASE_URL | Database connection string | `postgresql://user:pass@localhost/db` |
-| SECRET_KEY | Application secret key | `your-secret-key` |
+| Variable | Description | Example | Sensitivity |
+|----------|-------------|---------|------------|
+| **OpenAI Configuration** |  |  |  |
+| OPENAI_API_KEY | OpenAI API key for authentication | `sk-...` | High (Secret) |
+| OPENAI_BASE_URL | Base URL for OpenAI API | `https://api.openai.com/v1` | Medium (Secret) |
+| OPENAI_MODEL | OpenAI model to use for completions | `gpt-4` | Medium (Secret) |
+| **Procurement Agent Configuration** |  |  |  |
+| LLM_MAX_TOKENS | Maximum tokens for LLM responses | `4000` | Low (ConfigMap) |
+| LLM_CONTEXT_WINDOW | Context window size for LLM | `8000` | Low (ConfigMap) |
+| EMBEDDING_MODEL | Model to use for embeddings | `text-embedding-ada-002` | Medium (Secret) |
+| **Logging Configuration** |  |  |  |
+| LOGFIRE_TOKEN | Token for Logfire logging service | `logfire-token-123` | High (Secret) |
+| **Application Configuration** |  |  |  |
+| NODE_ENV | Node.js runtime environment | `production` | Low (Direct) |
+| PORT | Application port number | `3000` | Low (Direct) |
 
 ### Configuration Methods
 
-Environment variables can be configured using:
+Environment variables are configured using three different approaches based on their sensitivity:
 
-1. **Kubernetes Secrets** (for sensitive data):
-
-```bash
-kubectl create secret generic app-secrets \
-  --from-literal=SECRET_KEY=your-secret-key \
-  --from-literal=DATABASE_URL=postgresql://user:pass@localhost/db
-```
-
-2. **Kubernetes ConfigMaps** (for non-sensitive data):
+1. **Kubernetes Secrets** (for sensitive data like API keys and tokens):
 
 ```bash
-kubectl create configmap app-config \
-  --from-literal=NODE_ENV=production \
-  --from-literal=PORT=3000
+kubectl create secret generic my-ag-ui-app-secrets \
+  --from-literal=openai-api-key=sk-your-openai-api-key \
+  --from-literal=openai-base-url=https://api.openai.com/v1 \
+  --from-literal=openai-model=gpt-4 \
+  --from-literal=embedding-model=text-embedding-ada-002 \
+  --from-literal=logfire-token=your-logfire-token
 ```
 
-3. **Directly in the deployment manifest** (for non-sensitive data):
+2. **Kubernetes ConfigMaps** (for non-sensitive configuration):
+
+```bash
+kubectl create configmap my-ag-ui-app-config \
+  --from-literal=llm-max-tokens=4000 \
+  --from-literal=llm-context-window=8000
+```
+
+3. **Directly in the deployment manifest** (for basic application settings):
 
 ```yaml
 env:
@@ -383,6 +394,114 @@ env:
 - name: PORT
   value: "3000"
 ```
+
+### Environment Variable Usage in Deployment
+
+The deployment manifest references these environment variables as follows:
+
+```yaml
+env:
+# Basic configuration (direct values)
+- name: NODE_ENV
+  value: "production"
+- name: PORT
+  value: "3000"
+
+# OpenAI configuration (from secrets)
+- name: OPENAI_API_KEY
+  valueFrom:
+    secretKeyRef:
+      name: my-ag-ui-app-secrets
+      key: openai-api-key
+- name: OPENAI_BASE_URL
+  valueFrom:
+    secretKeyRef:
+      name: my-ag-ui-app-secrets
+      key: openai-base-url
+- name: OPENAI_MODEL
+  valueFrom:
+    secretKeyRef:
+      name: my-ag-ui-app-secrets
+      key: openai-model
+
+# Procurement agent configuration (mixed)
+- name: LLM_MAX_TOKENS
+  valueFrom:
+    configMapKeyRef:
+      name: my-ag-ui-app-config
+      key: llm-max-tokens
+- name: LLM_CONTEXT_WINDOW
+  valueFrom:
+    configMapKeyRef:
+      name: my-ag-ui-app-config
+      key: llm-context-window
+- name: EMBEDDING_MODEL
+  valueFrom:
+    secretKeyRef:
+      name: my-ag-ui-app-secrets
+      key: embedding-model
+
+# Logging configuration (from secrets)
+- name: LOGFIRE_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: my-ag-ui-app-secrets
+      key: logfire-token
+```
+
+### Setting Environment Variables for Deployment
+
+Before deploying, you need to create the Kubernetes secrets and configmaps with your actual values:
+
+1. **Create a secrets file** (`secrets.yaml`):
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-ag-ui-app-secrets
+type: Opaque
+stringData:
+  openai-api-key: "your-actual-openai-api-key"
+  openai-base-url: "https://api.openai.com/v1"
+  openai-model: "gpt-4"
+  embedding-model: "text-embedding-ada-002"
+  logfire-token: "your-actual-logfire-token"
+```
+
+2. **Create a configmap file** (`configmap.yaml`):
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-ag-ui-app-config
+data:
+  llm-max-tokens: "4000"
+  llm-context-window: "8000"
+```
+
+3. **Apply to the cluster**:
+```bash
+kubectl apply -f secrets.yaml
+kubectl apply -f configmap.yaml
+```
+
+### Environment Variable Validation
+
+The deployment script validates that all required environment variables are properly configured:
+
+- **Secrets**: Verifies that the `my-ag-ui-app-secrets` secret exists and contains all required keys
+- **ConfigMaps**: Verifies that the `my-ag-ui-app-config` configmap exists and contains all required keys
+- **Format Validation**: Ensures that sensitive values are not hardcoded in the deployment manifest
+- **Empty Value Check**: Validates that no environment variables have empty values
+
+### Environment Variable Management Best Practices
+
+1. **Never commit sensitive values** to version control
+2. **Use separate secrets for different environments** (development, staging, production)
+3. **Regularly rotate API keys** and tokens
+4. **Use environment-specific values** (e.g., different models for dev/prod)
+5. **Document all environment variables** and their purposes
+6. **Validate environment variables** during deployment to prevent runtime errors
 
 ## Resource Scaling Recommendations
 
