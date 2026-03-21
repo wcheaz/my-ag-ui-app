@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **YAML Path Errors in deploy.sh**: Fixed "path does not exist" errors during Kubernetes deployment
+  - **Root Cause**: `secrets.yaml` file existed but was incomplete (contained empty values for sensitive data)
+  - **Solution**: Added automatic detection and generation of `secrets.yaml` when incomplete
+  - Added logic to run `setup-secrets.sh` automatically before applying Kubernetes manifests
+  - Enhanced file validation to check for file completeness, not just existence
+  - Added comprehensive debugging and logging features to prevent future YAML path issues
+  - Improved error handling with clear recovery suggestions for common deployment issues
+  - Added VM readiness validation before file operations
+  - Enhanced kubectl command logging for better debugging visibility
+  - Added working directory and file path logging throughout the script
+
 ### Changed
 - **Environment Loading**: Migrated from custom `load_env()` function to `python-dotenv` library
   - Removed ~20 lines of custom environment variable parsing code from `agent/src/agent.py`

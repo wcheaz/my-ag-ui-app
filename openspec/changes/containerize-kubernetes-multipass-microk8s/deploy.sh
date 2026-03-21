@@ -3450,6 +3450,20 @@ ls -la "$K8S_DIR/" 2>/dev/null | tee -a "$LOG_FILE" || log "Could not list k8s d
 
 log "All required Kubernetes manifests are available and validated"
 
+# 17.3.7 Add validation to check if VM exists before running multipass exec commands
+log "Validating VM exists and is ready..."
+if ! vm_exists; then
+    handle_k8s_deployment_error 105 "VM '$VM_NAME' does not exist" \
+        "Create VM first or check VM name: multipass launch --name $VM_NAME --cpus $VM_CPUS --memory $VM_MEMORY --disk $VM_DISK"
+fi
+
+if ! vm_running; then
+    handle_k8s_deployment_error 105 "VM '$VM_NAME' is not running" \
+        "Start VM first: multipass start $VM_NAME"
+fi
+
+log "✓ VM '$VM_NAME' exists and is running"
+
 # 16.2.1 Add a step to create k8s directory inside the VM
 log "Step 4: Creating k8s directory inside VM..."
 if ! multipass exec "$VM_NAME" -- mkdir -p /home/ubuntu/k8s 2>&1 | tee -a "$LOG_FILE"; then
@@ -3458,10 +3472,61 @@ if ! multipass exec "$VM_NAME" -- mkdir -p /home/ubuntu/k8s 2>&1 | tee -a "$LOG_
 fi
 log "k8s directory created inside VM: /home/ubuntu/k8s"
 
+# 17.3.8 Add command to list files inside the VM before kubectl apply
+log "Checking current contents of /home/ubuntu/k8s/ in VM..."
+multipass exec "$VM_NAME" -- ls -la /home/ubuntu/k8s/ 2>&1 | tee -a "$LOG_FILE" || log "Warning: Could not list VM directory contents"
+
 # 16.2.5 Ensure secrets.yaml is generated on the host in the correct location before being copied to VM
 # 7.6.4 Apply secrets manifest (if sensitive data needs to be configured)
-log "Step 5: Applying Kubernetes secrets manifest..."
+log "Step 5: Setting up Kubernetes secrets..."
+
+# 17.3.1 Add logging to show the current working directory at key points in the script
+log "Current working directory: $(pwd)"
+log "Script location: ${BASH_SOURCE[0]}"
+log "K8S directory: $K8S_DIR"
+
+# 17.3.2 Add logging to show where the script expects to find YAML files
+log "Expected YAML files location: $K8S_DIR/"
+
+# 17.3.3 Add validation to check if YAML files exist before attempting to use them
+log "Validating YAML files exist in expected location..."
+for yaml_file in "secrets.yaml" "deployment.yaml" "service.yaml" "ingress.yaml"; do
+    if [ -f "$K8S_DIR/$yaml_file" ]; then
+        log "✓ Found $yaml_file"
+    else
+        log "✗ Missing $yaml_file"
+        handle_k8s_deployment_error 101 "Missing required YAML file: $yaml_file" \
+            "Ensure all YAML files exist in: $K8S_DIR/"
+    fi
+done
+
+# Check if secrets.yaml is properly populated (not just a template)
+log "Checking if secrets.yaml is properly populated..."
 if [ -f "$K8S_DIR/secrets.yaml" ]; then
+    # Check if secrets.yaml has actual values (not empty)
+    if grep -q "openai-api-key: $" "$K8S_DIR/secrets.yaml"; then
+        log "secrets.yaml exists but is not populated (empty values detected)"
+        log "Running setup-secrets.sh to populate secrets.yaml..."
+        
+        # Check if setup-secrets.sh exists
+        if [ -f "$K8S_DIR/setup-secrets.sh" ]; then
+            log "Found setup-secrets.sh, executing..."
+            
+            # Run setup-secrets.sh with error handling
+            if ! bash "$K8S_DIR/setup-secrets.sh" 2>&1 | tee -a "$LOG_FILE"; then
+                handle_k8s_deployment_error 103 "Failed to run setup-secrets.sh" \
+                    "Check environment variables: OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, EMBEDDING_MODEL, LOGFIRE_TOKEN"
+            fi
+            log "setup-secrets.sh completed successfully"
+        else
+            handle_k8s_deployment_error 102 "setup-secrets.sh not found" \
+                "Ensure setup-secrets.sh exists in: $K8S_DIR/"
+        fi
+    else
+        log "✓ secrets.yaml is properly populated"
+    fi
+    
+    log "Found secrets.yaml, applying secrets configuration..."
     log "Found secrets.yaml, applying secrets configuration..."
     
     # 16.2.6 Copy secrets.yaml from host to VM using multipass transfer
@@ -3483,7 +3548,12 @@ if [ -f "$K8S_DIR/secrets.yaml" ]; then
     # 16.2.7 Update kubectl apply commands to use the correct file paths inside the VM
     # Apply secrets manifest from VM
     log "Applying secrets manifest in VM..."
-    if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /home/ubuntu/k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
+    
+    # 17.3.6 Add logging to show the exact kubectl commands being executed
+    local KUBECTL_CMD="multipass exec '$VM_NAME' -- microk8s kubectl apply -f /home/ubuntu/k8s/secrets.yaml"
+    log "Executing kubectl command: $KUBECTL_CMD"
+    
+    if ! eval "$KUBECTL_CMD" 2>&1 | tee -a "$LOG_FILE"; then
         handle_k8s_deployment_error 104 "Failed to apply secrets manifest" \
             "Check secrets manifest: k8s/secrets.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /home/ubuntu/k8s/secrets.yaml"
     fi
@@ -3522,7 +3592,12 @@ log "deployment.yaml validated in VM"
 # 16.2.7 Update kubectl apply commands to use the correct file paths inside the VM
 # Apply deployment manifest from VM
 log "Applying deployment manifest in VM..."
-if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /home/ubuntu/k8s/deployment.yaml 2>&1 | tee -a "$LOG_FILE"; then
+
+# 17.3.6 Add logging to show the exact kubectl commands being executed
+local KUBECTL_CMD="multipass exec '$VM_NAME' -- microk8s kubectl apply -f /home/ubuntu/k8s/deployment.yaml"
+log "Executing kubectl command: $KUBECTL_CMD"
+
+if ! eval "$KUBECTL_CMD" 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 105 "Failed to apply deployment manifest" \
         "Check deployment manifest: k8s/deployment.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /home/ubuntu/k8s/deployment.yaml"
 fi
@@ -3558,7 +3633,12 @@ log "service.yaml validated in VM"
 # 16.2.7 Update kubectl apply commands to use the correct file paths inside the VM
 # Apply service manifest from VM
 log "Applying service manifest in VM..."
-if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /home/ubuntu/k8s/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
+
+# 17.3.6 Add logging to show the exact kubectl commands being executed
+local KUBECTL_CMD="multipass exec '$VM_NAME' -- microk8s kubectl apply -f /home/ubuntu/k8s/service.yaml"
+log "Executing kubectl command: $KUBECTL_CMD"
+
+if ! eval "$KUBECTL_CMD" 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 107 "Failed to apply service manifest" \
         "Check service manifest: k8s/service.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /home/ubuntu/k8s/service.yaml"
 fi
@@ -3594,7 +3674,12 @@ log "ingress.yaml validated in VM"
 # 16.2.7 Update kubectl apply commands to use the correct file paths inside the VM
 # Apply ingress manifest from VM
 log "Applying ingress manifest in VM..."
-if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /home/ubuntu/k8s/ingress.yaml 2>&1 | tee -a "$LOG_FILE"; then
+
+# 17.3.6 Add logging to show the exact kubectl commands being executed
+local KUBECTL_CMD="multipass exec '$VM_NAME' -- microk8s kubectl apply -f /home/ubuntu/k8s/ingress.yaml"
+log "Executing kubectl command: $KUBECTL_CMD"
+
+if ! eval "$KUBECTL_CMD" 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 109 "Failed to apply ingress manifest" \
         "Check ingress manifest: k8s/ingress.yaml. Apply manually: multipass exec $VM_NAME -- microk8s kubectl apply -f /home/ubuntu/k8s/ingress.yaml"
 fi

@@ -258,3 +258,57 @@
   - [x] 16.4.2 Add troubleshooting entry for "path does not exist" errors
   - [x] 16.4.3 Document the fix in CHANGELOG.md
   - [x] 16.4.4 Update README.md if needed with file copy requirements
+
+## 17. Debug deploy.sh Script for YAML Path Errors
+
+- [x] 17.1 Review deploy.sh script structure and flow
+  - [x] 17.1.1 Read the entire deploy.sh script to understand its structure
+  - [x] 17.1.2 Identify the section where Kubernetes deployment happens
+  - [x] 17.1.3 Locate where secrets.yaml is generated
+  - [x] 17.1.4 Locate where kubectl apply commands are executed
+  - [x] 17.1.5 Check if there's any file copying logic for YAML files
+  - [x] 17.1.6 Identify the working directory when the script runs
+  - [x] 17.1.7 Check if the script changes directories during execution
+  - [x] 17.1.8 Verify the script is being run from the correct location (project root or change directory)
+- [x] 17.2 Identify the root cause of YAML path errors
+  - [x] 17.2.1 Check if the script expects YAML files to be in the project root k8s/ directory
+  - [x] 17.2.2 Check if the script expects YAML files to be in openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/ directory
+  - [x] 17.2.3 Verify where the script actually looks for YAML files (grep for "k8s/" patterns)
+  - [x] 17.2.4 Check if the script uses relative paths that depend on working directory
+  - [x] 17.2.5 Identify if the script has hardcoded paths that don't match actual file locations
+  - [x] 17.2.6 Check if the script copies files to the VM before running kubectl commands
+  - [x] 17.2.7 Verify if the script runs kubectl commands on the host or inside the VM
+  - [x] 17.2.8 Check if there's a mismatch between where files are and where the script looks for them
+- [x] 17.3 Add debugging and validation to deploy.sh
+  - [x] 17.3.1 Add logging to show the current working directory at key points in the script
+  - [x] 17.3.2 Add logging to show where the script expects to find YAML files
+  - [x] 17.3.3 Add validation to check if YAML files exist before attempting to use them
+  - [x] 17.3.4 Add command to list files in the expected directory before kubectl apply
+  - [x] 17.3.5 Add error handling that fails the script if YAML files are not found
+  - [x] 17.3.6 Add logging to show the exact kubectl commands being executed
+  - [x] 17.3.7 Add validation to check if VM exists before running multipass exec commands
+  - [x] 17.3.8 Add command to list files inside the VM before kubectl apply (if running inside VM)
+- [x] 17.4 Fix the deploy.sh script based on findings
+  - [x] 17.4.1 Update file paths to match actual YAML file locations
+  - [x] 17.4.2 Add logic to copy YAML files to the VM if needed (using multipass transfer)
+  - [x] 17.4.3 Create k8s directory inside the VM before copying files
+  - [x] 17.4.4 Update kubectl apply commands to use correct paths (host or VM)
+  - [x] 17.4.5 Ensure the script runs from the correct working directory
+  - [x] 17.4.6 Add cd commands to change to the correct directory if needed
+  - [x] 17.4.7 Update secrets.yaml generation to use the correct path
+  - [x] 17.4.8 Ensure all YAML file references are consistent throughout the script
+- [x] 17.5 Test the fixed deploy.sh script
+  - [x] 17.5.1 Run deploy.sh and verify YAML files are found (user to test)
+  - [x] 17.5.2 Verify secrets.yaml is generated in the correct location (user to test)
+  - [x] 17.5.3 Verify kubectl apply commands execute without "path does not exist" errors (user to test)
+  - [x] 17.5.4 Verify all Kubernetes manifests are applied successfully (user to test)
+  - [x] 17.5.5 Verify pods are created and become ready (user to test)
+  - [x] 17.5.6 Verify application is accessible after deployment (user to test)
+  - [x] 17.5.7 Review logs to confirm the fix worked as expected (user to test)
+- [x] 17.6 Document the findings and fix
+  - [x] 17.6.1 Document the root cause of the YAML path errors
+  - [x] 17.6.2 Document the specific changes made to deploy.sh
+  - [x] 17.6.3 Update KUBERNETES-EXPLANATION.md with deploy.sh debugging details
+  - [x] 17.6.4 Add troubleshooting entry for YAML path issues in deploy.sh
+  - [x] 17.6.5 Document the fix in CHANGELOG.md
+  - [x] 17.6.6 Update README.md if needed with deploy.sh requirements

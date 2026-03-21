@@ -171,3 +171,49 @@ cd agent
 uv sync
 uv run src/main.py
 ```
+
+### Deployment YAML Path Errors
+If you encounter "path does not exist" errors during Kubernetes deployment:
+
+#### Issue: Incomplete secrets.yaml
+The deployment script now automatically detects and fixes incomplete `secrets.yaml` files. If you see errors related to secrets:
+
+1. **Ensure environment variables are set** (or the script will prompt for them):
+   ```bash
+   export OPENAI_API_KEY="your-api-key"
+   export OPENAI_BASE_URL="https://api.openai.com/v1"
+   export OPENAI_MODEL="gpt-4"
+   export EMBEDDING_MODEL="text-embedding-3-small"
+   export LOGFIRE_TOKEN="your-logfire-token"
+   ```
+
+2. **Run from correct directory**: The deployment script must be run from:
+   ```
+   openspec/changes/containerize-kubernetes-multipass-microk8s/
+   ```
+
+3. **Manual secrets generation**: If automatic generation fails:
+   ```bash
+   cd openspec/changes/containerize-kubernetes-multipass-microk8s/
+   ./k8s/setup-secrets.sh
+   ```
+
+#### Issue: VM not ready
+If the script reports VM-related errors:
+1. **Check VM status**: `multipass info my-ag-ui-app-k8s`
+2. **Start VM if needed**: `multipass start my-ag-ui-app-k8s`
+3. **Delete and recreate VM**: `multipass delete --purge my-ag-ui-app-k8s`
+
+#### Issue: File location errors
+The script expects YAML files in:
+```
+openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/
+```
+
+Ensure all these files exist:
+- `secrets.yaml` (will be auto-generated if incomplete)
+- `deployment.yaml`
+- `service.yaml`
+- `ingress.yaml`
+
+For detailed debugging information, see: `hidden/KUBERNETES-EXPLANATION.md`
