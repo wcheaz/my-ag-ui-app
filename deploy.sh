@@ -30,6 +30,76 @@ handle_secrets_error() {
     log "SECRETS SETUP ERROR [Code: $error_code]: $error_message"
     log "RECOVERY SUGGESTION: $recovery_suggestion"
     
+    # Enhanced recovery suggestions for file transfer errors (110-119)
+    if [ "$error_code" -ge 110 ] && [ "$error_code" -le 119 ]; then
+        log "ENHANCED RECOVERY SUGGESTIONS:"
+        case $error_code in
+            110)
+                log "1. Verify VM is running: multipass info '$VM_NAME'"
+                log "2. Start VM if needed: multipass start '$VM_NAME'"
+                log "3. Check VM permissions: multipass exec '$VM_NAME' -- whoami"
+                log "4. Manual directory creation: multipass exec '$VM_NAME' -- mkdir -p /home/ubuntu/k8s"
+                log "5. If permission denied, try: multipass exec '$VM_NAME' -- sudo mkdir -p /home/ubuntu/k8s && sudo chown ubuntu:ubuntu /home/ubuntu/k8s"
+                ;;
+            111)
+                log "1. Verify secrets.yaml exists locally: ls -la k8s/secrets.yaml"
+                log "2. Check file permissions: ls -l k8s/secrets.yaml"
+                log "3. Verify VM is accessible: multipass info '$VM_NAME'"
+                log "4. Manual transfer test: multipass transfer k8s/secrets.yaml '$VM_NAME':/tmp/test-secrets.yaml"
+                log "5. If file doesn't exist, run setup-secrets.sh first: bash k8s/setup-secrets.sh"
+                ;;
+            112)
+                log "1. Verify deployment.yaml exists locally: ls -la k8s/deployment.yaml"
+                log "2. Check file is not empty: wc -l k8s/deployment.yaml"
+                log "3. Verify VM is accessible: multipass info '$VM_NAME'"
+                log "4. Manual transfer test: multipass transfer k8s/deployment.yaml '$VM_NAME':/tmp/test-deployment.yaml"
+                log "5. Check file syntax: kubectl apply --dry-run=client -f k8s/deployment.yaml"
+                ;;
+            113)
+                log "1. Verify service.yaml exists locally: ls -la k8s/service.yaml"
+                log "2. Check file is not empty: wc -l k8s/service.yaml"
+                log "3. Verify VM is accessible: multipass info '$VM_NAME'"
+                log "4. Manual transfer test: multipass transfer k8s/service.yaml '$VM_NAME':/tmp/test-service.yaml"
+                log "5. Check file syntax: kubectl apply --dry-run=client -f k8s/service.yaml"
+                ;;
+            114)
+                log "1. Verify ingress.yaml exists locally: ls -la k8s/ingress.yaml"
+                log "2. Check file is not empty: wc -l k8s/ingress.yaml"
+                log "3. Verify VM is accessible: multipass info '$VM_NAME'"
+                log "4. Manual transfer test: multipass transfer k8s/ingress.yaml '$VM_NAME':/tmp/test-ingress.yaml"
+                log "5. Check file syntax: kubectl apply --dry-run=client -f k8s/ingress.yaml"
+                ;;
+            115)
+                log "1. Check if transfer actually succeeded: multipass exec '$VM_NAME' -- ls -la /home/ubuntu/k8s/"
+                log "2. Verify secrets.yaml exists in VM: multipass exec '$VM_NAME' -- test -f /home/ubuntu/k8s/secrets.yaml && echo 'EXISTS' || echo 'MISSING'"
+                log "3. Check file size in VM: multipass exec '$VM_NAME' -- wc -c /home/ubuntu/k8s/secrets.yaml"
+                log "4. Manual re-transfer: multipass transfer k8s/secrets.yaml '$VM_NAME':/home/ubuntu/k8s/secrets.yaml"
+                log "5. If file exists but validation fails, check VM filesystem: multipass exec '$VM_NAME' -- df -h /home/ubuntu/"
+                ;;
+            116)
+                log "1. Check if transfer actually succeeded: multipass exec '$VM_NAME' -- ls -la /home/ubuntu/k8s/"
+                log "2. Verify deployment.yaml exists in VM: multipass exec '$VM_NAME' -- test -f /home/ubuntu/k8s/deployment.yaml && echo 'EXISTS' || echo 'MISSING'"
+                log "3. Check file size in VM: multipass exec '$VM_NAME' -- wc -c /home/ubuntu/k8s/deployment.yaml"
+                log "4. Manual re-transfer: multipass transfer k8s/deployment.yaml '$VM_NAME':/home/ubuntu/k8s/deployment.yaml"
+                log "5. If file exists but validation fails, check VM filesystem: multipass exec '$VM_NAME' -- df -h /home/ubuntu/"
+                ;;
+            117)
+                log "1. Check if transfer actually succeeded: multipass exec '$VM_NAME' -- ls -la /home/ubuntu/k8s/"
+                log "2. Verify service.yaml exists in VM: multipass exec '$VM_NAME' -- test -f /home/ubuntu/k8s/service.yaml && echo 'EXISTS' || echo 'MISSING'"
+                log "3. Check file size in VM: multipass exec '$VM_NAME' -- wc -c /home/ubuntu/k8s/service.yaml"
+                log "4. Manual re-transfer: multipass transfer k8s/service.yaml '$VM_NAME':/home/ubuntu/k8s/service.yaml"
+                log "5. If file exists but validation fails, check VM filesystem: multipass exec '$VM_NAME' -- df -h /home/ubuntu/"
+                ;;
+            118)
+                log "1. Check if transfer actually succeeded: multipass exec '$VM_NAME' -- ls -la /home/ubuntu/k8s/"
+                log "2. Verify ingress.yaml exists in VM: multipass exec '$VM_NAME' -- test -f /home/ubuntu/k8s/ingress.yaml && echo 'EXISTS' || echo 'MISSING'"
+                log "3. Check file size in VM: multipass exec '$VM_NAME' -- wc -c /home/ubuntu/k8s/ingress.yaml"
+                log "4. Manual re-transfer: multipass transfer k8s/ingress.yaml '$VM_NAME':/home/ubuntu/k8s/ingress.yaml"
+                log "5. If file exists but validation fails, check VM filesystem: multipass exec '$VM_NAME' -- df -h /home/ubuntu/"
+                ;;
+        esac
+    fi
+    
     # Log additional diagnostic information based on error code ranges
     log "SECRETS SETUP DIAGNOSTIC INFO:"
     log "Current directory: $(pwd)"
