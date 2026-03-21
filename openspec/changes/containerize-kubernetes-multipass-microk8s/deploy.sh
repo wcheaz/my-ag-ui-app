@@ -3472,6 +3472,14 @@ if ! multipass exec "$VM_NAME" -- mkdir -p /home/ubuntu/k8s 2>&1 | tee -a "$LOG_
 fi
 log "k8s directory created inside VM: /home/ubuntu/k8s"
 
+# 2.1 Add validation logic to check if k8s/ directory exists in VM after creation
+log "Validating k8s directory exists in VM after creation..."
+if ! multipass exec "$VM_NAME" -- test -d /home/ubuntu/k8s 2>&1 | tee -a "$LOG_FILE"; then
+    handle_k8s_deployment_error 110 "k8s directory validation failed - directory does not exist in VM" \
+        "Check directory creation: multipass exec $VM_NAME -- ls -la /home/ubuntu/. Ensure VM has proper permissions."
+fi
+log "✓ k8s directory validation passed - directory exists in VM"
+
 # 17.3.8 Add command to list files inside the VM before kubectl apply
 log "Checking current contents of /home/ubuntu/k8s/ in VM..."
 multipass exec "$VM_NAME" -- ls -la /home/ubuntu/k8s/ 2>&1 | tee -a "$LOG_FILE" || log "Warning: Could not list VM directory contents"
