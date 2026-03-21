@@ -214,3 +214,36 @@
    - [x] 15.4.2 Add troubleshooting entry for "instance "" does not exist" error
    - [x] 15.4.3 Document the fix in CHANGELOG.md
    - [x] 15.4.4 Update README.md if needed with VM name requirements
+
+## 16. Bug Fix: Kubernetes Manifest File Path Errors
+
+- [x] 16.1 Diagnose the "path does not exist" errors for YAML files
+  - [x] 16.1.1 Review deploy.sh to identify where kubectl apply commands are executed
+  - [x] 16.1.2 Check if YAML files are being copied to the VM before kubectl apply
+  - [x] 16.1.3 Verify the working directory when kubectl commands are run
+  - [x] 16.1.4 Check if YAML files exist in the openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/ directory
+  - [x] 16.1.5 Identify if the script is looking for files in the wrong location (project root vs change directory)
+  - [x] 16.1.6 Review how secrets.yaml is generated and where it's created
+- [x] 16.2 Fix the YAML file path issues
+  - [x] 16.2.1 Ensure YAML files are copied from openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/ to the VM
+  - [x] 16.2.2 Verify secrets.yaml is generated in the correct location before being applied
+  - [x] 16.2.3 Update kubectl apply commands to use correct file paths in the VM
+  - [x] 16.2.4 Add validation to check if YAML files exist before attempting to apply them
+  - [x] 16.2.5 Add error handling for missing YAML files with clear error messages
+  - [x] 16.2.6 Ensure the script runs from the correct working directory
+- [x] 16.3 Test the fix
+  - [x] 16.3.1 Run deploy.sh and verify YAML files are copied to the VM
+  - [x] 16.3.2 Verify secrets.yaml is generated successfully
+  - [x] 16.3.3 Verify kubectl apply commands find the YAML files
+  - [x] 16.3.4 Verify Kubernetes secrets are applied without "path does not exist" errors
+  - [x] 16.3.5 Verify deployment manifest is applied without errors
+  - [x] 16.3.6 Verify service manifest is applied without errors
+  - [x] 16.3.7 Verify ingress manifest is applied without errors
+  - [x] 16.3.8 Verify pods are created successfully (not "No resources found")
+  - [x] 16.3.9 Verify deployment becomes ready
+  - [x] 16.3.10 Verify application is accessible after deployment
+- [ ] 16.4 Document the fix
+  - [ ] 16.4.1 Update KUBERNETES-EXPLANATION.md with YAML file path details
+  - [ ] 16.4.2 Add troubleshooting entry for "path does not exist" errors
+  - [ ] 16.4.3 Document the fix in CHANGELOG.md
+  - [ ] 16.4.4 Update README.md if needed with file path requirements

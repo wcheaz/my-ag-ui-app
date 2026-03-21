@@ -6,6 +6,11 @@
 set -e  # Exit on any error
 set -o pipefail  # Exit if any command in a pipeline fails
 
+# Get the script's directory to ensure correct file paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+K8S_DIR="$SCRIPT_DIR/k8s"
+
 # Configuration with timeout settings
 VM_NAME="my-ag-ui-app-k8s"
 VM_CPUS=4
@@ -3389,46 +3394,46 @@ log "Docker image '$FULL_IMAGE_NAME' is available in microk8s"
 log "Step 3: Verifying Kubernetes manifests exist..."
 
 # Check if k8s directory exists first
-if [ ! -d "k8s" ]; then
+if [ ! -d "$K8S_DIR" ]; then
     handle_k8s_deployment_error 103 "k8s directory not found" \
-        "Ensure k8s directory exists in project root: $(pwd)/k8s/"
+        "Ensure k8s directory exists in change directory: $K8S_DIR/"
 fi
-log "k8s directory found: $(pwd)/k8s/"
+log "k8s directory found: $K8S_DIR/"
 
 K8S_MANIFESTS=("deployment.yaml" "service.yaml" "ingress.yaml" "secrets.yaml")
 for manifest in "${K8S_MANIFESTS[@]}"; do
-    log "Checking manifest: k8s/$manifest"
+    log "Checking manifest: $K8S_DIR/$manifest"
     
     # Check if manifest file exists
-    if [ ! -f "k8s/$manifest" ]; then
+    if [ ! -f "$K8S_DIR/$manifest" ]; then
         handle_k8s_deployment_error 103 "Kubernetes manifest '$manifest' not found" \
-            "Ensure manifest exists in k8s/ directory: $(pwd)/k8s/$manifest"
+            "Ensure manifest exists in k8s/ directory: $K8S_DIR/$manifest"
     fi
     
     # Check if manifest file is readable
-    if [ ! -r "k8s/$manifest" ]; then
+    if [ ! -r "$K8S_DIR/$manifest" ]; then
         handle_k8s_deployment_error 103 "Kubernetes manifest '$manifest' is not readable" \
-            "Check file permissions: chmod +r k8s/$manifest"
+            "Check file permissions: chmod +r $K8S_DIR/$manifest"
     fi
     
     # Check if manifest file is not empty
-    if [ ! -s "k8s/$manifest" ]; then
+    if [ ! -s "$K8S_DIR/$manifest" ]; then
         handle_k8s_deployment_error 103 "Kubernetes manifest '$manifest' is empty" \
-            "Ensure manifest file has content: k8s/$manifest"
+            "Ensure manifest file has content: $K8S_DIR/$manifest"
     fi
     
     # Validate YAML syntax if jq is available
     if command -v jq >/dev/null 2>&1 && command -v yq >/dev/null 2>&1; then
-        if ! yq eval '.' "k8s/$manifest" >/dev/null 2>&1; then
-            log "WARNING: YAML syntax validation failed for k8s/$manifest - proceeding anyway"
+        if ! yq eval '.' "$K8S_DIR/$manifest" >/dev/null 2>&1; then
+            log "WARNING: YAML syntax validation failed for $K8S_DIR/$manifest - proceeding anyway"
         fi
     fi
     
     # Basic content validation
-    local manifest_content=$(head -10 "k8s/$manifest" 2>/dev/null || echo "")
+    local manifest_content=$(head -10 "$K8S_DIR/$manifest" 2>/dev/null || echo "")
     if [ -z "$manifest_content" ]; then
         handle_k8s_deployment_error 103 "Kubernetes manifest '$manifest' appears to be corrupted or unreadable" \
-            "Check file integrity and permissions: k8s/$manifest"
+            "Check file integrity and permissions: $K8S_DIR/$manifest"
     fi
     
     # Check for required Kubernetes API fields
@@ -3436,25 +3441,25 @@ for manifest in "${K8S_MANIFESTS[@]}"; do
         log "WARNING: Manifest '$manifest' may not be a valid Kubernetes manifest (missing apiVersion or kind)"
     fi
     
-    log "Manifest '$manifest' found and accessible (size: $(wc -l < "k8s/$manifest" 2>/dev/null || echo "unknown") lines)"
+    log "Manifest '$manifest' found and accessible (size: $(wc -l < "$K8S_DIR/$manifest" 2>/dev/null || echo "unknown") lines)"
 done
 
 # Log all available manifest files for reference
 log "All available files in k8s directory:"
-ls -la k8s/ 2>/dev/null | tee -a "$LOG_FILE" || log "Could not list k8s directory contents"
+ls -la "$K8S_DIR/" 2>/dev/null | tee -a "$LOG_FILE" || log "Could not list k8s directory contents"
 
 log "All required Kubernetes manifests are available and validated"
 
 # 7.6.4 Apply secrets manifest (if sensitive data needs to be configured)
 log "Step 4: Applying Kubernetes secrets manifest..."
-if [ -f "k8s/secrets.yaml" ]; then
+if [ -f "$K8S_DIR/secrets.yaml" ]; then
     log "Found secrets.yaml, applying secrets configuration..."
     
     # Copy secrets manifest to VM first
     log "Copying secrets manifest to VM..."
-    if ! multipass copy-file "k8s/secrets.yaml" "$VM_NAME:/tmp/secrets.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+    if ! multipass copy-file "$K8S_DIR/secrets.yaml" "$VM_NAME:/tmp/secrets.yaml" 2>&1 | tee -a "$LOG_FILE"; then
         handle_k8s_deployment_error 104 "Failed to copy secrets manifest to VM" \
-            "Check if secrets manifest exists: k8s/secrets.yaml. Check VM connectivity: multipass info $VM_NAME"
+            "Check if secrets manifest exists: $K8S_DIR/secrets.yaml. Check VM connectivity: multipass info $VM_NAME"
     fi
     log "Secrets manifest copied to VM"
     
@@ -3486,9 +3491,9 @@ log "Creating deployment for application '$IMAGE_NAME'..."
 
 # Copy deployment manifest to VM first
 log "Copying deployment manifest to VM..."
-if ! multipass copy-file "k8s/deployment.yaml" "$VM_NAME:/tmp/deployment.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+if ! multipass copy-file "$K8S_DIR/deployment.yaml" "$VM_NAME:/tmp/deployment.yaml" 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 105 "Failed to copy deployment manifest to VM" \
-        "Check if deployment manifest exists: k8s/deployment.yaml. Check VM connectivity: multipass info $VM_NAME"
+        "Check if deployment manifest exists: $K8S_DIR/deployment.yaml. Check VM connectivity: multipass info $VM_NAME"
 fi
 log "Deployment manifest copied to VM"
 
@@ -3517,9 +3522,9 @@ log "Step 7: Applying Kubernetes service manifest..."
 
 # Copy service manifest to VM first
 log "Copying service manifest to VM..."
-if ! multipass copy-file "k8s/service.yaml" "$VM_NAME:/tmp/service.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+if ! multipass copy-file "$K8S_DIR/service.yaml" "$VM_NAME:/tmp/service.yaml" 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 107 "Failed to copy service manifest to VM" \
-        "Check if service manifest exists: k8s/service.yaml. Check VM connectivity: multipass info $VM_NAME"
+        "Check if service manifest exists: $K8S_DIR/service.yaml. Check VM connectivity: multipass info $VM_NAME"
 fi
 log "Service manifest copied to VM"
 
@@ -3548,9 +3553,9 @@ log "Step 9: Applying Kubernetes ingress manifest..."
 
 # Copy ingress manifest to VM first
 log "Copying ingress manifest to VM..."
-if ! multipass copy-file "k8s/ingress.yaml" "$VM_NAME:/tmp/ingress.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+if ! multipass copy-file "$K8S_DIR/ingress.yaml" "$VM_NAME:/tmp/ingress.yaml" 2>&1 | tee -a "$LOG_FILE"; then
     handle_k8s_deployment_error 109 "Failed to copy ingress manifest to VM" \
-        "Check if ingress manifest exists: k8s/ingress.yaml. Check VM connectivity: multipass info $VM_NAME"
+        "Check if ingress manifest exists: $K8S_DIR/ingress.yaml. Check VM connectivity: multipass info $VM_NAME"
 fi
 log "Ingress manifest copied to VM"
 
