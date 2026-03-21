@@ -296,6 +296,12 @@ multipass exec my-ag-ui-app-k8s -- microk8s kubectl describe nodes
 - **Cause**: Insufficient resources in cluster
 - **Solution**: Scale up VM or reduce resource requests in deployment
 
+#### Error: "path does not exist" for YAML files
+- **Cause**: YAML files not properly copied to VM or generated in wrong location
+- **Solution**: The deployment script now handles file copying and generation automatically
+- **Prevention**: Ensure k8s/ directory exists with all required YAML files before running deployment
+- **Verification**: Check files are properly copied to VM with `multipass exec my-ag-ui-app-k8s -- ls -la /home/ubuntu/k8s/`
+
 ### Performance Issues
 
 #### 1. Slow Deployment

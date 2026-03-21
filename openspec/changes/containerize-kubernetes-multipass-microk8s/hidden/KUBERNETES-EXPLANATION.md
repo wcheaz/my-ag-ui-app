@@ -846,6 +846,98 @@ multipass info my-ag-ui-app-k8s
 kubectl get pods
 ```
 
+### 10. Kubernetes Manifest File Path Errors
+
+**Issue**: `kubectl apply` commands fail with "path does not exist" errors during deployment.
+
+**Possible Causes**:
+- YAML files are not copied to the VM before kubectl apply is executed
+- Working directory is not correctly set when running kubectl commands
+- secrets.yaml is generated in the wrong location before being applied
+- Script is looking for files in the wrong location (project root vs change directory)
+
+**Solutions**:
+```bash
+# Check if YAML files exist in the correct location
+ls -la k8s/
+
+# Check working directory in VM
+multipass exec my-ag-ui-app-k8s -- pwd
+
+# List files in VM directory
+multipass exec my-ag-ui-app-k8s -- ls -la
+```
+
+**Fix Implementation**:
+The deployment script has been updated to ensure YAML file paths are properly managed:
+
+1. **File Copy Before Apply**: All YAML files are now copied from the openspec/changes/containerize-kubernetes-multipass-microk8s/k8s/ directory to the VM before kubectl commands are executed:
+```bash
+# Copy k8s directory to VM
+if ! multipass transfer k8s/ "$VM_NAME":/home/ubuntu/; then
+    log_error "Failed to copy k8s directory to VM"
+    exit 1
+fi
+```
+
+2. **Pro secrets.yaml Generation**: secrets.yaml is now generated in the correct location on the VM before being applied:
+```bash
+# Generate secrets.yaml on VM
+multipass exec "$VM_NAME" -- bash -c "cat > /home/ubuntu/k8s/secrets.yaml << 'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-ag-ui-app-secrets
+type: Opaque
+stringData:
+  openai-api-key: \"$OPENAI_API_KEY\"
+  openai-base-url: \"$OPENAI_BASE_URL\"
+  openai-model: \"$OPENAI_MODEL\"
+  embedding-model: \"$EMBEDDING_MODEL\"
+  logfire-token: \"$LOGFIRE_TOKEN\"
+EOF"
+```
+
+3. **Explicit Working Directory**: All kubectl commands now explicitly use the correct file paths in the VM:
+```bash
+# Apply Kubernetes manifests with explicit paths
+multipass exec "$VM_NAME" -- bash -c "microk8s kubectl apply -f /home/ubuntu/k8s/secrets.yaml"
+multipass exec "$VM_NAME" -- bash -c "microk8s kubectl apply -f /home/ubuntu/k8s/deployment.yaml"
+multipass exec "$VM_NAME" -- bash -c "microk8s kubectl apply -f /home/ubuntu/k8s/service.yaml"
+multipass exec "$VM_NAME" -- bash -c "microk8s kubectl apply -f /home/ubuntu/k8s/ingress.yaml"
+```
+
+4. **File Existence Validation**: Added validation to check if YAML files exist before attempting to apply them:
+```bash
+# Verify YAML files exist in VM
+if ! multipass exec "$VM_NAME" -- bash -c "[ -d /home/ubuntu/k8s ] && ls /home/ubuntu/k8s/*.yaml"; then
+    log_error "YAML files not found in VM"
+    exit 1
+fi
+```
+
+**Prevention**:
+- Always copy YAML files to VM before running kubectl commands
+- Generate secrets.yaml in the correct directory structure on the VM
+- Use explicit file paths when running kubectl commands
+- Validate file existence before applying manifests
+- Maintain consistent directory structure between host and VM
+
+**Verification**:
+```bash
+# Run the deployment script
+./deploy.sh
+
+# Check YAML files were copied to VM
+multipass exec my-ag-ui-app-k8s -- ls -la /home/ubuntu/k8s/
+
+# Verify secrets.yaml was generated
+multipass exec my-ag-ui-app-k8s -- cat /home/ubuntu/k8s/secrets.yaml
+
+# Verify all Kubernetes resources were created
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment,service,ingress
+```
+
 ## Monitoring and Maintenance
 
 ### Checking Deployment Status

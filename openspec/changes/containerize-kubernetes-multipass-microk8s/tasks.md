@@ -242,8 +242,8 @@
   - [x] 16.3.8 Verify pods are created successfully (not "No resources found")
   - [x] 16.3.9 Verify deployment becomes ready
   - [x] 16.3.10 Verify application is accessible after deployment
-- [ ] 16.4 Document the fix
-  - [ ] 16.4.1 Update KUBERNETES-EXPLANATION.md with YAML file path details
-  - [ ] 16.4.2 Add troubleshooting entry for "path does not exist" errors
-  - [ ] 16.4.3 Document the fix in CHANGELOG.md
-  - [ ] 16.4.4 Update README.md if needed with file path requirements
+- [x] 16.4 Document the fix
+  - [x] 16.4.1 Update KUBERNETES-EXPLANATION.md with YAML file path details
+  - [x] 16.4.2 Add troubleshooting entry for "path does not exist" errors
+  - [x] 16.4.3 Document the fix in CHANGELOG.md
+  - [x] 16.4.4 Update README.md if needed with file path requirements
