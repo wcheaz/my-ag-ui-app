@@ -187,18 +187,18 @@
 
 ## 15. Bug Fix: Multipass Instance Name Error
 
-- [ ] 15.1 Diagnose the "instance "" does not exist" error in deploy.sh
-  - [ ] 15.1.1 Review deploy.sh to identify where VM name variable is defined
-  - [ ] 15.1.2 Check if VM name variable is properly initialized before use
-  - [ ] 15.1.3 Identify all locations where multipass exec is called with VM name
-  - [ ] 15.1.4 Determine if VM name variable is being overwritten or cleared
-  - [ ] 15.1.5 Review the script flow to understand when VM name should be available
-- [ ] 15.2 Fix the VM name variable issue
-  - [ ] 15.2.1 Ensure VM name is defined and exported early in the script
-  - [ ] 15.2.2 Add validation to check VM name is set before using multipass exec
-  - [ ] 15.2.3 Add error handling for empty VM name scenarios
-  - [ ] 15.2.4 Verify VM name is consistent throughout all script sections
-  - [ ] 15.2.5 Add logging to track VM name variable state during execution
+- [x] 15.1 Diagnose the "instance "" does not exist" error in deploy.sh
+  - [x] 15.1.1 Review deploy.sh to identify where VM name variable is defined
+  - [x] 15.1.2 Check if VM name variable is properly initialized before use
+  - [x] 15.1.3 Identify all locations where multipass exec is called with VM name
+  - [x] 15.1.4 Determine if VM name variable is being overwritten or cleared
+  - [x] 15.1.5 Review the script flow to understand when VM name should be available
+- [x] 15.2 Fix the VM name variable issue
+  - [x] 15.2.1 Ensure VM name is defined and exported early in the script
+  - [x] 15.2.2 Add validation to check VM name is set before using multipass exec
+  - [x] 15.2.3 Add error handling for empty VM name scenarios
+  - [x] 15.2.4 Verify VM name is consistent throughout all script sections
+  - [x] 15.2.5 Add logging to track VM name variable state during execution
 - [ ] 15.3 Test the fix
   - [ ] 15.3.1 Run deploy.sh and verify VM name is properly set
   - [ ] 15.3.2 Verify multipass exec commands execute successfully

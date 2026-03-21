@@ -13,6 +13,9 @@ VM_MEMORY="7.7G"
 VM_DISK="20GiB"
 LOG_FILE="deployment.log"
 
+# Export VM_NAME so it's available to subprocesses
+export VM_NAME
+
 # Logging function
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
@@ -108,6 +111,40 @@ milestone() {
     
     echo -e "\n[$(date '+%Y-%m-%d %H:%M:%S')] 🎯 MILESTONE $milestone_number/$total_milestones: $milestone_name" | tee -a "$LOG_FILE"
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] ------------------------------------------------------" | tee -a "$LOG_FILE"
+}
+
+# Function to check if VM exists
+vm_exists() {
+    if [ -z "$VM_NAME" ]; then
+        log "ERROR: VM_NAME is not set" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    
+    log "Checking if VM '$VM_NAME' exists..." | tee -a "$LOG_FILE"
+    if multipass list | grep -q "^$VM_NAME "; then
+        log "VM '$VM_NAME' exists" | tee -a "$LOG_FILE"
+        return 0
+    else
+        log "VM '$VM_NAME' does not exist" | tee -a "$LOG_FILE"
+        return 1
+    fi
+}
+
+# Function to check if VM is running
+vm_running() {
+    if [ -z "$VM_NAME" ]; then
+        log "ERROR: VM_NAME is not set" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    
+    log "Checking if VM '$VM_NAME' is running..." | tee -a "$LOG_FILE"
+    if vm_exists && multipass info "$VM_NAME" | grep -q "State:[[:space:]]*Running"; then
+        log "VM '$VM_NAME' is running" | tee -a "$LOG_FILE"
+        return 0
+    else
+        log "VM '$VM_NAME' is not running" | tee -a "$LOG_FILE"
+        return 1
+    fi
 }
 
 # Enhanced error handling function with cleanup and detailed reporting
