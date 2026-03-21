@@ -53,11 +53,6 @@ POD_READINESS_TIMEOUT=300
 ERROR_COUNT=0
 ERROR_DETAILS=""
 
-# Logging function
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
-}
-
 # Progress logging function with visual indicators
 progress() {
     local step=$1
@@ -84,40 +79,6 @@ progress() {
 log "Initializing deployment log file..." | tee -a "$LOG_FILE"
 init_log_file
 log "Log file initialization completed" | tee -a "$LOG_FILE"
-
-# Global timeout configuration (in seconds)
-VM_CREATION_TIMEOUT=600
-VM_READINESS_TIMEOUT=300
-MICROK8S_INSTALLATION_TIMEOUT=600
-MICROK8S_READINESS_TIMEOUT=300
-CONTAINER_BUILD_TIMEOUT=1800
-IMAGE_TRANSFER_TIMEOUT=300
-KUBERNETES_DEPLOYMENT_TIMEOUT=600
-INGRESS_VERIFICATION_TIMEOUT=300
-NETWORK_CONNECTIVITY_TIMEOUT=10
-POD_READINESS_TIMEOUT=300
-
-# Progress logging function with visual indicators
-progress() {
-    local step=$1
-    local total_steps=$2
-    local message=$3
-    local percentage=$((step * 100 / total_steps))
-    
-    # Create progress bar
-    local completed=$((percentage / 2))
-    local remaining=$((50 - completed))
-    local progress_bar=""
-    
-    for ((i=0; i<completed; i++)); do
-        progress_bar+="█"
-    done
-    for ((i=0; i<remaining; i++)); do
-        progress_bar+="░"
-    done
-    
-    echo -e "\n[$(date '+%Y-%m-%d %H:%M:%S')] 🚀 PROGRESS: [$progress_bar] $percentage% ($step/$total_steps) - $message" | tee -a "$LOG_FILE"
-}
 
 # Section header function
 section_header() {

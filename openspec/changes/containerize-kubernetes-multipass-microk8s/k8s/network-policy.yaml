@@ -1,0 +1,69 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: my-ag-ui-app-ingress-policy
+  labels:
+    app: my-ag-ui-app
+spec:
+  podSelector:
+    matchLabels:
+      app: my-ag-ui-app
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress
+    - namespaceSelector:
+        matchLabels:
+          app.kubernetes.io/name: ingress-nginx
+    - ipBlock:
+        cidr: 10.0.0.0/8
+  ports:
+  - protocol: TCP
+    port: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: my-ag-ui-app-egress-policy
+  labels:
+    app: my-ag-ui-app
+spec:
+  podSelector:
+    matchLabels:
+      app: my-ag-ui-app
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow traffic to OpenAI API
+  - to:
+    - ipBlock:
+        cidr: 104.16.0.0/13  # Cloudflare (OpenAI uses Cloudflare)
+    - ipBlock:
+        cidr: 104.24.0.0/14  # Cloudflare (OpenAI uses Cloudflare)
+    - ipBlock:
+        cidr: 172.64.0.0/13  # Cloudflare (OpenAI uses Cloudflare)
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow traffic to Kubernetes API server
+  - to:
+    - ipBlock:
+        cidr: 10.0.0.0/8  # Internal cluster network
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow HTTP/HTTPS traffic for general outbound connectivity
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443

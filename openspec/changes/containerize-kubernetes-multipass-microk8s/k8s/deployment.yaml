@@ -4,6 +4,13 @@ metadata:
   name: my-ag-ui-app
   labels:
     app: my-ag-ui-app
+    # Pod Security Standards labels
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: v1.29
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: v1.29
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: v1.29
 spec:
   replicas: 1
   selector:
@@ -13,9 +20,31 @@ spec:
     metadata:
       labels:
         app: my-ag-ui-app
+      annotations:
+        # Enable seccomp profile for restricted pod security standards
+        container.seccomp.security.alpha.kubernetes.io/my-ag-ui-app: runtime/default
     spec:
+      # Security context for the pod
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: my-ag-ui-app
+        # Security context for the container
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsGroup: 1000
+          runAsNonRoot: true
+          runAsUser: 1000
         image: my-ag-ui-app:latest
         ports:
         - containerPort: 3000
@@ -85,3 +114,14 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
+        # Temporary volume for writable directories
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /app/.next/cache
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: cache
+        emptyDir: {}

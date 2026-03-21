@@ -38,32 +38,32 @@ The deployment script will:
 If you prefer to deploy components manually:
 
 1. **Create VM:**
-   ```bash
-   multipass launch -c 4 -m 7.7G -d 19.3G -n my-ag-ui-app-vm
-   ```
+    ```bash
+    multipass launch -c 4 -m 7.7G -d 19.3G -n my-ag-ui-app-k8s
+    ```
 
 2. **Install microk8s:**
-   ```bash
-   multipass exec my-ag-ui-app-vm -- sudo snap install microk8s --classic
-   multipass exec my-ag-ui-app-vm -- sudo microk8s status --wait
-   ```
+    ```bash
+    multipass exec my-ag-ui-app-k8s -- sudo snap install microk8s --classic
+    multipass exec my-ag-ui-app-k8s -- sudo microk8s status --wait
+    ```
 
 3. **Enable add-ons:**
-   ```bash
-   multipass exec my-ag-ui-app-vm -- sudo microk8s enable dns storage ingress
-   ```
+    ```bash
+    multipass exec my-ag-ui-app-k8s -- sudo microk8s enable dns storage ingress
+    ```
 
 4. **Build and deploy application:**
-   ```bash
-   # Build Docker image
-   docker build -t my-ag-ui-app:latest .
-   
-   # Load image into microk8s
-   docker save my-ag-ui-app:latest | multipass exec my-ag-ui-app-vm -- docker load
-   
-   # Apply Kubernetes manifests
-   multipass exec my-ag-ui-app-vm -- bash -c "microk8s kubectl apply -f k8s/"
-   ```
+    ```bash
+    # Build Docker image
+    docker build -t my-ag-ui-app:latest .
+    
+    # Load image into microk8s
+    docker save my-ag-ui-app:latest | multipass exec my-ag-ui-app-k8s -- docker load
+    
+    # Apply Kubernetes manifests
+    multipass exec my-ag-ui-app-k8s -- bash -c "microk8s kubectl apply -f k8s/"
+    ```
 
 ## Application Access Instructions
 
@@ -103,8 +103,8 @@ curl -k https://localhost
 If you need to access the application from within the VM:
 
 ```bash
-multipass exec my-ag-ui-app-vm -- curl http://localhost
-multipass exec my-ag-ui-app-vm -- curl -k https://localhost
+multipass exec my-ag-ui-app-k8s -- curl http://localhost
+multipass exec my-ag-ui-app-k8s -- curl -k https://localhost
 ```
 
 ## Ingress Configuration
@@ -126,15 +126,15 @@ The application is exposed through a Kubernetes ingress with the following confi
    - Check if the deployment completed successfully
    - Verify the ingress is properly configured:
      ```bash
-     multipass exec my-ag-ui-app-vm -- microk8s kubectl get ingress
+     multipass exec my-ag-ui-app-k8s -- microk8s kubectl get ingress
      ```
    - Check pod status:
      ```bash
-     multipass exec my-ag-ui-app-vm -- microk8s kubectl get pods
+     multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods
      ```
    - Verify service endpoints:
      ```bash
-     multipass exec my-ag-ui-app-vm -- microk8s kubectl get endpoints
+     multipass exec my-ag-ui-app-k8s -- microk8s kubectl get endpoints
      ```
 
 2. **Deployment script failures:**
@@ -142,16 +142,16 @@ The application is exposed through a Kubernetes ingress with the following confi
      - Verify multipass is installed: `multipass version`
      - Check available system resources: `free -h` and `df -h`
      - Ensure no existing VM with same name: `multipass list`
-     - Increase VM resources if needed: `multipass delete my-ag-ui-app-vm && multipass purge`
+     - Increase VM resources if needed: `multipass delete my-ag-ui-app-k8s && multipass purge`
 
    - **Microk8s installation fails:**
-     - Check microk8s status: `multipass exec my-ag-ui-app-vm -- microk8s status`
+     - Check microk8s status: `multipass exec my-ag-ui-app-k8s -- microk8s status`
      - Verify required add-ons are enabled:
        ```bash
-       multipass exec my-ag-ui-app-vm -- microk8s status --wait-ready
-       multipass exec my-ag-ui-app-vm -- sudo microk8s enable dns storage ingress
+multipass exec my-ag-ui-app-k8s -- microk8s status --wait-ready
+        multipass exec my-ag-ui-app-k8s -- sudo microk8s enable dns storage ingress
        ```
-     - Check microk8s logs: `multipass exec my-ag-ui-app-vm -- sudo journalctl -u snap.microk8s.daemon-k8s-controller-manager`
+     - Check microk8s logs: `multipass exec my-ag-ui-app-k8s -- sudo journalctl -u snap.microk8s.daemon-k8s-controller-manager`
 
    - **Container build fails:**
      - Verify Docker is installed: `docker --version`
@@ -168,37 +168,37 @@ The application is exposed through a Kubernetes ingress with the following confi
 
 4. **Connection timeouts:**
    - Ensure the deployment completed successfully
-   - Check if the application pods are running:
-     ```bash
-     multipass exec my-ag-ui-app-vm -- microk8s kubectl get pods -w
-     ```
-   - Verify service endpoints:
-     ```bash
-     multipass exec my-ag-ui-app-vm -- microk8s kubectl get endpoints
-     ```
-   - Check ingress controller status:
-     ```bash
-     multipass exec my-ag-ui-app-vm -- microk8s kubectl get pods -n ingress
-     ```
+- Check if the application pods are running:
+      ```bash
+      multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods -w
+      ```
+    - Verify service endpoints:
+      ```bash
+      multipass exec my-ag-ui-app-k8s -- microk8s kubectl get endpoints
+      ```
+    - Check ingress controller status:
+      ```bash
+      multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods -n ingress
+      ```
 
 5. **Pod stuck in pending/ContainerCreating state:**
-   - Check for resource constraints:
-     ```bash
-     multipass exec my-ag-ui-app-vm -- microk8s kubectl describe pod <pod-name>
-     ```
-   - Verify sufficient resources in VM: `multipass exec my-ag-ui-app-vm -- free -h`
+- Check for resource constraints:
+      ```bash
+      multipass exec my-ag-ui-app-k8s -- microk8s kubectl describe pod <pod-name>
+      ```
+    - Verify sufficient resources in VM: `multipass exec my-ag-ui-app-k8s -- free -h`
    - Check if image pull is failing:
      ```bash
-     multipass exec my-ag-ui-app-vm -- microk8s kubectl describe pod <pod-name> | grep -i image
+     multipass exec my-ag-ui-app-k8s -- microk8s kubectl describe pod <pod-name> | grep -i image
      ```
 
 6. **Network connectivity issues:**
-   - Verify VM networking: `multipass exec my-ag-ui-app-vm -- ping 8.8.8.8`
-   - Check DNS resolution: `multipass exec my-ag-ui-app-vm -- nslookup google.com`
+   - Verify VM networking: `multipass exec my-ag-ui-app-k8s -- ping 8.8.8.8`
+   - Check DNS resolution: `multipass exec my-ag-ui-app-k8s -- nslookup google.com`
    - Verify ingress controller can route traffic:
      ```bash
-     multipass exec my-ag-ui-app-vm -- microk8s kubectl get ingress
-     multipass exec my-ag-ui-app-vm -- microk8s kubectl describe ingress <ingress-name>
+     multipass exec my-ag-ui-app-k8s -- microk8s kubectl get ingress
+     multipass exec my-ag-ui-app-k8s -- microk8s kubectl describe ingress <ingress-name>
      ```
 
 ### Debugging Steps
@@ -209,12 +209,12 @@ The application is exposed through a Kubernetes ingress with the following confi
 tail -f deployment.log
 
 # View application logs
-POD_NAME=$(multipass exec my-ag-ui-app-vm -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}')
-multipass exec my-ag-ui-app-vm -- microk8s kubectl logs $POD_NAME
-multipass exec my-ag-ui-app-vm -- microk8s kubectl logs -f $POD_NAME
+POD_NAME=$(multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}')
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl logs $POD_NAME
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl logs -f $POD_NAME
 
 # View previous logs if pod crashed
-multipass exec my-ag-ui-app-vm -- microk8s kubectl logs $POD_NAME --previous
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl logs $POD_NAME --previous
 ```
 
 #### 2. Verify Component Status
@@ -223,36 +223,36 @@ multipass exec my-ag-ui-app-vm -- microk8s kubectl logs $POD_NAME --previous
 multipass list
 
 # Check microk8s status
-multipass exec my-ag-ui-app-vm -- microk8s status
+multipass exec my-ag-ui-app-k8s -- microk8s status
 
 # Check all Kubernetes resources
-multipass exec my-ag-ui-app-vm -- microk8s kubectl get all
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get all
 
 # Check ingress controller
-multipass exec my-ag-ui-app-vm -- microk8s kubectl get pods -n ingress
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods -n ingress
 ```
 
 #### 3. Network and Connectivity Tests
 ```bash
 # Test application access from VM
-multipass exec my-ag-ui-app-vm -- curl http://localhost
-multipass exec my-ag-ui-app-vm -- curl -k https://localhost
+multipass exec my-ag-ui-app-k8s -- curl http://localhost
+multipass exec my-ag-ui-app-k8s -- curl -k https://localhost
 
 # Test service connectivity
-multipass exec my-ag-ui-app-vm -- microk8s kubectl get service
-multipass exec my-ag-ui-app-vm -- microk8s kubectl describe service <service-name>
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get service
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl describe service <service-name>
 ```
 
 #### 4. Resource Usage
 ```bash
 # Check VM resources
-multipass exec my-ag-ui-app-vm -- free -h
-multipass exec my-ag-ui-app-vm -- df -h
-multipass exec my-ag-ui-app-vm -- top
+multipass exec my-ag-ui-app-k8s -- free -h
+multipass exec my-ag-ui-app-k8s -- df -h
+multipass exec my-ag-ui-app-k8s -- top
 
 # Check Kubernetes resource usage
-multipass exec my-ag-ui-app-vm -- microk8s kubectl top pods
-multipass exec my-ag-ui-app-vm -- microk8s kubectl describe nodes
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl top pods
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl describe nodes
 ```
 
 ### Ralph-loop Execution Issues
@@ -282,7 +282,7 @@ multipass exec my-ag-ui-app-vm -- microk8s kubectl describe nodes
 
 #### Error: "Error: instance already exists"
 - **Cause**: VM with same name already exists
-- **Solution**: Delete existing VM: `multipass delete my-ag-ui-app-vm && multipass purge`
+- **Solution**: Delete existing VM: `multipass delete my-ag-ui-app-k8s && multipass purge`
 
 #### Error: "Insufficient resources"
 - **Cause**: System lacks required resources
@@ -300,14 +300,14 @@ multipass exec my-ag-ui-app-vm -- microk8s kubectl describe nodes
 
 #### 1. Slow Deployment
 - Check system resources: `free -h`, `df -h`
-- Monitor network speed: `multipass exec my-ag-ui-app-vm -- speedtest-cli` (if installed)
+- Monitor network speed: `multipass exec my-ag-ui-app-k8s -- speedtest-cli` (if installed)
 - Optimize Docker build with layer caching
 - Reduce VM resources if over-provisioned
 
 #### 2. High CPU/Memory Usage
 - Identify resource-hungry pods:
   ```bash
-  multipass exec my-ag-ui-app-vm -- microk8s kubectl top pods
+  multipass exec my-ag-ui-app-k8s -- microk8s kubectl top pods
   ```
 - Check application logs for memory leaks
 - Adjust resource limits in deployment manifest
@@ -319,8 +319,8 @@ multipass exec my-ag-ui-app-vm -- microk8s kubectl describe nodes
 - Check required environment variables in application
 - Verify Kubernetes secrets:
   ```bash
-  multipass exec my-ag-ui-app-vm -- microk8s kubectl get secrets
-  multipass exec my-ag-ui-app-vm -- microk8s kubectl describe secret <secret-name>
+  multipass exec my-ag-ui-app-k8s -- microk8s kubectl get secrets
+  multipass exec my-ag-ui-app-k8s -- microk8s kubectl describe secret <secret-name>
   ```
 - Update secrets if needed
 
@@ -328,7 +328,7 @@ multipass exec my-ag-ui-app-vm -- microk8s kubectl describe nodes
 - Verify Kubernetes manifests are correct
 - Check deployment configuration:
   ```bash
-  multipass exec my-ag-ui-app-vm -- microk8s kubectl describe deployment <deployment-name>
+  multipass exec my-ag-ui-app-k8s -- microk8s kubectl describe deployment <deployment-name>
   ```
 - Compare with expected configuration in design documentation
 
@@ -340,18 +340,18 @@ multipass exec my-ag-ui-app-vm -- microk8s kubectl describe nodes
 ./cleanup.sh
 
 # Manual cleanup if script fails
-multipass exec my-ag-ui-app-vm -- microk8s kubectl delete -f k8s/
-multipass delete my-ag-ui-app-vm
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl delete -f k8s/
+multipass delete my-ag-ui-app-k8s
 multipass purge
 ```
 
 #### 2. Selective Cleanup
 ```bash
 # Delete only Kubernetes resources
-multipass exec my-ag-ui-app-vm -- microk8s kubectl delete deployment,service,ingress --all
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl delete deployment,service,ingress --all
 
 # Reset microk8s (last resort)
-multipass exec my-ag-ui-app-vm -- sudo microk8s reset
+multipass exec my-ag-ui-app-k8s -- sudo microk8s reset
 ```
 
 ### Getting Help
@@ -373,10 +373,10 @@ To remove all deployed resources:
 Or manually:
 ```bash
 # Delete Kubernetes resources
-multipass exec my-ag-ui-app-vm -- microk8s kubectl delete -f k8s/
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl delete -f k8s/
 
 # Delete VM
-multipass delete my-ag-ui-app-vm
+multipass delete my-ag-ui-app-k8s
 multipass purge
 ```
 
@@ -388,13 +388,13 @@ To view application logs:
 
 ```bash
 # Get pod name
-POD_NAME=$(multipass exec my-ag-ui-app-vm -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}')
+POD_NAME=$(multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}')
 
 # View logs
-multipass exec my-ag-ui-app-vm -- microk8s kubectl logs $POD_NAME
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl logs $POD_NAME
 
 # Follow logs
-multipass exec my-ag-ui-app-vm -- microk8s kubectl logs -f $POD_NAME
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl logs -f $POD_NAME
 ```
 
 ### Deployment Status
@@ -406,10 +406,10 @@ Check the status of all components:
 multipass list
 
 # Check microk8s status
-multipass exec my-ag-ui-app-vm -- microk8s status
+multipass exec my-ag-ui-app-k8s -- microk8s status
 
 # Check Kubernetes resources
-multipass exec my-ag-ui-app-vm -- microk8s kubectl get all
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get all
 ```
 
 ## Scaling
@@ -418,10 +418,10 @@ To scale the application:
 
 ```bash
 # Scale to 3 replicas
-multipass exec my-ag-ui-app-vm -- microk8s kubectl scale deployment my-ag-ui-app-deployment --replicas=3
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl scale deployment my-ag-ui-app-deployment --replicas=3
 
 # Check replica status
-multipass exec my-ag-ui-app-vm -- microk8s kubectl get deployment my-ag-ui-app-deployment
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment my-ag-ui-app-deployment
 ```
 
 ## Development Notes

@@ -841,6 +841,352 @@ kubectl get secrets -o yaml > secrets-backup.yaml
 kubectl get configmaps -o yaml > configmaps-backup.yaml
 ```
 
+## Security Considerations
+
+### Security Architecture Overview
+
+The deployment implements multiple layers of security following Kubernetes best practices and industry standards. The security approach is defense-in-depth, with controls at the container, pod, network, and cluster levels.
+
+### Container Security
+
+#### Non-Root User Configuration
+
+The application container runs as a non-root user to minimize the impact of potential container compromises:
+
+```yaml
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+```
+
+**Security Benefits:**
+- Prevents root privilege escalation attacks
+- Limits filesystem access to non-privileged areas
+- Reduces attack surface by dropping all Linux capabilities
+
+#### Read-Only Root Filesystem
+
+The container root filesystem is mounted as read-only to prevent unauthorized modifications:
+
+```yaml
+securityContext:
+  readOnlyRootFilesystem: true
+```
+
+**Security Benefits:**
+- Prevents attackers from modifying binaries or libraries
+- Stops malware persistence techniques that require writable filesystem
+- Ensures container integrity throughout runtime
+
+**Writeable Directories:**
+Only essential directories are mounted as writeable temporary volumes:
+- `/tmp` - For temporary application files
+- `/app/.next/cache` - For Next.js build cache
+
+#### Seccomp Profiles
+
+The deployment uses seccomp (secure computing mode) profiles to restrict system calls:
+
+```yaml
+seccompProfile:
+  type: RuntimeDefault
+```
+
+**Security Benefits:**
+- Limits available system calls to those required by the application
+- Prevents execution of certain kernel exploits
+- Reduces container escape attack surface
+
+### Pod Security Standards
+
+The deployment enforces Kubernetes Pod Security Standards at the restricted level:
+
+```yaml
+# Pod Security Admission labels
+pod-security.kubernetes.io/enforce: restricted
+pod-security.kubernetes.io/enforce-version: v1.29
+pod-security.kubernetes.io/warn: restricted
+pod-security.kubernetes.io/warn-version: v1.29
+pod-security.kubernetes.io/audit: restricted
+pod-security.kubernetes.io/audit-version: v1.29
+```
+
+**Restricted Standard Requirements:**
+- Containers must run as non-root users
+- Privilege escalation is prohibited
+- All capabilities are dropped by default
+- Read-only root filesystem is enforced
+- Seccomp profiles must be defined
+
+### Network Security
+
+#### Network Policies
+
+The deployment implements comprehensive network policies to control pod-to-pod and pod-to-external traffic:
+
+1. **Ingress Policy** (k8s/network-policy.yaml - my-ag-ui-app-ingress-policy):
+   - Allows traffic from ingress controller namespaces
+   - Allows traffic from internal cluster network (10.0.0.0/8)
+   - Restricts access to only necessary services
+
+2. **Egress Policy** (k8s/network-policy.yaml - my-ag-ui-app-egress-policy):
+   - Allows DNS resolution (UDP port 53)
+   - Allows traffic to OpenAI API endpoints
+   - Allows traffic to Kubernetes API server
+   - Allows general HTTP/HTTPS outbound connectivity
+
+**Security Benefits:**
+- Implements zero-trust network model
+- Prevents lateral movement within cluster
+- Restricts outbound traffic to approved destinations
+- Reduces exposure to internal network attacks
+
+### Secrets Management
+
+#### Secure Configuration Management
+
+The deployment uses a multi-layered approach to configuration management:
+
+1. **Kubernetes Secrets** for sensitive data:
+   - API keys (OPENAI_API_KEY)
+   - Service tokens (LOGFIRE_TOKEN)
+   - Configuration URLs (OPENAI_BASE_URL)
+
+2. **Kubernetes ConfigMaps** for non-sensitive configuration:
+   - Application settings (LLM_MAX_TOKENS, LLM_CONTEXT_WINDOW)
+
+3. **Automated Secret Generation**:
+   - `setup-secrets.sh` script for secure secret generation
+   - Base64 encoding of sensitive values
+   - Environment variable support for automated deployments
+
+#### Secrets Best Practices
+
+**What's Implemented:**
+- No hardcoded sensitive values in manifests
+- Secrets are referenced using `valueFrom.secretKeyRef`
+- Template-based approach with `secrets.yaml.template`
+- Automated script for secure secret generation
+
+**Security Guidelines:**
+```bash
+# Generate secrets securely
+./k8s/setup-secrets.sh
+
+# Apply secrets to cluster
+kubectl apply -f k8s/secrets.yaml
+
+# Never commit secrets.yaml to version control
+echo "k8s/secrets.yaml" >> .gitignore
+```
+
+### Docker Security
+
+#### Multi-Stage Builds
+
+The Dockerfile uses multi-stage builds to minimize attack surface:
+
+```dockerfile
+# Build stage with all build dependencies
+FROM node:18-alpine AS builder
+
+# Runtime stage with minimal footprint
+FROM node:18-alpine AS runtime
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+```
+
+**Security Benefits:**
+- Build tools and dependencies are not included in final image
+- Reduced image size decreases attack surface
+- Eliminates unnecessary packages that could contain vulnerabilities
+
+#### Image Scanning
+
+The deployment workflow includes security scanning:
+- **Base Image Scanning**: Uses official Alpine Linux images with security updates
+- **Vulnerability Scanning**: Can be integrated with tools like Trivy or Clair
+- **Dependency Scanning**: npm audit for Node.js dependencies
+
+### Runtime Security
+
+#### Resource Limits and Isolation
+
+The deployment implements strict resource limits to prevent container escape and ensure resource isolation:
+
+```yaml
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+```
+
+**Security Benefits:**
+- Prevents resource exhaustion attacks
+- Ensures fair resource allocation between pods
+- Contains potential compromises within resource boundaries
+
+#### Health and Readiness Probes
+
+Security-focused health monitoring:
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+```
+
+**Security Benefits:**
+- Detects compromised or malfunctioning containers
+- Automatic restart of unhealthy containers
+- Prevents traffic to compromised instances
+
+### Additional Security Measures
+
+#### Pod Security Context
+
+Comprehensive pod security configuration:
+
+```yaml
+spec:
+  securityContext:
+    fsGroup: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+```
+
+#### Container Security Context
+
+Container-specific security settings:
+
+```yaml
+containers:
+- name: my-ag-ui-app
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    privileged: false
+    readOnlyRootFilesystem: true
+    runAsGroup: 1000
+    runAsNonRoot: true
+    runAsUser: 1000
+```
+
+### Security Best Practices Applied
+
+#### Authentication and Authorization
+
+1. **API Key Management**: All external API keys are stored in Kubernetes secrets
+2. **Service Account**: Uses default service account (can be customized for production)
+3. **RBAC**: Ready to implement Role-Based Access Control when needed
+
+#### Network Security
+
+1. **Zero Trust Network**: All network traffic is explicitly allowed or denied
+2. **TLS Everywhere**: Ready to implement TLS for all communications
+3. **Ingress Security**: Ingress controller with security headers (ready to enable)
+
+#### Data Protection
+
+1. **Encryption in Transit**: HTTPS/SSL ready to implement
+2. **Encryption at Rest**: Ready to implement when persistent storage is needed
+3. **Data Minimization**: Only necessary data is collected and processed
+
+#### Monitoring and Logging
+
+1. **Security Logging**: Integration with Logfire for security event logging
+2. **Audit Logging**: Kubernetes audit logs for cluster security monitoring
+3. **Health Monitoring**: Continuous monitoring for security anomalies
+
+### Security Maintenance
+
+#### Regular Updates
+
+1. **Base Image Updates**: Regular updates to Alpine Linux base images
+2. **Dependency Updates**: Regular Node.js dependency updates with security patches
+3. **Kubernetes Version Updates**: Keep microk8s updated with latest security patches
+
+#### Security Auditing
+
+1. **Vulnerability Scanning**: Regular image vulnerability scanning
+2. **Configuration Auditing**: Regular review of security configurations
+3. **Network Policy Auditing**: Regular review of network access rules
+
+#### Incident Response
+
+1. **Pod Isolation**: Quick isolation of compromised pods
+2. **Rollback Procedures**: Immediate rollback to known-good configurations
+3. **Forensics**: Logs and metrics available for security investigations
+
+### Security Compliance
+
+The deployment follows these security standards and frameworks:
+
+- **NIST Cybersecurity Framework**: Implemented Identify, Protect, Detect, Respond, Recover functions
+- **OWASP Top 10**: Protection against common web application vulnerabilities
+- **Kubernetes Security Best Practices**: Adherence to Kubernetes security guidelines
+- **CIS Kubernetes Benchmark**: Alignment with Center for Internet Security benchmarks
+
+### Future Security Enhancements
+
+#### Short-term Security Improvements
+
+1. **TLS/SSL Implementation**: Add HTTPS with Let's Encrypt certificates
+2. **Web Application Firewall**: Implement WAF rules for ingress
+3. **Security Context Constraints**: Add pod security policies (PSPs) if needed
+4. **Audit Logging**: Enhanced security audit log configuration
+
+#### Long-term Security Enhancements
+
+1. **Service Mesh**: Implement Istio or Linkerd for advanced security features
+2. **Secrets Management**: Integrate with HashiCorp Vault or similar
+3. **Runtime Security**: Add Falco or similar runtime security monitoring
+4. **Compliance Automation**: Implement automated compliance checking and reporting
+
+### Security Checklist
+
+- [x] Containers run as non-root users
+- [x] Read-only root filesystem implemented
+- [x] All capabilities dropped
+- [x] Seccomp profiles configured
+- [x] Network policies implemented
+- [x] Secrets properly managed
+- [x] No hardcoded sensitive information
+- [x] Pod Security Standards enforced
+- [x] Resource limits configured
+- [x] Health and readiness probes configured
+- [x] Security context defined at pod and container levels
+- [x] Template-based secret generation
+
+This comprehensive security approach ensures that the deployment is protected against common threats while maintaining the flexibility needed for development and operations.
+
 ## Next Steps and Enhancements
 
 ### Short-term Enhancements

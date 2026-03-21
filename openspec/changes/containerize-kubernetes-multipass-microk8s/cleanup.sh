@@ -152,13 +152,27 @@ if command_exists microk8s.kubectl || command_exists kubectl; then
             log "Deleting deployment resources..."
             $KUBECTL_CMD delete -f k8s/deployment.yaml --ignore-not-found=true || log "Warning: Failed to delete deployment resources (may not exist)"
         fi
+        
+        if [ -f "k8s/network-policy.yaml" ]; then
+            log "Deleting network policy resources..."
+            $KUBECTL_CMD delete -f k8s/network-policy.yaml --ignore-not-found=true || log "Warning: Failed to delete network policy resources (may not exist)"
+        fi
+        
+        if [ -f "k8s/secrets.yaml" ]; then
+            log "Deleting secret and configmap resources..."
+            $KUBECTL_CMD delete -f k8s/secrets.yaml --ignore-not-found=true || log "Warning: Failed to delete secret and configmap resources (may not exist)"
+        fi
     else
         log "No k8s directory found, skipping Kubernetes resource cleanup"
     fi
     
     # Additional cleanup - remove any remaining resources in the default namespace
     log "Checking for any remaining Kubernetes resources..."
-    $KUBECTL_CMD delete ingress,service,deployment --all --ignore-not-found=true || log "Warning: Failed to clean up all Kubernetes resources"
+    $KUBECTL_CMD delete ingress,service,deployment,networkpolicy --all --ignore-not-found=true || log "Warning: Failed to clean up all Kubernetes resources"
+    
+    # Clean up any remaining secrets and configmaps
+    log "Cleaning up secrets and configmaps..."
+    $KUBECTL_CMD delete secret,configmap -l app=my-ag-ui-app --ignore-not-found=true || log "Warning: Failed to clean up all secrets and configmaps"
     
     log "Kubernetes resource cleanup completed"
 else
