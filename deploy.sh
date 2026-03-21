@@ -116,6 +116,14 @@ log "Kubernetes secrets setup completed successfully"
 log "Starting Kubernetes deployment phase..."
 
 # Apply secrets first (if not already applied by setup-secrets.sh)
+# Validate VM_NAME is set before proceeding
+if [ -z "$VM_NAME" ]; then
+    log "ERROR: VM_NAME is not set. Cannot proceed with Kubernetes deployment."
+    log "This should not happen. Please check the script configuration."
+    exit 1
+fi
+log "Using VM_NAME: $VM_NAME for Kubernetes deployment"
+
 log "Applying Kubernetes secrets..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_secrets_error 105 "Failed to apply Kubernetes secrets" \

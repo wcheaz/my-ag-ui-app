@@ -1173,7 +1173,7 @@ multipass purge
 ## Current Task Context
 
 ## Current Task
-- 14.3 Keep only working deployment script (deploy.sh)
+- 15.1 Diagnose the "instance "" does not exist" error in deploy.sh
 ## Completed Tasks for Git Commit
 - [x] 1.1 Review and optimize existing Dockerfile for multi-stage builds
 - [x] 1.2 Create build stage with all build dependencies (Node.js, npm)
@@ -1309,3 +1309,14 @@ multipass purge
 - [x] 13.8 Prepare for archiving the change
 - [x] 14.1 Verify deploy.sh is the working deployment script (2,376 lines, per IMPLEMENTATION_SUMMARY.md)
 - [x] 14.2 Remove unnecessary deployment scripts (deploy_app.sh, deploy_final.sh, deploy_fixed.sh, deploy_test.sh, deploy_working.sh)
+- [x] 14.3 Keep only working deployment script (deploy.sh)
+- [x] 14.4 Create test/kubernetes/ directory if it doesn't exist
+- [x] 14.5 Move test scripts to test/kubernetes/ directory (test_script_idempotency.sh, test_script.sh, test-container-build.sh, test-docker-build.sh)
+- [x] 14.6 Clean up log files (deployment_test.log, deployment.log, test_deployment.log, vm-test.log, service-connectivity-test.log)
+- [x] 14.7 Remove SCRIPT_IDEMPOTENCY_TEST_RESULTS.md if no longer needed
+- [x] 14.8 Remove performance_analysis.md if no longer needed
+- [x] 14.9 Remove env_loading_performance_results.txt if no longer needed
+- [x] 14.10 Remove tls.crt if no longer needed
+- [x] 14.11 Verify project root directory is clean and organized
+- [x] 14.12 Update .gitignore if needed to exclude test/kubernetes/ directory
+- [x] 14.13 Document cleanup changes in CHANGELOG.md
