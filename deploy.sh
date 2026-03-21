@@ -132,6 +132,14 @@ if ! multipass exec "$VM_NAME" -- mkdir -p /home/ubuntu/k8s 2>&1 | tee -a "$LOG_
 fi
 log "k8s directory created successfully in VM"
 
+# Transfer secrets.yaml to VM
+log "Transferring secrets.yaml to VM..."
+if ! multipass transfer k8s/secrets.yaml "$VM_NAME":/home/ubuntu/k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
+    log "ERROR: Failed to transfer secrets.yaml to VM"
+    exit 111
+fi
+log "secrets.yaml transferred successfully to VM"
+
 log "Applying Kubernetes secrets..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_secrets_error 105 "Failed to apply Kubernetes secrets" \
