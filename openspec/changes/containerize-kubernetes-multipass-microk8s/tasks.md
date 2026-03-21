@@ -181,6 +181,6 @@
 - [x] 14.8 Remove performance_analysis.md if no longer needed
 - [x] 14.9 Remove env_loading_performance_results.txt if no longer needed
 - [x] 14.10 Remove tls.crt if no longer needed
-- [ ] 14.11 Verify project root directory is clean and organized
-- [ ] 14.12 Update .gitignore if needed to exclude test/kubernetes/ directory
-- [ ] 14.13 Document cleanup changes in CHANGELOG.md
+- [x] 14.11 Verify project root directory is clean and organized
+- [x] 14.12 Update .gitignore if needed to exclude test/kubernetes/ directory
+- [x] 14.13 Document cleanup changes in CHANGELOG.md
