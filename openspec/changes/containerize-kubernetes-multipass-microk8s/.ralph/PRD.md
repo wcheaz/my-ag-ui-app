@@ -1173,7 +1173,7 @@ multipass purge
 ## Current Task Context
 
 ## Current Task
-- 15.1 Diagnose the "instance "" does not exist" error in deploy.sh
+- 16.1 Diagnose the "path does not exist" errors for YAML files
 ## Completed Tasks for Git Commit
 - [x] 1.1 Review and optimize existing Dockerfile for multi-stage builds
 - [x] 1.2 Create build stage with all build dependencies (Node.js, npm)
@@ -1320,3 +1320,7 @@ multipass purge
 - [x] 14.11 Verify project root directory is clean and organized
 - [x] 14.12 Update .gitignore if needed to exclude test/kubernetes/ directory
 - [x] 14.13 Document cleanup changes in CHANGELOG.md
+- [x] 15.1 Diagnose the "instance "" does not exist" error in deploy.sh
+- [x] 15.2 Fix the VM name variable issue
+- [x] 15.3 Test the fix
+- [x] 15.4 Document the fix

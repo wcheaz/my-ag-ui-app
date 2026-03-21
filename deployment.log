@@ -1,0 +1,89 @@
+[2026-03-21 16:42:26] Initializing deployment log file...
+[2026-03-21 16:42:26] Initializing deployment log file...
+[2026-03-21 16:42:26] ==========================================================
+[2026-03-21 16:42:26] ==========================================================
+[2026-03-21 16:42:26] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-21 16:42:26] 🚀 MY-AG-UI-APP DEPLOYMENT SCRIPT INITIALIZED
+[2026-03-21 16:42:26] ==========================================================
+[2026-03-21 16:42:26] ==========================================================
+[2026-03-21 16:42:26] Script Configuration:
+[2026-03-21 16:42:26] Script Configuration:
+[2026-03-21 16:42:26]   - VM Name: my-ag-ui-app-k8s
+[2026-03-21 16:42:26]   - VM Name: my-ag-ui-app-k8s
+[2026-03-21 16:42:26]   - VM CPUs: 4
+[2026-03-21 16:42:26]   - VM CPUs: 4
+[2026-03-21 16:42:26]   - VM Memory: 7.7G
+[2026-03-21 16:42:26]   - VM Memory: 7.7G
+[2026-03-21 16:42:26]   - VM Disk: 20GiB
+[2026-03-21 16:42:26]   - VM Disk: 20GiB
+[2026-03-21 16:42:26]   - Log File: deployment.log
+[2026-03-21 16:42:26]   - Log File: deployment.log
+[2026-03-21 16:42:26]   - Start Time: Sat Mar 21 04:42:26 PM EDT 2026
+[2026-03-21 16:42:26]   - Start Time: Sat Mar 21 04:42:26 PM EDT 2026
+[2026-03-21 16:42:26]   - User: ncheaz
+[2026-03-21 16:42:26]   - User: ncheaz
+[2026-03-21 16:42:26]   - Working Directory: /home/ncheaz/git/my-ag-ui-app
+[2026-03-21 16:42:26]   - Working Directory: /home/ncheaz/git/my-ag-ui-app
+[2026-03-21 16:42:26] ==========================================================
+[2026-03-21 16:42:26] ==========================================================
+[2026-03-21 16:42:26] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-21 16:42:26] 📝 LOGGING INITIALIZED - All operations will be logged to this file
+[2026-03-21 16:42:26] ==========================================================
+[2026-03-21 16:42:26] ==========================================================
+[2026-03-21 16:42:26] Log file initialization completed
+[2026-03-21 16:42:26] Log file initialization completed
+[2026-03-21 16:42:26] ==========================================================
+[2026-03-21 16:42:26] ==========================================================
+[2026-03-21 16:42:26] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-21 16:42:26] 🚀 STARTING DEPLOYMENT SCRIPT EXECUTION
+[2026-03-21 16:42:26] ==========================================================
+[2026-03-21 16:42:26] ==========================================================
+[2026-03-21 16:42:26] Script Information:
+[2026-03-21 16:42:26] Script Information:
+[2026-03-21 16:42:26]   - Script: ./openspec/changes/containerize-kubernetes-multipass-microk8s/deploy.sh
+[2026-03-21 16:42:26]   - Script: ./openspec/changes/containerize-kubernetes-multipass-microk8s/deploy.sh
+[2026-03-21 16:42:26]   - User: ncheaz
+[2026-03-21 16:42:26]   - User: ncheaz
+[2026-03-21 16:42:26]   - Working Directory: /home/ncheaz/git/my-ag-ui-app
+[2026-03-21 16:42:26]   - Working Directory: /home/ncheaz/git/my-ag-ui-app
+[2026-03-21 16:42:26]   - Date: Sat Mar 21 04:42:26 PM EDT 2026
+[2026-03-21 16:42:26]   - Date: Sat Mar 21 04:42:26 PM EDT 2026
+[2026-03-21 16:42:26]   - Log File: deployment.log
+[2026-03-21 16:42:26]   - Log File: deployment.log
+[2026-03-21 16:42:26] ==========================================================
+[2026-03-21 16:42:26] ==========================================================
+
+
+[2026-03-21 16:42:26] ======================================================
+[2026-03-21 16:42:26] 📋 SECTION 1/7: PRE-DEPLOYMENT CHECKS
+[2026-03-21 16:42:26] ======================================================
+
+[2026-03-21 16:42:26] 🚀 PROGRESS: [███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 14% (1/7) - Starting pre-deployment checks
+[2026-03-21 16:42:26] Starting pre-deployment checks...
+[2026-03-21 16:42:26] Starting pre-deployment checks...
+[2026-03-21 16:42:26] PRE-DEPLOYMENT CHECKS: Beginning comprehensive system validation
+[2026-03-21 16:42:26] PRE-DEPLOYMENT CHECKS: Beginning comprehensive system validation
+
+[2026-03-21 16:42:26] 🚀 PROGRESS: [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 11% (1/9) - Checking multipass installation
+[2026-03-21 16:42:26] Checking multipass installation...
+[2026-03-21 16:42:26] Checking multipass installation...
+[2026-03-21 16:42:26] PRE-DEPLOYMENT CHECK 1/9: Multipass installation validation
+[2026-03-21 16:42:26] PRE-DEPLOYMENT CHECK 1/9: Multipass installation validation
+[2026-03-21 16:42:26] Multipass installation check: purpose=verify multipass CLI availability for VM management
+[2026-03-21 16:42:26] Multipass installation check: purpose=verify multipass CLI availability for VM management
+[2026-03-21 16:42:26] Verifying multipass command availability...
+[2026-03-21 16:42:26] Verifying multipass command availability...
+[2026-03-21 16:42:26] SUCCESS: multipass command is available
+[2026-03-21 16:42:26] SUCCESS: multipass command is available
+[2026-03-21 16:42:26] Getting multipass version information...
+[2026-03-21 16:42:26] Getting multipass version information...
+[2026-03-21 16:42:26] Multipass version information retrieved successfully
+[2026-03-21 16:42:26] Multipass version information retrieved successfully
+[2026-03-21 16:42:26] Multipass version details:
+[2026-03-21 16:42:26] Multipass version details:
+multipass   1.16.1
+multipassd  1.16.1
+[2026-03-21 16:42:26] Multipass version: 
+[2026-03-21 16:42:26] Multipass version: 
+[2026-03-21 16:42:26] ✅ STEP 1/9 COMPLETED: Multipass installation check
+[2026-03-21 16:42:26] multipass is installed and ready for VM management: multipass   1.16.1
