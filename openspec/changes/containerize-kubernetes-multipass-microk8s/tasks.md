@@ -209,8 +209,8 @@
   - [x] 15.3.7 Verify pod status checks work correctly
   - [x] 15.3.8 Verify deployment completes successfully
   - [x] 15.3.9 Verify application is accessible after deployment
-- [ ] 15.4 Document the fix
-  - [ ] 15.4.1 Update KUBERNETES-EXPLANATION.md with VM name variable details
-  - [ ] 15.4.2 Add troubleshooting entry for "instance "" does not exist" error
-  - [ ] 15.4.3 Document the fix in CHANGELOG.md
-  - [ ] 15.4.4 Update README.md if needed with VM name requirements
+- [x] 15.4 Document the fix
+   - [x] 15.4.1 Update KUBERNETES-EXPLANATION.md with VM name variable details
+   - [x] 15.4.2 Add troubleshooting entry for "instance "" does not exist" error
+   - [x] 15.4.3 Document the fix in CHANGELOG.md
+   - [x] 15.4.4 Update README.md if needed with VM name requirements

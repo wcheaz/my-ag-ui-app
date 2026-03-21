@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ingress routing and error handling
 - Health checks and resource limits
 - Script idempotency and ralph-loop automation compatibility
+- VM name variable issue causing "instance "" does not exist" error in multipass exec commands
+- VM_NAME variable initialization and validation in deployment script
 
 ## [1.0.0] - 2026-03-21
 

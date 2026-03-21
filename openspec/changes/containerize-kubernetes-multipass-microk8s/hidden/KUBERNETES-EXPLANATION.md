@@ -789,6 +789,63 @@ kubectl get pv
 # Configure persistent storage in deployment.yaml if needed
 ```
 
+### 9. VM Name Variable Issue
+
+**Issue**: `multipass exec` commands fail with "instance "" does not exist" error during deployment.
+
+**Possible Causes**:
+- VM name variable is not properly initialized before use
+- VM name variable is overwritten or cleared during script execution
+- Race conditions where multipass exec is called before VM name is set
+
+**Solutions**:
+```bash
+# Check if VM name is properly set
+echo "VM_NAME: $VM_NAME"
+
+# Verify VM exists with the expected name
+multipass info my-ag-ui-app-k8s
+```
+
+**Fix Implementation**:
+The deployment script has been updated to ensure the VM name variable is properly managed:
+
+1. **Early Initialization**: VM_NAME is defined and exported at the beginning of the script:
+```bash
+export VM_NAME="my-ag-ui-app-k8s"
+```
+
+2. **Validation**: Added validation to check VM name is set before use:
+```bash
+if [[ -z "$VM_NAME" ]]; then
+    log_error "VM_NAME is not set"
+    exit 1
+fi
+```
+
+3. **Consistent Usage**: All multipass commands now use the VM_NAME variable:
+```bash
+multipass exec "$VM_NAME" -- command
+```
+
+**Prevention**:
+- Always define and export VM_NAME at the start of the script
+- Validate VM_NAME before using multipass exec commands
+- Use logging to track VM_NAME variable state during execution
+- Test deployment script with different VM names to ensure robustness
+
+**Verification**:
+```bash
+# Run the deployment script
+./deploy.sh
+
+# Check for successful VM operations
+multipass info my-ag-ui-app-k8s
+
+# Verify Kubernetes deployment worked
+kubectl get pods
+```
+
 ## Monitoring and Maintenance
 
 ### Checking Deployment Status
