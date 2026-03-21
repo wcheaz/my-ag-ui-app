@@ -167,32 +167,32 @@ log "ingress.yaml transferred successfully to VM"
 # Validate that secrets.yaml exists in VM after transfer
 log "Validating that secrets.yaml exists in VM..."
 if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    log "ERROR: secrets.yaml does not exist in VM after transfer"
-    exit 115
+    handle_secrets_error 115 "secrets.yaml does not exist in VM after transfer" \
+        "Check if file transfer was successful. Verify VM is accessible: multipass info '$VM_NAME'. Check logs for transfer errors."
 fi
 log "secrets.yaml validation successful - file exists in VM"
 
 # Validate that deployment.yaml exists in VM after transfer
 log "Validating that deployment.yaml exists in VM..."
 if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/deployment.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    log "ERROR: deployment.yaml does not exist in VM after transfer"
-    exit 116
+    handle_secrets_error 116 "deployment.yaml does not exist in VM after transfer" \
+        "Check if file transfer was successful. Verify VM is accessible: multipass info '$VM_NAME'. Check logs for transfer errors."
 fi
 log "deployment.yaml validation successful - file exists in VM"
 
 # Validate that service.yaml exists in VM after transfer
 log "Validating that service.yaml exists in VM..."
 if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    log "ERROR: service.yaml does not exist in VM after transfer"
-    exit 117
+    handle_secrets_error 117 "service.yaml does not exist in VM after transfer" \
+        "Check if file transfer was successful. Verify VM is accessible: multipass info '$VM_NAME'. Check logs for transfer errors."
 fi
 log "service.yaml validation successful - file exists in VM"
 
 # Validate that ingress.yaml exists in VM after transfer
 log "Validating that ingress.yaml exists in VM..."
 if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/ingress.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    log "ERROR: ingress.yaml does not exist in VM after transfer"
-    exit 118
+    handle_secrets_error 118 "ingress.yaml does not exist in VM after transfer" \
+        "Check if file transfer was successful. Verify VM is accessible: multipass info '$VM_NAME'. Check logs for transfer errors."
 fi
 log "ingress.yaml validation successful - file exists in VM"
 
