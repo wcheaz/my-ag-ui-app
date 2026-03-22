@@ -94,6 +94,24 @@ setup_vm_docker() {
         log "Docker already installed, skipping installation"
     fi
     
+    # Add user to docker group
+    log "Adding user to docker group..."
+    if ! multipass exec "$VM_NAME" -- sudo usermod -aG docker ubuntu 2>&1 | tee -a "$LOG_FILE"; then
+        log "ERROR: Failed to add user to docker group"
+        log "RECOVERY: Manual group addition may be required. Connect to VM with: multipass shell $VM_NAME"
+        log "         Then run: sudo usermod -aG docker ubuntu"
+        return 1
+    fi
+    log "✅ User added to docker group successfully"
+    
+    # Create new shell session to activate docker group membership
+    log "Activating docker group membership..."
+    if ! multipass exec "$VM_NAME" -- newgrp docker 2>&1 | tee -a "$LOG_FILE"; then
+        log "⚠️  Warning: Could not activate docker group membership with newgrp, continuing..."
+        log "   This may cause issues with docker commands requiring group membership"
+    fi
+    log "✅ Docker group membership activated"
+    
     # Check Docker daemon status in VM
     log "Checking Docker daemon status in VM..."
     if multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
