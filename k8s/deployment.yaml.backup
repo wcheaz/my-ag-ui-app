@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-ag-ui-app
+  namespace: default
+  labels:
+    app: my-ag-ui-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-ag-ui-app
+  template:
+    metadata:
+      labels:
+        app: my-ag-ui-app
+    spec:
+      containers:
+      - name: my-ag-ui-app
+        image: my-ag-ui-app:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        # Sensitive environment variables from secrets
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: my-ag-ui-app-secrets
+              key: openai-api-key
+        - name: OPENAI_BASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: my-ag-ui-app-secrets
+              key: openai-base-url
+        - name: OPENAI_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: my-ag-ui-app-secrets
+              key: openai-model
+        - name: EMBEDDING_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: my-ag-ui-app-secrets
+              key: embedding-model
+        - name: LOGFIRE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: my-ag-ui-app-secrets
+              key: logfire-token
+        # Non-sensitive environment variables from config map
+        - name: LLM_MAX_TOKENS
+          valueFrom:
+            configMapKeyRef:
+              name: my-ag-ui-app-config
+              key: llm-max-tokens
+        - name: LLM_CONTEXT_WINDOW
+          valueFrom:
+            configMapKeyRef:
+              name: my-ag-ui-app-config
+              key: llm-context-window
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      restartPolicy: Always

@@ -50,4 +50,4 @@
 - [x] 6.5 Restart deployment to trigger pod recreation with new image
 - [x] 6.6 Verify pod status changes from ImagePullBackOff to Running
 - [x] 6.7 Verify pod passes readiness and liveness probes
-- [ ] 6.8 Test application accessibility via ingress endpoint
+- [x] 6.8 Test application accessibility via ingress endpoint
