@@ -209,6 +209,34 @@ handle_secrets_error() {
         log "5. If deployment is stuck, try deleting and recreating: multipass exec '$VM_NAME' -- microk8s kubectl delete deployment my-ag-ui-app && microk8s kubectl apply -f k8s/deployment.yaml"
     fi
     
+    # Enhanced diagnostics for pod status verification error (126)
+    if [ "$error_code" -eq 126 ]; then
+        log "POD STATUS VERIFICATION DIAGNOSTIC INFO:"
+        log "VM_NAME: $VM_NAME"
+        log "VM status: $(multipass info "$VM_NAME" 2>/dev/null || echo 'Unable to get VM status')"
+        
+        log "Pod status details:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o wide 2>/dev/null || log "Unable to get pod status"
+        
+        log "Pod events:"
+        multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>/dev/null | grep -A 10 -B 10 "Events:" || log "Unable to get pod events"
+        
+        log "Pod container status:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[*].status.containerStatuses}' 2>/dev/null || log "Unable to get container status"
+        
+        log "Docker images in VM:"
+        multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest 2>/dev/null || log "Unable to get Docker images in VM"
+        
+        log "RECOVERY SUGGESTIONS:"
+        log "1. Check if the correct image is loaded in VM: multipass exec '$VM_NAME' -- docker images my-ag-ui-app:latest"
+        log "2. Check pod logs for image pull errors: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app"
+        log "3. Verify image exists locally: docker images my-ag-ui-app:latest"
+        log "4. Try rebuilding and reloading the image: docker build -t my-ag-ui-app:latest . && docker save my-ag-ui-app:latest | multipass exec '$VM_NAME' -- docker load"
+        log "5. Check if pod is stuck in ImagePullBackOff: multipass exec '$VM_NAME' -- microk8s kubectl get pods -l app=my-ag-ui-app"
+        log "6. If image issue persists, check deployment image reference: multipass exec '$VM_NAME' -- microk8s kubectl get deployment my-ag-ui-app -o yaml | grep image:"
+        log "7. Consider deleting the pod to trigger recreation: multipass exec '$VM_NAME' -- microk8s kubectl delete pods -l app=my-ag-ui-app"
+    fi
+    
     exit $error_code
 }
 
@@ -441,6 +469,78 @@ if ! multipass exec "$VM_NAME" -- microk8s kubectl rollout restart deployment/my
         "Check if deployment exists: microk8s kubectl get deployment my-ag-ui-app. Ensure deployment is in a state that can be restarted."
 fi
 log "Deployment restarted successfully - pods will be recreated with new image"
+
+# 6.6 Verify pod status changes from ImagePullBackOff to Running
+log "Verifying pod status changes from ImagePullBackOff to Running..."
+MAX_POD_WAIT_ATTEMPTS=30
+POD_WAIT_ATTEMPT=1
+INITIAL_STATUS_CHECK=true
+SAW_IMAGE_PULL_BACK_OFF=false
+
+while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
+    log "Checking pod status after deployment restart... (attempt $POD_WAIT_ATTEMPT/$MAX_POD_WAIT_ATTEMPTS)"
+    
+    # Get current pod status
+    POD_STATUS_JSON=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json 2>/dev/null || echo "")
+    
+    if [ -n "$POD_STATUS_JSON" ]; then
+        # Check for ImagePullBackOff status
+        IMAGE_PULL_BACK_OFF=$(echo "$POD_STATUS_JSON" | grep -o '"ImagePullBackOff"' || echo "")
+        if [ -n "$IMAGE_PULL_BACK_OFF" ] && [ "$SAW_IMAGE_PULL_BACK_OFF" = false ]; then
+            log "Pod status: ImagePullBackOff detected (expected before pod starts running)"
+            SAW_IMAGE_PULL_BACK_OFF=true
+        fi
+        
+        # Check for Running status
+        POD_PHASE=$(echo "$POD_STATUS_JSON" | grep -o '"phase":"Running"' || echo "")
+        POD_READY=$(echo "$POD_STATUS_JSON" | grep -o '"ready":true' || echo "")
+        
+        if [ -n "$POD_PHASE" ] && [ -n "$POD_READY" ]; then
+            log "✓ Pod status changed to Running - verification successful"
+            log "Pod phase: Running"
+            log "Pod container status: Ready"
+            break
+        else
+            log "Pod not yet running. Current status:"
+            multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
+            
+            # If we haven't seen ImagePullBackOff and this is the first check, wait a bit more
+            if [ "$SAW_IMAGE_PULL_BACK_OFF" = false ] && [ "$INITIAL_STATUS_CHECK" = true ]; then
+                log "Waiting for pod status change from ImagePullBackOff to Running..."
+                INITIAL_STATUS_CHECK=false
+            fi
+        fi
+    else
+        log "Unable to get pod status JSON, trying basic status check..."
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
+    fi
+    
+    if [ $POD_WAIT_ATTEMPT -eq $MAX_POD_WAIT_ATTEMPTS ]; then
+        if [ "$SAW_IMAGE_PULL_BACK_OFF" = false ]; then
+            log "ERROR: Never observed ImagePullBackOff status - pod may not be using the correct image"
+        else
+            log "ERROR: Pod did not reach Running status after deployment restart"
+        fi
+        
+        log "Final pod status:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
+        
+        log "Pod details for debugging:"
+        multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
+        
+        handle_secrets_error 126 "Pod did not reach Running status after deployment restart" \
+            "Check pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app. Verify image was loaded correctly in VM."
+    fi
+    
+    sleep 5
+    POD_WAIT_ATTEMPT=$((POD_WAIT_ATTEMPT + 1))
+done
+
+if [ "$SAW_IMAGE_PULL_BACK_OFF" = true ]; then
+    log "✓ Confirmed: Pod status transitioned from ImagePullBackOff to Running"
+else
+    log "INFO: Pod started without ImagePullBackOff status (image may have been pre-loaded)"
+fi
 
 # Apply service manifest
 log "Applying service manifest..."
