@@ -49,7 +49,7 @@
 ## 6. Edge Cases and Robustness
 
 - [x] 6.1 Handle case where Docker installation script is not accessible
-- [ ] 6.2 Handle case where Docker daemon takes longer than expected to start
+- [x] 6.2 Handle case where Docker daemon takes longer than expected to start
 - [ ] 6.3 Handle case where docker group membership doesn't activate immediately
 - [x] 6.4 Add timeout handling for all Docker operations
 - [ ] 6.5 Handle case where VM is not accessible or multipass commands fail

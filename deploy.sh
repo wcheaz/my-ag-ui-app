@@ -63,6 +63,13 @@ setup_vm_docker() {
     DAEMON_START_TIMEOUT=60
     GROUP_OPERATION_TIMEOUT=30
     
+    # Docker daemon retry configuration - can be adjusted for slow systems
+    MAX_DAEMON_CHECK_ATTEMPTS=10
+    INITIAL_RETRY_DELAY=2
+    MAX_RETRY_DELAY=30
+    EXTENDED_RETRY_ATTEMPTS=5
+    EXTENDED_RETRY_DELAY=60
+    
     # Collect comprehensive diagnostic information at the start
     log "COLLECTING INITIAL DIAGNOSTIC INFORMATION..."
     log "=================================================="
@@ -774,7 +781,7 @@ setup_vm_docker() {
             log "   Try: sudo setenforce 0 && sudo usermod -aG docker ubuntu"
             
         # Check for filesystem or permission issues with system files
-        elif echo "$group_add_output" | grep -q -E ("/etc/passwd|/etc/group|permission.*system|read.*only.*system|filesystem.*error)"; then
+        elif echo "$group_add_output" | grep -q -E "(/etc/passwd|/etc/group|permission.*system|read.*only.*system|filesystem.*error)"; then
             log "ERROR TYPE: SYSTEM FILESYSTEM FAILURE"
             log "DIAGNOSTIC: Filesystem issues with system files (/etc/passwd, /etc/group)"
             log "RECOVERY STEPS:"
@@ -851,31 +858,47 @@ setup_vm_docker() {
     fi
     
     # Check Docker daemon status with retry loop and exponential backoff
-    log "Checking Docker daemon status in VM with retry loop..."
+    log "Checking Docker daemon status in VM with retry loop (max $MAX_DAEMON_CHECK_ATTEMPTS attempts, max delay ${MAX_RETRY_DELAY}s)..."
     DOCKER_DAEMON_RUNNING=false
-    MAX_DAEMON_CHECK_ATTEMPTS=10
     DAEMON_CHECK_ATTEMPT=1
-    INITIAL_RETRY_DELAY=2
-    MAX_RETRY_DELAY=30
     RETRY_DELAY=$INITIAL_RETRY_DELAY
     DOCKER_DAEMON_ERROR=""
+    DAEMON_START_TIME=$(date +%s)
+    DAEMON_TIMEOUT_WARNING=$((MAX_DAEMON_CHECK_ATTEMPTS * MAX_RETRY_DELAY / 2))  # Warn at half the expected max time
     
     while [ $DAEMON_CHECK_ATTEMPT -le $MAX_DAEMON_CHECK_ATTEMPTS ]; do
-        log "Docker daemon status check attempt $DAEMON_CHECK_ATTEMPT/$MAX_DAEMON_CHECK_ATTEMPTS (delay: ${RETRY_DELAY}s)..."
+        CURRENT_TIME=$(date +%s)
+        ELAPSED_TIME=$((CURRENT_TIME - DAEMON_START_TIME))
+        
+        log "Docker daemon status check attempt $DAEMON_CHECK_ATTEMPT/$MAX_DAEMON_CHECK_ATTEMPTS (delay: ${RETRY_DELAY}s, elapsed: ${ELAPSED_TIME}s)..."
+        
+        # Add progress warning if taking longer than expected
+        if [ $ELAPSED_TIME -gt $DAEMON_TIMEOUT_WARNING ] && [ $DAEMON_CHECK_ATTEMPT -gt 3 ]; then
+            log "⚠️  WARNING: Docker daemon startup is taking longer than expected (${ELAPSED_TIME}s elapsed)"
+            log "   This may indicate system resource constraints or configuration issues"
+        fi
         
         # Capture detailed error output for analysis with timeout
         DOCKER_INFO_OUTPUT=$(timeout $DOCKER_OPERATION_TIMEOUT multipass exec "$VM_NAME" -- docker info 2>&1)
         DOCKER_INFO_EXIT_CODE=$?
         
         if [ $DOCKER_INFO_EXIT_CODE -eq 0 ]; then
-            log "✅ Docker daemon is running and accessible in VM (attempt $DAEMON_CHECK_ATTEMPT)"
+            log "✅ Docker daemon is running and accessible in VM (attempt $DAEMON_CHECK_ATTEMPT, total time: ${ELAPSED_TIME}s)"
             DOCKER_DAEMON_RUNNING=true
             break
         else
-            log "⚠️  Docker daemon is not running or not accessible in VM (attempt $DAEMON_CHECK_ATTEMPT)"
+            log "⚠️  Docker daemon is not running or not accessible in VM (attempt $DAEMON_CHECK_ATTEMPT, elapsed: ${ELAPSED_TIME}s)"
             
             # Store the error output for analysis
             DOCKER_DAEMON_ERROR="$DOCKER_INFO_OUTPUT"
+            
+            # Add intermediate diagnostic information during retries (not just on final failure)
+            if [ $DAEMON_CHECK_ATTEMPT -gt 2 ]; then
+                log "INTERMEDIATE DIAGNOSTIC (attempt $DAEMON_CHECK_ATTEMPT):"
+                log "- Docker daemon process: $(multipass exec "$VM_NAME" -- ps aux | grep -i docker | grep -v grep | head -n1 2>/dev/null || echo 'Not found')"
+                log "- Docker daemon status: $(multipass exec "$VM_NAME" -- sudo systemctl is-active docker 2>/dev/null || echo 'Unknown')"
+                log "- Docker daemon socket: $(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null | head -n1 || echo 'Not found')"
+            fi
             
             # If this is the last attempt, provide comprehensive error analysis
             if [ $DAEMON_CHECK_ATTEMPT -eq $MAX_DAEMON_CHECK_ATTEMPTS ]; then
@@ -1103,6 +1126,64 @@ setup_vm_docker() {
         
         DAEMON_CHECK_ATTEMPT=$((DAEMON_CHECK_ATTEMPT + 1))
     done
+    
+    # Check if Docker daemon is running after initial retry attempts
+    if [ "$DOCKER_DAEMON_RUNNING" = false ]; then
+        CURRENT_TIME=$(date +%s)
+        ELAPSED_TIME=$((CURRENT_TIME - DAEMON_START_TIME))
+        
+        log "⚠️  WARNING: Docker daemon did not start within expected time (${ELAPSED_TIME}s elapsed)"
+        log "   This may indicate a very slow system or persistent configuration issues"
+        log "   Offering extended retry attempts for exceptionally slow startup..."
+        
+        # Ask user if they want to continue with extended retries
+        log "Would you like to continue with extended retries? (This may take several additional minutes)"
+        log "Press Ctrl+C to cancel or wait 10 seconds for extended retries to begin..."
+        
+        # Wait 10 seconds for user to potentially cancel
+        sleep 10
+        
+        log "Starting extended retry attempts ($EXTENDED_RETRY_ATTEMPTS additional attempts with ${EXTENDED_RETRY_DELAY}s delay each)..."
+        
+        # Extended retry loop
+        for ((EXTENDED_ATTEMPT=1; EXTENDED_ATTEMPT<=EXTENDED_RETRY_ATTEMPTS; EXTENDED_ATTEMPT++)); do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED_TIME=$((CURRENT_TIME - DAEMON_START_TIME))
+            
+            log "Extended Docker daemon check attempt $EXTENDED_ATTEMPT/$EXTENDED_RETRY_ATTEMPTS (delay: ${EXTENDED_RETRY_DELAY}s, total elapsed: ${ELAPSED_TIME}s)..."
+            
+            # Capture detailed error output for analysis with timeout
+            DOCKER_INFO_OUTPUT=$(timeout $DOCKER_OPERATION_TIMEOUT multipass exec "$VM_NAME" -- docker info 2>&1)
+            DOCKER_INFO_EXIT_CODE=$?
+            
+            if [ $DOCKER_INFO_EXIT_CODE -eq 0 ]; then
+                log "✅ Docker daemon is running and accessible in VM (extended attempt $EXTENDED_ATTEMPT, total time: ${ELAPSED_TIME}s)"
+                DOCKER_DAEMON_RUNNING=true
+                break
+            else
+                log "⚠️  Docker daemon still not running in VM (extended attempt $EXTENDED_ATTEMPT, elapsed: ${ELAPSED_TIME}s)"
+                
+                # Minimal diagnostic during extended retries
+                log "Quick diagnostic: $(multipass exec "$VM_NAME" -- sudo systemctl is-active docker 2>/dev/null || echo 'daemon inactive')"
+                
+                # Wait before next extended attempt
+                if [ $EXTENDED_ATTEMPT -lt $EXTENDED_RETRY_ATTEMPTS ]; then
+                    log "Waiting ${EXTENDED_RETRY_DELAY}s before next extended attempt..."
+                    sleep $EXTENDED_RETRY_DELAY
+                fi
+            fi
+        done
+    fi
+    
+    # Final check if daemon is running after all retry attempts
+    if [ "$DOCKER_DAEMON_RUNNING" = false ]; then
+        CURRENT_TIME=$(date +%s)
+        ELAPSED_TIME=$((CURRENT_TIME - DAEMON_START_TIME))
+        log "❌ ERROR: Docker daemon failed to start after all retry attempts (${ELAPSED_TIME}s total elapsed)"
+        log "   This indicates a persistent issue with Docker daemon startup"
+        log "   Please check the comprehensive diagnostic information above for troubleshooting"
+        return 1
+    fi
     
     # Verify Docker commands work without sudo
     log "Verifying Docker commands work without sudo..."
