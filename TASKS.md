@@ -1,0 +1,56 @@
+# Ralph Wiggum Task Execution - npm Lock File Synchronization Fix
+
+## Task List
+
+## 1. Dockerfile Updates
+
+- [x] 1.1 Add fallback logic to handle npm ci failures in Dockerfile
+- [x] 1.2 Implement npm install fallback when npm ci fails due to lock file sync issues
+- [x] 1.3 Add logging to indicate when fallback mechanism is triggered
+- [x] 1.4 Test Dockerfile with in-sync lock files (verify normal path works)
+- [x] 1.5 Test Dockerfile with out-of-sync lock files (verify fallback path works)
+
+## 2. Deploy.sh Validation
+
+- [x] 2.1 Create validate_lock_files function in deploy.sh
+- [x] 2.2 Implement npm ci --dry-run validation check
+- [x] 2.3 Add error handling and clear remediation messages for sync failures
+- [x] 2.4 Integrate validation step before Docker build in deploy.sh
+- [x] 2.5 Add --skip-deps-check flag for emergency bypass
+- [x] 2.6 Test validation with in-sync lock files (should pass)
+- [x] 2.7 Test validation with out-of-sync lock files (should fail with clear message)
+
+## 3. Documentation
+
+- [x] 3.1 Add lock file maintenance section to SETUP.md
+- [x] 3.2 Create DEPENDENCIES.md with detailed dependency management guidance
+- [x] 3.3 Document the pre-build validation process
+- [x] 3.4 Document the fallback mechanism and when it triggers
+- [x] 3.5 Add troubleshooting section for common lock file sync issues
+- [x] 3.6 Document the --skip-deps-check flag usage and warnings
+
+## 4. Testing and Verification
+
+- [x] 4.1 Run full deployment with in-sync lock files (verify normal path)
+- [x] 4.2 Run full deployment with out-of-sync lock files (verify fallback path)
+- [x] 4.3 Verify error messages are clear and actionable
+- [x] 4.4 Test --skip-deps-check flag functionality
+- [x] 4.5 Verify Docker build logs show fallback activation when appropriate
+- [x] 4.6 Test rollback procedure (revert changes and verify original behavior)
+
+## 5. Code Review and Cleanup
+
+- [x] 5.1 Review all code changes for consistency and best practices
+- [x] 5.2 Ensure all error messages are user-friendly
+- [x] 5.3 Verify logging is consistent with existing deploy.sh patterns
+- [x] 5.4 Add comments explaining the fallback logic in Dockerfile
+- [x] 5.5 Update any relevant README sections if needed
+- [x] 5.6 Verify all documentation is accurate and complete
+
+## 6. Deployment Preparation
+
+- [x] 6.1 Create backup of current Dockerfile and deploy.sh
+- [x] 6.2 Prepare rollback plan documentation
+- [x] 6.3 Document any monitoring or alerts needed for fallback usage
+- [x] 6.4 Update CHANGELOG.md with this change
+- [x] 6.5 Prepare announcement or communication about the new validation step

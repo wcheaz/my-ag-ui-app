@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Created `DEPENDENCIES.md` with 1343 lines of comprehensive dependency management guidance
   - Documented pre-build validation process, fallback mechanism, and troubleshooting procedures
   - Added troubleshooting section to `README.md` for lock file sync issues
-  - Created `ROLLBACK.md` with detailed rollback procedures for all changes
+  - Created `ROLLBACK_PLAN.md` with detailed rollback procedures for all changes
   - Created `MONITORING.md` with alerting and monitoring guidance for the new system
 
 ### Fixed
