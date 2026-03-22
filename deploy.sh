@@ -9,12 +9,117 @@ LOG_FILE="/tmp/deploy-$(date +%Y%m%d-%H%M%S).log"
 # VM configuration
 VM_NAME="my-ag-ui-app-k8s"
 
+# ===========================
+# COMMAND LINE ARGUMENT PARSING
+# ===========================
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --skip-deps-check)
+            SKIP_DEPS_CHECK=true
+            log "⚠️  WARNING: Skipping dependency validation check"
+            log "   This may result in build failures if lock files are out of sync"
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --skip-deps-check    Skip dependency validation (emergency use only)"
+            echo "  --help, -h           Show this help message"
+            echo ""
+            echo "This script deploys the my-ag-ui-app to Kubernetes using Docker and multipass."
+            echo "It validates that package.json and package-lock.json are synchronized"
+            echo "before building Docker images to ensure reproducible builds."
+            exit 0
+            ;;
+        *)
+            log "ERROR: Unknown option: $1"
+            log "Use --help to see available options"
+            exit 1
+            ;;
+    esac
+done
+
 # Logging function - prints to both stdout and log file
 log() {
     local message="$1"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     echo "[$timestamp] $message"
     echo "[$timestamp] $message" >> "$LOG_FILE"
+}
+
+# ===========================
+# LOCK FILE VALIDATION SECTION
+# ===========================
+
+# Skip dependency check flag (can be overridden with --skip-deps-check)
+SKIP_DEPS_CHECK=false
+
+# Lock file validation function with user-friendly error messages
+validate_lock_files() {
+    log "Starting lock file validation..."
+    
+    # Check if package.json exists
+    if [ ! -f "package.json" ]; then
+        log "ERROR: package.json not found in current directory"
+        log "SOLUTION: Ensure you're running this script from the project root directory"
+        log "         where package.json is located."
+        return 1
+    fi
+    
+    # Check if package-lock.json exists
+    if [ ! -f "package-lock.json" ]; then
+        log "ERROR: package-lock.json not found in current directory"
+        log "SOLUTION: Run 'npm install' to generate the missing package-lock.json"
+        log "         This file is required for reproducible builds."
+        return 1
+    fi
+    
+    log "Checking if package.json and package-lock.json are in sync..."
+    
+    # Run npm ci --dry-run to validate lock file consistency
+    local ci_output
+    ci_output=$(npm ci --dry-run 2>&1)
+    local ci_status=$?
+    
+    if [ $ci_status -ne 0 ]; then
+        log ""
+        log "❌ VALIDATION FAILED: package.json and package-lock.json are out of sync"
+        log ""
+        log "What does this mean?"
+        log "The dependencies in your package.json don't match the versions"
+        log "recorded in package-lock.json. This prevents reliable builds."
+        log ""
+        log "How to fix this:"
+        log "1. Run this command to update the lock file:"
+        log "   npm install"
+        log ""
+        log "2. Check that the lock file was updated:"
+        log "   git status"
+        log ""
+        log "3. Commit the updated lock file to your repository:"
+        log "   git add package-lock.json"
+        log "   git commit -m 'Update package-lock.json to match package.json'"
+        log ""
+        log "4. Then run the deployment again:"
+        log "   ./deploy.sh"
+        log ""
+        log "Why is this important?"
+        log "Synchronized lock files ensure that every deployment uses"
+        log "exactly the same dependency versions, preventing surprises"
+        log "and making builds reproducible."
+        log ""
+        log "Emergency bypass (not recommended):"
+        log "   ./deploy.sh --skip-deps-check"
+        log ""
+        return 1
+    fi
+    
+    log "✅ SUCCESS: package.json and package-lock.json are synchronized"
+    log "   Dependencies are ready for reproducible Docker builds."
+    return 0
 }
 
 # ===========================
@@ -399,6 +504,38 @@ if [ -z "$VM_NAME" ]; then
     exit 1
 fi
 log "Using VM_NAME: $VM_NAME for Kubernetes deployment"
+
+# ===========================
+# DEPENDENCY VALIDATION SECTION
+# ===========================
+
+# Validate lock files before Docker build (unless skipped)
+if [ "$SKIP_DEPS_CHECK" = false ]; then
+    log ""
+    log "=================================================="
+    log "  DEPENDENCY VALIDATION BEFORE DOCKER BUILD"
+    log "=================================================="
+    log ""
+    
+    if ! validate_lock_files; then
+        log ""
+        log "🛑 DEPLOYMENT HALTED: Dependency validation failed"
+        log "   Fix the lock file sync issue and try again"
+        log ""
+        # Use error code 200 for lock file validation failures
+        exit 200
+    fi
+    
+    log ""
+    log "✅ Dependency validation passed - proceeding with Docker build"
+    log "=================================================="
+    log ""
+else
+    log ""
+    log "⚠️  SKIPPED: Dependency validation bypassed by --skip-deps-check"
+    log "   Building with potentially out-of-sync lock files"
+    log ""
+fi
 
 # 6.1 Build Docker image using Dockerfile in project root
 log "Starting Docker image build process..."
