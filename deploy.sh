@@ -58,6 +58,58 @@ log() {
 setup_vm_docker() {
     log "Starting Docker setup in VM '$VM_NAME'..."
     
+    # Collect comprehensive diagnostic information at the start
+    log "COLLECTING INITIAL DIAGNOSTIC INFORMATION..."
+    log "=================================================="
+    log "VM CONFIGURATION DIAGNOSTICS:"
+    log "- VM Name: $VM_NAME"
+    log "- Host System: $(uname -a 2>/dev/null || echo 'Unable to get host info')"
+    log "- Host Docker Version: $(docker --version 2>/dev/null || echo 'Docker not available on host')"
+    log "- Multipass Version: $(multipass version 2>/dev/null || echo 'Multipass not available')"
+    log "- Current User: $USER"
+    log "- User Groups: $(groups 2>/dev/null || echo 'Unable to get groups')"
+    log "- Current Directory: $(pwd)"
+    log "- Script PID: $$"
+    log "- Script Start Time: $(date '+%Y-%m-%d %H:%M:%S')"
+    
+    log "VM STATUS DIAGNOSTICS:"
+    log "- VM Basic Info: $(multipass info "$VM_NAME" 2>/dev/null | head -1 || echo 'Unable to get VM info')"
+    log "- VM IPv4: $(multipass info "$VM_NAME" | grep -E "IPv4:" | awk '{print $2}' | cut -d',' -f1 | head -n1 2>/dev/null || echo 'Unable to get VM IP')"
+    log "- VM Status: $(multipass info "$VM_NAME" | grep -E "State:" | awk '{print $2}' | head -n1 2>/dev/null || echo 'Unable to get VM status')"
+    log "- VM CPU: $(multipass info "$VM_NAME" | grep -E "CPU(s):" | awk '{print $2}' | head -n1 2>/dev/null || echo 'Unable to get CPU info')"
+    log "- VM Memory: $(multipass info "$VM_NAME" | grep -E "Memory:" | awk '{print $2}' | head -n1 2>/dev/null || echo 'Unable to get memory info')"
+    log "- VM Disk: $(multipass info "$VM_NAME" | grep -E "Disk:" | awk '{print $2}' | head -n1 2>/dev/null || echo 'Unable to get disk info')"
+    
+    log "VM SYSTEM DIAGNOSTICS:"
+    log "- VM OS Info: $(multipass exec "$VM_NAME" -- uname -a 2>/dev/null || echo 'Unable to get VM OS info')"
+    log "- VM OS Release: $(multipass exec "$VM_NAME" -- cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d'"' -f2 || echo 'Unable to get OS release')"
+    log "- VM Architecture: $(multipass exec "$VM_NAME" -- dpkg --print-architecture 2>/dev/null || echo 'Unable to get architecture')"
+    log "- VM Kernel Version: $(multipass exec "$VM_NAME" -- uname -r 2>/dev/null || echo 'Unable to get kernel version')"
+    log "- VM Uptime: $(multipass exec "$VM_NAME" -- uptime 2>/dev/null || echo 'Unable to get uptime')"
+    log "- VM Current User: $(multipass exec "$VM_NAME" -- whoami 2>/dev/null || echo 'Unable to get VM user')"
+    log "- VM User ID: $(multipass exec "$VM_NAME" -- id 2>/dev/null || echo 'Unable to get VM user ID')"
+    log "- VM User Groups: $(multipass exec "$VM_NAME" -- groups 2>/dev/null || echo 'Unable to get VM user groups')"
+    
+    log "VM RESOURCES DIAGNOSTICS:"
+    log "- VM Disk Usage: $(multipass exec "$VM_NAME" -- df -h / 2>/dev/null | tail -n1 | awk '{print "Root: " $3 "/" $2 " (" $5 " used)"}' || echo 'Unable to get disk usage')"
+    log "- VM Memory Usage: $(multipass exec "$VM_NAME" -- free -h 2>/dev/null | grep Mem: | awk '{print "Total: " $2 ", Used: " $3 ", Free: " $4}' || echo 'Unable to get memory usage')"
+    log "- VM CPU Load: $(multipass exec "$VM_NAME" -- top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1 | head -n1 2>/dev/null || echo 'Unable to get CPU load')% load"
+    log "- VM Process Count: $(multipass exec "$VM_NAME" -- ps aux | wc -l 2>/dev/null || echo 'Unable to get process count') processes"
+    
+    log "VM NETWORK DIAGNOSTICS:"
+    log "- VM Network Interfaces: $(multipass exec "$VM_NAME" -- ip a | grep -E "^[0-9]+:" | wc -l 2>/dev/null || echo 'Unable to count interfaces') interfaces found"
+    log "- VM Network Connectivity: $(multipass exec "$VM_NAME" -- ping -c 1 google.com >/dev/null 2>&1 && echo 'Google reachable' || echo 'Google not reachable')"
+    log "- VM DNS Resolution: $(multipass exec "$VM_NAME" -- nslookup google.com >/dev/null 2>&1 && echo 'DNS working' || echo 'DNS not working')"
+    log "- VM Package Manager: $(multipass exec "$VM_NAME" -- apt list --upgradable 2>/dev/null | wc -l 2>/dev/null || echo 'Unable to check package manager') packages can be upgraded"
+    
+    log "VM DOCKER PRE-CHECK DIAGNOSTICS:"
+    log "- Docker Binary: $(multipass exec "$VM_NAME" -- which docker 2>/dev/null || echo 'Docker binary not found')"
+    log "- Docker Version: $(multipass exec "$VM_NAME" -- docker --version 2>/dev/null || echo 'Docker version not available')"
+    log "- Docker Daemon Status: $(multipass exec "$VM_NAME" -- sudo systemctl is-active docker 2>/dev/null || echo 'Unable to check daemon status')"
+    log "- Docker Group: $(multipass exec "$VM_NAME" -- getent group docker 2>/dev/null || echo 'Docker group not found')"
+    log "- Docker Socket: $(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null || echo 'Docker socket not found')"
+    log "=================================================="
+    
     # Check Docker CLI availability in VM with comprehensive error handling
     log "Checking Docker CLI availability in VM..."
     DOCKER_CLI_AVAILABLE=false
@@ -528,6 +580,61 @@ setup_vm_docker() {
     else
         log "Docker already installed, skipping installation"
     fi
+    
+    # Post-installation diagnostic information
+    log "POST-INSTALLATION DIAGNOSTIC VERIFICATION..."
+    log "=================================================="
+    
+    # Verify Docker installation components
+    log "DOCKER INSTALLATION COMPONENTS VERIFICATION:"
+    log "- Docker CLI Binary: $(multipass exec "$VM_NAME" -- which docker 2>/dev/null || echo 'NOT FOUND')"
+    log "- Docker CLI Version: $(multipass exec "$VM_NAME" -- docker --version 2>/dev/null || echo 'UNAVAILABLE')"
+    log "- Docker Daemon Status: $(multipass exec "$VM_NAME" -- sudo systemctl is-active docker 2>/dev/null || echo 'UNKNOWN')"
+    log "- Docker Service Status: $(multipass exec "$VM_NAME" -- sudo systemctl status docker 2>/dev/null | grep Active | head -n1 || echo 'UNAVAILABLE')"
+    log "- Docker Service Enabled: $(multipass exec "$VM_NAME" -- sudo systemctl is-enabled docker 2>/dev/null || echo 'UNKNOWN')"
+    
+    # Check Docker package installation
+    log "DOCKER PACKAGES VERIFICATION:"
+    multipass exec "$VM_NAME" -- dpkg -l | grep -i docker 2>/dev/null | while read pkg; do
+        log "- Package: $pkg"
+    done || log "No Docker packages found in dpkg listing"
+    
+    # Check Docker related files and directories
+    log "DOCKER FILESYSTEM VERIFICATION:"
+    log "- Docker Config Directory: $(multipass exec "$VM_NAME" -- ls -la /etc/docker/ 2>/dev/null || echo 'NOT FOUND/EMPTY')"
+    log "- Docker Daemon Config: $(multipass exec "$VM_NAME" -- cat /etc/docker/daemon.json 2>/dev/null || echo 'NOT FOUND/EMPTY')"
+    log "- Docker Service File: $(multipass exec "$VM_NAME" -- ls -la /lib/systemd/system/docker.service 2>/dev/null || echo 'NOT FOUND')"
+    log "- Docker Socket: $(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null || echo 'NOT FOUND')"
+    log "- Docker Data Directory: $(multipass exec "$VM_NAME" -- ls -la /var/lib/docker/ 2>/dev/null | head -5 || echo 'NOT FOUND/EMPTY')"
+    
+    # Check Docker group and user permissions
+    log "DOCKER GROUP AND PERMISSIONS VERIFICATION:"
+    log "- Docker Group Exists: $(multipass exec "$VM_NAME" -- getent group docker 2>/dev/null && echo 'YES' || echo 'NO')"
+    log "- Docker Group Members: $(multipass exec "$VM_NAME" -- getent group docker 2>/dev/null | cut -d: -f4 || echo 'NONE')"
+    log "- User in Docker Group: $(multipass exec "$VM_NAME" -- groups ubuntu 2>/dev/null | grep -q docker && echo 'YES' || echo 'NO')"
+    log "- Docker Socket Permissions: $(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null | awk '{print $1 " " $3 " " $4}' || echo 'UNAVAILABLE')"
+    
+    # Check Docker daemon process information
+    log "DOCKER DAEMON PROCESS VERIFICATION:"
+    log "- Docker Daemon Process: $(multipass exec "$VM_NAME" -- ps aux | grep -E '[d]ockerd' | head -n1 || echo 'NOT RUNNING')"
+    log "- Docker Containerd Process: $(multipass exec "$VM_NAME" -- ps aux | grep -E '[c]ontainerd' | head -n1 || echo 'NOT RUNNING')"
+    log "- Docker Proxy Process: $(multipass exec "$VM_NAME" -- ps aux | grep -E '[d]ocker-proxy' | head -n1 || echo 'NOT RUNNING')"
+    log "- Docker Process Count: $(multipass exec "$VM_NAME" -- ps aux | grep -i docker | grep -v grep | wc -l 2>/dev/null || echo '0') Docker-related processes"
+    
+    # Check Docker network configuration
+    log "DOCKER NETWORK VERIFICATION:"
+    log "- Docker Network Interfaces: $(multipass exec "$VM_NAME" -- ip a | grep -i docker || echo 'NO DOCKER INTERFACES FOUND')"
+    log "- Docker Bridge Interface: $(multipass exec "$VM_NAME" -- ip a show docker0 2>/dev/null || echo 'DOCKER BRIDGE NOT FOUND')"
+    log "- Docker iptables Rules: $(multipass exec "$VM_NAME" -- sudo iptables -t nat -L | grep -i docker | head -3 || echo 'NO DOCKER IPTABLES RULES FOUND')"
+    
+    # Check Docker storage drivers
+    log "DOCKER STORAGE VERIFICATION:"
+    log "- Storage Driver: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Storage Driver:' | head -n1 || echo 'UNAVAILABLE')"
+    log "- Backing Filesystem: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Backing Filesystem:' | head -n1 || echo 'UNAVAILABLE')"
+    log "- Data Space: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Data Space:' | head -n1 || echo 'UNAVAILABLE')"
+    log "- Metadata Space: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Metadata Space:' | head -n1 || echo 'UNAVAILABLE')"
+    
+    log "=================================================="
     
     # Add user to docker group with comprehensive error handling
     log "Adding user to docker group with comprehensive error analysis..."
@@ -1035,6 +1142,69 @@ setup_vm_docker() {
         
         NO_SUDO_CHECK_ATTEMPT=$((NO_SUDO_CHECK_ATTEMPT + 1))
     done
+    
+    # Final comprehensive diagnostic verification
+    log "FINAL COMPREHENSIVE DIAGNOSTIC VERIFICATION..."
+    log "=================================================="
+    
+    # System and Docker final state
+    log "FINAL SYSTEM STATE VERIFICATION:"
+    log "- VM Uptime: $(multipass exec "$VM_NAME" -- uptime 2>/dev/null || echo 'UNAVAILABLE')"
+    log "- System Load: $(multipass exec "$VM_NAME" -- top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1 | head -n1 2>/dev/null || echo 'UNAVAILABLE')%"
+    log "- Memory Usage: $(multipass exec "$VM_NAME" -- free -h 2>/dev/null | grep Mem: | awk '{print $3 "/" $2 " (" int($3/$2*100) "%)"}' || echo 'UNAVAILABLE')"
+    log "- Disk Usage: $(multipass exec "$VM_NAME" -- df -h / 2>/dev/null | tail -n1 | awk '{print $3 "/" $2 " (" $5 ")"}' || echo 'UNAVAILABLE')"
+    
+    log "FINAL DOCKER STATE VERIFICATION:"
+    log "- Docker Version: $(multipass exec "$VM_NAME" -- docker --version 2>/dev/null || echo 'UNAVAILABLE')"
+    log "- Docker Daemon Status: $(multipass exec "$VM_NAME" -- sudo systemctl is-active docker 2>/dev/null || echo 'UNKNOWN')"
+    log "- Docker Service Enabled: $(multipass exec "$VM_NAME" -- sudo systemctl is-enabled docker 2>/dev/null || echo 'UNKNOWN')"
+    log "- Docker Info (summary): $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | head -n10 || echo 'UNAVAILABLE')"
+    
+    # Docker daemon detailed information
+    log "DOCKER DAEMON DETAILED INFORMATION:"
+    log "- Daemon Running: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null > /dev/null 2>&1 && echo 'YES' || echo 'NO')"
+    log "- Daemon Process ID: $(multipass exec "$VM_NAME" -- ps aux | grep -E '[d]ockerd' | awk '{print $2}' | head -n1 2>/dev/null || echo 'NOT RUNNING')"
+    log "- Daemon Uptime: $(multipass exec "$VM_NAME" -- sudo systemctl status docker 2>/dev/null | grep Active | awk '{print $2 " " $3 " " $4 " " $5}' | head -n1 || echo 'UNAVAILABLE')"
+    log "- Daemon Listening Socket: $(multipass exec "$VM_NAME" -- ss -l | grep docker 2>/dev/null || echo 'NO LISTENING SOCKETS FOUND')"
+    
+    # Docker container and image information
+    log "DOCKER CONTAINER AND IMAGE STATE:"
+    log "- Total Images: $(multipass exec "$VM_NAME" -- docker images -q 2>/dev/null | wc -l 2>/dev/null || echo '0') images"
+    log "- Total Containers: $(multipass exec "$VM_NAME" -- docker ps -aq 2>/dev/null | wc -l 2>/dev/null || echo '0') containers"
+    log "- Running Containers: $(multipass exec "$VM_NAME" -- docker ps -q 2>/dev/null | wc -l 2>/dev/null || echo '0') running"
+    log "- Docker Networks: $(multipass exec "$VM_NAME" -- docker network ls 2>/dev/null | wc -l 2>/dev/null || echo '0') networks"
+    
+    # Docker user and permission final verification
+    log "DOCKER USER AND PERMISSIONS FINAL STATE:"
+    log "- Current User: $(multipass exec "$VM_NAME" -- whoami 2>/dev/null || echo 'UNAVAILABLE')"
+    log "- User Groups: $(multipass exec "$VM_NAME" -- groups ubuntu 2>/dev/null || echo 'UNAVAILABLE')"
+    log "- User in Docker Group: $(multipass exec "$VM_NAME" -- groups ubuntu 2>/dev/null | grep -q docker && echo 'YES' || echo 'NO')"
+    log "- Docker Socket Access: $(multipass exec "$VM_NAME" -- docker ps >/dev/null 2>&1 && echo 'WORKING' || echo 'FAILED')"
+    log "- Docker Socket Permissions: $(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null | awk '{print $1 " " $3 " " $4}' || echo 'UNAVAILABLE')"
+    
+    # Docker network and storage final verification
+    log "DOCKER NETWORK AND STORAGE FINAL STATE:"
+    log "- Docker Networks: $(multipass exec "$VM_NAME" -- docker network ls 2>/dev/null | tail -n +2 || echo 'NO NETWORKS')"
+    log "- Docker Storage Driver: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Storage Driver:' | head -n1 || echo 'UNAVAILABLE')"
+    log "- Docker Data Space: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Data Space:' | head -n1 || echo 'UNAVAILABLE')"
+    log "- Docker Metadata Space: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Metadata Space:' | head -n1 || echo 'UNAVAILABLE')"
+    log "- Docker Root Directory: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Docker Root Dir:' | head -n1 || echo 'UNAVAILABLE')"
+    
+    # Docker performance and capability verification
+    log "DOCKER PERFORMANCE AND CAPABILITY VERIFICATION:"
+    log "- Docker Info Command Response Time: $(TIMEFORMAT=%R; multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1 && echo 'SUCCESS' || echo 'FAILED')"
+    log "- Docker PS Command Response Time: $(TIMEFORMAT=%R; multipass exec "$VM_NAME" -- docker ps >/dev/null 2>&1 && echo 'SUCCESS' || echo 'FAILED')"
+    log "- Docker Version Command Response Time: $(TIMEFORMAT=%R; multipass exec "$VM_NAME" -- docker --version >/dev/null 2>&1 && echo 'SUCCESS' || echo 'FAILED')"
+    log "- Docker System Events: $(multipass exec "$VM_NAME" -- docker system info 2>/dev/null | head -n5 || echo 'UNAVAILABLE')"
+    
+    # Kubernetes and deployment readiness
+    log "KUBERNETES AND DEPLOYMENT READINESS:"
+    log "- Microk8s Status: $(multipass exec "$VM_NAME" -- microk8s status 2>/dev/null | head -n5 || echo 'MICROK8S NOT CHECKED')"
+    log "- Kubernetes Docker Integration: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep -i kubernetes || echo 'NO KUBERNETES INFO')"
+    log "- Image Loading Capability: $(multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1 && echo 'READY' || echo 'NOT READY')"
+    log "- Container Runtime Status: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Server:' | head -n1 || echo 'UNAVAILABLE')"
+    
+    log "=================================================="
     
     # Provide comprehensive summary status with detailed error analysis and recovery guidance
     if [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = true ] && [ "$DOCKER_NO_SUDO_WORKING" = true ]; then
