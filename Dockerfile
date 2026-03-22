@@ -6,18 +6,44 @@ WORKDIR /app
 # Install build dependencies
 COPY package.json package-lock.json ./
 
-# First try npm ci for reproducible builds (preferred method)
-RUN echo "🔍 Attempting reproducible install with npm ci..." && \
+# Dependency installation with fallback mechanism
+# 
+# This Dockerfile implements a two-step dependency installation strategy:
+# 1. PRIMARY: npm ci (clean install) - Uses exact versions from package-lock.json
+#    - Ensures 100% reproducible builds across environments
+#    - Fails if package.json and package-lock.json are out of sync
+#    - Required for consistent production deployments
+#
+# 2. FALLBACK: npm install - Used when npm ci fails due to lock file sync issues
+#    - Updates package-lock.json to match package.json dependencies
+#    - Allows deployment to continue when lock files are out of sync
+#    - WARNING: Reduces build reproducibility - different environments may get different dependency versions
+#    - This is a safety mechanism for emergency deployments, not a recommended regular practice
+#
+# WHY THIS MATTERS:
+# - Synchronized lock files ensure every deployment uses exactly the same dependency versions
+# - This prevents "works on my machine" issues and makes debugging predictable
+# - The fallback should rarely be triggered in normal CI/CD workflows
+#
+# BEST PRACTICES:
+# - Always run 'npm install' locally when updating dependencies
+# - Commit both package.json AND package-lock.json together
+# - Use pre-build validation (./deploy.sh) to catch sync issues before Docker build
+# - Only rely on the fallback for emergency deployments when immediate fixes are needed
+#
+RUN echo "=== DEPENDENCY INSTALLATION ===" && \
+    echo "Starting npm ci (reproducible install)..." && \
     if npm ci --ignore-scripts; then \
         echo "✅ SUCCESS: npm ci completed - using reproducible dependencies from lock file"; \
     else \
-        echo "⚠️  WARNING: npm ci failed - lock file may be out of sync"; \
+        echo "⚠️  WARNING: npm ci failed - lock files are out of sync"; \
         echo "🔄 FALLING BACK to npm install to continue build..."; \
         echo "ℹ️  NOTE: This allows deployment but reduces build reproducibility"; \
         echo "🔧 FIX: Run 'npm install' locally and commit updated package-lock.json"; \
         npm install --ignore-scripts; \
         echo "✅ SUCCESS: npm install completed - build continuing with fallback dependencies"; \
     fi && \
+    echo "=== DEPENDENCY INSTALLATION COMPLETED ===" && \
     npm cache clean --force
 
 # Copy source code and build
