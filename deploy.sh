@@ -58,15 +58,125 @@ log() {
 setup_vm_docker() {
     log "Starting Docker setup in VM '$VM_NAME'..."
     
-    # Check Docker CLI availability in VM
+    # Check Docker CLI availability in VM with comprehensive error handling
     log "Checking Docker CLI availability in VM..."
-    if multipass exec "$VM_NAME" -- docker --version >/dev/null 2>&1; then
-        DOCKER_VERSION=$(multipass exec "$VM_NAME" -- docker --version 2>/dev/null | head -n1)
+    DOCKER_CLI_AVAILABLE=false
+    DOCKER_CLI_ERROR=""
+    DOCKER_CLI_ERROR_DETAILS=""
+    
+    # Try to get Docker version with detailed error capture
+    local docker_version_output
+    docker_version_output=$(multipass exec "$VM_NAME" -- docker --version 2>&1)
+    local docker_version_exit_code=$?
+    
+    if [ $docker_version_exit_code -eq 0 ]; then
+        DOCKER_VERSION=$(echo "$docker_version_output" | head -n1)
         log "✅ Docker CLI is available in VM: $DOCKER_VERSION"
         DOCKER_CLI_AVAILABLE=true
     else
-        log "⚠️  Docker CLI is not available in VM"
-        DOCKER_CLI_AVAILABLE=false
+        log "⚠️  Docker CLI is not available in VM (exit code: $docker_version_exit_code)"
+        DOCKER_CLI_ERROR=true
+        DOCKER_CLI_ERROR_DETAILS="$docker_version_output"
+        
+        # Analyze the specific error to provide targeted guidance
+        log "DIAGNOSTIC: Analyzing Docker CLI check failure..."
+        log "Error details: $DOCKER_CLI_ERROR_DETAILS"
+        
+        # Check for common error patterns and provide specific guidance
+        if echo "$DOCKER_CLI_ERROR_DETAILS" | grep -q "multipass: command not found"; then
+            log "ERROR: multipass command is not available on the host system"
+            log "RECOVERY: Install multipass first: https://multipass.run/"
+            log "         Ubuntu: sudo snap install multipass"
+            log "         macOS: brew install multipass"
+            log "         Windows: Download from https://multipass.run/"
+        elif echo "$DOCKER_CLI_ERROR_DETAILS" | grep -q "instance does not exist"; then
+            log "ERROR: VM '$VM_NAME' does not exist"
+            log "RECOVERY: Create the VM first: multipass launch --name $VM_NAME"
+            log "         Or check VM name spelling: multipass list"
+        elif echo "$DOCKER_CLI_ERROR_DETAILS" | grep -q "instance is not running"; then
+            log "ERROR: VM '$VM_NAME' is not running"
+            log "RECOVERY: Start the VM first: multipass start $VM_NAME"
+            log "         Or check VM status: multipass info $VM_NAME"
+        elif echo "$DOCKER_CLI_ERROR_DETAILS" | grep -q "permission denied"; then
+            log "ERROR: Permission denied accessing VM '$VM_NAME'"
+            log "RECOVERY: Check multipass permissions: ls -la ~/.multipass"
+            log "         Try running with proper user permissions"
+            log "         Or check VM instance permissions: multipass info $VM_NAME"
+        elif echo "$DOCKER_CLI_ERROR_DETAILS" | grep -q "network is unreachable"; then
+            log "ERROR: Network connectivity issue with VM '$VM_NAME'"
+            log "RECOVERY: Check VM network configuration: multipass exec $VM_NAME -- ip a"
+            log "         Check host network connectivity"
+            log "         Restart VM if needed: multipass restart $VM_NAME"
+        elif echo "$DOCKER_CLI_ERROR_DETAILS" | grep -q "connection refused"; then
+            log "ERROR: Connection refused to VM '$VM_NAME'"
+            log "RECOVERY: VM may be starting up or shutting down"
+            log "         Wait a few moments and try again"
+            log "         Check VM status: multipass info $VM_NAME"
+            log "         Restart VM if needed: multipass restart $VM_NAME"
+        elif echo "$DOCKER_CLI_ERROR_DETAILS" | grep -q "docker: command not found"; then
+            log "DIAGNOSTIC: Docker CLI is not installed in VM (expected for fresh VMs)"
+            log "INFO: This is normal for freshly provisioned VMs - will proceed with Docker installation"
+            DOCKER_CLI_ERROR=false  # This is expected, not an error
+        elif echo "$DOCKER_CLI_ERROR_DETAILS" | grep -q "No such file or directory"; then
+            log "ERROR: File or directory not found in VM or on host"
+            log "RECOVERY: Check multipass installation: multipass version"
+            log "         Verify VM filesystem: multipass exec $VM_NAME -- ls -la /"
+        elif echo "$DOCKER_CLI_ERROR_DETAILS" | grep -q "timeout"; then
+            log "ERROR: Timeout communicating with VM '$VM_NAME'"
+            log "RECOVERY: VM may be overloaded or unresponsive"
+            log "         Wait and try again, or restart VM: multipass restart $VM_NAME"
+            log "         Check VM resources: multipass exec $VM_NAME -- top"
+        elif [ $docker_version_exit_code -eq 126 ]; then
+            log "ERROR: Command cannot be executed (permission or shell issue)"
+            log "RECOVERY: Check multipass shell configuration"
+            log "         Try direct VM access: multipass shell $VM_NAME"
+        elif [ $docker_version_exit_code -eq 127 ]; then
+            log "ERROR: Command not found (docker or multipass command missing)"
+            if echo "$DOCKER_CLI_ERROR_DETAILS" | grep -q "docker"; then
+                log "RECOVERY: Docker CLI not installed in VM (will proceed with installation)"
+                DOCKER_CLI_ERROR=false  # This is expected, not an error
+            else
+                log "RECOVERY: Install multipass: https://multipass.run/"
+            fi
+        elif [ $docker_version_exit_code -eq 130 ]; then
+            log "ERROR: Command interrupted (Ctrl+C or similar)"
+            log "RECOVERY: Check if process was interrupted manually"
+            log "         Try running the command again"
+        else
+            log "ERROR: Unknown error checking Docker CLI availability (exit code: $docker_version_exit_code)"
+            log "DIAGNOSTIC: Full error output:"
+            log "$DOCKER_CLI_ERROR_DETAILS"
+            log "RECOVERY: Try manual VM access: multipass shell $VM_NAME"
+            log "         Then check: docker --version"
+            log "         If issue persists, check multipass logs and system resources"
+        fi
+        
+        # Additional diagnostic information for debugging
+        log "ENHANCED DIAGNOSTICS:"
+        log "- VM status: $(multipass info "$VM_NAME" 2>/dev/null || echo 'Unable to get VM status')"
+        log "- Multipass version: $(multipass version 2>/dev/null || echo 'Unable to get multipass version')"
+        log "- Host Docker availability: $(docker --version 2>/dev/null || echo 'Docker not available on host')"
+        log "- Current user: $USER"
+        log "- User groups: $(groups 2>/dev/null || echo 'Unable to get groups')"
+        
+        # Check VM accessibility with a simpler command
+        log "Testing basic VM accessibility..."
+        if multipass exec "$VM_NAME" -- whoami >/dev/null 2>&1; then
+            VM_USER=$(multipass exec "$VM_NAME" -- whoami 2>/dev/null)
+            log "✅ VM is accessible - user: $VM_USER"
+        else
+            log "❌ VM is not accessible - this indicates a multipass/VM communication issue"
+            log "RECOVERY: Check multipass daemon status and VM instance"
+        fi
+        
+        # Only set error flag if this is an unexpected error (not just missing docker)
+        if [ "$DOCKER_CLI_ERROR" = true ]; then
+            log "ERROR: Critical failure during Docker CLI availability check"
+            log "RECOVERY: Manual intervention may be required. Connect to VM: multipass shell $VM_NAME"
+            return 1
+        else
+            log "INFO: Docker CLI not found in VM (expected for fresh VMs) - proceeding with installation"
+        fi
     fi
     
     # Install Docker if not available
