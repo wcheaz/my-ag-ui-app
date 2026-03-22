@@ -48,6 +48,6 @@
 - [x] 6.3 Load Docker image into multipass VM using docker save | multipass exec -- docker load
 - [x] 6.4 Verify image is available in VM's Docker daemon
 - [x] 6.5 Restart deployment to trigger pod recreation with new image
-- [ ] 6.6 Verify pod status changes from ImagePullBackOff to Running
+- [x] 6.6 Verify pod status changes from ImagePullBackOff to Running
 - [ ] 6.7 Verify pod passes readiness and liveness probes
 - [ ] 6.8 Test application accessibility via ingress endpoint
