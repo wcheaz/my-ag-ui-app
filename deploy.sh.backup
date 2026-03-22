@@ -2595,7 +2595,7 @@ setup_vm_docker() {
     # OPTIMIZATION: Track end time for successful setup
     TOTAL_SETUP_END_TIME=$(date +%s)
     
-}  # End of setup_vm_docker function
+}
 
 # ===========================
 # LOCK FILE VALIDATION SECTION
