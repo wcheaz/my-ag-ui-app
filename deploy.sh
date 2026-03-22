@@ -1036,30 +1036,208 @@ setup_vm_docker() {
         NO_SUDO_CHECK_ATTEMPT=$((NO_SUDO_CHECK_ATTEMPT + 1))
     done
     
-    # Provide summary status
+    # Provide comprehensive summary status with detailed error analysis and recovery guidance
     if [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = true ] && [ "$DOCKER_NO_SUDO_WORKING" = true ]; then
         log "✅ Docker setup in VM completed successfully - Docker CLI, daemon, and no-sudo access are all available"
         log "   - Docker CLI: Verified and operational"
         log "   - Docker daemon: Started and verified with retry loop"
         log "   - User permissions: Configured and verified for docker group access"
         log "   - No-sudo access: Verified Docker commands work without sudo"
+        log "   - All components: Successfully validated and ready for image loading"
         return 0
+        
     elif [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = true ] && [ "$DOCKER_NO_SUDO_WORKING" = false ]; then
+        log "❌ ERROR TYPE: DOCKER GROUP MEMBERSHIP ACTIVATION FAILURE"
         log "❌ Docker setup in VM failed - Docker CLI and daemon available but no-sudo access not working"
-        log "RECOVERY: Try manually activating docker group membership: multipass shell $VM_NAME"
-        log "         Then run: newgrp docker or log out and log back in"
-        log "         Alternatively, run: sudo usermod -aG docker ubuntu && newgrp docker"
+        log "DIAGNOSTIC: Docker CLI and daemon are operational, but user cannot execute Docker commands without sudo"
+        log "               This indicates docker group membership was not properly activated"
+        
+        log "COMPREHENSIVE RECOVERY STEPS:"
+        log "1. IMMEDIATE MANUAL RECOVERY:"
+        log "   - Connect to VM: multipass shell $VM_NAME"
+        log "   - Verify current groups: groups ubuntu"
+        log "   - Check docker group membership: id ubuntu | grep docker"
+        log "   - If user is in docker group but commands still require sudo:"
+        log "     * Activate group membership: newgrp docker"
+        log "     * OR create new shell session: su - ubuntu"
+        log "     * OR log out and log back in: exit && multipass shell $VM_NAME"
+        
+        log "2. GROUP MEMBERSHIP VERIFICATION AND FIX:"
+        log "   - Check if user is in docker group: getent group docker | grep ubuntu"
+        log "   - If not in group, re-add user: sudo usermod -aG docker ubuntu"
+        log "   - Verify group addition: grep docker /etc/group | grep ubuntu"
+        log "   - Check group activation: newgrp docker && groups"
+        
+        log "3. DOCKER SOCKET PERMISSION VERIFICATION:"
+        log "   - Check docker socket permissions: ls -la /var/run/docker.sock"
+        log "   - Verify user can access socket: sudo -u ubuntu ls -la /var/run/docker.sock"
+        log "   - If permission denied, fix socket permissions:"
+        log "     * sudo usermod -aG docker ubuntu"
+        log "     * sudo systemctl restart docker"
+        log "     * newgrp docker"
+        
+        log "4. ALTERNATIVE WORKAROUNDS:"
+        log "   - Use sudo with Docker commands: sudo docker ps"
+        log "   - Configure passwordless sudo for Docker commands"
+        log "   - Create alias in .bashrc: alias docker='sudo docker'"
+        
+        log "5. PERSISTENT FIX:"
+        log "   - Edit .bashrc for automatic group activation:"
+        log "     echo 'newgrp docker' >> ~/.bashrc"
+        log "   - OR configure Docker to run without root (advanced)"
+        
+        log "DIAGNOSTIC INFORMATION:"
+        log "- Current user groups: $(multipass exec "$VM_NAME" -- groups ubuntu 2>/dev/null || echo 'Unable to get groups')"
+        log "- Docker socket permissions: $(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null || echo 'Unable to check socket')"
+        log "- Docker group members: $(multipass exec "$VM_NAME" -- getent group docker 2>/dev/null || echo 'Unable to get docker group')"
         return 1
+        
     elif [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = false ]; then
+        log "❌ ERROR TYPE: DOCKER DAEMON POST-SETUP STARTUP FAILURE"
         log "❌ Docker setup in VM failed - Docker CLI available but daemon not running after $MAX_DAEMON_CHECK_ATTEMPTS attempts"
-        log "RECOVERY: Try manually starting Docker daemon in VM: multipass shell $VM_NAME"
-        log "         Then run: sudo systemctl start docker && sudo systemctl enable docker"
+        log "DIAGNOSTIC: Docker CLI is installed and accessible, but Docker daemon failed to start or stay running"
+        log "               This suggests a daemon configuration, resource, or service management issue"
+        
+        log "COMPREHENSIVE RECOVERY STEPS:"
+        log "1. IMMEDIATE DAEMON STARTUP ATTEMPTS:"
+        log "   - Connect to VM: multipass shell $VM_NAME"
+        log "   - Start daemon manually: sudo systemctl start docker"
+        log "   - Check daemon status: sudo systemctl status docker"
+        log "   - Enable daemon at boot: sudo systemctl enable docker"
+        log "   - Check daemon logs: sudo journalctl -u docker.service --no-pager"
+        
+        log "2. DAEMON CONFIGURATION VERIFICATION:"
+        log "   - Check daemon config: cat /etc/docker/daemon.json"
+        log "   - Validate JSON syntax: python3 -m json.tool /etc/docker/daemon.json"
+        log "   - Check systemd service: cat /lib/systemd/system/docker.service"
+        log "   - Reload systemd: sudo systemctl daemon-reload"
+        
+        log "3. RESOURCE AND DEPENDENCY CHECKS:"
+        log "   - Check system resources: free -h && df -h"
+        log "   - Check kernel modules: lsmod | grep -E '(overlay|aufs|bridge)'"
+        log "   - Load required modules: sudo modprobe overlay && sudo modprobe aufs"
+        log "   - Check system dependencies: sudo apt --fix-broken install -y"
+        
+        log "4. DAEMON DEBUGGING AND TROUBLESHOOTING:"
+        log "   - Test daemon manually: sudo docker info"
+        log "   - Check daemon process: ps aux | grep docker | grep -v grep"
+        log "   - Check network connectivity: ping -c 2 google.com"
+        log "   - Check storage drivers: sudo docker info | grep 'Storage Driver'"
+        
+        log "5. ADVANCED RECOVERY:"
+        log "   - Reset daemon to defaults: sudo mv /etc/docker/daemon.json /etc/docker/daemon.json.backup"
+        log "   - Clear Docker data (WARNING: removes images/containers): sudo systemctl stop docker && sudo rm -rf /var/lib/docker"
+        log "   - Reinstall Docker: sudo apt remove --purge docker* && sudo apt autoremove && curl -fsSL https://get.docker.com | sh"
+        
+        log "6. SERVICE MANAGEMENT:"
+        log "   - Reset failed service: sudo systemctl reset-failed docker"
+        log "   - Restart service: sudo systemctl restart docker"
+        log "   - Check service dependencies: sudo systemctl show docker"
+        
+        log "DIAGNOSTIC INFORMATION:"
+        log "- Docker service status: $(multipass exec "$VM_NAME" -- sudo systemctl status docker 2>/dev/null | head -5 || echo 'Unable to get service status')"
+        log "- System resources: $(multipass exec "$VM_NAME" -- free -h 2>/dev/null | head -2 || echo 'Unable to get memory info')"
+        log "- Docker daemon logs: $(multipass exec "$VM_NAME" -- sudo journalctl -u docker.service --no-pager -n 5 2>/dev/null || echo 'Unable to get daemon logs')"
+        log "- Kernel modules: $(multipass exec "$VM_NAME" -- lsmod | grep -E '(overlay|aufs|bridge)' 2>/dev/null || echo 'No relevant modules found')"
         return 1
+        
     elif [ "$DOCKER_CLI_AVAILABLE" = false ] && [ "$DOCKER_DAEMON_RUNNING" = true ]; then
-        log "⚠️  Docker setup in VM completed with warnings - Docker daemon running but CLI not available"
+        log "❌ ERROR TYPE: DOCKER CLI INSTALLATION VERIFICATION FAILURE"
+        log "❌ Docker setup in VM failed - Docker daemon running but CLI not available"
+        log "DIAGNOSTIC: Docker daemon is operational, but Docker CLI commands are not accessible"
+        log "               This indicates incomplete Docker installation or PATH issues"
+        
+        log "COMPREHENSIVE RECOVERY STEPS:"
+        log "1. DOCKER CLI VERIFICATION:"
+        log "   - Connect to VM: multipass shell $VM_NAME"
+        log "   - Check Docker installation: dpkg -l | grep docker"
+        log "   - Check CLI binary location: which docker || find /usr -name docker 2>/dev/null"
+        log "   - Check if docker binary exists: ls -la /usr/bin/docker || ls -la /usr/local/bin/docker"
+        
+        log "2. PATH AND ACCESSIBILITY ISSUES:"
+        log "   - Check current PATH: echo $PATH"
+        log "   - Check if docker is in PATH: which docker"
+        log "   - If binary exists but not in PATH:"
+        log "     * Create symlink: sudo ln -s /usr/local/bin/docker /usr/bin/docker"
+        log "     * OR add to PATH: echo 'export PATH=$PATH:/usr/local/bin' >> ~/.bashrc"
+        log "   - Verify binary permissions: ls -la $(which docker 2>/dev/null || echo '/usr/bin/docker')"
+        
+        log "3. DOCKER PACKAGE VERIFICATION:"
+        log "   - List Docker packages: dpkg -l | grep -i docker"
+        log "   - Check if docker-ce-cli is installed: dpkg -l | grep docker-ce-cli"
+        log "   - Install missing CLI package: sudo apt install docker-ce-cli -y"
+        log "   - Fix broken dependencies: sudo apt --fix-broken install -y"
+        
+        log "4. COMPLETE DOCKER REINSTALLATION:"
+        log "   - Remove Docker packages: sudo apt remove --purge docker*"
+        log "   - Clean up: sudo apt autoremove -y && sudo apt clean"
+        log "   - Reinstall Docker: curl -fsSL https://get.docker.com | sh"
+        log "   - Verify installation: docker --version"
+        
+        log "5. MANUAL CLI CONFIGURATION:"
+        log "   - Download Docker CLI manually: wget https://download.docker.com/linux/static/stable/x86_64/docker-20.10.7.tgz"
+        log "   - Extract and install: tar -xzf docker-20.10.7.tgz && sudo cp docker/* /usr/bin/"
+        log "   - Set permissions: sudo chmod +x /usr/bin/docker*"
+        
+        log "DIAGNOSTIC INFORMATION:"
+        log "- Docker packages: $(multipass exec "$VM_NAME" -- dpkg -l | grep docker 2>/dev/null || echo 'No Docker packages found')"
+        log "- System PATH: $(multipass exec "$VM_NAME" -- echo $PATH 2>/dev/null || echo 'Unable to get PATH')"
+        log "- Docker binary search: $(multipass exec "$VM_NAME" -- find /usr -name docker 2>/dev/null || echo 'Docker binary not found')"
+        log "- Which docker result: $(multipass exec "$VM_NAME" -- which docker 2>/dev/null || echo 'docker command not found')"
         return 1
+        
     else
+        log "❌ ERROR TYPE: COMPLETE DOCKER SETUP CATASTROPHIC FAILURE"
         log "❌ Docker setup in VM failed - Neither Docker CLI nor daemon are available"
+        log "DIAGNOSTIC: Complete failure of Docker setup - both CLI and daemon are non-functional"
+        log "               This indicates fundamental installation, system, or compatibility issues"
+        
+        log "COMPREHENSIVE RECOVERY STEPS:"
+        log "1. SYSTEM VERIFICATION AND BASICS:"
+        log "   - Connect to VM: multipass shell $VM_NAME"
+        log "   - Check system basics: uname -a && lsb_release -a"
+        log "   - Verify system compatibility: cat /etc/os-release"
+        log "   - Check architecture: dpkg --print-architecture"
+        log "   - Verify VM accessibility: whoami && id"
+        
+        log "2. NETWORK AND CONNECTIVITY:"
+        log "   - Check network: ping -c 2 google.com"
+        log "   - Check DNS: nslookup google.com"
+        log "   - Check package repositories: cat /etc/apt/sources.list"
+        log "   - Update package lists: sudo apt update"
+        
+        log "3. COMPLETE DOCKER CLEANUP AND REINSTALLATION:"
+        log "   - Remove all Docker packages: sudo apt remove --purge docker* docker-ce* containerd*"
+        log "   - Clean up system: sudo apt autoremove -y && sudo apt clean"
+        log "   - Remove Docker data: sudo rm -rf /var/lib/docker /etc/docker"
+        log "   - Remove Docker group: sudo groupdel docker"
+        log "   - Install fresh Docker: curl -fsSL https://get.docker.com | sh"
+        
+        log "4. SYSTEM DEPENDENCY FIX:"
+        log "   - Update system: sudo apt update && sudo apt upgrade -y"
+        log "   - Install dependencies: sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release"
+        log "   - Fix broken packages: sudo apt --fix-broken install -y"
+        log "   - Configure Docker repository: sudo apt install docker.io -y"
+        
+        log "5. VM-LEVEL SOLUTIONS:"
+        log "   - Check VM resources: free -h && df -h"
+        log "   - Increase VM resources if needed (exit VM first):"
+        log "     * multipass stop $VM_NAME"
+        log "     * multipass delete $VM_NAME"
+        log "     * multipass launch --name $VM_NAME --memory 4G --disk 20G"
+        log "   - Try different Ubuntu version if compatibility issues persist"
+        
+        log "6. ALTERNATIVE INSTALLATION METHODS:"
+        log "   - Use snap: sudo snap install docker"
+        log "   - Use apt: sudo apt install docker.io"
+        log "   - Manual installation from Docker docs"
+        
+        log "DIAGNOSTIC INFORMATION:"
+        log "- System info: $(multipass exec "$VM_NAME" -- uname -a 2>/dev/null || echo 'Unable to get system info')"
+        log "- OS release: $(multipass exec "$VM_NAME" -- cat /etc/os-release 2>/dev/null || echo 'Unable to get OS release')"
+        log "- Architecture: $(multipass exec "$VM_NAME" -- dpkg --print-architecture 2>/dev/null || echo 'Unable to get architecture')"
+        log "- Network status: $(multipass exec "$VM_NAME" -- ping -c 1 google.com >/dev/null 2>&1 && echo 'Network OK' || echo 'Network failed')"
+        log "- System resources: $(multipass exec "$VM_NAME" -- free -h 2>/dev/null | head -2 || echo 'Unable to get memory info')"
         return 1
     fi
 }
