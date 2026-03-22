@@ -854,15 +854,42 @@ setup_vm_docker() {
     
     log "=================================================="
     
-    # Add user to docker group with comprehensive error handling
-    log "Adding user to docker group with comprehensive error analysis..."
+    # Add user to docker group with comprehensive error handling and idempotency check
+    log "Checking docker group membership with idempotency handling..."
+    local user_in_docker_group=false
     local group_add_output
     local group_add_exit_code
     
-    # Use robust multipass wrapper for Docker group addition with retries
-    log "Adding user to docker group using robust multipass wrapper (up to 3 attempts)..."
-    group_add_output=$(robust_multipass_exec "multipass exec '$VM_NAME' -- sudo usermod -aG docker ubuntu" "Docker group membership addition" 3 5)
-    group_add_exit_code=$?
+    # Check if user is already in docker group (idempotency check)
+    log "Checking if user 'ubuntu' is already in docker group..."
+    local user_groups
+    user_groups=$(timeout $DOCKER_OPERATION_TIMEOUT multipass exec "$VM_NAME" -- groups ubuntu 2>/dev/null || echo "")
+    if echo "$user_groups" | grep -q -E "(^docker | docker | docker$)"; then
+        user_in_docker_group=true
+        log "✅ User 'ubuntu' is already in docker group - skipping group addition"
+    else
+        log "⚠️  User 'ubuntu' is not in docker group - proceeding with group addition"
+        
+        # Check if docker group exists (needed for user to be added)
+        log "Checking if docker group exists..."
+        local docker_group_exists
+        docker_group_exists=$(timeout $DOCKER_OPERATION_TIMEOUT multipass exec "$VM_NAME" -- getent group docker 2>/dev/null && echo "yes" || echo "no")
+        
+        if [ "$docker_group_exists" = "no" ]; then
+            log "⚠️  WARNING: Docker group does not exist - this should have been created during Docker installation"
+            log "   Attempting to create docker group..."
+            if timeout $DOCKER_OPERATION_TIMEOUT multipass exec "$VM_NAME" -- sudo groupadd docker 2>&1 | tee -a "$LOG_FILE"; then
+                log "✅ Docker group created successfully"
+            else
+                log "⚠️  WARNING: Could not create docker group - continuing anyway"
+            fi
+        fi
+        
+# Use robust multipass wrapper for Docker group addition with retries
+        log "Adding user to docker group using robust multipass wrapper (up to 3 attempts)..."
+        group_add_output=$(robust_multipass_exec "multipass exec '$VM_NAME' -- sudo usermod -aG docker ubuntu" "Docker group membership addition" 3 5)
+        group_add_exit_code=$?
+    fi
     
     # Log the full output for debugging
     log "Docker group addition output (first 500 chars):"
@@ -872,8 +899,12 @@ setup_vm_docker() {
         echo "$group_add_output" >> "$LOG_FILE"
     fi
     
-    # Analyze the result
-    if [ $group_add_exit_code -eq 0 ]; then
+    # Analyze the result (only if group addition was attempted)
+    if [ "$user_in_docker_group" = true ]; then
+        log "✅ Docker group membership verification completed - user was already in group"
+        # Set success exit code for idempotent case
+        group_add_exit_code=0
+    elif [ $group_add_exit_code -eq 0 ]; then
         log "✅ Docker group addition command completed successfully (exit code: 0)"
     else
         log "ERROR: Docker group addition failed (exit code: $group_add_exit_code)"
@@ -1040,7 +1071,21 @@ setup_vm_docker() {
         
         return 1
     fi
-    log "✅ User added to docker group successfully"
+    
+    # Final verification of docker group membership (idempotency check)
+    log "Performing final verification of docker group membership..."
+    local final_group_check
+    final_group_check=$(timeout $DOCKER_OPERATION_TIMEOUT multipass exec "$VM_NAME" -- groups ubuntu 2>/dev/null || echo "")
+    if echo "$final_group_check" | grep -q -E "(^docker | docker | docker$)"; then
+        log "✅ Final verification successful: User 'ubuntu' is confirmed in docker group"
+        log "✅ Docker group membership setup completed successfully (idempotent)"
+    else
+        log "❌ ERROR: Final verification failed: User 'ubuntu' is not in docker group"
+        log "   This indicates a persistent issue with group membership setup"
+        log "   Current user groups: $final_group_check"
+        log "   Manual intervention may be required"
+        return 1
+    fi
     
     # Enhanced Docker group membership activation with multiple methods and retries
     log "Activating docker group membership with multiple methods..."
