@@ -5,7 +5,10 @@ WORKDIR /app
 
 # Install build dependencies
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts && npm cache clean --force
+RUN npm ci --ignore-scripts && npm cache clean --force || \
+    (echo "npm ci failed, falling back to npm install..." && \
+    npm install --ignore-scripts && npm cache clean --force && \
+    echo "WARNING: Used npm install fallback - package.json and package-lock.json may be out of sync")
 
 # Copy source code and build
 COPY . .
