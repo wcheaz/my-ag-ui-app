@@ -15,6 +15,9 @@ The deployment script ([`deploy.sh`](deploy.sh:1)) attempts to apply Kubernetes 
 - After file transfer fix, pod shows ImagePullBackOff status
 - The deployment.yaml references image `my-ag-ui-app:latest` which doesn't exist in any accessible registry
 - The Docker image has not been built or loaded into the VM's Docker daemon
+- Docker build fails with "permission denied" error when accessing Docker daemon socket
+- Current user lacks permissions to access /var/run/docker.sock
+- Docker daemon may not be running or accessible
 
 **Constraints:**
 - Must use existing tools: multipass, docker, and kubectl
@@ -163,6 +166,36 @@ The deployment script ([`deploy.sh`](deploy.sh:1)) attempts to apply Kubernetes 
 - **Update deployment image**: Requires modifying deployment.yaml
 - **Scale down and up**: More complex, unnecessary
 
+### 9. Check Docker permissions before build
+
+**Decision:** Check Docker daemon permissions and status before attempting to build the Docker image.
+
+**Rationale:**
+- Prevents confusing permission errors during build
+- Provides clear, actionable error messages early
+- Saves time by failing fast on permission issues
+- Helps users understand and fix the root cause
+
+**Alternatives Considered:**
+- **Attempt build and catch errors**: Less user-friendly, errors are confusing
+- **Use sudo for build**: Security risk, not recommended for scripts
+- **Skip permissions check**: Would lead to confusing error messages
+
+### 10. Provide Docker permissions recovery instructions
+
+**Decision:** Provide specific commands and instructions to fix Docker permissions when they are insufficient.
+
+**Rationale:**
+- Empowers users to fix the issue themselves
+- Reduces support burden
+- Provides immediate value without waiting for help
+- Covers common scenarios (user not in docker group, daemon not running)
+
+**Alternatives Considered:**
+- **Generic error message**: Not helpful, users don't know what to do
+- **Link to documentation**: Users may not follow links, want immediate help
+- **Automatically fix permissions**: Too risky, could break system configuration
+
 ## Risks / Trade-offs
 
 ### Risk 1: File transfer may fail silently
@@ -200,6 +233,16 @@ The deployment script ([`deploy.sh`](deploy.sh:1)) attempts to apply Kubernetes 
 
 **Mitigation:** Verify pod health checks pass. Provide pod logs for debugging. Implement proper readiness and liveness probes.
 
+### Risk 8: Docker permissions issues
+**Risk:** User may not have permissions to access Docker daemon, causing build failures.
+
+**Mitigation:** Check permissions before attempting build. Provide clear recovery instructions. Suggest adding user to docker group or using sudo with appropriate warnings.
+
+### Risk 9: Docker daemon not running
+**Risk:** Docker daemon may not be running, causing all Docker operations to fail.
+
+**Mitigation:** Check Docker daemon status before build. Provide instructions to start Docker daemon. Check if Docker service is enabled.
+
 ### Trade-off: Additional deployment time
 **Trade-off:** File transfer and image build/load add time to the deployment process.
 
@@ -234,11 +277,18 @@ The deployment script ([`deploy.sh`](deploy.sh:1)) attempts to apply Kubernetes 
    - Wait for new pod to be created
    - Verify pod status changes to Running
 
-5. **Update error handling** to include all new error types
-   - Add new error codes for file transfer failures
-   - Add new error codes for Docker build failures
-   - Add new error codes for Docker load failures
-   - Provide specific recovery suggestions for each error type
+5. **Add Docker permissions check section** before Docker build
+    - Check if user can access Docker daemon socket
+    - Check if Docker daemon is running
+    - Provide clear error messages if permissions are insufficient
+    - Provide recovery instructions for common permission issues
+
+6. **Update error handling** to include all new error types
+    - Add new error codes for file transfer failures
+    - Add new error codes for Docker build failures
+    - Add new error codes for Docker load failures
+    - Add new error codes for Docker permission failures
+    - Provide specific recovery suggestions for each error type
 
 6. **Test deployment** with the updated script
    - Verify files are transferred correctly
@@ -262,4 +312,4 @@ The rollback is straightforward because:
 
 ## Open Questions
 
-None identified at this time. The design addresses both the file transfer issue and the image pull issue with clear, well-defined solutions.
+None identified at this time. The design addresses the file transfer issue, image pull issue, and Docker permissions issue with clear, well-defined solutions.

@@ -6,7 +6,7 @@
 
 ## Why
 
-The deployment script fails because Kubernetes YAML files are not being copied to the VM during the deployment process, preventing the application from being deployed to the microk8s cluster. Additionally, even after fixing the file transfer issue, the deployment fails with ImagePullBackOff because the Docker image is not built or loaded into the VM. These are critical bugs that block the entire deployment workflow.
+The deployment script fails because Kubernetes YAML files are not being copied to the VM during the deployment process, preventing the application from being deployed to the microk8s cluster. Additionally, even after fixing the file transfer issue, the deployment fails with ImagePullBackOff because the Docker image is not built or loaded into the VM. Furthermore, the Docker build process fails due to insufficient permissions to access the Docker daemon socket. These are critical bugs that block the entire deployment workflow.
 
 ## What Changes
 
@@ -17,12 +17,15 @@ The deployment script fails because Kubernetes YAML files are not being copied t
 - Build the Docker image from the project's Dockerfile
 - Load the Docker image into the multipass VM's Docker daemon
 - Verify the pod can successfully start with the loaded image
+- Fix Docker permissions issues to allow Docker build commands to execute
+- Add Docker permissions checks and proper error handling for permission errors
 
 ## Capabilities
 
 ### New Capabilities
 - `vm-file-transfer`: Capability for transferring files from host to VM during deployment, including directory creation and file validation
 - `docker-image-build-load`: Capability for building Docker images and loading them into the multipass VM's Docker daemon
+- `docker-permissions-check`: Capability for checking and fixing Docker daemon socket permissions to enable Docker build operations
 
 ### Modified Capabilities
 - None (this is a bug fix, not a requirement change)
@@ -117,6 +120,95 @@ The deployment process SHALL verify that the application is accessible via the i
 - **AND** the script SHALL provide troubleshooting steps
 - **AND** the script SHALL suggest checking ingress configuration
 
+docker-permissions-check/spec.md
+## ADDED Requirements
+
+### Requirement: Docker daemon permissions check
+The deployment script SHALL check if the current user has sufficient permissions to access the Docker daemon socket before attempting to build Docker images.
+
+#### Scenario: User has Docker permissions
+- **WHEN** the deployment script checks Docker permissions
+- **THEN** the script SHALL verify the user can access /var/run/docker.sock
+- **AND** the script SHALL proceed with the Docker build process
+- **AND** the script SHALL log that Docker permissions are sufficient
+
+#### Scenario: User lacks Docker permissions
+- **WHEN** the deployment script detects insufficient Docker permissions
+- **THEN** the script SHALL log a clear error message about the permission issue
+- **AND** the script SHALL provide instructions to add the user to the docker group
+- **AND** the script SHALL exit with a non-zero status code
+- **AND** the script SHALL NOT attempt to build the Docker image
+
+### Requirement: Docker daemon status check
+The deployment script SHALL verify that the Docker daemon is running before attempting to build Docker images.
+
+#### Scenario: Docker daemon is running
+- **WHEN** the deployment script checks Docker daemon status
+- **THEN** the script SHALL verify Docker daemon is active
+- **AND** the script SHALL proceed with the Docker build process
+- **AND** the script SHALL log that Docker daemon is running
+
+#### Scenario: Docker daemon is not running
+- **WHEN** the deployment script detects Docker daemon is not running
+- **THEN** the script SHALL log a clear error message
+- **AND** the script SHALL provide instructions to start the Docker daemon
+- **AND** the script SHALL exit with a non-zero status code
+- **AND** the script SHALL NOT attempt to build the Docker image
+
+### Requirement: Docker build error handling
+The deployment script SHALL properly catch and handle Docker build errors, including permission errors.
+
+#### Scenario: Docker build succeeds
+- **WHEN** the Docker build command completes successfully
+- **THEN** the script SHALL log the successful build
+- **AND** the script SHALL verify the image exists in local Docker images
+- **AND** the script SHALL proceed with image loading
+
+#### Scenario: Docker build fails with permission error
+- **WHEN** the Docker build command fails with a permission error
+- **THEN** the script SHALL log the specific permission error
+- **AND** the script SHALL provide recovery instructions
+- **AND** the script SHALL exit with a non-zero status code
+- **AND** the script SHALL NOT proceed with image loading
+
+#### Scenario: Docker build fails with other error
+- **WHEN** the Docker build command fails with a non-permission error
+- **THEN** the script SHALL log the build error with context
+- **AND** the script SHALL provide diagnostic information
+- **AND** the script SHALL exit with a non-zero status code
+- **AND** the script SHALL NOT proceed with image loading
+
+### Requirement: Docker permissions recovery guidance
+The deployment script SHALL provide clear, actionable instructions when Docker permissions are insufficient.
+
+#### Scenario: User not in docker group
+- **WHEN** the user is not in the docker group
+- **THEN** the script SHALL provide the command to add the user to the docker group
+- **AND** the script SHALL inform the user they need to log out and back in
+- **AND** the script SHALL provide alternative solutions (sudo, new terminal session)
+
+#### Scenario: Docker daemon not running
+- **WHEN** the Docker daemon is not running
+- **THEN** the script SHALL provide the command to start the Docker daemon
+- **AND** the script SHALL provide the command to enable Docker at startup
+- **AND** the script SHALL suggest checking Docker service status
+
+### Requirement: Docker build verification
+The deployment script SHALL verify that the Docker image was successfully built before proceeding with image loading.
+
+#### Scenario: Image exists after build
+- **WHEN** the deployment script verifies the built image
+- **THEN** the script SHALL confirm the image exists in local Docker images
+- **AND** the script SHALL log the image details (name, tag, size)
+- **AND** the script SHALL proceed with image loading
+
+#### Scenario: Image does not exist after build
+- **WHEN** the deployment script cannot find the expected image
+- **THEN** the script SHALL log that the image is missing
+- **AND** the script SHALL list available Docker images for debugging
+- **AND** the script SHALL exit with a non-zero status code
+- **AND** the script SHALL NOT proceed with image loading
+
 vm-file-transfer/spec.md
 ## ADDED Requirements
 
@@ -195,6 +287,9 @@ The deployment script ([`deploy.sh`](deploy.sh:1)) attempts to apply Kubernetes 
 - After file transfer fix, pod shows ImagePullBackOff status
 - The deployment.yaml references image `my-ag-ui-app:latest` which doesn't exist in any accessible registry
 - The Docker image has not been built or loaded into the VM's Docker daemon
+- Docker build fails with "permission denied" error when accessing Docker daemon socket
+- Current user lacks permissions to access /var/run/docker.sock
+- Docker daemon may not be running or accessible
 
 **Constraints:**
 - Must use existing tools: multipass, docker, and kubectl
@@ -343,6 +438,36 @@ The deployment script ([`deploy.sh`](deploy.sh:1)) attempts to apply Kubernetes 
 - **Update deployment image**: Requires modifying deployment.yaml
 - **Scale down and up**: More complex, unnecessary
 
+### 9. Check Docker permissions before build
+
+**Decision:** Check Docker daemon permissions and status before attempting to build the Docker image.
+
+**Rationale:**
+- Prevents confusing permission errors during build
+- Provides clear, actionable error messages early
+- Saves time by failing fast on permission issues
+- Helps users understand and fix the root cause
+
+**Alternatives Considered:**
+- **Attempt build and catch errors**: Less user-friendly, errors are confusing
+- **Use sudo for build**: Security risk, not recommended for scripts
+- **Skip permissions check**: Would lead to confusing error messages
+
+### 10. Provide Docker permissions recovery instructions
+
+**Decision:** Provide specific commands and instructions to fix Docker permissions when they are insufficient.
+
+**Rationale:**
+- Empowers users to fix the issue themselves
+- Reduces support burden
+- Provides immediate value without waiting for help
+- Covers common scenarios (user not in docker group, daemon not running)
+
+**Alternatives Considered:**
+- **Generic error message**: Not helpful, users don't know what to do
+- **Link to documentation**: Users may not follow links, want immediate help
+- **Automatically fix permissions**: Too risky, could break system configuration
+
 ## Risks / Trade-offs
 
 ### Risk 1: File transfer may fail silently
@@ -380,6 +505,16 @@ The deployment script ([`deploy.sh`](deploy.sh:1)) attempts to apply Kubernetes 
 
 **Mitigation:** Verify pod health checks pass. Provide pod logs for debugging. Implement proper readiness and liveness probes.
 
+### Risk 8: Docker permissions issues
+**Risk:** User may not have permissions to access Docker daemon, causing build failures.
+
+**Mitigation:** Check permissions before attempting build. Provide clear recovery instructions. Suggest adding user to docker group or using sudo with appropriate warnings.
+
+### Risk 9: Docker daemon not running
+**Risk:** Docker daemon may not be running, causing all Docker operations to fail.
+
+**Mitigation:** Check Docker daemon status before build. Provide instructions to start Docker daemon. Check if Docker service is enabled.
+
 ### Trade-off: Additional deployment time
 **Trade-off:** File transfer and image build/load add time to the deployment process.
 
@@ -414,11 +549,18 @@ The deployment script ([`deploy.sh`](deploy.sh:1)) attempts to apply Kubernetes 
    - Wait for new pod to be created
    - Verify pod status changes to Running
 
-5. **Update error handling** to include all new error types
-   - Add new error codes for file transfer failures
-   - Add new error codes for Docker build failures
-   - Add new error codes for Docker load failures
-   - Provide specific recovery suggestions for each error type
+5. **Add Docker permissions check section** before Docker build
+    - Check if user can access Docker daemon socket
+    - Check if Docker daemon is running
+    - Provide clear error messages if permissions are insufficient
+    - Provide recovery instructions for common permission issues
+
+6. **Update error handling** to include all new error types
+    - Add new error codes for file transfer failures
+    - Add new error codes for Docker build failures
+    - Add new error codes for Docker load failures
+    - Add new error codes for Docker permission failures
+    - Provide specific recovery suggestions for each error type
 
 6. **Test deployment** with the updated script
    - Verify files are transferred correctly
@@ -442,12 +584,12 @@ The rollback is straightforward because:
 
 ## Open Questions
 
-None identified at this time. The design addresses both the file transfer issue and the image pull issue with clear, well-defined solutions.
+None identified at this time. The design addresses the file transfer issue, image pull issue, and Docker permissions issue with clear, well-defined solutions.
 
 ## Current Task Context
 
 ## Current Task
-- 6.1 Build Docker image using Dockerfile in project root
+- 7.1 Investigate Docker daemon socket permissions error
 ## Completed Tasks for Git Commit
 - [x] 1.1 Add VM directory creation logic to deploy.sh after line 125 (after VM_NAME validation)
 - [x] 1.2 Implement file transfer for secrets.yaml using multipass transfer command
@@ -477,3 +619,11 @@ None identified at this time. The design addresses both the file transfer issue 
 - [x] 5.5 Test error handling provides clear messages when transfers fail
 - [x] 5.6 Verify log file contains all new log messages
 - [x] 5.7 Verify deployment script exits with non-zero status on file transfer failures
+- [x] 6.1 Build Docker image using Dockerfile in project root
+- [x] 6.2 Verify Docker image was built successfully
+- [x] 6.3 Load Docker image into multipass VM using docker save | multipass exec -- docker load
+- [x] 6.4 Verify image is available in VM's Docker daemon
+- [x] 6.5 Restart deployment to trigger pod recreation with new image
+- [x] 6.6 Verify pod status changes from ImagePullBackOff to Running
+- [x] 6.7 Verify pod passes readiness and liveness probes
+- [x] 6.8 Test application accessibility via ingress endpoint

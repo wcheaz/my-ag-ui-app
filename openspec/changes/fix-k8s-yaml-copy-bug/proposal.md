@@ -1,6 +1,6 @@
 ## Why
 
-The deployment script fails because Kubernetes YAML files are not being copied to the VM during the deployment process, preventing the application from being deployed to the microk8s cluster. Additionally, even after fixing the file transfer issue, the deployment fails with ImagePullBackOff because the Docker image is not built or loaded into the VM. These are critical bugs that block the entire deployment workflow.
+The deployment script fails because Kubernetes YAML files are not being copied to the VM during the deployment process, preventing the application from being deployed to the microk8s cluster. Additionally, even after fixing the file transfer issue, the deployment fails with ImagePullBackOff because the Docker image is not built or loaded into the VM. Furthermore, the Docker build process fails due to insufficient permissions to access the Docker daemon socket. These are critical bugs that block the entire deployment workflow.
 
 ## What Changes
 
@@ -11,12 +11,15 @@ The deployment script fails because Kubernetes YAML files are not being copied t
 - Build the Docker image from the project's Dockerfile
 - Load the Docker image into the multipass VM's Docker daemon
 - Verify the pod can successfully start with the loaded image
+- Fix Docker permissions issues to allow Docker build commands to execute
+- Add Docker permissions checks and proper error handling for permission errors
 
 ## Capabilities
 
 ### New Capabilities
 - `vm-file-transfer`: Capability for transferring files from host to VM during deployment, including directory creation and file validation
 - `docker-image-build-load`: Capability for building Docker images and loading them into the multipass VM's Docker daemon
+- `docker-permissions-check`: Capability for checking and fixing Docker daemon socket permissions to enable Docker build operations
 
 ### Modified Capabilities
 - None (this is a bug fix, not a requirement change)
