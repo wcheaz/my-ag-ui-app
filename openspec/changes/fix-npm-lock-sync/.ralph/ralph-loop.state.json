@@ -1,6 +1,6 @@
 {
   "active": true,
-  "iteration": 28,
+  "iteration": 35,
   "minIterations": 1,
   "maxIterations": 100,
   "completionPromise": "COMPLETE",
@@ -11,6 +11,6 @@
   "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-npm-lock-sync/.ralph/prompt-template.md",
   "noCommit": false,
   "model": "",
-  "startedAt": "2026-03-22T18:02:31.006Z",
-  "resumedAt": "2026-03-22T18:02:31.006Z"
+  "startedAt": "2026-03-22T18:49:08.254Z",
+  "resumedAt": "2026-03-22T18:49:08.254Z"
 }
