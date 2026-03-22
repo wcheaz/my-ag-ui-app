@@ -46,7 +46,7 @@
 ## 6. Deployment Preparation
 
 - [x] 6.1 Create backup of current Dockerfile and deploy.sh
-- [ ] 6.2 Prepare rollback plan documentation
+- [x] 6.2 Prepare rollback plan documentation
 - [ ] 6.3 Document any monitoring or alerts needed for fallback usage
 - [ ] 6.4 Update CHANGELOG.md with this change
 - [ ] 6.5 Prepare announcement or communication about the new validation step
