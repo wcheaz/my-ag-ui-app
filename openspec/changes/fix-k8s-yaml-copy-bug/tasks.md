@@ -51,3 +51,16 @@
 - [x] 6.6 Verify pod status changes from ImagePullBackOff to Running
 - [x] 6.7 Verify pod passes readiness and liveness probes
 - [x] 6.8 Test application accessibility via ingress endpoint
+
+## 7. Docker Permissions Debugging and Fix
+
+- [x] 7.1 Investigate Docker daemon socket permissions error
+- [x] 7.2 Check if current user is in docker group
+- [x] 7.3 Check Docker daemon status (running or stopped)
+- [x] 7.4 Add user to docker group if necessary (identified needed, requires sudo)
+- [x] 7.5 Restart Docker daemon if needed (already running)
+- [ ] 7.6 Test Docker build command with proper permissions
+- [x] 7.7 Fix Docker build error handling in deploy.sh to catch permission errors
+- [x] 7.8 Add Docker permissions check before attempting build
+- [x] 7.9 Provide clear error messages when Docker permissions are insufficient
+- [ ] 7.10 Test complete deployment flow with fixed Docker permissions

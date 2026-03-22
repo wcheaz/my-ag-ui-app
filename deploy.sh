@@ -180,6 +180,47 @@ handle_secrets_error() {
         esac
     fi
     
+    # Enhanced diagnostics for Docker permissions errors (128-130)
+    if [ "$error_code" -ge 128 ] && [ "$error_code" -le 130 ]; then
+        log "DOCKER PERMISSIONS DIAGNOSTIC INFO:"
+        log "Current user: $USER"
+        log "User groups: $(groups 2>/dev/null || echo 'Unable to get groups')"
+        log "Docker daemon status: $(systemctl is-active docker 2>/dev/null || echo 'Unable to check')"
+        log "Docker socket permissions: $(ls -la /var/run/docker.sock 2>/dev/null || echo 'Unable to check socket permissions')"
+        
+        case $error_code in
+            128)
+                log "Docker socket permission denied - user '$USER' cannot access /var/run/docker.sock"
+                log "RECOVERY SUGGESTIONS:"
+                log "1. Add user to docker group: sudo usermod -aG docker $USER"
+                log "2. Log out and log back in, OR run: newgrp docker"
+                log "3. If you don't have sudo access, ask your system administrator"
+                log "4. Check if Docker daemon is running: sudo systemctl status docker"
+                log "5. Verify Docker socket exists and has correct permissions: ls -la /var/run/docker.sock"
+                ;;
+            129)
+                log "Docker daemon not accessible - daemon may not be running"
+                log "RECOVERY SUGGESTIONS:"
+                log "1. Start Docker daemon: sudo systemctl start docker"
+                log "2. Enable Docker at startup: sudo systemctl enable docker"
+                log "3. Check Docker service status: sudo systemctl status docker"
+                log "4. Check Docker service logs: journalctl -u docker.service --no-pager"
+                log "5. Restart Docker service: sudo systemctl restart docker"
+                ;;
+            130)
+                log "Docker build permission error - build failed due to permission issues"
+                log "RECOVERY SUGGESTIONS:"
+                log "1. Check if Docker daemon is running: sudo systemctl status docker"
+                log "2. Check Docker socket permissions: ls -la /var/run/docker.sock"
+                log "3. Ensure user is in docker group: groups | grep docker"
+                log "4. Add user to docker group if needed: sudo usermod -aG docker $USER"
+                log "5. Log out and log back in OR run: newgrp docker"
+                log "6. Check if there are file permission issues in build context: ls -la"
+                log "7. Verify Dockerfile has correct permissions: ls -la Dockerfile"
+                ;;
+        esac
+    fi
+    
     # Enhanced diagnostics for deployment restart error (125)
     if [ "$error_code" -eq 125 ]; then
         log "DEPLOYMENT RESTART DIAGNOSTIC INFO:"
@@ -363,6 +404,35 @@ log "Using VM_NAME: $VM_NAME for Kubernetes deployment"
 log "Starting Docker image build process..."
 log "Building Docker image 'my-ag-ui-app:latest' using project Dockerfile..."
 
+# Check Docker daemon socket permissions before attempting build
+log "Checking Docker daemon socket permissions..."
+if ! docker info >/dev/null 2>&1; then
+    # Check specifically for permission denied error
+    if docker info 2>&1 | grep -q "permission denied"; then
+        log "ERROR: Docker daemon socket permission denied"
+        log "ERROR: Current user '$USER' does not have permission to access Docker daemon socket"
+        log "RECOVERY INSTRUCTIONS:"
+        log "1. Add your user to the docker group: sudo usermod -aG docker $USER"
+        log "2. Log out and log back in, OR run: newgrp docker"
+        log "3. If you don't have sudo access, ask your system administrator"
+        log "4. Alternatively, run this script with sudo (not recommended for security)"
+        log "5. Check if Docker daemon is running: sudo systemctl status docker"
+        handle_secrets_error 128 "Docker daemon socket permission denied" \
+            "Current user '$USER' lacks permission to access Docker daemon socket at /var/run/docker.sock. Add user to docker group: sudo usermod -aG docker $USER"
+    else
+        # Other Docker error (daemon not running, etc.)
+        log "ERROR: Docker daemon is not accessible or not running"
+        log "RECOVERY INSTRUCTIONS:"
+        log "1. Check if Docker daemon is running: sudo systemctl status docker"
+        log "2. Start Docker daemon if needed: sudo systemctl start docker"
+        log "3. Enable Docker at startup: sudo systemctl enable docker"
+        log "4. Check Docker service logs: journalctl -u docker.service"
+        handle_secrets_error 129 "Docker daemon not accessible" \
+            "Docker daemon is not running or not accessible. Start Docker daemon: sudo systemctl start docker"
+    fi
+fi
+log "Docker daemon socket permissions verified - user has access"
+
 # Check if Dockerfile exists
 if [ ! -f "Dockerfile" ]; then
     handle_secrets_error 120 "Dockerfile not found in project root" \
@@ -370,10 +440,27 @@ if [ ! -f "Dockerfile" ]; then
 fi
 log "Dockerfile found: $(pwd)/Dockerfile"
 
-# Build Docker image with proper error handling
+# Build Docker image with enhanced error handling for permission issues
+log "Building Docker image 'my-ag-ui-app:latest'..."
 if ! docker build -t my-ag-ui-app:latest . 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 121 "Failed to build Docker image" \
-        "Check Docker build output above for errors. Ensure Docker is running and accessible. Check Dockerfile for syntax errors."
+    # Check if the build failed due to permission issues
+    BUILD_LOG=$(docker build -t my-ag-ui-app:latest . 2>&1 || true)
+    if echo "$BUILD_LOG" | grep -q "permission denied"; then
+        log "ERROR: Docker build failed due to permission issues"
+        log "RECOVERY INSTRUCTIONS:"
+        log "1. Verify Docker daemon is running: sudo systemctl status docker"
+        log "2. Check Docker socket permissions: ls -la /var/run/docker.sock"
+        log "3. Ensure user is in docker group: groups | grep docker"
+        log "4. Add user to docker group if needed: sudo usermod -aG docker $USER"
+        log "5. Log out and log back in OR run: newgrp docker"
+        handle_secrets_error 130 "Docker build permission error" \
+            "Docker build failed due to permission issues. Ensure user is in docker group and Docker daemon is running."
+    else
+        # Other build error (not permission-related)
+        log "ERROR: Docker build failed - check build output above for specific errors"
+        handle_secrets_error 121 "Failed to build Docker image" \
+            "Check Docker build output above for errors. Ensure Docker is running and accessible. Check Dockerfile for syntax errors."
+    fi
 fi
 log "Docker image 'my-ag-ui-app:latest' built successfully"
 
