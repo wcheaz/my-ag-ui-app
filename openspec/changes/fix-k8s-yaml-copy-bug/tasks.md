@@ -27,7 +27,7 @@
 - [x] 4.1 Add log message before directory creation in VM
 - [x] 4.2 Add success log message after directory creation
 - [x] 4.3 Add log message before each file transfer
-- [ ] 4.4 Add success log message after each file transfer
+- [x] 4.4 Add success log message after each file transfer
 - [ ] 4.5 Add log message before file validation
 - [ ] 4.6 Add success log message after all files validated
 
