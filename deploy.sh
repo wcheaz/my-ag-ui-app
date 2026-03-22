@@ -58,12 +58,16 @@ log() {
 setup_vm_docker() {
     log "Starting Docker setup in VM '$VM_NAME'..."
     
-    # Basic structure for Docker setup
-    # This function will check for Docker installation and set it up if needed
-    log "Docker setup function called"
-    
-    # Placeholder for Docker CLI availability check
+    # Check Docker CLI availability in VM
     log "Checking Docker CLI availability in VM..."
+    if multipass exec "$VM_NAME" -- docker --version >/dev/null 2>&1; then
+        DOCKER_VERSION=$(multipass exec "$VM_NAME" -- docker --version 2>/dev/null | head -n1)
+        log "✅ Docker CLI is available in VM: $DOCKER_VERSION"
+        DOCKER_CLI_AVAILABLE=true
+    else
+        log "⚠️  Docker CLI is not available in VM"
+        DOCKER_CLI_AVAILABLE=false
+    fi
     
     # Placeholder for Docker installation
     log "Docker installation would happen here"
@@ -71,7 +75,7 @@ setup_vm_docker() {
     # Placeholder for Docker daemon verification
     log "Docker daemon verification would happen here"
     
-    log "Docker setup in VM completed (placeholder implementation)"
+    log "Docker setup in VM completed (Docker CLI check implemented)"
     return 0
 }
 
