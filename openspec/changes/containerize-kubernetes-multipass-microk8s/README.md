@@ -25,13 +25,14 @@ Run the deployment script to set up the entire infrastructure:
 ```
 
 The deployment script will:
-1. Create a multipass VM with 4 CPUs, 7.7GiB RAM, and 19.3GiB disk
-2. Install microk8s in the VM
-3. Enable required microk8s add-ons (dns, storage, ingress)
-4. Build the Docker image
-5. Deploy the application to Kubernetes
-6. Set up ingress for external access
-7. Verify all components are working
+1. **Validate lock files** - Ensures package.json and package-lock.json are synchronized for reproducible builds
+2. Create a multipass VM with 4 CPUs, 7.7GiB RAM, and 19.3GiB disk
+3. Install microk8s in the VM
+4. Enable required microk8s add-ons (dns, storage, ingress)
+5. **Build the Docker image** with dependency fallback mechanism for robust builds
+6. Deploy the application to Kubernetes
+7. Set up ingress for external access
+8. Verify all components are working
 
 ### Manual Deployment (Advanced)
 
@@ -153,12 +154,62 @@ multipass exec my-ag-ui-app-k8s -- microk8s status --wait-ready
        ```
      - Check microk8s logs: `multipass exec my-ag-ui-app-k8s -- sudo journalctl -u snap.microk8s.daemon-k8s-controller-manager`
 
-   - **Container build fails:**
-     - Verify Docker is installed: `docker --version`
-     - Check Docker daemon is running: `docker info`
-     - Ensure Dockerfile exists and is valid
-     - Check for syntax errors in Dockerfile
-     - Verify all required files are present in build context
+- **Container build fails:**
+      - Verify Docker is installed: `docker --version`
+      - Check Docker daemon is running: `docker info`
+      - Ensure Dockerfile exists and is valid
+      - Check for syntax errors in Dockerfile
+      - Verify all required files are present in build context
+      - **Lock file sync issues:** The build includes a fallback mechanism for npm dependency conflicts
+
+### Lock File Synchronization Issues
+
+The deployment process includes validation and fallback mechanisms for npm dependency management:
+
+#### 1. Lock File Validation Failure
+**Error:** "package.json and package-lock.json are not synchronized"
+
+**Cause:** The package-lock.json file doesn't match the current package.json dependencies
+
+**Solution:**
+```bash
+# Update lock file to match package.json
+npm install
+
+# Commit both files together
+git add package.json package-lock.json
+git commit -m "Update dependencies"
+
+# Retry deployment
+./deploy.sh
+```
+
+#### 2. Build Fallback Activation
+**Info:** "npm ci failed, falling back to npm install"
+
+**Cause:** The lock file validation failed during Docker build, triggering automatic fallback
+
+**Behavior:**
+- The build first tries `npm ci` for exact dependency reproduction
+- If that fails, it automatically falls back to `npm install`
+- This ensures the build completes even with lock file sync issues
+- The fallback is logged for transparency
+
+#### 3. Emergency Deployment Bypass
+**Use case:** When you need to deploy immediately but can't fix lock file sync issues
+
+```bash
+# Skip dependency validation (not recommended for regular use)
+./deploy.sh --skip-deps-check
+```
+
+**Warning:** Skipping validation may result in non-reproducible builds. Only use this for emergency deployments when immediate fixes are needed.
+
+#### 4. Why This Matters
+- **Reproducible builds:** Ensures every deployment uses exactly the same dependency versions
+- **Environment consistency:** Prevents "works on my machine" issues across different environments
+- **Reliable deployments:** The fallback mechanism ensures builds complete even when lock files are out of sync
+- **Developer experience:** Clear validation messages help developers understand and fix dependency issues quickly
 
 3. **SSL certificate warnings:**
    - The deployment uses self-signed certificates for local development
