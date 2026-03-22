@@ -1,8 +1,8 @@
 {
   "active": false,
-  "iteration": 157,
+  "iteration": 159,
   "minIterations": 1,
-  "maxIterations": 200,
+  "maxIterations": 100,
   "completionPromise": "COMPLETE",
   "taskPromise": "READY_FOR_NEXT_TASK",
   "tasksMode": true,
@@ -11,7 +11,7 @@
   "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/containerize-kubernetes-multipass-microk8s/.ralph/prompt-template.md",
   "noCommit": false,
   "model": "",
-  "startedAt": "2026-03-21T22:09:19.417Z",
-  "resumedAt": "2026-03-21T22:09:19.417Z",
-  "completedAt": "2026-03-21T22:10:05.213Z"
+  "startedAt": "2026-03-22T18:01:52.095Z",
+  "resumedAt": "2026-03-22T18:01:52.096Z",
+  "completedAt": "2026-03-22T18:01:52.096Z"
 }

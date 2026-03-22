@@ -374,7 +374,7 @@ The current Docker build process fails when `package.json` and `package-lock.jso
 ## Current Task Context
 
 ## Current Task
-- 2.6 Test validation with in-sync lock files (should pass)
+- 4.4 Test --skip-deps-check flag functionality
 ## Completed Tasks for Git Commit
 - [x] 1.1 Add fallback logic to handle npm ci failures in Dockerfile
 - [x] 1.2 Implement npm install fallback when npm ci fails due to lock file sync issues
@@ -386,5 +386,14 @@ The current Docker build process fails when `package.json` and `package-lock.jso
 - [x] 2.3 Add error handling and clear remediation messages for sync failures
 - [x] 2.4 Integrate validation step before Docker build in deploy.sh
 - [x] 2.5 Add --skip-deps-check flag for emergency bypass
+- [x] 2.6 Test validation with in-sync lock files (should pass)
+- [x] 2.7 Test validation with out-of-sync lock files (should fail with clear message)
+- [x] 3.1 Add lock file maintenance section to SETUP.md
+- [x] 3.2 Create DEPENDENCIES.md with detailed dependency management guidance
+- [x] 3.3 Document the pre-build validation process
+- [x] 3.4 Document the fallback mechanism and when it triggers
 - [x] 3.5 Add troubleshooting section for common lock file sync issues
 - [x] 3.6 Document the --skip-deps-check flag usage and warnings
+- [x] 4.1 Run full deployment with in-sync lock files (verify normal path)
+- [x] 4.2 Run full deployment with out-of-sync lock files (verify fallback path)
+- [x] 4.3 Verify error messages are clear and actionable
