@@ -10,6 +10,7 @@ The deployment process fails when attempting to load Docker images into the mult
 
 ## What Changes
 
+- Fix existing syntax errors in deploy.sh that prevent script execution (line 408: `start_total_deployment_timing: command not found`, line 2594: syntax error near `}`)
 - Add Docker installation and daemon startup verification in the multipass VM before attempting image load operations
 - Implement automatic Docker installation in the VM if not present
 - Add Docker daemon health checks in the VM before proceeding with image loading
@@ -345,7 +346,13 @@ The system SHALL integrate Docker setup into the existing deployment flow at the
 
 The current deployment process builds Docker images on the host system and attempts to load them into the multipass VM's Docker daemon using `multipass exec <vm-name> -- docker load`. However, this fails because Docker is not installed or the Docker daemon is not running in the VM. The error manifests as "bash: line 1: docker: command not found" followed by "Docker daemon in VM: not running".
 
-The deployment script ([`deploy.sh`](deploy.sh)) currently assumes Docker is pre-installed and running in the VM, which is not a valid assumption for freshly provisioned multipass VMs. Multipass VMs typically run Ubuntu but do not include Docker by default.
+Additionally, the deployment script ([`deploy.sh`](deploy.sh)) has existing syntax errors that prevent it from executing at all:
+- Line 408: `start_total_deployment_timing: command not found`
+- Line 2594: syntax error near unexpected token `}`
+
+These syntax errors must be fixed before implementing the Docker setup functionality.
+
+The deployment script currently assumes Docker is pre-installed and running in the VM, which is not a valid assumption for freshly provisioned multipass VMs. Multipass VMs typically run Ubuntu but do not include Docker by default.
 
 ## Goals / Non-Goals
 
@@ -440,6 +447,12 @@ The deployment script ([`deploy.sh`](deploy.sh)) currently assumes Docker is pre
 
 ### Deployment Steps
 
+0. Fix existing syntax errors in [`deploy.sh`](deploy.sh):
+   - Investigate and fix `start_total_deployment_timing: command not found` error on line 408
+   - Investigate and fix syntax error near unexpected token `}` on line 2594
+   - Verify deploy.sh has no syntax errors by running `bash -n deploy.sh`
+   - Test that deploy.sh can be executed without immediate syntax errors
+
 1. Add the `setup_vm_docker()` function to [`deploy.sh`](deploy.sh) that:
    - Checks if Docker is already installed
    - Installs Docker using the official script if not present
@@ -495,7 +508,7 @@ After deployment, verify:
 ## Current Task Context
 
 ## Current Task
-- 5.2 Document Docker setup requirements in deployment documentation
+- 0.1 Investigate and fix `start_total_deployment_timing: command not found` error on line 408 of deploy.sh
 ## Completed Tasks for Git Commit
 - [x] 1.1 Create `setup_vm_docker()` function in deploy.sh with function signature and basic structure
 - [x] 1.2 Implement Docker CLI availability check using `multipass exec <vm-name> -- docker --version`
@@ -525,6 +538,10 @@ After deployment, verify:
 - [x] 4.7 Verify image loading works correctly after Docker setup
 - [x] 4.8 Verify Kubernetes deployment proceeds successfully after image loading
 - [x] 5.1 Add inline comments explaining each step of Docker setup
+- [x] 5.2 Document Docker setup requirements in deployment documentation
+- [x] 5.3 Document troubleshooting steps for common Docker setup issues
+- [x] 5.4 Update README.md with Docker setup information if needed
+- [x] 5.5 Review and clean up any temporary or debugging code
 - [x] 5.6 Verify all error messages are clear and actionable
 - [x] 6.1 Handle case where Docker installation script is not accessible
 - [x] 6.2 Handle case where Docker daemon takes longer than expected to start
@@ -532,3 +549,7 @@ After deployment, verify:
 - [x] 6.4 Add timeout handling for all Docker operations
 - [x] 6.5 Handle case where VM is not accessible or multipass commands fail
 - [x] 6.6 Verify idempotency - running setup multiple times should not cause issues
+- [x] 7.1 Optimize Docker availability check to minimize execution time
+- [x] 7.2 Implement caching or state tracking to avoid redundant checks
+- [x] 7.3 Tune retry intervals and timeouts for optimal performance
+- [x] 7.4 Measure and document performance impact on deployment time

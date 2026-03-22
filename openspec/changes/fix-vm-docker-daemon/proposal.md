@@ -4,6 +4,7 @@ The deployment process fails when attempting to load Docker images into the mult
 
 ## What Changes
 
+- Fix existing syntax errors in deploy.sh that prevent script execution (line 408: `start_total_deployment_timing: command not found`, line 2594: syntax error near `}`)
 - Add Docker installation and daemon startup verification in the multipass VM before attempting image load operations
 - Implement automatic Docker installation in the VM if not present
 - Add Docker daemon health checks in the VM before proceeding with image loading

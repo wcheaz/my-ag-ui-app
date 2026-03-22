@@ -2,7 +2,13 @@
 
 The current deployment process builds Docker images on the host system and attempts to load them into the multipass VM's Docker daemon using `multipass exec <vm-name> -- docker load`. However, this fails because Docker is not installed or the Docker daemon is not running in the VM. The error manifests as "bash: line 1: docker: command not found" followed by "Docker daemon in VM: not running".
 
-The deployment script ([`deploy.sh`](deploy.sh)) currently assumes Docker is pre-installed and running in the VM, which is not a valid assumption for freshly provisioned multipass VMs. Multipass VMs typically run Ubuntu but do not include Docker by default.
+Additionally, the deployment script ([`deploy.sh`](deploy.sh)) has existing syntax errors that prevent it from executing at all:
+- Line 408: `start_total_deployment_timing: command not found`
+- Line 2594: syntax error near unexpected token `}`
+
+These syntax errors must be fixed before implementing the Docker setup functionality.
+
+The deployment script currently assumes Docker is pre-installed and running in the VM, which is not a valid assumption for freshly provisioned multipass VMs. Multipass VMs typically run Ubuntu but do not include Docker by default.
 
 ## Goals / Non-Goals
 
@@ -96,6 +102,12 @@ The deployment script ([`deploy.sh`](deploy.sh)) currently assumes Docker is pre
 ## Migration Plan
 
 ### Deployment Steps
+
+0. Fix existing syntax errors in [`deploy.sh`](deploy.sh):
+   - Investigate and fix `start_total_deployment_timing: command not found` error on line 408
+   - Investigate and fix syntax error near unexpected token `}` on line 2594
+   - Verify deploy.sh has no syntax errors by running `bash -n deploy.sh`
+   - Test that deploy.sh can be executed without immediate syntax errors
 
 1. Add the `setup_vm_docker()` function to [`deploy.sh`](deploy.sh) that:
    - Checks if Docker is already installed
