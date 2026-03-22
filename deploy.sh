@@ -178,13 +178,64 @@ setup_vm_docker() {
         DAEMON_CHECK_ATTEMPT=$((DAEMON_CHECK_ATTEMPT + 1))
     done
     
+    # Verify Docker commands work without sudo
+    log "Verifying Docker commands work without sudo..."
+    DOCKER_NO_SUDO_WORKING=false
+    MAX_NO_SUDO_CHECK_ATTEMPTS=5
+    NO_SUDO_CHECK_ATTEMPT=1
+    NO_SUDO_RETRY_DELAY=2
+    
+    while [ $NO_SUDO_CHECK_ATTEMPT -le $MAX_NO_SUDO_CHECK_ATTEMPTS ]; do
+        log "Docker no-sudo verification attempt $NO_SUDO_CHECK_ATTEMPT/$MAX_NO_SUDO_CHECK_ATTEMPTS..."
+        
+        if multipass exec "$VM_NAME" -- docker ps >/dev/null 2>&1; then
+            log "✅ Docker commands work without sudo in VM (attempt $NO_SUDO_CHECK_ATTEMPT)"
+            DOCKER_NO_SUDO_WORKING=true
+            break
+        else
+            log "⚠️  Docker commands require sudo in VM (attempt $NO_SUDO_CHECK_ATTEMPT)"
+            
+            # If this is the last attempt, provide detailed error information
+            if [ $NO_SUDO_CHECK_ATTEMPT -eq $MAX_NO_SUDO_CHECK_ATTEMPTS ]; then
+                log "ERROR: Docker commands still require sudo after $MAX_NO_SUDO_CHECK_ATTEMPTS attempts"
+                log "DIAGNOSTIC: Checking docker group membership..."
+                multipass exec "$VM_NAME" -- groups ubuntu 2>&1 | tee -a "$LOG_FILE" || true
+                
+                log "DIAGNOSTIC: Checking if user is in docker group..."
+                multipass exec "$VM_NAME" -- id ubuntu | grep docker 2>&1 | tee -a "$LOG_FILE" || true
+                
+                log "DIAGNOSTIC: Testing sudo docker ps for comparison..."
+                multipass exec "$VM_NAME" -- sudo docker ps 2>&1 | tee -a "$LOG_FILE" || true
+                
+                log "DIAGNOSTIC: Checking current user session..."
+                multipass exec "$VM_NAME" -- whoami 2>&1 | tee -a "$LOG_FILE" || true
+                multipass exec "$VM_NAME" -- echo $USER 2>&1 | tee -a "$LOG_FILE" || true
+            fi
+            
+            # Wait before next attempt
+            if [ $NO_SUDO_CHECK_ATTEMPT -lt $MAX_NO_SUDO_CHECK_ATTEMPTS ]; then
+                log "Waiting ${NO_SUDO_RETRY_DELAY}s before next attempt..."
+                sleep $NO_SUDO_RETRY_DELAY
+            fi
+        fi
+        
+        NO_SUDO_CHECK_ATTEMPT=$((NO_SUDO_CHECK_ATTEMPT + 1))
+    done
+    
     # Provide summary status
-    if [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = true ]; then
-        log "✅ Docker setup in VM completed successfully - Docker CLI and daemon are both available"
+    if [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = true ] && [ "$DOCKER_NO_SUDO_WORKING" = true ]; then
+        log "✅ Docker setup in VM completed successfully - Docker CLI, daemon, and no-sudo access are all available"
         log "   - Docker CLI: Verified and operational"
         log "   - Docker daemon: Started and verified with retry loop"
-        log "   - User permissions: Configured for docker group access"
+        log "   - User permissions: Configured and verified for docker group access"
+        log "   - No-sudo access: Verified Docker commands work without sudo"
         return 0
+    elif [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = true ] && [ "$DOCKER_NO_SUDO_WORKING" = false ]; then
+        log "❌ Docker setup in VM failed - Docker CLI and daemon available but no-sudo access not working"
+        log "RECOVERY: Try manually activating docker group membership: multipass shell $VM_NAME"
+        log "         Then run: newgrp docker or log out and log back in"
+        log "         Alternatively, run: sudo usermod -aG docker ubuntu && newgrp docker"
+        return 1
     elif [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = false ]; then
         log "❌ Docker setup in VM failed - Docker CLI available but daemon not running after $MAX_DAEMON_CHECK_ATTEMPTS attempts"
         log "RECOVERY: Try manually starting Docker daemon in VM: multipass shell $VM_NAME"
