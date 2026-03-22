@@ -40,3 +40,14 @@
 - [x] 5.5 Test error handling provides clear messages when transfers fail
 - [x] 5.6 Verify log file contains all new log messages
 - [x] 5.7 Verify deployment script exits with non-zero status on file transfer failures
+
+## 6. Docker Image Build and Load
+
+- [ ] 6.1 Build Docker image using Dockerfile in project root
+- [ ] 6.2 Verify Docker image was built successfully
+- [ ] 6.3 Load Docker image into multipass VM using docker save | multipass exec -- docker load
+- [ ] 6.4 Verify image is available in VM's Docker daemon
+- [ ] 6.5 Restart deployment to trigger pod recreation with new image
+- [ ] 6.6 Verify pod status changes from ImagePullBackOff to Running
+- [ ] 6.7 Verify pod passes readiness and liveness probes
+- [ ] 6.8 Test application accessibility via ingress endpoint
