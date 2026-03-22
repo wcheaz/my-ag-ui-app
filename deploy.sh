@@ -139,8 +139,8 @@ handle_secrets_error() {
         esac
     fi
     
-    # Enhanced diagnostics for Docker build errors (120-122)
-    if [ "$error_code" -ge 120 ] && [ "$error_code" -le 122 ]; then
+    # Enhanced diagnostics for Docker build and load errors (120-124)
+    if [ "$error_code" -ge 120 ] && [ "$error_code" -le 124 ]; then
         log "DOCKER BUILD DIAGNOSTIC INFO:"
         log "Docker daemon status: $(docker info 2>/dev/null > /dev/null && echo 'running' || echo 'not running')"
         log "Dockerfile exists: $([ -f "Dockerfile" ] && echo 'yes' || echo 'no')"
@@ -161,6 +161,21 @@ handle_secrets_error() {
                 log "Docker image verification failed. Image 'my-ag-ui-app:latest' not found."
                 log "Available Docker images:"
                 docker images --format "{{.Repository}}:{{.Tag}}" | head -5
+                ;;
+            123)
+                log "Docker image load into VM failed. Image 'my-ag-ui-app:latest' could not be loaded into VM."
+                log "Docker daemon in VM: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null > /dev/null && echo 'running' || echo 'not running')"
+                log "Docker images in VM:"
+                multipass exec "$VM_NAME" -- docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | head -5 || echo "Unable to get Docker images from VM"
+                log "VM disk space:"
+                multipass exec "$VM_NAME" -- df -h 2>/dev/null | head -5 || echo "Unable to get VM disk space"
+                ;;
+            124)
+                log "Docker image verification in VM failed. Image 'my-ag-ui-app:latest' not found in VM's Docker images."
+                log "Docker images in VM:"
+                multipass exec "$VM_NAME" -- docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | head -10 || echo "Unable to get Docker images from VM"
+                log "Docker daemon in VM: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null > /dev/null && echo 'running' || echo 'not running')"
+                log "This suggests the image load command appeared to succeed but the image is not actually available."
                 ;;
         esac
     fi
@@ -278,6 +293,25 @@ if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/de
         "Docker image 'my-ag-ui-app:latest' was not found in local Docker images. Build may have failed silently."
 fi
 log "Docker image 'my-ag-ui-app:latest' verified successfully"
+
+# 6.3 Load Docker image into multipass VM using docker save | multipass exec -- docker load
+log "Starting Docker image load into VM..."
+log "Loading Docker image 'my-ag-ui-app:latest' into multipass VM..."
+
+# Load Docker image into VM using docker save | multipass exec -- docker load
+if ! docker save my-ag-ui-app:latest | multipass exec "$VM_NAME" -- docker load 2>&1 | tee -a "$LOG_FILE"; then
+    handle_secrets_error 123 "Failed to load Docker image into VM" \
+        "Check if Docker is running in the VM: multipass exec '$VM_NAME' -- docker info. Ensure VM has sufficient disk space for the image."
+fi
+log "Docker image 'my-ag-ui-app:latest' loaded successfully into VM"
+
+# 6.4 Verify image is available in VM's Docker daemon
+log "Verifying Docker image is available in VM's Docker daemon..."
+if ! multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "my-ag-ui-app:latest"; then
+    handle_secrets_error 124 "Docker image verification in VM failed" \
+        "Docker image 'my-ag-ui-app:latest' was not found in VM's Docker images. Image load may have failed silently."
+fi
+log "Docker image 'my-ag-ui-app:latest' verified successfully in VM"
 
 # Create k8s directory in VM before file transfer
 log "Preparing to create k8s directory in VM..."

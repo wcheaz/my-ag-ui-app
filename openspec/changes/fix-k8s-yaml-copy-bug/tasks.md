@@ -45,8 +45,8 @@
 
 - [x] 6.1 Build Docker image using Dockerfile in project root
 - [x] 6.2 Verify Docker image was built successfully
-- [ ] 6.3 Load Docker image into multipass VM using docker save | multipass exec -- docker load
-- [ ] 6.4 Verify image is available in VM's Docker daemon
+- [x] 6.3 Load Docker image into multipass VM using docker save | multipass exec -- docker load
+- [x] 6.4 Verify image is available in VM's Docker daemon
 - [ ] 6.5 Restart deployment to trigger pod recreation with new image
 - [ ] 6.6 Verify pod status changes from ImagePullBackOff to Running
 - [ ] 6.7 Verify pod passes readiness and liveness probes
