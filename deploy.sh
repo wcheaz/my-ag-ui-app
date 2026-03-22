@@ -182,22 +182,269 @@ setup_vm_docker() {
     # Install Docker if not available
     if [ "$DOCKER_CLI_AVAILABLE" = false ]; then
         log "Installing Docker using official script..."
-        if ! multipass exec "$VM_NAME" -- bash -c "curl -fsSL https://get.docker.com | sh" 2>&1 | tee -a "$LOG_FILE"; then
-            log "ERROR: Docker installation failed"
-            log "RECOVERY: Manual installation may be required. Connect to VM with: multipass shell $VM_NAME"
-            log "         Then run: curl -fsSL https://get.docker.com | sh"
+        
+        # Pre-installation checks for common failure scenarios
+        log "Performing pre-installation system checks..."
+        
+        # Check disk space in VM
+        log "Checking available disk space in VM..."
+        local vm_disk_info
+        vm_disk_info=$(multipass exec "$VM_NAME" -- df -h / 2>/dev/null | tail -n1 || echo "")
+        if [ -n "$vm_disk_info" ]; then
+            local available_space
+            available_space=$(echo "$vm_disk_info" | awk '{print $4}' | sed 's/G//' | sed 's/M//' | head -n1)
+            local unit
+            unit=$(echo "$vm_disk_info" | awk '{print $4}' | sed 's/[0-9.]//' | head -n1)
+            log "Available disk space: ${available_space}${unit}"
+            
+            # Convert to MB for comparison
+            local space_mb
+            if [ "$unit" = "G" ] || [ -z "$unit" ]; then
+                space_mb=$(echo "$available_space * 1024" | bc -l 2>/dev/null || echo "${available_space}000")
+            else
+                space_mb=$available_space
+            fi
+            
+            if [ "${space_mb%.*}" -lt 1024 ]; then
+                log "⚠️  WARNING: Low disk space detected (${space_mb%.*}MB available)"
+                log "   Docker installation typically requires at least 1GB free space"
+            fi
+        else
+            log "WARNING: Could not check disk space in VM"
+        fi
+        
+        # Check network connectivity to Docker's installation script
+        log "Checking network connectivity to Docker's installation script..."
+        local network_test_result
+        network_test_result=$(multipass exec "$VM_NAME" -- curl -I --connect-timeout 10 https://get.docker.com 2>&1 | head -n1 || echo "")
+        if echo "$network_test_result" | grep -q "200 OK"; then
+            log "✅ Network connectivity to Docker installation script verified"
+        else
+            log "⚠️  WARNING: Network connectivity issue detected"
+            log "   Network test result: $network_test_result"
+            log "   This may cause installation to fail"
+        fi
+        
+        # Check if package manager is working
+        log "Checking package manager accessibility..."
+        local apt_test_result
+        apt_test_result=$(multipass exec "$VM_NAME" -- sudo apt-get update --dry-run 2>&1 | head -n5 || echo "")
+        if echo "$apt_test_result" | grep -q -E "(Get|Hit|Ign)"; then
+            log "✅ Package manager (apt) is accessible"
+        else
+            log "⚠️  WARNING: Package manager accessibility issue detected"
+            log "   Package manager test result: $apt_test_result"
+            log "   This may cause Docker installation to fail"
+        fi
+        
+        # Install Docker with comprehensive error capture
+        log "Starting Docker installation with comprehensive error capture..."
+        local install_output
+        local install_exit_code
+        
+        # Capture both stdout and stderr for detailed analysis
+        install_output=$(multipass exec "$VM_NAME" -- bash -c "curl -fsSL https://get.docker.com | sh" 2>&1)
+        install_exit_code=$?
+        
+        # Log the full installation output for debugging
+        log "Docker installation output (first 1000 chars):"
+        echo "$install_output" | head -c 1000 | tee -a "$LOG_FILE"
+        if [ ${#install_output} -gt 1000 ]; then
+            log "... (output truncated, full output logged to file)"
+            echo "$install_output" >> "$LOG_FILE"
+        fi
+        
+        # Analyze the installation result
+        if [ $install_exit_code -eq 0 ]; then
+            log "✅ Docker installation command completed successfully (exit code: 0)"
+        else
+            log "ERROR: Docker installation failed (exit code: $install_exit_code)"
+            
+            # Analyze specific error patterns and provide targeted guidance
+            log "ANALYZING INSTALLATION FAILURE..."
+            
+            # Check for network connectivity errors
+            if echo "$install_output" | grep -q -E "(curl.*failed|Connection refused|Network unreachable|Timeout|resolve host|Could not resolve host)"; then
+                log "ERROR TYPE: NETWORK CONNECTIVITY FAILURE"
+                log "DIAGNOSTIC: Installation script cannot reach Docker servers"
+                log "RECOVERY STEPS:"
+                log "1. Check VM network connectivity: multipass exec $VM_NAME -- ping -c 2 google.com"
+                log "2. Check DNS resolution: multipass exec $VM_NAME -- nslookup get.docker.com"
+                log "3. Check network interface: multipass exec $VM_NAME -- ip a"
+                log "4. If proxy required, set proxy environment variables in VM:"
+                log "   multipass exec $VM_NAME -- bash -c 'echo \"export HTTP_PROXY=http://proxy:port\" >> ~/.bashrc'"
+                log "5. Manual recovery: multipass shell $VM_NAME"
+                log "   Then run: curl -fsSL https://get.docker.com | sh"
+                
+            # Check for disk space errors
+            elif echo "$install_output" | grep -q -E "(No space left|disk full|out of space|insufficient space|not enough free space)"; then
+                log "ERROR TYPE: INSUFFICIENT DISK SPACE"
+                log "DIAGNOSTIC: VM does not have enough disk space for Docker installation"
+                log "RECOVERY STEPS:"
+                log "1. Check disk usage: multipass exec $VM_NAME -- df -h"
+                log "2. Clean up unused packages: multipass exec $VM_NAME -- sudo apt autoremove -y"
+                log "3. Clear apt cache: multipass exec $VM_NAME -- sudo apt clean"
+                log "4. Remove old logs: multipass exec $VM_NAME -- sudo journalctl --vacuum-size=100M"
+                log "5. If still insufficient, increase VM disk size:"
+                log "   multipass stop $VM_NAME && multipass delete $VM_NAME && multipass launch --name $VM_NAME --disk 20G"
+                log "6. Manual recovery after freeing space: multipass shell $VM_NAME"
+                log "   Then run: curl -fsSL https://get.docker.com | sh"
+                
+            # Check for package manager errors
+            elif echo "$install_output" | grep -q -E "(Unable to locate package|package.*not found|E:.*Failed to fetch|dpkg.*error|apt.*error)"; then
+                log "ERROR TYPE: PACKAGE MANAGER FAILURE"
+                log "DIAGNOSTIC: APT package manager encountered errors"
+                log "RECOVERY STEPS:"
+                log "1. Update package lists: multipass exec $VM_NAME -- sudo apt update"
+                log "2. Fix broken dependencies: multipass exec $VM_NAME -- sudo apt --fix-broken install -y"
+                log "3. Clean package cache: multipass exec $VM_NAME -- sudo apt clean"
+                log "4. Check package sources: multipass exec $VM_NAME -- cat /etc/apt/sources.list"
+                log "5. Manual recovery: multipass shell $VM_NAME"
+                log "   Then run: sudo apt update && curl -fsSL https://get.docker.com | sh"
+                
+            # Check for permission errors
+            elif echo "$install_output" | grep -q -E "(Permission denied|sudo.*error|access denied|Operation not permitted)"; then
+                log "ERROR TYPE: PERMISSION FAILURE"
+                log "DIAGNOSTIC: Installation encountered permission errors"
+                log "RECOVERY STEPS:"
+                log "1. Check user permissions: multipass exec $VM_NAME -- id"
+                log "2. Check sudo access: multipass exec $VM_NAME -- sudo -l"
+                log "3. Ensure user has sudo privileges in VM"
+                log "4. Manual recovery: multipass shell $VM_NAME"
+                log "   Then run: sudo curl -fsSL https://get.docker.com | sudo sh"
+                
+            # Check for timeout errors
+            elif echo "$install_output" | grep -q -E "(timeout|timed out|TIME_WAIT|connection timed out)"; then
+                log "ERROR TYPE: TIMEOUT FAILURE"
+                log "DIAGNOSTIC: Installation operation timed out"
+                log "RECOVERY STEPS:"
+                log "1. Check network connectivity: multipass exec $VM_NAME -- ping -c 4 google.com"
+                log "2. Check network speed: multipass exec $VM_NAME -- curl -o /dev/null -s -w '%{time_total}' https://get.docker.com"
+                log "3. Retry installation (network may be temporarily slow)"
+                log "4. Manual recovery: multipass shell $VM_NAME"
+                log "   Then run: curl -fsSL https://get.docker.com | sh"
+                
+            # Check for SSL/TLS certificate errors
+            elif echo "$install_output" | grep -q -E "(SSL|certificate|TLS|verify|CAbundle|unable to get local issuer certificate)"; then
+                log "ERROR TYPE: SSL/TLS CERTIFICATE FAILURE"
+                log "DIAGNOSTIC: SSL certificate verification failed"
+                log "RECOVERY STEPS:"
+                log "1. Update CA certificates: multipass exec $VM_NAME -- sudo update-ca-certificates"
+                log "2. Check system time: multipass exec $VM_NAME -- date"
+                log "3. Install ca-certificates: multipass exec $VM_NAME -- sudo apt install ca-certificates -y"
+                log "4. Temporary bypass (not recommended for production):"
+                log "   multipass shell $VM_NAME"
+                log "   Then run: curl -k -fsSL https://get.docker.com | sh"
+                
+            # Check for system architecture compatibility issues
+            elif echo "$install_output" | grep -q -E "(architecture|Architecture.*not supported|not.*supported.*architecture|dpkg.*wrong architecture)"; then
+                log "ERROR TYPE: SYSTEM ARCHITECTURE COMPATIBILITY"
+                log "DIAGNOSTIC: Docker installation not supported for this system architecture"
+                log "RECOVERY STEPS:"
+                log "1. Check system architecture: multipass exec $VM_NAME -- uname -m"
+                log "2. Check Ubuntu version: multipass exec $VM_NAME -- lsb_release -a"
+                log "3. Verify multipass VM architecture is supported by Docker"
+                log "4. Consider using Docker's official installation method for your architecture"
+                log "   Manual recovery: multipass shell $VM_NAME"
+                log "   Visit: https://docs.docker.com/engine/install/ubuntu/"
+                
+            # Check for system dependency issues
+            elif echo "$install_output" | grep -q -E "(dependency|dependencies|depends on|unmet dependencies)"; then
+                log "ERROR TYPE: SYSTEM DEPENDENCY FAILURE"
+                log "DIAGNOSTIC: Required system dependencies are missing or conflicting"
+                log "RECOVERY STEPS:"
+                log "1. Update system: multipass exec $VM_NAME -- sudo apt update && sudo apt upgrade -y"
+                log "2. Fix broken dependencies: multipass exec $VM_NAME -- sudo apt --fix-broken install -y"
+                log "3. Install common dependencies: multipass exec $VM_NAME -- sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release"
+                log "4. Manual recovery: multipass shell $VM_NAME"
+                log "   Then run: sudo apt update && curl -fsSL https://get.docker.com | sh"
+                
+            # Unknown/unexpected errors
+            else
+                log "ERROR TYPE: UNKNOWN INSTALLATION FAILURE"
+                log "DIAGNOSTIC: Installation failed with unexpected error pattern"
+                log "ERROR DETAILS:"
+                log "Exit code: $install_exit_code"
+                log "Last 10 lines of output:"
+                echo "$install_output" | tail -n10 | tee -a "$LOG_FILE"
+                
+                log "RECOVERY STEPS:"
+                log "1. Check VM system status: multipass info $VM_NAME"
+                log "2. Check system logs: multipass exec $VM_NAME -- dmesg | tail -n20"
+                log "3. Manual recovery: multipass shell $VM_NAME"
+                log "4. Try alternative Docker installation method:"
+                log "   multipass exec $VM_NAME -- bash -c 'sudo apt update && sudo apt install -y docker.io'"
+                log "5. If all else fails, consider recreating the VM:"
+                log "   multipass delete $VM_NAME && multipass launch --name $VM_NAME"
+            fi
+            
+            # Collect additional diagnostic information
+            log "COLLECTING ADDITIONAL DIAGNOSTIC INFORMATION..."
+            log "VM system information:"
+            multipass exec "$VM_NAME" -- uname -a 2>/dev/null | tee -a "$LOG_FILE" || log "Unable to get system info"
+            
+            log "VM disk usage:"
+            multipass exec "$VM_NAME" -- df -h 2>/dev/null | tee -a "$LOG_FILE" || log "Unable to get disk usage"
+            
+            log "VM memory usage:"
+            multipass exec "$VM_NAME" -- free -h 2>/dev/null | tee -a "$LOG_FILE" || log "Unable to get memory usage"
+            
+            log "VM network interfaces:"
+            multipass exec "$VM_NAME" -- ip a 2>/dev/null | tee -a "$LOG_FILE" || log "Unable to get network info"
+            
+            log "VM package manager status:"
+            multipass exec "$VM_NAME" -- sudo apt list --upgradable 2>/dev/null | head -n5 | tee -a "$LOG_FILE" || log "Unable to get package status"
+            
             return 1
         fi
         
         # Verify Docker was installed
         log "Verifying Docker installation..."
-        if multipass exec "$VM_NAME" -- docker --version >/dev/null 2>&1; then
-            DOCKER_VERSION=$(multipass exec "$VM_NAME" -- docker --version 2>/dev/null | head -n1)
+        local docker_version_output
+        docker_version_output=$(multipass exec "$VM_NAME" -- docker --version 2>&1)
+        local docker_version_exit_code=$?
+        
+        if [ $docker_version_exit_code -eq 0 ]; then
+            DOCKER_VERSION=$(echo "$docker_version_output" | head -n1)
             log "✅ Docker installed successfully: $DOCKER_VERSION"
             DOCKER_CLI_AVAILABLE=true
+            
+            # Additional verification checks
+            log "Performing additional Docker installation verification..."
+            
+            # Check Docker daemon status
+            log "Checking Docker daemon status..."
+            local docker_daemon_status
+            docker_daemon_status=$(multipass exec "$VM_NAME" -- sudo systemctl is-active docker 2>/dev/null || echo "unknown")
+            log "Docker daemon status: $docker_daemon_status"
+            
+            # Check if docker group exists
+            log "Checking docker group existence..."
+            local docker_group
+            docker_group=$(multipass exec "$VM_NAME" -- grep -c '^docker:' /etc/group 2>/dev/null || echo "0")
+            if [ "$docker_group" -gt 0 ]; then
+                log "✅ Docker group exists in /etc/group"
+            else
+                log "⚠️  WARNING: Docker group not found in /etc/group"
+                log "   This may indicate incomplete installation"
+            fi
+            
+            # Check Docker service files
+            log "Checking Docker service installation..."
+            if multipass exec "$VM_NAME" -- systemctl list-unit-files | grep -q docker; then
+                log "✅ Docker systemd service is installed"
+            else
+                log "⚠️  WARNING: Docker systemd service not found"
+                log "   This may indicate incomplete installation"
+            fi
+            
         else
-            log "ERROR: Docker installation verification failed"
-            log "RECOVERY: Check installation logs above. Manual intervention may be required."
+            log "ERROR: Docker installation verification failed (exit code: $docker_version_exit_code)"
+            log "DIAGNOSTIC: docker --version command failed after installation"
+            log "Command output: $docker_version_output"
+            log "RECOVERY: Manual intervention may be required. Connect to VM with: multipass shell $VM_NAME"
+            log "         Then check: docker --version"
+            log "         If missing, complete installation manually: sudo systemctl start docker && sudo systemctl enable docker"
             return 1
         fi
     else
