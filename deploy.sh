@@ -1,7 +1,5 @@
 
-# ===========================
-# TROUBLESHOOTING DOCUMENTATION
-# ===========================
+
 
 # Common Docker Setup Issues and Troubleshooting Steps
 # 
@@ -475,57 +473,7 @@ setup_vm_docker() {
         return $exit_code
     }
     
-    # Collect comprehensive diagnostic information at the start
-    log "COLLECTING INITIAL DIAGNOSTIC INFORMATION..."
-    log "=================================================="
-    log "VM CONFIGURATION DIAGNOSTICS:"
-    log "- VM Name: $VM_NAME"
-    log "- Host System: $(uname -a 2>/dev/null || echo 'Unable to get host info')"
-    log "- Host Docker Version: $(docker --version 2>/dev/null || echo 'Docker not available on host')"
-    log "- Multipass Version: $(multipass version 2>/dev/null || echo 'Multipass not available')"
-    log "- Current User: $USER"
-    log "- User Groups: $(groups 2>/dev/null || echo 'Unable to get groups')"
-    log "- Current Directory: $(pwd)"
-    log "- Script PID: $$"
-    log "- Script Start Time: $(date '+%Y-%m-%d %H:%M:%S')"
-    
-    log "VM STATUS DIAGNOSTICS:"
-    log "- VM Basic Info: $(multipass info "$VM_NAME" 2>/dev/null | head -1 || echo 'Unable to get VM info')"
-    log "- VM IPv4: $(multipass info "$VM_NAME" | grep -E "IPv4:" | awk '{print $2}' | cut -d',' -f1 | head -n1 2>/dev/null || echo 'Unable to get VM IP')"
-    log "- VM Status: $(multipass info "$VM_NAME" | grep -E "State:" | awk '{print $2}' | head -n1 2>/dev/null || echo 'Unable to get VM status')"
-    log "- VM CPU: $(multipass info "$VM_NAME" | grep -E "CPU(s):" | awk '{print $2}' | head -n1 2>/dev/null || echo 'Unable to get CPU info')"
-    log "- VM Memory: $(multipass info "$VM_NAME" | grep -E "Memory:" | awk '{print $2}' | head -n1 2>/dev/null || echo 'Unable to get memory info')"
-    log "- VM Disk: $(multipass info "$VM_NAME" | grep -E "Disk:" | awk '{print $2}' | head -n1 2>/dev/null || echo 'Unable to get disk info')"
-    
-    log "VM SYSTEM DIAGNOSTICS:"
-    log "- VM OS Info: $(multipass exec "$VM_NAME" -- uname -a 2>/dev/null || echo 'Unable to get VM OS info')"
-    log "- VM OS Release: $(multipass exec "$VM_NAME" -- cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d'"' -f2 || echo 'Unable to get OS release')"
-    log "- VM Architecture: $(multipass exec "$VM_NAME" -- dpkg --print-architecture 2>/dev/null || echo 'Unable to get architecture')"
-    log "- VM Kernel Version: $(multipass exec "$VM_NAME" -- uname -r 2>/dev/null || echo 'Unable to get kernel version')"
-    log "- VM Uptime: $(multipass exec "$VM_NAME" -- uptime 2>/dev/null || echo 'Unable to get uptime')"
-    log "- VM Current User: $(multipass exec "$VM_NAME" -- whoami 2>/dev/null || echo 'Unable to get VM user')"
-    log "- VM User ID: $(multipass exec "$VM_NAME" -- id 2>/dev/null || echo 'Unable to get VM user ID')"
-    log "- VM User Groups: $(multipass exec "$VM_NAME" -- groups 2>/dev/null || echo 'Unable to get VM user groups')"
-    
-    log "VM RESOURCES DIAGNOSTICS:"
-    log "- VM Disk Usage: $(multipass exec "$VM_NAME" -- df -h / 2>/dev/null | tail -n1 | awk '{print "Root: " $3 "/" $2 " (" $5 " used)"}' || echo 'Unable to get disk usage')"
-    log "- VM Memory Usage: $(multipass exec "$VM_NAME" -- free -h 2>/dev/null | grep Mem: | awk '{print "Total: " $2 ", Used: " $3 ", Free: " $4}' || echo 'Unable to get memory usage')"
-    log "- VM CPU Load: $(multipass exec "$VM_NAME" -- top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1 | head -n1 2>/dev/null || echo 'Unable to get CPU load')% load"
-    log "- VM Process Count: $(multipass exec "$VM_NAME" -- ps aux | wc -l 2>/dev/null || echo 'Unable to get process count') processes"
-    
-    log "VM NETWORK DIAGNOSTICS:"
-    log "- VM Network Interfaces: $(multipass exec "$VM_NAME" -- ip a | grep -E "^[0-9]+:" | wc -l 2>/dev/null || echo 'Unable to count interfaces') interfaces found"
-    log "- VM Network Connectivity: $(multipass exec "$VM_NAME" -- ping -c 1 google.com >/dev/null 2>&1 && echo 'Google reachable' || echo 'Google not reachable')"
-    log "- VM DNS Resolution: $(multipass exec "$VM_NAME" -- nslookup google.com >/dev/null 2>&1 && echo 'DNS working' || echo 'DNS not working')"
-    log "- VM Package Manager: $(multipass exec "$VM_NAME" -- apt list --upgradable 2>/dev/null | wc -l 2>/dev/null || echo 'Unable to check package manager') packages can be upgraded"
-    
-    log "VM DOCKER PRE-CHECK DIAGNOSTICS:"
-    log "- Docker Binary: $(multipass exec "$VM_NAME" -- which docker 2>/dev/null || echo 'Docker binary not found')"
-    log "- Docker Version: $(multipass exec "$VM_NAME" -- docker --version 2>/dev/null || echo 'Docker version not available')"
-    log "- Docker Daemon Status: $(multipass exec "$VM_NAME" -- sudo systemctl is-active docker 2>/dev/null || echo 'Unable to check daemon status')"
-    log "- Docker Group: $(multipass exec "$VM_NAME" -- getent group docker 2>/dev/null || echo 'Docker group not found')"
-    log "- Docker Socket: $(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null || echo 'Docker socket not found')"
-    log "=================================================="
+    # Starting Docker setup in VM '$VM_NAME'...
     
     # Initial VM Health Check before Docker setup
     log "Performing initial VM health check before Docker setup..."
@@ -949,22 +897,10 @@ setup_vm_docker() {
                 log "   multipass delete $VM_NAME && multipass launch --name $VM_NAME"
             fi
             
-            # Collect additional diagnostic information
-            log "COLLECTING ADDITIONAL DIAGNOSTIC INFORMATION..."
-            log "VM system information:"
-            multipass exec "$VM_NAME" -- uname -a 2>/dev/null | tee -a "$LOG_FILE" || log "Unable to get system info"
-            
-            log "VM disk usage:"
-            multipass exec "$VM_NAME" -- df -h 2>/dev/null | tee -a "$LOG_FILE" || log "Unable to get disk usage"
-            
-            log "VM memory usage:"
-            multipass exec "$VM_NAME" -- free -h 2>/dev/null | tee -a "$LOG_FILE" || log "Unable to get memory usage"
-            
-            log "VM network interfaces:"
-            multipass exec "$VM_NAME" -- ip a 2>/dev/null | tee -a "$LOG_FILE" || log "Unable to get network info"
-            
-            log "VM package manager status:"
-            multipass exec "$VM_NAME" -- sudo apt list --upgradable 2>/dev/null | head -n5 | tee -a "$LOG_FILE" || log "Unable to get package status"
+# Collect essential diagnostic information
+        log "ESSENTIAL DIAGNOSTIC INFORMATION:"
+        multipass exec "$VM_NAME" -- uname -a 2>/dev/null | tee -a "$LOG_FILE" || log "Unable to get system info"
+        multipass exec "$VM_NAME" -- df -h 2>/dev/null | head -3 | tee -a "$LOG_FILE" || log "Unable to get disk usage"
             
             return 1
         fi
@@ -1022,60 +958,7 @@ setup_vm_docker() {
         log "Docker already installed, skipping installation"
     fi
     
-    # Post-installation diagnostic information
-    log "POST-INSTALLATION DIAGNOSTIC VERIFICATION..."
-    log "=================================================="
-    
-    # Verify Docker installation components
-    log "DOCKER INSTALLATION COMPONENTS VERIFICATION:"
-    log "- Docker CLI Binary: $(multipass exec "$VM_NAME" -- which docker 2>/dev/null || echo 'NOT FOUND')"
-    log "- Docker CLI Version: $(multipass exec "$VM_NAME" -- docker --version 2>/dev/null || echo 'UNAVAILABLE')"
-    log "- Docker Daemon Status: $(multipass exec "$VM_NAME" -- sudo systemctl is-active docker 2>/dev/null || echo 'UNKNOWN')"
-    log "- Docker Service Status: $(multipass exec "$VM_NAME" -- sudo systemctl status docker 2>/dev/null | grep Active | head -n1 || echo 'UNAVAILABLE')"
-    log "- Docker Service Enabled: $(multipass exec "$VM_NAME" -- sudo systemctl is-enabled docker 2>/dev/null || echo 'UNKNOWN')"
-    
-    # Check Docker package installation
-    log "DOCKER PACKAGES VERIFICATION:"
-    multipass exec "$VM_NAME" -- dpkg -l | grep -i docker 2>/dev/null | while read pkg; do
-        log "- Package: $pkg"
-    done || log "No Docker packages found in dpkg listing"
-    
-    # Check Docker related files and directories
-    log "DOCKER FILESYSTEM VERIFICATION:"
-    log "- Docker Config Directory: $(multipass exec "$VM_NAME" -- ls -la /etc/docker/ 2>/dev/null || echo 'NOT FOUND/EMPTY')"
-    log "- Docker Daemon Config: $(multipass exec "$VM_NAME" -- cat /etc/docker/daemon.json 2>/dev/null || echo 'NOT FOUND/EMPTY')"
-    log "- Docker Service File: $(multipass exec "$VM_NAME" -- ls -la /lib/systemd/system/docker.service 2>/dev/null || echo 'NOT FOUND')"
-    log "- Docker Socket: $(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null || echo 'NOT FOUND')"
-    log "- Docker Data Directory: $(multipass exec "$VM_NAME" -- ls -la /var/lib/docker/ 2>/dev/null | head -5 || echo 'NOT FOUND/EMPTY')"
-    
-    # Check Docker group and user permissions
-    log "DOCKER GROUP AND PERMISSIONS VERIFICATION:"
-    log "- Docker Group Exists: $(multipass exec "$VM_NAME" -- getent group docker 2>/dev/null && echo 'YES' || echo 'NO')"
-    log "- Docker Group Members: $(multipass exec "$VM_NAME" -- getent group docker 2>/dev/null | cut -d: -f4 || echo 'NONE')"
-    log "- User in Docker Group: $(multipass exec "$VM_NAME" -- groups ubuntu 2>/dev/null | grep -q docker && echo 'YES' || echo 'NO')"
-    log "- Docker Socket Permissions: $(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null | awk '{print $1 " " $3 " " $4}' || echo 'UNAVAILABLE')"
-    
-    # Check Docker daemon process information
-    log "DOCKER DAEMON PROCESS VERIFICATION:"
-    log "- Docker Daemon Process: $(multipass exec "$VM_NAME" -- ps aux | grep -E '[d]ockerd' | head -n1 || echo 'NOT RUNNING')"
-    log "- Docker Containerd Process: $(multipass exec "$VM_NAME" -- ps aux | grep -E '[c]ontainerd' | head -n1 || echo 'NOT RUNNING')"
-    log "- Docker Proxy Process: $(multipass exec "$VM_NAME" -- ps aux | grep -E '[d]ocker-proxy' | head -n1 || echo 'NOT RUNNING')"
-    log "- Docker Process Count: $(multipass exec "$VM_NAME" -- ps aux | grep -i docker | grep -v grep | wc -l 2>/dev/null || echo '0') Docker-related processes"
-    
-    # Check Docker network configuration
-    log "DOCKER NETWORK VERIFICATION:"
-    log "- Docker Network Interfaces: $(multipass exec "$VM_NAME" -- ip a | grep -i docker || echo 'NO DOCKER INTERFACES FOUND')"
-    log "- Docker Bridge Interface: $(multipass exec "$VM_NAME" -- ip a show docker0 2>/dev/null || echo 'DOCKER BRIDGE NOT FOUND')"
-    log "- Docker iptables Rules: $(multipass exec "$VM_NAME" -- sudo iptables -t nat -L | grep -i docker | head -3 || echo 'NO DOCKER IPTABLES RULES FOUND')"
-    
-    # Check Docker storage drivers
-    log "DOCKER STORAGE VERIFICATION:"
-    log "- Storage Driver: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Storage Driver:' | head -n1 || echo 'UNAVAILABLE')"
-    log "- Backing Filesystem: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Backing Filesystem:' | head -n1 || echo 'UNAVAILABLE')"
-    log "- Data Space: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Data Space:' | head -n1 || echo 'UNAVAILABLE')"
-    log "- Metadata Space: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Metadata Space:' | head -n1 || echo 'UNAVAILABLE')"
-    
-    log "=================================================="
+    # Verifying Docker installation completed successfully
     
     # Add user to docker group with comprehensive error handling and idempotency check
     log "Checking docker group membership with idempotency handling..."
@@ -1273,24 +1156,11 @@ setup_vm_docker() {
             log "6. If all else fails, create new user with docker group: multipass exec '$VM_NAME' -- sudo useradd -G docker ubuntu-new"
         fi
         
-        # Collect comprehensive diagnostic information
-        log "COLLECTING ADDITIONAL DIAGNOSTIC INFORMATION..."
-        log "VM SYSTEM STATUS:"
+        # Collect essential diagnostic information
+        log "ESSENTIAL DIAGNOSTIC INFORMATION:"
         log "- User info: $(multipass exec "$VM_NAME" -- id ubuntu 2>/dev/null || echo 'Unable to get user info')"
         log "- User groups: $(multipass exec "$VM_NAME" -- groups ubuntu 2>/dev/null || echo 'Unable to get user groups')"
         log "- Docker group: $(multipass exec "$VM_NAME" -- getent group docker 2>/dev/null || echo 'Docker group not found')"
-        log "- System users: $(multipass exec "$VM_NAME" -- grep -c 'ubuntu' /etc/passwd 2>/dev/null || echo 'Unable to count users') users found"
-        
-        log "VM SYSTEM CONFIGURATION:"
-        log "- passwd file: $(multipass exec "$VM_NAME" -- wc -l /etc/passwd 2>/dev/null || echo 'Unable to read passwd') lines"
-        log "- group file: $(multipass exec "$VM_NAME" -- wc -l /etc/group 2>/dev/null || echo 'Unable to read group') lines"
-        log "- sudoers configuration: $(multipass exec "$VM_NAME" -- sudo test -f /etc/sudoers && echo 'exists' || echo 'missing')"
-        log "- filesystem status: $(multipass exec "$VM_NAME" -- mount | grep ' / ' 2>/dev/null | head -n1 || echo 'Unable to get mount info')"
-        
-        log "VM ACCESSIBILITY:"
-        log "- VM status: $(multipass info "$VM_NAME" 2>/dev/null | head -n1 || echo 'Unable to get VM status')"
-        log "- Multipass version: $(multipass version 2>/dev/null || echo 'Unable to get multipass version')"
-        log "- VM accessibility test: $(multipass exec "$VM_NAME" -- whoami 2>/dev/null || echo 'VM not accessible')"
         
         return 1
     fi
@@ -1588,65 +1458,16 @@ setup_vm_docker() {
                     log "5. Complete Docker reinstallation: multipash exec '$VM_NAME' -- sudo apt remove --purge docker* && sudo apt autoremove && sudo apt clean && curl -fsSL https://get.docker.com | sh"
                 fi
                 
-                # Collect comprehensive diagnostic information
-                log "COMPREHENSIVE DIAGNOSTIC INFORMATION:"
-                log "--------------------------------------------------"
-                
-                # System information
-                log "SYSTEM INFORMATION:"
-                log "- Hostname: $(multipass exec "$VM_NAME" -- hostname 2>/dev/null || echo 'Unable to get hostname')"
-                log "- OS info: $(multipass exec "$VM_NAME" -- uname -a 2>/dev/null || echo 'Unable to get OS info')"
-                log "- System uptime: $(multipass exec "$VM_NAME" -- uptime 2>/dev/null || echo 'Unable to get uptime')"
-                
-                # Docker service status
-                log "DOCKER SERVICE STATUS:"
-                multipass exec "$VM_NAME" -- sudo systemctl status docker 2>&1 | tee -a "$LOG_FILE" || true
-                
-                # Docker daemon logs
-                log "DOCKER DAEMON LOGS (last 20 lines):"
-                multipass exec "$VM_NAME" -- sudo journalctl -u docker.service --no-pager -n 20 2>&1 | tee -a "$LOG_FILE" || true
-                
-                # Docker daemon process
-                log "DOCKER DAEMON PROCESS:"
-                multipass exec "$VM_NAME" -- ps aux | grep -i docker | grep -v grep 2>&1 | tee -a "$LOG_FILE" || true
-                
-                # System resources
-                log "SYSTEM RESOURCES:"
-                multipass exec "$VM_NAME" -- df -h 2>&1 | tee -a "$LOG_FILE" || true
-                multipass exec "$VM_NAME" -- free -h 2>&1 | tee -a "$LOG_FILE" || true
-                multipass exec "$VM_NAME" -- top -bn1 | head -n10 2>&1 | tee -a "$LOG_FILE" || true
-                
-                # Docker configuration
-                log "DOCKER CONFIGURATION:"
-                multipass exec "$VM_NAME" -- ls -la /etc/docker/ 2>&1 | tee -a "$LOG_FILE" || true
-                multipass exec "$VM_NAME" -- cat /etc/docker/daemon.json 2>&1 | tee -a "$LOG_FILE" || true
-                
-                # Docker socket
-                log "DOCKER SOCKET STATUS:"
-                multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>&1 | tee -a "$LOG_FILE" || true
-                multipass exec "$VM_NAME" -- netstat -tlnp | grep docker 2>&1 | tee -a "$LOG_FILE" || true
-                
-                # Systemd service
-                log "SYSTEMD SERVICE INFO:"
-                multipass exec "$VM_NAME" -- cat /lib/systemd/system/docker.service 2>&1 | tee -a "$LOG_FILE" || true
-                
-                # Network information
-                log "NETWORK INFORMATION:"
-                multipass exec "$VM_NAME" -- ip a 2>&1 | tee -a "$LOG_FILE" || true
-                multipass exec "$VM_NAME" -- netstat -tlnp 2>&1 | head -n20 | tee -a "$LOG_FILE" || true
-                
-                # Kernel modules
-                log "KERNEL MODULES:"
-                multipass exec "$VM_NAME" -- lsmod | grep -E '(overlay|aufs|devicemapper|bridge|iptable)' 2>&1 | tee -a "$LOG_FILE" || true
-                
-                log "--------------------------------------------------"
-                log "MANUAL RECOVERY INSTRUCTIONS:"
-                log "1. Connect to VM: multipass shell '$VM_NAME'"
-                log "2. Try manual daemon start: sudo systemctl start docker"
-                log "3. Check status: sudo systemctl status docker"
-                log "4. View logs: sudo journalctl -u docker.service -f"
-                log "5. If all else fails, reinstall Docker:"
-                log "   sudo apt remove --purge docker* && sudo apt autoremove && curl -fsSL https://get.docker.com | sh"
+# Collect essential diagnostic information
+        log "ESSENTIAL DIAGNOSTIC INFORMATION:"
+        log "Docker service status:"
+        multipass exec "$VM_NAME" -- sudo systemctl status docker 2>&1 | head -5 | tee -a "$LOG_FILE" || true
+        log "Docker daemon logs (last 5 lines):"
+        multipass exec "$VM_NAME" -- sudo journalctl -u docker.service --no-pager -n 5 2>&1 | tee -a "$LOG_FILE" || true
+        log "VM system resources:"
+        multipass exec "$VM_NAME" -- df -h 2>&1 | head -3 | tee -a "$LOG_FILE" || true
+        multipass exec "$VM_NAME" -- free -h 2>&1 | head -2 | tee -a "$LOG_FILE" || true
+        log "Manual recovery: multipass shell '$VM_NAME' && sudo systemctl start docker"
             fi
             
             # Wait with exponential backoff before next attempt
@@ -1816,68 +1637,7 @@ setup_vm_docker() {
         NO_SUDO_CHECK_ATTEMPT=$((NO_SUDO_CHECK_ATTEMPT + 1))
     done
     
-    # Final comprehensive diagnostic verification
-    log "FINAL COMPREHENSIVE DIAGNOSTIC VERIFICATION..."
-    log "=================================================="
-    
-    # System and Docker final state
-    log "FINAL SYSTEM STATE VERIFICATION:"
-    log "- VM Uptime: $(multipass exec "$VM_NAME" -- uptime 2>/dev/null || echo 'UNAVAILABLE')"
-    log "- System Load: $(multipass exec "$VM_NAME" -- top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1 | head -n1 2>/dev/null || echo 'UNAVAILABLE')%"
-    log "- Memory Usage: $(multipass exec "$VM_NAME" -- free -h 2>/dev/null | grep Mem: | awk '{print $3 "/" $2 " (" int($3/$2*100) "%)"}' || echo 'UNAVAILABLE')"
-    log "- Disk Usage: $(multipass exec "$VM_NAME" -- df -h / 2>/dev/null | tail -n1 | awk '{print $3 "/" $2 " (" $5 ")"}' || echo 'UNAVAILABLE')"
-    
-    log "FINAL DOCKER STATE VERIFICATION:"
-    log "- Docker Version: $(multipass exec "$VM_NAME" -- docker --version 2>/dev/null || echo 'UNAVAILABLE')"
-    log "- Docker Daemon Status: $(multipass exec "$VM_NAME" -- sudo systemctl is-active docker 2>/dev/null || echo 'UNKNOWN')"
-    log "- Docker Service Enabled: $(multipass exec "$VM_NAME" -- sudo systemctl is-enabled docker 2>/dev/null || echo 'UNKNOWN')"
-    log "- Docker Info (summary): $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | head -n10 || echo 'UNAVAILABLE')"
-    
-    # Docker daemon detailed information
-    log "DOCKER DAEMON DETAILED INFORMATION:"
-    log "- Daemon Running: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null > /dev/null 2>&1 && echo 'YES' || echo 'NO')"
-    log "- Daemon Process ID: $(multipass exec "$VM_NAME" -- ps aux | grep -E '[d]ockerd' | awk '{print $2}' | head -n1 2>/dev/null || echo 'NOT RUNNING')"
-    log "- Daemon Uptime: $(multipass exec "$VM_NAME" -- sudo systemctl status docker 2>/dev/null | grep Active | awk '{print $2 " " $3 " " $4 " " $5}' | head -n1 || echo 'UNAVAILABLE')"
-    log "- Daemon Listening Socket: $(multipass exec "$VM_NAME" -- ss -l | grep docker 2>/dev/null || echo 'NO LISTENING SOCKETS FOUND')"
-    
-    # Docker container and image information
-    log "DOCKER CONTAINER AND IMAGE STATE:"
-    log "- Total Images: $(multipass exec "$VM_NAME" -- docker images -q 2>/dev/null | wc -l 2>/dev/null || echo '0') images"
-    log "- Total Containers: $(multipass exec "$VM_NAME" -- docker ps -aq 2>/dev/null | wc -l 2>/dev/null || echo '0') containers"
-    log "- Running Containers: $(multipass exec "$VM_NAME" -- docker ps -q 2>/dev/null | wc -l 2>/dev/null || echo '0') running"
-    log "- Docker Networks: $(multipass exec "$VM_NAME" -- docker network ls 2>/dev/null | wc -l 2>/dev/null || echo '0') networks"
-    
-    # Docker user and permission final verification
-    log "DOCKER USER AND PERMISSIONS FINAL STATE:"
-    log "- Current User: $(multipass exec "$VM_NAME" -- whoami 2>/dev/null || echo 'UNAVAILABLE')"
-    log "- User Groups: $(multipass exec "$VM_NAME" -- groups ubuntu 2>/dev/null || echo 'UNAVAILABLE')"
-    log "- User in Docker Group: $(multipass exec "$VM_NAME" -- groups ubuntu 2>/dev/null | grep -q docker && echo 'YES' || echo 'NO')"
-    log "- Docker Socket Access: $(multipass exec "$VM_NAME" -- docker ps >/dev/null 2>&1 && echo 'WORKING' || echo 'FAILED')"
-    log "- Docker Socket Permissions: $(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null | awk '{print $1 " " $3 " " $4}' || echo 'UNAVAILABLE')"
-    
-    # Docker network and storage final verification
-    log "DOCKER NETWORK AND STORAGE FINAL STATE:"
-    log "- Docker Networks: $(multipass exec "$VM_NAME" -- docker network ls 2>/dev/null | tail -n +2 || echo 'NO NETWORKS')"
-    log "- Docker Storage Driver: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Storage Driver:' | head -n1 || echo 'UNAVAILABLE')"
-    log "- Docker Data Space: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Data Space:' | head -n1 || echo 'UNAVAILABLE')"
-    log "- Docker Metadata Space: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Metadata Space:' | head -n1 || echo 'UNAVAILABLE')"
-    log "- Docker Root Directory: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Docker Root Dir:' | head -n1 || echo 'UNAVAILABLE')"
-    
-    # Docker performance and capability verification
-    log "DOCKER PERFORMANCE AND CAPABILITY VERIFICATION:"
-    log "- Docker Info Command Response Time: $(TIMEFORMAT=%R; multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1 && echo 'SUCCESS' || echo 'FAILED')"
-    log "- Docker PS Command Response Time: $(TIMEFORMAT=%R; multipass exec "$VM_NAME" -- docker ps >/dev/null 2>&1 && echo 'SUCCESS' || echo 'FAILED')"
-    log "- Docker Version Command Response Time: $(TIMEFORMAT=%R; multipass exec "$VM_NAME" -- docker --version >/dev/null 2>&1 && echo 'SUCCESS' || echo 'FAILED')"
-    log "- Docker System Events: $(multipass exec "$VM_NAME" -- docker system info 2>/dev/null | head -n5 || echo 'UNAVAILABLE')"
-    
-    # Kubernetes and deployment readiness
-    log "KUBERNETES AND DEPLOYMENT READINESS:"
-    log "- Microk8s Status: $(multipass exec "$VM_NAME" -- microk8s status 2>/dev/null | head -n5 || echo 'MICROK8S NOT CHECKED')"
-    log "- Kubernetes Docker Integration: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep -i kubernetes || echo 'NO KUBERNETES INFO')"
-    log "- Image Loading Capability: $(multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1 && echo 'READY' || echo 'NOT READY')"
-    log "- Container Runtime Status: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null | grep 'Server:' | head -n1 || echo 'UNAVAILABLE')"
-    
-    log "=================================================="
+    # Final Docker setup verification completed
     
     # Provide comprehensive summary status with detailed error analysis and recovery guidance
     if [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = true ] && [ "$DOCKER_NO_SUDO_WORKING" = true ]; then
@@ -2215,248 +1975,112 @@ handle_secrets_error() {
         esac
     fi
     
-    # Log additional diagnostic information based on error code ranges
-    log "DEPLOYMENT DIAGNOSTIC INFO:"
+    # Log essential diagnostic information
+    log "ESSENTIAL DIAGNOSTIC INFO:"
     log "Current directory: $(pwd)"
-    log "Environment file exists: $([ -f ".env" ] && echo "yes" || echo "no")"
     log "k8s directory exists: $([ -d "k8s" ] && echo "yes" || echo "no")"
     
-    # Enhanced diagnostics for file transfer errors (110-119)
+    # File transfer diagnostics (110-119)
     if [ "$error_code" -ge 110 ] && [ "$error_code" -le 119 ]; then
-        log "FILE TRANSFER DIAGNOSTIC INFO:"
-        log "VM_NAME: $VM_NAME"
-        log "VM status: $(multipass info "$VM_NAME" 2>/dev/null || echo 'Unable to get VM status')"
-        log "VM IP: $(multipass info "$VM_NAME" | grep -E "IPv4:" | awk '{print $2}' | cut -d',' -f1 | head -n1 2>/dev/null || echo 'Unable to get VM IP')"
-        
-        # Check if k8s directory exists in VM
+        log "VM status: $(multipass info "$VM_NAME" 2>/dev/null | head -n1 || echo 'Unable to get VM status')"
         log "k8s directory in VM: $(multipass exec "$VM_NAME" -- test -d /home/ubuntu/k8s 2>/dev/null && echo 'yes' || echo 'no')"
-        
-        # List files in VM k8s directory if it exists
-        if multipass exec "$VM_NAME" -- test -d /home/ubuntu/k8s 2>/dev/null; then
-            log "Files in VM k8s directory:"
-            multipass exec "$VM_NAME" -- ls -la /home/ubuntu/k8s/ 2>/dev/null || log "Unable to list files in VM k8s directory"
-        fi
         
         # Check specific file based on error code
         case $error_code in
             111|115)
-                log "secrets.yaml in host k8s/: $([ -f "k8s/secrets.yaml" ] && echo 'yes' || echo 'no')"
+                log "secrets.yaml exists: $([ -f "k8s/secrets.yaml" ] && echo 'yes' || echo 'no')"
                 ;;
             112|116)
-                log "deployment.yaml in host k8s/: $([ -f "k8s/deployment.yaml" ] && echo 'yes' || echo 'no')"
+                log "deployment.yaml exists: $([ -f "k8s/deployment.yaml" ] && echo 'yes' || echo 'no')"
                 ;;
             113|117)
-                log "service.yaml in host k8s/: $([ -f "k8s/service.yaml" ] && echo 'yes' || echo 'no')"
+                log "service.yaml exists: $([ -f "k8s/service.yaml" ] && echo 'yes' || echo 'no')"
                 ;;
             114|118)
-                log "ingress.yaml in host k8s/: $([ -f "k8s/ingress.yaml" ] && echo 'yes' || echo 'no')"
+                log "ingress.yaml exists: $([ -f "k8s/ingress.yaml" ] && echo 'yes' || echo 'no')"
                 ;;
         esac
     fi
     
-    # Enhanced diagnostics for Docker build and load errors (120-124)
+    # Docker build and load diagnostics (120-124)
     if [ "$error_code" -ge 120 ] && [ "$error_code" -le 124 ]; then
-        log "DOCKER BUILD DIAGNOSTIC INFO:"
-        log "Docker daemon status: $(docker info 2>/dev/null > /dev/null && echo 'running' || echo 'not running')"
+        log "DOCKER ESSENTIAL DIAGNOSTICS:"
+        log "Docker daemon: $(docker info 2>/dev/null > /dev/null && echo 'running' || echo 'not running')"
         log "Dockerfile exists: $([ -f "Dockerfile" ] && echo 'yes' || echo 'no')"
-        log "Dockerfile size: $([ -f "Dockerfile" ] && wc -c < Dockerfile || echo 'N/A') bytes"
         
-        # Check specific Docker issues based on error code
         case $error_code in
             120)
-                log "Dockerfile not found. Expected location: $(pwd)/Dockerfile"
-                log "Files in current directory:"
-                ls -la | head -10
+                log "Dockerfile expected at: $(pwd)/Dockerfile"
                 ;;
             121)
-                log "Docker build failed. Check build output above for specific errors."
                 log "Docker version: $(docker --version 2>/dev/null || echo 'Docker not available')"
                 ;;
-            122)
-                log "Docker image verification failed. Image 'my-ag-ui-app:latest' not found."
-                log "Available Docker images:"
-                docker images --format "{{.Repository}}:{{.Tag}}" | head -5
-                ;;
-            123)
-                log "Docker image load into VM failed. Image 'my-ag-ui-app:latest' could not be loaded into VM."
+            122|123|124)
                 log "Docker daemon in VM: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null > /dev/null && echo 'running' || echo 'not running')"
-                log "Docker images in VM:"
-                multipass exec "$VM_NAME" -- docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | head -5 || echo "Unable to get Docker images from VM"
-                log "VM disk space:"
-                multipass exec "$VM_NAME" -- df -h 2>/dev/null | head -5 || echo "Unable to get VM disk space"
-                ;;
-            124)
-                log "Docker image verification in VM failed. Image 'my-ag-ui-app:latest' not found in VM's Docker images."
-                log "Docker images in VM:"
-                multipass exec "$VM_NAME" -- docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | head -10 || echo "Unable to get Docker images from VM"
-                log "Docker daemon in VM: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null > /dev/null && echo 'running' || echo 'not running')"
-                log "This suggests the image load command appeared to succeed but the image is not actually available."
                 ;;
         esac
     fi
     
-    # Enhanced diagnostics for Docker permissions errors (128-130)
+    # Docker permissions diagnostics (128-130)
     if [ "$error_code" -ge 128 ] && [ "$error_code" -le 130 ]; then
-        log "DOCKER PERMISSIONS DIAGNOSTIC INFO:"
+        log "DOCKER PERMISSIONS DIAGNOSTICS:"
         log "Current user: $USER"
-        log "User groups: $(groups 2>/dev/null || echo 'Unable to get groups')"
-        log "Docker daemon status: $(systemctl is-active docker 2>/dev/null || echo 'Unable to check')"
-        log "Docker socket permissions: $(ls -la /var/run/docker.sock 2>/dev/null || echo 'Unable to check socket permissions')"
+        log "Docker daemon: $(systemctl is-active docker 2>/dev/null || echo 'Unable to check')"
         
         case $error_code in
             128)
-                log "Docker socket permission denied - user '$USER' cannot access /var/run/docker.sock"
-                log "RECOVERY SUGGESTIONS:"
-                log "1. Add user to docker group: sudo usermod -aG docker $USER"
-                log "2. Log out and log back in, OR run: newgrp docker"
-                log "3. If you don't have sudo access, ask your system administrator"
-                log "4. Check if Docker daemon is running: sudo systemctl status docker"
-                log "5. Verify Docker socket exists and has correct permissions: ls -la /var/run/docker.sock"
+                log "Socket permission denied - user '$USER' cannot access Docker socket"
+                log "Recovery: Add user to docker group: sudo usermod -aG docker $USER"
                 ;;
             129)
-                log "Docker daemon not accessible - daemon may not be running"
-                log "RECOVERY SUGGESTIONS:"
-                log "1. Start Docker daemon: sudo systemctl start docker"
-                log "2. Enable Docker at startup: sudo systemctl enable docker"
-                log "3. Check Docker service status: sudo systemctl status docker"
-                log "4. Check Docker service logs: journalctl -u docker.service --no-pager"
-                log "5. Restart Docker service: sudo systemctl restart docker"
+                log "Docker daemon not accessible"
+                log "Recovery: Start Docker daemon: sudo systemctl start docker"
                 ;;
             130)
-                log "Docker build permission error - build failed due to permission issues"
-                log "RECOVERY SUGGESTIONS:"
-                log "1. Check if Docker daemon is running: sudo systemctl status docker"
-                log "2. Check Docker socket permissions: ls -la /var/run/docker.sock"
-                log "3. Ensure user is in docker group: groups | grep docker"
-                log "4. Add user to docker group if needed: sudo usermod -aG docker $USER"
-                log "5. Log out and log back in OR run: newgrp docker"
-                log "6. Check if there are file permission issues in build context: ls -la"
-                log "7. Verify Dockerfile has correct permissions: ls -la Dockerfile"
+                log "Docker build permission error"
+                log "Recovery: Ensure user is in docker group: groups | grep docker"
                 ;;
         esac
     fi
     
-    # Enhanced diagnostics for deployment restart error (125)
+    # Deployment restart diagnostics (125)
     if [ "$error_code" -eq 125 ]; then
-        log "DEPLOYMENT RESTART DIAGNOSTIC INFO:"
-        log "VM_NAME: $VM_NAME"
-        log "VM status: $(multipass info "$VM_NAME" 2>/dev/null || echo 'Unable to get VM status')"
+        log "DEPLOYMENT DIAGNOSTICS:"
+        log "VM status: $(multipass info "$VM_NAME" 2>/dev/null | head -n1 || echo 'Unable to get VM status')"
+        multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app 2>/dev/null | head -5 || log "Unable to get deployment status"
         
-        log "Kubernetes deployment status:"
-        multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app 2>/dev/null || log "Unable to get deployment status"
-        
-        log "Kubernetes deployment details:"
-        multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o yaml 2>/dev/null | head -20 || log "Unable to get deployment details"
-        
-        log "Pod status:"
-        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>/dev/null || log "Unable to get pod status"
-        
-        log "ReplicaSet status:"
-        multipass exec "$VM_NAME" -- microk8s kubectl get replicaset -l app=my-ag-ui-app 2>/dev/null || log "Unable to get replicaset status"
-        
-        log "Microk8s status:"
-        multipass exec "$VM_NAME" -- microk8s status 2>/dev/null | head -10 || log "Unable to get microk8s status"
-        
-        log "RECOVERY SUGGESTIONS:"
-        log "1. Check if deployment exists: multipass exec '$VM_NAME' -- microk8s kubectl get deployment my-ag-ui-app"
-        log "2. Check if deployment is in progress: multipass exec '$VM_NAME' -- microk8s kubectl rollout status deployment/my-ag-ui-app"
-        log "3. Try manual restart: multipass exec '$VM_NAME' -- microk8s kubectl rollout restart deployment/my-ag-ui-app"
-        log "4. Check microk8s is running: multipass exec '$VM_NAME' -- microk8s status"
-        log "5. If deployment is stuck, try deleting and recreating: multipass exec '$VM_NAME' -- microk8s kubectl delete deployment my-ag-ui-app && microk8s kubectl apply -f k8s/deployment.yaml"
+        log "Recovery: Check deployment exists: multipass exec '$VM_NAME' -- microk8s kubectl get deployment my-ag-ui-app"
+        log "Manual restart: multipass exec '$VM_NAME' -- microk8s kubectl rollout restart deployment/my-ag-ui-app"
     fi
     
-    # Enhanced diagnostics for pod status verification error (126)
+    # Pod status verification diagnostics (126)
     if [ "$error_code" -eq 126 ]; then
-        log "POD STATUS VERIFICATION DIAGNOSTIC INFO:"
-        log "VM_NAME: $VM_NAME"
-        log "VM status: $(multipass info "$VM_NAME" 2>/dev/null || echo 'Unable to get VM status')"
-        
-        log "Pod status details:"
-        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o wide 2>/dev/null || log "Unable to get pod status"
-        
-        log "Pod events:"
-        multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>/dev/null | grep -A 10 -B 10 "Events:" || log "Unable to get pod events"
-        
-        log "Pod container status:"
-        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[*].status.containerStatuses}' 2>/dev/null || log "Unable to get container status"
-        
+        log "POD STATUS DIAGNOSTICS:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>/dev/null | head -5 || log "Unable to get pod status"
         log "Docker images in VM:"
         multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest 2>/dev/null || log "Unable to get Docker images in VM"
         
-        log "RECOVERY SUGGESTIONS:"
-        log "1. Check if the correct image is loaded in VM: multipass exec '$VM_NAME' -- docker images my-ag-ui-app:latest"
-        log "2. Check pod logs for image pull errors: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app"
-        log "3. Verify image exists locally: docker images my-ag-ui-app:latest"
-        log "4. Try rebuilding and reloading the image: docker build -t my-ag-ui-app:latest . && docker save my-ag-ui-app:latest | multipass exec '$VM_NAME' -- docker load"
-        log "5. Check if pod is stuck in ImagePullBackOff: multipass exec '$VM_NAME' -- microk8s kubectl get pods -l app=my-ag-ui-app"
-        log "6. If image issue persists, check deployment image reference: multipass exec '$VM_NAME' -- microk8s kubectl get deployment my-ag-ui-app -o yaml | grep image:"
-        log "7. Consider deleting the pod to trigger recreation: multipass exec '$VM_NAME' -- microk8s kubectl delete pods -l app=my-ag-ui-app"
+        log "Recovery: Check pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app"
+        log "Manual: Delete pod to recreate: multipass exec '$VM_NAME' -- microk8s kubectl delete pods -l app=my-ag-ui-app"
     fi
     
-    # Enhanced diagnostics for pod probe verification error (127)
+    # Pod probe verification diagnostics (127)
     if [ "$error_code" -eq 127 ]; then
-        log "POD PROBE VERIFICATION DIAGNOSTIC INFO:"
-        log "VM_NAME: $VM_NAME"
-        log "VM status: $(multipass info "$VM_NAME" 2>/dev/null || echo 'Unable to get VM status')"
+        log "POD PROBE DIAGNOSTICS:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>/dev/null | head -5 || log "Unable to get pod status"
         
-        log "Pod probe status details:"
-        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o wide 2>/dev/null || log "Unable to get pod status"
-        
-        log "Pod probe events:"
-        multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>/dev/null | grep -E "(Readiness|Liveness)" || log "Unable to get probe events"
-        
-        log "Pod container probe status:"
-        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.containerStatuses[0].state}' 2>/dev/null || log "Unable to get container probe status"
-        
-        log "Pod last probe state:"
-        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.containerStatuses[0].lastState}' 2>/dev/null || log "Unable to get last probe state"
-        
-        log "Application health endpoint test:"
-        multipass exec "$VM_NAME" -- microk8s kubectl exec -l app=my-ag-ui-app -- curl -s http://localhost:3000/health 2>/dev/null || log "Health endpoint test failed"
-        
-        log "Application logs:"
-        multipass exec "$VM_NAME" -- microk8s kubectl logs -l app=my-ag-ui-app --tail=20 2>/dev/null || log "Unable to get application logs"
-        
-        log "RECOVERY SUGGESTIONS:"
-        log "1. Check if the /health endpoint is working: multipass exec '$VM_NAME' -- microk8s kubectl exec -l app=my-ag-ui-app -- curl -s http://localhost:3000/health"
-        log "2. Verify the health endpoint returns proper HTTP status (should be 200): multipass exec '$VM_NAME' -- microk8s kubectl exec -l app=my-ag-ui-app -- curl -w '%{http_code}' -s http://localhost:3000/health -o /dev/null"
-        log "3. Check application logs for errors: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app"
-        log "4. Verify application is running on port 3000: multipass exec '$VM_NAME' -- microk8s kubectl exec -l app=my-ag-ui-app -- netstat -tlnp | grep :3000"
-        log "5. Check if there are any application startup errors: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app | grep -i error"
-        log "6. If health endpoint is not implemented, check if it needs to be added to the application"
-        log "7. Consider increasing probe timeouts or adjusting probe configuration in deployment.yaml if needed"
+        log "Recovery: Check health endpoint: multipass exec '$VM_NAME' -- microk8s kubectl exec -l app=my-ag-ui-app -- curl -s http://localhost:3000/health"
+        log "Check logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app"
     fi
     
-    # Enhanced diagnostics for lock file validation error (200)
+    # Lock file validation diagnostics (200)
     if [ "$error_code" -eq 200 ]; then
-        log "LOCK FILE VALIDATION DIAGNOSTIC INFO:"
-        log "Current directory: $(pwd)"
+        log "LOCK FILE DIAGNOSTICS:"
         log "package.json exists: $([ -f "package.json" ] && echo 'yes' || echo 'no')"
         log "package-lock.json exists: $([ -f "package-lock.json" ] && echo 'yes' || echo 'no')"
-        log "npm ci --dry-run output:"
-        log "$ci_output"
         
-        log "DETAILED RECOVERY SUGGESTIONS:"
-        log "1. Run this command to update the lock file:"
-        log "   npm install"
-        log ""
-        log "2. Check that the lock file was updated:"
-        log "   git status"
-        log ""
-        log "3. Commit the updated lock file to your repository:"
-        log "   git add package-lock.json"
-        log "   git commit -m 'Update package-lock.json to match package.json'"
-        log ""
-        log "4. Then run the deployment again:"
-        log "   ./deploy.sh"
-        log ""
-        log "Why is this important?"
-        log "Synchronized lock files ensure that every deployment uses"
-        log "exactly the same dependency versions, preventing surprises"
-        log "and making builds reproducible."
-        log ""
-        log "Emergency bypass (not recommended):"
-        log "   ./deploy.sh --skip-deps-check"
+        log "Recovery: Run 'npm install' to update lock file, then commit both files"
+        log "Emergency bypass: ./deploy.sh --skip-deps-check"
     fi
     
     exit $error_code
