@@ -90,10 +90,12 @@ The project includes an automated deployment script that sets up the entire Kube
 The deployment script will:
 1. **Validate lock files** - Ensures package.json and package-lock.json are synchronized for reproducible builds
 2. **Provision a VM** using Multipass with 4 CPUs, 7.7GiB RAM, and 19.3GiB disk
-3. **Install Microk8s** in the VM and enable required add-ons (dns, storage, ingress)
-4. **Build the Docker image** using the optimized multi-stage Dockerfile with dependency fallback
-5. **Deploy to Kubernetes** using the provided manifests (deployment, service, ingress)
-6. **Verify the deployment** and provide access information
+3. **Setup Docker in VM** - Automatically installs and configures Docker daemon in the VM
+4. **Install Microk8s** in the VM and enable required add-ons (dns, storage, ingress)
+5. **Build the Docker image** using the optimized multi-stage Dockerfile with dependency fallback
+6. **Load Docker image into VM** - Transfers the built image to the VM's Docker daemon
+7. **Deploy to Kubernetes** using the provided manifests (deployment, service, ingress)
+8. **Verify the deployment** and provide access information
 
 ### Prerequisites
 
@@ -101,6 +103,68 @@ Before running the deployment script, ensure you have:
 - [Multipass](https://multipass.run/) installed
 - [Docker](https://www.docker.com/) installed
 - Sufficient system resources (the VM requires 4 CPUs, 7.7GiB RAM, 19.3GiB disk)
+
+### Docker Setup in VM
+
+The deployment script automatically handles Docker installation and configuration in the multipass VM. This process ensures Docker is available for loading and running container images within the Kubernetes cluster.
+
+#### Automatic Docker Setup Process
+
+The script performs these Docker setup steps automatically:
+
+1. **Docker Availability Check** - Verifies if Docker is already installed in the VM
+2. **Docker Installation** - If not present, installs Docker using the official Ubuntu installation script
+3. **User Configuration** - Adds the default user (`ubuntu`) to the docker group for sudo-less operation
+4. **Daemon Startup** - Ensures the Docker daemon is running and ready to accept commands
+5. **Readiness Verification** - Confirms Docker is operational before proceeding with image loading
+
+#### Docker Setup Requirements
+
+- **Network Connectivity**: The VM must have internet access to download Docker packages during installation
+- **Disk Space**: Approximately 500MB additional space is required for Docker packages and dependencies
+- **VM Access**: The deployment script must be able to execute commands in the VM via `multipass exec`
+
+#### Docker Setup Troubleshooting
+
+If Docker setup fails during deployment:
+
+1. **Network Issues**: Ensure the VM has internet connectivity
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- ping -c 3 google.com
+   ```
+
+2. **Manual Docker Installation**: If automatic setup fails, you can install Docker manually:
+   ```bash
+   multipass shell my-ag-ui-app-k8s
+   curl -fsSL https://get.docker.com | sh
+   sudo usermod -aG docker ubuntu
+   # Log out and back in, or run: newgrp docker
+   ```
+
+3. **Docker Daemon Status**: Check if Docker daemon is running:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- docker info
+   ```
+
+4. **Permission Issues**: If you encounter permission errors, ensure the user is in the docker group:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- groups ubuntu
+   ```
+
+#### Docker Setup Idempotency
+
+The Docker setup process is designed to be idempotent - you can run the deployment script multiple times without causing issues. The script will:
+- Skip installation if Docker is already present and running
+- Only perform necessary setup steps
+- Continue with the deployment process without duplication
+
+#### Advanced Docker Configuration
+
+For advanced use cases, you can customize Docker behavior in the VM:
+
+1. **Docker Version**: The script installs the latest stable Docker version. For specific version requirements, manual installation may be needed
+2. **Docker Daemon Settings**: Default Docker settings are used. Custom daemon configurations can be applied after deployment
+3. **Docker Registry**: The script uses Docker Hub by default. Private registry configuration can be added manually if needed
 
 ### Accessing the Application
 
@@ -234,5 +298,25 @@ The deployment script validates that package.json and package-lock.json are sync
 > **Warning**: Skipping dependency validation may result in non-reproducible builds and deployment inconsistencies. Only use this for emergency deployments when immediate fixes are needed.
 
 **Why this matters**: Synchronized lock files ensure every deployment uses exactly the same dependency versions, preventing "works on my machine" issues and making builds reproducible across different environments.
+
+#### Docker Setup Issues
+If you encounter Docker-related errors during deployment:
+
+1. **"docker: command not found"**: This indicates Docker is not installed in the VM
+   - The deployment script should handle this automatically
+   - If it fails, run manual installation as described in "Docker Setup Troubleshooting" above
+
+2. **"Docker daemon in VM: not running"**: The Docker daemon is not started
+   - Wait a few moments for the daemon to start
+   - Check status: `multipass exec my-ag-ui-app-k8s -- docker info`
+   - Restart daemon: `multipass exec my-ag-ui-app-k8s -- sudo systemctl start docker`
+
+3. **"permission denied" when running Docker commands**: User is not in docker group
+   - Add user to group: `multipass exec my-ag-ui-app-k8s -- sudo usermod -aG docker ubuntu`
+   - Activate group: `multipass exec my-ag-ui-app-k8s -- newgrp docker`
+
+4. **Image loading fails**: Docker is not ready to accept images
+   - Verify Docker is running: `multipass exec my-ag-ui-app-k8s -- docker ps`
+   - Check disk space: `multipass exec my-ag-ui-app-k8s -- df -h`
 
 For detailed debugging information, see: `hidden/KUBERNETES-EXPLANATION.md`
