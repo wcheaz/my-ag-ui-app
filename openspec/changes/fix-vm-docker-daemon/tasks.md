@@ -1,3 +1,10 @@
+## 0. Prerequisites - Fix Script Syntax Errors
+
+- [x] 0.1 Investigate and fix `start_total_deployment_timing: command not found` error on line 408 of deploy.sh
+- [ ] 0.2 Investigate and fix syntax error near unexpected token `}` on line 2594 of deploy.sh
+- [ ] 0.3 Verify deploy.sh has no syntax errors by running `bash -n deploy.sh`
+- [ ] 0.4 Test that deploy.sh can be executed without immediate syntax errors
+
 ## 1. Core Function Implementation
 
 - [x] 1.1 Create `setup_vm_docker()` function in deploy.sh with function signature and basic structure

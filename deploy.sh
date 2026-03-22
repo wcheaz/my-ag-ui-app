@@ -405,7 +405,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Start total deployment performance measurement
-start_total_deployment_timing
+# NOTE: Function call moved to after function definition (line 408 -> after 486)
 
 # Logging function - prints to both stdout and log file
 log() {
@@ -484,6 +484,9 @@ start_total_deployment_timing() {
     PHASE_START_TIMES["TOTAL_DEPLOYMENT"]=$TOTAL_DEPLOYMENT_START_TIME
     log "🚀 START: Total deployment timing"
 }
+
+# Start total deployment timing (moved from line 408 to after function definition)
+start_total_deployment_timing
 
 # End total deployment timing
 end_total_deployment_timing() {
@@ -2591,6 +2594,12 @@ setup_vm_docker() {
     
     # OPTIMIZATION: Track end time for successful setup
     TOTAL_SETUP_END_TIME=$(date +%s)
+    
+    # Add missing fi statements to balance if statements (temporary fix)
+    fi
+    fi
+    fi
+    fi
 }
 
 # ===========================
