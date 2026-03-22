@@ -103,7 +103,144 @@ pnpm add next@16.1.0
 
 Or manually update the version in `package.json` to `16.1.0` or later, then run `pnpm install`.
 
-## Step 4: Run the Application
+## Step 4: Maintain Package Lock File Consistency
+
+### Understanding Package Lock Files
+
+The project uses two important files for dependency management:
+
+- **`package.json`**: Defines the dependencies your project needs
+- **`package-lock.json`**: Records the exact versions of all installed dependencies and their sub-dependencies
+
+### Why Lock File Consistency Matters
+
+Keeping these files synchronized is crucial because:
+
+1. **Reproducible builds**: Ensures that every deployment installs exactly the same dependency versions
+2. **Docker builds**: The Docker build process uses `npm ci` which requires perfect lock file synchronization
+3. **Deployment reliability**: Prevents deployment failures due to dependency version mismatches
+4. **Team collaboration**: Ensures all team members and environments use identical dependency trees
+
+### Maintaining Lock File Consistency
+
+#### When to Update the Lock File
+
+You **must** update `package-lock.json` after any of these operations:
+
+```bash
+# After adding a new dependency
+pnpm add <package-name>
+
+# After removing a dependency  
+pnpm remove <package-name>
+
+# After updating a dependency
+pnpm update <package-name>
+
+# After manually editing package.json
+npm install
+```
+
+#### Correct Workflow
+
+1. Make changes to `package.json` (add/remove/update dependencies)
+2. Run `npm install` to update `package-lock.json`
+3. Commit **both** files to version control together
+4. Deploy or build
+
+#### What NOT to Do
+
+- ❌ Don't manually edit `package-lock.json`
+- ❌ Don't commit `package.json` without updating `package-lock.json`
+- ❌ Don't commit `package-lock.json` without the corresponding `package.json` changes
+- ❌ Don't use `--no-save` flags unless you intentionally want to ignore lock file updates
+
+### Handling Synchronization Issues
+
+#### Detection During Deployment
+
+The deployment script automatically validates lock file consistency before building Docker images. If synchronization issues are found:
+
+```bash
+ERROR: package.json and package-lock.json are out of sync
+
+RECOVERY INSTRUCTIONS:
+1. To fix this issue, run: npm install
+2. This will update package-lock.json to match package.json  
+3. Commit the updated package-lock.json to your repository
+4. Then run the deployment again
+
+To bypass this check (not recommended), use: ./deploy.sh --skip-deps-check
+```
+
+#### Fixing Out-of-Sync Lock Files
+
+If you encounter synchronization issues:
+
+```bash
+# Fix the synchronization
+npm install
+
+# Verify the fix (optional)
+npm ci --dry-run
+
+# Commit both files
+git add package.json package-lock.json
+git commit -m "Update dependencies and synchronize lock file"
+```
+
+### Emergency Bypass (Not Recommended)
+
+In emergency situations, you can bypass the lock file validation:
+
+```bash
+./deploy.sh --skip-deps-check
+```
+
+**⚠️ Warning**: Use this only in emergencies. Bypassing validation can lead to:
+- Unpredictable builds
+- Different dependency versions across environments
+- Deployment failures
+- Security vulnerabilities from unintended version updates
+
+### Best Practices
+
+1. **Always run `npm install` after changing `package.json`**
+2. **Commit both files together** - never commit just one
+3. **Test locally** with `npm ci --dry-run` before deployment
+4. **Communicate dependency changes** with your team
+5. **Review lock file changes** to understand what dependencies were updated
+
+### Troubleshooting Common Issues
+
+#### "npm ci" fails with lock file errors
+
+```bash
+# This means your lock file is out of sync
+npm install  # Fix the synchronization
+npm ci       # Verify it works
+```
+
+#### Git shows conflicts in package-lock.json
+
+```bash
+# Resolve conflicts by accepting the current version
+npm install
+git add package-lock.json
+```
+
+#### Deployment fails with lock file errors
+
+Follow the recovery instructions shown in the error message, or run:
+
+```bash
+npm install
+git add package.json package-lock.json
+git commit -m "Fix lock file synchronization"
+./deploy.sh
+```
+
+## Step 5: Run the Application
 
 After setting up your environment variables and installing dependencies, run:
 

@@ -9,10 +9,10 @@
 ## 2. Deploy.sh Validation
 
 - [x] 2.1 Create validate_lock_files function in deploy.sh
-- [ ] 2.2 Implement npm ci --dry-run validation check
-- [ ] 2.3 Add error handling and clear remediation messages for sync failures
-- [ ] 2.4 Integrate validation step before Docker build in deploy.sh
-- [ ] 2.5 Add --skip-deps-check flag for emergency bypass
+- [x] 2.2 Implement npm ci --dry-run validation check
+- [x] 2.3 Add error handling and clear remediation messages for sync failures
+- [x] 2.4 Integrate validation step before Docker build in deploy.sh
+- [x] 2.5 Add --skip-deps-check flag for emergency bypass
 - [ ] 2.6 Test validation with in-sync lock files (should pass)
 - [ ] 2.7 Test validation with out-of-sync lock files (should fail with clear message)
 
@@ -22,8 +22,8 @@
 - [ ] 3.2 Create DEPENDENCIES.md with detailed dependency management guidance
 - [ ] 3.3 Document the pre-build validation process
 - [ ] 3.4 Document the fallback mechanism and when it triggers
-- [ ] 3.5 Add troubleshooting section for common lock file sync issues
-- [ ] 3.6 Document the --skip-deps-check flag usage and warnings
+- [x] 3.5 Add troubleshooting section for common lock file sync issues
+- [x] 3.6 Document the --skip-deps-check flag usage and warnings
 
 ## 4. Testing and Verification
 
