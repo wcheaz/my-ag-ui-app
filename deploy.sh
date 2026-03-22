@@ -359,6 +359,84 @@ setup_vm_docker() {
                 log "4. Manual recovery: multipass shell $VM_NAME"
                 log "   Then run: sudo apt update && curl -fsSL https://get.docker.com | sh"
                 
+            # Check for resource constraint issues (beyond disk space)
+            elif echo "$install_output" | grep -q -E "(memory|swap|OOM|out of memory|insufficient memory|resource temporarily unavailable|cannot allocate memory)"; then
+                log "ERROR TYPE: RESOURCE CONSTRAINT FAILURE"
+                log "DIAGNOSTIC: VM lacks sufficient memory or system resources for Docker installation"
+                log "RECOVERY STEPS:"
+                log "1. Check memory usage: multipass exec $VM_NAME -- free -h"
+                log "2. Check available swap: multipass exec $VM_NAME -- swapon --show"
+                log "3. Free up memory: multipass exec $VM_NAME -- sudo systemctl stop non-essential-services"
+                log "4. Create swap file if needed: multipass exec $VM_NAME -- sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile"
+                log "5. Increase VM memory: multipass stop $VM_NAME && multipass delete $VM_NAME && multipass launch --name $VM_NAME --memory 4G"
+                log "6. Manual recovery: multipass shell $VM_NAME"
+                log "   Then run: sudo swapoff -a && sudo systemctl daemon-reload && curl -fsSL https://get.docker.com | sh"
+                
+            # Check for firewall/security restriction issues
+            elif echo "$install_output" | grep -q -E "(firewall|blocked|security|restrict|policy|ufw|iptables|apparmor|selinux)"; then
+                log "ERROR TYPE: FIREWALL/SECURITY RESTRICTION FAILURE"
+                log "DIAGNOSTIC: Security policies or firewall rules are blocking Docker installation"
+                log "RECOVERY STEPS:"
+                log "1. Check firewall status: multipass exec $VM_NAME -- sudo ufw status"
+                log "2. Check AppArmor status: multipass exec $VM_NAME -- aa-status"
+                log "3. Check SELinux status: multipass exec $VM_NAME -- getenforce"
+                log "4. Temporarily disable firewall for installation: multipass exec $VM_NAME -- sudo ufw disable"
+                log "5. Allow Docker through firewall: multipass exec $VM_NAME -- sudo ufw allow 2375/tcp && sudo ufw allow 2376/tcp"
+                log "6. Manual recovery: multipass shell $VM_NAME"
+                log "   Then run: sudo ufw disable && curl -fsSL https://get.docker.com | sh"
+                
+            # Check for proxy-related issues beyond basic network connectivity
+            elif echo "$install_output" | grep -q -E "(proxy|Proxy|PROXY|http_proxy|https_proxy)"; then
+                log "ERROR TYPE: PROXY CONFIGURATION FAILURE"
+                log "DIAGNOSTIC: Proxy configuration issues are preventing Docker installation"
+                log "RECOVERY STEPS:"
+                log "1. Check current proxy settings: multipass exec $VM_NAME -- env | grep -i proxy"
+                log "2. Check system-wide proxy: multipass exec $VM_NAME -- cat /etc/environment"
+                log "3. Check apt proxy: multipass exec $VM_NAME -- cat /etc/apt/apt.conf.d/*proxy*"
+                log "4. Configure proxy for Docker: multipass exec $VM_NAME -- sudo mkdir -p /etc/systemd/system/docker.service.d"
+                log "5. Create proxy configuration: multipass exec $VM_NAME -- 'echo [Service] | sudo tee /etc/systemd/system/docker.service.d/http-proxy.conf'"
+                log "6. Manual recovery: multipass shell $VM_NAME"
+                log "   Then run: export HTTP_PROXY=http://proxy:port && export HTTPS_PROXY=http://proxy:port && curl -fsSL https://get.docker.com | sh"
+                
+            # Check for container runtime conflicts
+            elif echo "$install_output" | grep -q -E "(containerd|runtime|podman|lxc|docker.*already|conflict)"; then
+                log "ERROR TYPE: CONTAINER RUNTIME CONFLICT FAILURE"
+                log "DIAGNOSTIC: Existing container runtime is conflicting with Docker installation"
+                log "RECOVERY STEPS:"
+                log "1. Check installed container runtimes: multipass exec $VM_NAME -- dpkg -l | grep -E '(docker|containerd|podman|lxc)'"
+                log "2. Check running container processes: multipass exec $VM_NAME -- ps aux | grep -E '(docker|containerd|podman|lxc)'"
+                log "3. Stop existing container service: multipass exec $VM_NAME -- sudo systemctl stop containerd || sudo systemctl stop docker"
+                log "4. Remove conflicting packages: multipass exec $VM_NAME -- sudo apt remove -y docker.io containerd runc"
+                log "5. Clean up: multipass exec $VM_NAME -- sudo apt autoremove -y && sudo apt clean"
+                log "6. Manual recovery: multipass shell $VM_NAME"
+                log "   Then run: sudo apt remove --purge docker* containerd* && sudo apt autoremove && curl -fsSL https://get.docker.com | sh"
+                
+            # Check for kernel compatibility issues
+            elif echo "$install_output" | grep -q -E "(kernel|modules| aufs| overlay| devicemapper| incompatible)"; then
+                log "ERROR TYPE: KERNEL COMPATIBILITY FAILURE"
+                log "DIAGNOSTIC: System kernel is not compatible with Docker requirements"
+                log "RECOVERY STEPS:"
+                log "1. Check kernel version: multipass exec $VM_NAME -- uname -r"
+                log "2. Check loaded kernel modules: multipass exec $VM_NAME -- lsmod | grep -E '(aufs|overlay|devicemapper)'"
+                log "3. Check kernel requirements: multipass exec $VM_NAME -- curl -s https://docs.docker.com/engine/install/ubuntu/"
+                log "4. Update kernel: multipass exec $VM_NAME -- sudo apt update && sudo apt install -y linux-generic"
+                log "5. Reboot VM if kernel was updated: multipass exec $VM_NAME -- sudo reboot"
+                log "6. Manual recovery: multipass shell $VM_NAME"
+                log "   Then run: sudo modprobe overlay && sudo modprobe aufs && curl -fsSL https://get.docker.com | sh"
+                
+            # Check for storage driver compatibility issues
+            elif echo "$install_output" | grep -q -E "(storage|filesystem|filesystem type|ext4| xfs| btrfs| driver)"; then
+                log "ERROR TYPE: STORAGE DRIVER COMPATIBILITY FAILURE"
+                log "DIAGNOSTIC: Filesystem or storage driver compatibility issues"
+                log "RECOVERY STEPS:"
+                log "1. Check filesystem type: multipass exec $VM_NAME -- df -T /"
+                log "2. Check available storage drivers: multipass exec $VM_NAME -- ls -la /lib/modules/$(uname -r)/kernel/drivers/misc/ | grep storage"
+                log "3. Format filesystem if needed (WARNING: destructive operation):"
+                log "   multipass exec $VM_NAME -- sudo mkfs.ext4 /dev/sda2 (adjust device as needed)"
+                log "4. Configure Docker storage driver: multipass exec $VM_NAME -- sudo mkdir -p /etc/docker"
+                log "5. Manual recovery: multipass shell $VM_NAME"
+                log "   Then run: sudo apt install -y lxcfs && curl -fsSL https://get.docker.com | sh"
+                
             # Unknown/unexpected errors
             else
                 log "ERROR TYPE: UNKNOWN INSTALLATION FAILURE"
