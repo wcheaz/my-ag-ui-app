@@ -20,7 +20,10 @@ This is a starter template for building AI agents using [PydanticAI](https://ai.
 - [Docker](https://www.docker.com/) - For containerization
 - Microk8s (automatically installed by deployment script)
 
-> **Note:** This repository ignores lock files (package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lockb) to avoid conflicts between different package managers. Each developer should generate their own lock file using their preferred package manager. After that, make sure to delete it from the .gitignore.
+> **Note:** For reproducible production deployments, this repository tracks **package-lock.json** to ensure consistent dependency versions across all environments. When updating dependencies:
+> 1. Run `npm install` to update the lock file
+> 2. Commit both **package.json** AND **package-lock.json** together
+> 3. This ensures Docker builds use exactly the same dependency versions everywhere
 
 ## Getting Started
 
@@ -85,11 +88,12 @@ The project includes an automated deployment script that sets up the entire Kube
 ```
 
 The deployment script will:
-1. **Provision a VM** using Multipass with 4 CPUs, 7.7GiB RAM, and 19.3GiB disk
-2. **Install Microk8s** in the VM and enable required add-ons (dns, storage, ingress)
-3. **Build the Docker image** using the optimized multi-stage Dockerfile
-4. **Deploy to Kubernetes** using the provided manifests (deployment, service, ingress)
-5. **Verify the deployment** and provide access information
+1. **Validate lock files** - Ensures package.json and package-lock.json are synchronized for reproducible builds
+2. **Provision a VM** using Multipass with 4 CPUs, 7.7GiB RAM, and 19.3GiB disk
+3. **Install Microk8s** in the VM and enable required add-ons (dns, storage, ingress)
+4. **Build the Docker image** using the optimized multi-stage Dockerfile with dependency fallback
+5. **Deploy to Kubernetes** using the provided manifests (deployment, service, ingress)
+6. **Verify the deployment** and provide access information
 
 ### Prerequisites
 
@@ -215,5 +219,20 @@ Ensure all these files exist:
 - `deployment.yaml`
 - `service.yaml`
 - `ingress.yaml`
+
+#### Issue: Lock file sync errors
+The deployment script validates that package.json and package-lock.json are synchronized before building. If you encounter lock file sync errors:
+
+1. **Update lock file**: Run `npm install` to synchronize package-lock.json with package.json
+2. **Commit both files**: Commit the updated package-lock.json along with package.json
+3. **Retry deployment**: Run `./deploy.sh` again
+
+**Emergency bypass** (not recommended for regular use):
+```bash
+./deploy.sh --skip-deps-check
+```
+> **Warning**: Skipping dependency validation may result in non-reproducible builds and deployment inconsistencies. Only use this for emergency deployments when immediate fixes are needed.
+
+**Why this matters**: Synchronized lock files ensure every deployment uses exactly the same dependency versions, preventing "works on my machine" issues and making builds reproducible across different environments.
 
 For detailed debugging information, see: `hidden/KUBERNETES-EXPLANATION.md`
