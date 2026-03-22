@@ -33,17 +33,27 @@ COPY package.json package-lock.json ./
 #
 RUN echo "=== DEPENDENCY INSTALLATION ===" && \
     echo "Starting npm ci (reproducible install)..." && \
+    # Try npm ci first - this will fail if package.json and package-lock.json are out of sync
+    # Common failure scenarios:
+    # - package.json has new dependencies not in package-lock.json
+    # - package.json has dependency version changes not reflected in package-lock.json
+    # - package-lock.json has entries for dependencies not in package.json
     if npm ci --ignore-scripts; then \
         echo "✅ SUCCESS: npm ci completed - using reproducible dependencies from lock file"; \
     else \
+        # Fallback triggered when npm ci exits with non-zero code
+        # This indicates lock file synchronization issues
         echo "⚠️  WARNING: npm ci failed - lock files are out of sync"; \
         echo "🔄 FALLING BACK to npm install to continue build..."; \
         echo "ℹ️  NOTE: This allows deployment but reduces build reproducibility"; \
         echo "🔧 FIX: Run 'npm install' locally and commit updated package-lock.json"; \
+        # Fallback to npm install - this will update package-lock.json to match package.json
+        # WARNING: This may install different dependency versions than what's in the original lock file
         npm install --ignore-scripts; \
         echo "✅ SUCCESS: npm install completed - build continuing with fallback dependencies"; \
     fi && \
     echo "=== DEPENDENCY INSTALLATION COMPLETED ===" && \
+    # Clean npm cache to ensure consistent builds and reduce image size
     npm cache clean --force
 
 # Copy source code and build

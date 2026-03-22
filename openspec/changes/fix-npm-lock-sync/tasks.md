@@ -39,7 +39,7 @@
 - [x] 5.1 Review all code changes for consistency and best practices
 - [x] 5.2 Ensure all error messages are user-friendly
 - [x] 5.3 Verify logging is consistent with existing deploy.sh patterns
-- [ ] 5.4 Add comments explaining the fallback logic in Dockerfile
+- [x] 5.4 Add comments explaining the fallback logic in Dockerfile
 - [ ] 5.5 Update any relevant README sections if needed
 - [ ] 5.6 Verify all documentation is accurate and complete
 
