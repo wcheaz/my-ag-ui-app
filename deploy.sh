@@ -139,6 +139,32 @@ handle_secrets_error() {
         esac
     fi
     
+    # Enhanced diagnostics for Docker build errors (120-122)
+    if [ "$error_code" -ge 120 ] && [ "$error_code" -le 122 ]; then
+        log "DOCKER BUILD DIAGNOSTIC INFO:"
+        log "Docker daemon status: $(docker info 2>/dev/null > /dev/null && echo 'running' || echo 'not running')"
+        log "Dockerfile exists: $([ -f "Dockerfile" ] && echo 'yes' || echo 'no')"
+        log "Dockerfile size: $([ -f "Dockerfile" ] && wc -c < Dockerfile || echo 'N/A') bytes"
+        
+        # Check specific Docker issues based on error code
+        case $error_code in
+            120)
+                log "Dockerfile not found. Expected location: $(pwd)/Dockerfile"
+                log "Files in current directory:"
+                ls -la | head -10
+                ;;
+            121)
+                log "Docker build failed. Check build output above for specific errors."
+                log "Docker version: $(docker --version 2>/dev/null || echo 'Docker not available')"
+                ;;
+            122)
+                log "Docker image verification failed. Image 'my-ag-ui-app:latest' not found."
+                log "Available Docker images:"
+                docker images --format "{{.Repository}}:{{.Tag}}" | head -5
+                ;;
+        esac
+    fi
+    
     exit $error_code
 }
 
@@ -226,6 +252,32 @@ if [ -z "$VM_NAME" ]; then
     exit 1
 fi
 log "Using VM_NAME: $VM_NAME for Kubernetes deployment"
+
+# 6.1 Build Docker image using Dockerfile in project root
+log "Starting Docker image build process..."
+log "Building Docker image 'my-ag-ui-app:latest' using project Dockerfile..."
+
+# Check if Dockerfile exists
+if [ ! -f "Dockerfile" ]; then
+    handle_secrets_error 120 "Dockerfile not found in project root" \
+        "Ensure Dockerfile exists in project root directory: $(pwd)/Dockerfile"
+fi
+log "Dockerfile found: $(pwd)/Dockerfile"
+
+# Build Docker image with proper error handling
+if ! docker build -t my-ag-ui-app:latest . 2>&1 | tee -a "$LOG_FILE"; then
+    handle_secrets_error 121 "Failed to build Docker image" \
+        "Check Docker build output above for errors. Ensure Docker is running and accessible. Check Dockerfile for syntax errors."
+fi
+log "Docker image 'my-ag-ui-app:latest' built successfully"
+
+# 6.2 Verify Docker image was built successfully
+log "Verifying Docker image was built successfully..."
+if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "my-ag-ui-app:latest"; then
+    handle_secrets_error 122 "Docker image verification failed" \
+        "Docker image 'my-ag-ui-app:latest' was not found in local Docker images. Build may have failed silently."
+fi
+log "Docker image 'my-ag-ui-app:latest' verified successfully"
 
 # Create k8s directory in VM before file transfer
 log "Preparing to create k8s directory in VM..."
