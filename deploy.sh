@@ -312,6 +312,42 @@ handle_secrets_error() {
         log "7. Consider increasing probe timeouts or adjusting probe configuration in deployment.yaml if needed"
     fi
     
+    # Enhanced diagnostics for lock file validation error (200)
+    if [ "$error_code" -eq 200 ]; then
+        log "LOCK FILE VALIDATION DIAGNOSTIC INFO:"
+        log "Current directory: $(pwd)"
+        log "package.json exists: $([ -f "package.json" ] && echo "yes" || echo "no")"
+        log "package-lock.json exists: $([ -f "package-lock.json" ] && echo "yes" || echo "no")"
+        
+        if [ -f "package.json" ]; then
+            log "package.json size: $(wc -c < package.json) bytes"
+            log "package.json last modified: $(stat -f %m package.json 2>/dev/null || stat -c %Y package.json 2>/dev/null || echo 'unknown')"
+        fi
+        
+        if [ -f "package-lock.json" ]; then
+            log "package-lock.json size: $(wc -c < package-lock.json) bytes"
+            log "package-lock.json last modified: $(stat -f %m package-lock.json 2>/dev/null || stat -c %Y package-lock.json 2>/dev/null || echo 'unknown')"
+        fi
+        
+        log "npm version: $(npm --version 2>/dev/null || echo 'npm not available')"
+        
+        # Try to get more details about the sync issue
+        if command -v npm >/dev/null 2>&1; then
+            log "Running npm ci --dry-run to get detailed error..."
+            if npm ci --dry-run 2>&1 | tee -a "$LOG_FILE"; then
+                log "Unexpected: npm ci --dry-run succeeded during diagnostics"
+            fi
+        fi
+        
+        log "RECOVERY SUGGESTIONS:"
+        log "1. Run 'npm install' to synchronize package-lock.json with package.json"
+        log "2. Review the npm ci --dry-run output above for specific dependency conflicts"
+        log "3. Check if package.json was recently updated without running 'npm install'"
+        log "4. Verify both files are committed to version control: git status package.json package-lock.json"
+        log "5. If issues persist, try: rm package-lock.json && npm install && npm audit fix"
+        log "6. For emergency deployment, use --skip-deps-check flag (not recommended for production)"
+    fi
+    
     exit $error_code
 }
 
@@ -399,6 +435,72 @@ if [ -z "$VM_NAME" ]; then
     exit 1
 fi
 log "Using VM_NAME: $VM_NAME for Kubernetes deployment"
+
+# ===========================
+# LOCK FILE VALIDATION SECTION
+# ===========================
+
+# Validate package.json and package-lock.json are synchronized
+validate_lock_files() {
+    log "Starting lock file validation..."
+    
+    # Check if package.json exists
+    if [ ! -f "package.json" ]; then
+        log "ERROR: package.json not found in current directory"
+        return 1
+    fi
+    
+    # Check if package-lock.json exists
+    if [ ! -f "package-lock.json" ]; then
+        log "ERROR: package-lock.json not found in current directory"
+        return 1
+    fi
+    
+    log "Validating npm lock file consistency using npm ci --dry-run..."
+    
+    # Run npm ci --dry-run to validate lock file consistency
+    if ! npm ci --dry-run >/dev/null 2>&1; then
+        log "ERROR: package.json and package-lock.json are out of sync"
+        log ""
+        log "RECOVERY INSTRUCTIONS:"
+        log "1. To fix this issue, run: npm install"
+        log "2. This will update package-lock.json to match package.json"
+        log "3. Commit the updated package-lock.json to your repository"
+        log "4. Then run the deployment again"
+        log ""
+        log "To bypass this check (not recommended), use: $0 --skip-deps-check"
+        log ""
+        return 1
+    fi
+    
+    log "✓ Lock file validation successful - package.json and package-lock.json are synchronized"
+    return 0
+}
+
+# Parse command line arguments for dependency check bypass
+SKIP_DEPS_CHECK=false
+for arg in "$@"; do
+    case $arg in
+        --skip-deps-check)
+            SKIP_DEPS_CHECK=true
+            log "WARNING: --skip-deps-check flag detected - skipping dependency validation"
+            shift
+            ;;
+        *)
+            # Unknown argument
+            ;;
+    esac
+done
+
+# Validate lock files before Docker build (unless bypassed)
+if [ "$SKIP_DEPS_CHECK" = false ]; then
+    if ! validate_lock_files; then
+        handle_secrets_error 200 "Lock file validation failed" \
+            "package.json and package-lock.json are out of sync. Run 'npm install' to synchronize them, then commit the updated package-lock.json."
+    fi
+else
+    log "SKIPPED: Lock file validation bypassed by --skip-deps-check flag"
+fi
 
 # 6.1 Build Docker image using Dockerfile in project root
 log "Starting Docker image build process..."
