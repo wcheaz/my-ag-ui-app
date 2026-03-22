@@ -2331,6 +2331,7 @@ setup_vm_docker() {
     done
     
     # Final Docker setup verification completed
+    fi
     
     # Provide comprehensive summary status with detailed error analysis and recovery guidance
     if [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = true ] && [ "$DOCKER_NO_SUDO_WORKING" = true ]; then
@@ -2571,6 +2572,9 @@ setup_vm_docker() {
         # OPTIMIZATION: Track end time even for failures
         TOTAL_SETUP_END_TIME=$(date +%s)
         return 1
+    fi
+    fi
+    fi
     fi
     
     # ===========================
