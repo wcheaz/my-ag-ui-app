@@ -1,6 +1,6 @@
 {
-  "active": false,
-  "iteration": 34,
+  "active": true,
+  "iteration": 35,
   "minIterations": 1,
   "maxIterations": 50,
   "completionPromise": "COMPLETE",
@@ -11,7 +11,6 @@
   "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-yaml-copy-bug/.ralph/prompt-template.md",
   "noCommit": false,
   "model": "",
-  "startedAt": "2026-03-21T22:28:17.359Z",
-  "resumedAt": "2026-03-21T22:28:17.359Z",
-  "completedAt": "2026-03-22T00:41:04.625Z"
+  "startedAt": "2026-03-22T00:53:58.794Z",
+  "resumedAt": "2026-03-22T00:53:58.794Z"
 }
