@@ -21,10 +21,10 @@
 ## 3. Integration with Deployment Flow
 
 - [x] 3.1 Identify the correct location in deploy.sh to call `setup_vm_docker()` (after VM provisioning, before image loading)
-- [ ] 3.2 Add function call to `setup_vm_docker()` in the deployment flow
-- [ ] 3.3 Ensure proper error propagation from `setup_vm_docker()` to stop deployment on failure
-- [ ] 3.4 Update deployment script to exit with non-zero status when Docker setup fails
-- [ ] 3.5 Verify that deployment stops correctly and does not proceed to image loading when Docker setup fails
+- [x] 3.2 Add function call to `setup_vm_docker()` in the deployment flow
+- [x] 3.3 Ensure proper error propagation from `setup_vm_docker()` to stop deployment on failure
+- [x] 3.4 Update deployment script to exit with non-zero status when Docker setup fails
+- [x] 3.5 Verify that deployment stops correctly and does not proceed to image loading when Docker setup fails
 
 ## 4. Testing and Verification
 
@@ -39,19 +39,19 @@
 
 ## 5. Documentation and Cleanup
 
-- [ ] 5.1 Add inline comments explaining each step of Docker setup
+- [x] 5.1 Add inline comments explaining each step of Docker setup
 - [ ] 5.2 Document Docker setup requirements in deployment documentation
 - [ ] 5.3 Document troubleshooting steps for common Docker setup issues
 - [ ] 5.4 Update README.md with Docker setup information if needed
 - [ ] 5.5 Review and clean up any temporary or debugging code
-- [ ] 5.6 Verify all error messages are clear and actionable
+- [x] 5.6 Verify all error messages are clear and actionable
 
 ## 6. Edge Cases and Robustness
 
-- [ ] 6.1 Handle case where Docker installation script is not accessible
+- [x] 6.1 Handle case where Docker installation script is not accessible
 - [ ] 6.2 Handle case where Docker daemon takes longer than expected to start
 - [ ] 6.3 Handle case where docker group membership doesn't activate immediately
-- [ ] 6.4 Add timeout handling for all Docker operations
+- [x] 6.4 Add timeout handling for all Docker operations
 - [ ] 6.5 Handle case where VM is not accessible or multipass commands fail
 - [ ] 6.6 Verify idempotency - running setup multiple times should not cause issues
 

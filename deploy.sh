@@ -58,6 +58,11 @@ log() {
 setup_vm_docker() {
     log "Starting Docker setup in VM '$VM_NAME'..."
     
+    # Timeout configuration for Docker operations
+    DOCKER_OPERATION_TIMEOUT=30
+    DAEMON_START_TIMEOUT=60
+    GROUP_OPERATION_TIMEOUT=30
+    
     # Collect comprehensive diagnostic information at the start
     log "COLLECTING INITIAL DIAGNOSTIC INFORMATION..."
     log "=================================================="
@@ -116,9 +121,9 @@ setup_vm_docker() {
     DOCKER_CLI_ERROR=""
     DOCKER_CLI_ERROR_DETAILS=""
     
-    # Try to get Docker version with detailed error capture
+    # Try to get Docker version with detailed error capture and timeout
     local docker_version_output
-    docker_version_output=$(multipass exec "$VM_NAME" -- docker --version 2>&1)
+    docker_version_output=$(timeout $DOCKER_OPERATION_TIMEOUT multipass exec "$VM_NAME" -- docker --version 2>&1)
     local docker_version_exit_code=$?
     
     if [ $docker_version_exit_code -eq 0 ]; then
@@ -531,7 +536,7 @@ setup_vm_docker() {
         # Verify Docker was installed
         log "Verifying Docker installation..."
         local docker_version_output
-        docker_version_output=$(multipass exec "$VM_NAME" -- docker --version 2>&1)
+        docker_version_output=$(timeout $DOCKER_OPERATION_TIMEOUT multipass exec "$VM_NAME" -- docker --version 2>&1)
         local docker_version_exit_code=$?
         
         if [ $docker_version_exit_code -eq 0 ]; then
@@ -641,8 +646,8 @@ setup_vm_docker() {
     local group_add_output
     local group_add_exit_code
     
-    # Capture both stdout and stderr for detailed analysis
-    group_add_output=$(multipass exec "$VM_NAME" -- sudo usermod -aG docker ubuntu 2>&1)
+    # Capture both stdout and stderr for detailed analysis with timeout
+    group_add_output=$(timeout $GROUP_OPERATION_TIMEOUT multipass exec "$VM_NAME" -- sudo usermod -aG docker ubuntu 2>&1)
     group_add_exit_code=$?
     
     # Log the full output for debugging
@@ -833,7 +838,7 @@ setup_vm_docker() {
     
     # Start Docker daemon if it's not running
     log "Ensuring Docker daemon is running..."
-    if ! multipass exec "$VM_NAME" -- sudo systemctl start docker 2>&1 | tee -a "$LOG_FILE"; then
+    if ! timeout $DAEMON_START_TIMEOUT multipass exec "$VM_NAME" -- sudo systemctl start docker 2>&1 | tee -a "$LOG_FILE"; then
         log "⚠️  Warning: Could not start Docker daemon with systemctl"
         log "   This may be expected if Docker daemon is already running or uses different init system"
     fi
@@ -858,8 +863,8 @@ setup_vm_docker() {
     while [ $DAEMON_CHECK_ATTEMPT -le $MAX_DAEMON_CHECK_ATTEMPTS ]; do
         log "Docker daemon status check attempt $DAEMON_CHECK_ATTEMPT/$MAX_DAEMON_CHECK_ATTEMPTS (delay: ${RETRY_DELAY}s)..."
         
-        # Capture detailed error output for analysis
-        DOCKER_INFO_OUTPUT=$(multipass exec "$VM_NAME" -- docker info 2>&1)
+        # Capture detailed error output for analysis with timeout
+        DOCKER_INFO_OUTPUT=$(timeout $DOCKER_OPERATION_TIMEOUT multipass exec "$VM_NAME" -- docker info 2>&1)
         DOCKER_INFO_EXIT_CODE=$?
         
         if [ $DOCKER_INFO_EXIT_CODE -eq 0 ]; then
@@ -1109,7 +1114,7 @@ setup_vm_docker() {
     while [ $NO_SUDO_CHECK_ATTEMPT -le $MAX_NO_SUDO_CHECK_ATTEMPTS ]; do
         log "Docker no-sudo verification attempt $NO_SUDO_CHECK_ATTEMPT/$MAX_NO_SUDO_CHECK_ATTEMPTS..."
         
-        if multipass exec "$VM_NAME" -- docker ps >/dev/null 2>&1; then
+        if timeout $DOCKER_OPERATION_TIMEOUT multipass exec "$VM_NAME" -- docker ps >/dev/null 2>&1; then
             log "✅ Docker commands work without sudo in VM (attempt $NO_SUDO_CHECK_ATTEMPT)"
             DOCKER_NO_SUDO_WORKING=true
             break
