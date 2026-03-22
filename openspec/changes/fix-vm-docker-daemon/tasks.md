@@ -30,12 +30,12 @@
 
 - [x] 4.1 Test Docker setup with fresh VM (no Docker installed)
 - [x] 4.2 Test Docker setup with existing VM (Docker already installed and running)
-- [ ] 4.3 Test Docker setup with VM that has Docker installed but daemon not running
-- [ ] 4.4 Test error handling when VM has no network connectivity
-- [ ] 4.5 Test error handling when VM has insufficient disk space
-- [ ] 4.6 Test full deployment flow end-to-end with Docker setup
-- [ ] 4.7 Verify image loading works correctly after Docker setup
-- [ ] 4.8 Verify Kubernetes deployment proceeds successfully after image loading
+- [x] 4.3 Test Docker setup with VM that has Docker installed but daemon not running
+- [x] 4.4 Test error handling when VM has no network connectivity
+- [x] 4.5 Test error handling when VM has insufficient disk space
+- [x] 4.6 Test full deployment flow end-to-end with Docker setup
+- [x] 4.7 Verify image loading works correctly after Docker setup
+- [x] 4.8 Verify Kubernetes deployment proceeds successfully after image loading
 
 ## 5. Documentation and Cleanup
 
