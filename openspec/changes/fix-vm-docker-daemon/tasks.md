@@ -3,7 +3,7 @@
 - [x] 1.1 Create `setup_vm_docker()` function in deploy.sh with function signature and basic structure
 - [x] 1.2 Implement Docker CLI availability check using `multipass exec <vm-name> -- docker --version`
 - [x] 1.3 Implement Docker daemon status check using `multipass exec <vm-name> -- docker info`
-- [ ] 1.4 Implement Docker installation using official script `curl -fsSL https://get.docker.com | sh`
+- [x] 1.4 Implement Docker installation using official script `curl -fsSL https://get.docker.com | sh`
 - [ ] 1.5 Implement user addition to docker group using `sudo usermod -aG docker ubuntu`
 - [ ] 1.6 Implement Docker daemon startup verification with retry loop and exponential backoff
 - [ ] 1.7 Implement Docker command verification without sudo using `docker ps`

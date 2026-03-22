@@ -69,8 +69,30 @@ setup_vm_docker() {
         DOCKER_CLI_AVAILABLE=false
     fi
     
-    # Placeholder for Docker installation
-    log "Docker installation would happen here"
+    # Install Docker if not available
+    if [ "$DOCKER_CLI_AVAILABLE" = false ]; then
+        log "Installing Docker using official script..."
+        if ! multipass exec "$VM_NAME" -- bash -c "curl -fsSL https://get.docker.com | sh" 2>&1 | tee -a "$LOG_FILE"; then
+            log "ERROR: Docker installation failed"
+            log "RECOVERY: Manual installation may be required. Connect to VM with: multipass shell $VM_NAME"
+            log "         Then run: curl -fsSL https://get.docker.com | sh"
+            return 1
+        fi
+        
+        # Verify Docker was installed
+        log "Verifying Docker installation..."
+        if multipass exec "$VM_NAME" -- docker --version >/dev/null 2>&1; then
+            DOCKER_VERSION=$(multipass exec "$VM_NAME" -- docker --version 2>/dev/null | head -n1)
+            log "✅ Docker installed successfully: $DOCKER_VERSION"
+            DOCKER_CLI_AVAILABLE=true
+        else
+            log "ERROR: Docker installation verification failed"
+            log "RECOVERY: Check installation logs above. Manual intervention may be required."
+            return 1
+        fi
+    else
+        log "Docker already installed, skipping installation"
+    fi
     
     # Check Docker daemon status in VM
     log "Checking Docker daemon status in VM..."
