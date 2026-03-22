@@ -20,7 +20,7 @@
 
 ## 3. Integration with Deployment Flow
 
-- [ ] 3.1 Identify the correct location in deploy.sh to call `setup_vm_docker()` (after VM provisioning, before image loading)
+- [x] 3.1 Identify the correct location in deploy.sh to call `setup_vm_docker()` (after VM provisioning, before image loading)
 - [ ] 3.2 Add function call to `setup_vm_docker()` in the deployment flow
 - [ ] 3.3 Ensure proper error propagation from `setup_vm_docker()` to stop deployment on failure
 - [ ] 3.4 Update deployment script to exit with non-zero status when Docker setup fails
