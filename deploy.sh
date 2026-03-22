@@ -302,6 +302,7 @@ if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/ingress.yaml 2>&1 | t
         "Check if file transfer was successful. Verify VM is accessible: multipass info '$VM_NAME'. Check logs for transfer errors."
 fi
 log "ingress.yaml validation successful - file exists in VM"
+log "All Kubernetes files validated successfully in VM"
 
 log "Applying Kubernetes secrets..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
