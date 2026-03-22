@@ -674,6 +674,438 @@ WARNING: package.json and package-lock.json are out of sync
 4. **Document occurrences**: Track when and why fallback was used
 5. **Review regularly**: Audit build logs for fallback patterns
 
+## Monitoring and Alerting for Fallback Usage
+
+Effective monitoring of the fallback mechanism is crucial for maintaining deployment reliability and identifying systemic issues early. This section provides comprehensive guidance for monitoring fallback usage and setting up appropriate alerts.
+
+### What to Monitor
+
+#### Primary Metrics
+
+| Metric | Description | Importance | Threshold |
+|--------|-------------|-----------|-----------|
+| **Fallback Trigger Count** | Number of times fallback mechanism activates | Critical | > 0 in production |
+| **Fallback Frequency** | Rate of fallback usage per time period | High | > 2 per week |
+| **Fallback by Environment** | Breakdown by dev/staging/prod | High | Any in production |
+| **Build Success Rate** | Overall build success with/without fallback | Medium | < 95% success |
+
+#### Secondary Metrics
+
+| Metric | Description | Importance | Threshold |
+|--------|-------------|-----------|-----------|
+| **Lock File Validation Failures** | Pre-build validation failures in deploy.sh | High | Any in production |
+| **Emergency Bypass Usage** | --skip-deps-check flag usage | Critical | > 0 in production |
+| **Build Duration Increase** | Additional time when fallback is used | Medium | > 10% increase |
+| **Post-Fallback Issues** | Application issues after fallback deployments | High | Any correlation |
+
+### Alert Thresholds and Escalation
+
+#### Critical Alerts (Immediate Action Required)
+
+**Alert Condition:**
+- Fallback mechanism triggered in **production** environment
+- Emergency bypass flag (`--skip-deps-check`) used in any environment
+
+**Response Time:** Immediate (within 15 minutes)
+
+**Escalation Path:**
+1. **On-call engineer** investigates immediately
+2. **DevOps lead** notified within 30 minutes
+3. **Engineering manager** notified if production impacted
+
+**Actions Required:**
+1. Verify deployment completed successfully
+2. Check application functionality
+3. Document incident in incident tracking system
+4. Schedule root cause analysis within 24 hours
+5. Plan fix deployment within 48 hours
+
+#### Warning Alerts (Within 24 Hours)
+
+**Alert Condition:**
+- Fallback mechanism triggered more than **2 times per week** in any environment
+- Lock file validation failure rate > **10%** in any environment
+
+**Response Time:** Within 24 hours
+
+**Escalation Path:**
+1. **Team lead** reviews pattern
+2. **DevOps engineer** investigates systemic issues
+3. **Development team** notified of process issues
+
+**Actions Required:**
+1. Review recent dependency management practices
+2. Identify root causes of frequent fallback usage
+3. Provide additional training if needed
+4. Consider process improvements
+
+#### Informational Alerts (Weekly Review)
+
+**Alert Condition:**
+- Any fallback usage in development environments
+- Build duration trends increasing
+
+**Response Time:** Weekly team review
+
+**Actions Required:**
+1. Review patterns in team standup
+2. Identify opportunities for improvement
+3. Update documentation if needed
+4. Consider process refinements
+
+### Implementation Strategies
+
+#### Log-Based Monitoring
+
+**Docker Build Log Monitoring:**
+
+```bash
+# Monitor Docker build logs for fallback triggers
+docker build --progress=plain . 2>&1 | grep -E "(FALLBACK|npm ci failed)"
+
+# Sample log patterns to monitor:
+# "=== DOCKER BUILD FALLBACK MECHANISM TRIGGERED ==="
+# "ERROR: npm ci failed due to lock file synchronization issues"
+# "=== FALLBACK COMPLETED: Build continuing with npm install ==="
+```
+
+**Deploy.sh Log Monitoring:**
+
+```bash
+# Monitor deploy.sh logs for validation failures
+./deploy.sh 2>&1 | grep -E "(Lock file validation failed|SKIPPED: Lock file validation)"
+
+# Sample log patterns to monitor:
+# "ERROR: Lock file validation failed"
+# "SKIPPED: Lock file validation bypassed by --skip-deps-check flag"
+```
+
+#### Structured Logging Implementation
+
+For better monitoring, consider implementing structured logging:
+
+```bash
+# Enhanced logging in deploy.sh for monitoring
+log_fallback_usage() {
+    local environment=$1
+    local trigger_reason=$2
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    
+    echo "{\"timestamp\":\"$timestamp\",\"event\":\"fallback_triggered\",\"environment\":\"$environment\",\"reason\":\"$trigger_reason\"}" >&2
+}
+
+# Usage in Dockerfile fallback:
+RUN npm ci --ignore-scripts && npm cache clean --force || \
+    (log_fallback_usage "production" "npm ci failure" && \
+     npm install --ignore-scripts && npm cache clean --force)
+```
+
+#### Integration with Monitoring Systems
+
+**Prometheus/Grafana Integration:**
+
+```yaml
+# prometheus.yml example
+scrape_configs:
+  - job_name: 'docker-builds'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+    scrape_interval: 5m
+
+# Example metrics to expose:
+# docker_build_fallback_count{environment="production"}
+# docker_build_validation_failures{environment="staging"}
+```
+
+**DataDog/New Relic Integration:**
+
+```javascript
+// Example DataDog metric submission
+const datadog = require('datadog-metrics');
+
+datadog.init({
+  apiKey: process.env.DATADOG_API_KEY,
+  host: 'my-ag-ui-app-builder',
+  prefix: 'docker_build.'
+});
+
+// When fallback is triggered:
+datadog.increment('fallback.count', 1, {
+  environment: process.env.DEPLOY_ENV,
+  trigger_reason: 'npm_ci_failure'
+});
+```
+
+### Dashboard Recommendations
+
+#### Primary Dashboard: Build Health
+
+**Widgets to Include:**
+1. **Fallback Usage Count** (Last 7 days) - Bar chart
+2. **Build Success Rate** by environment - Pie chart
+3. **Average Build Duration** with/without fallback - Line chart
+4. **Recent Fallback Incidents** - Table with details
+5. **Lock File Validation Failures** - Trend line
+
+**Layout Example:**
+```
+┌─────────────────────────┬─────────────────────────┐
+│   Fallback Usage (7d)   │   Build Success Rate    │
+│     [Bar Chart]         │    [Pie Chart]          │
+├─────────────────────────┼─────────────────────────┤
+│ Build Duration Trend    │ Recent Incidents        │
+│     [Line Chart]        │      [Table]            │
+├─────────────────────────┼─────────────────────────┤
+│ Validation Failures     │ Environment Breakdown   │
+│     [Line Chart]        │    [Bar Chart]          │
+└─────────────────────────┴─────────────────────────┘
+```
+
+#### Secondary Dashboard: Incident Response
+
+**Widgets to Include:**
+1. **Active Alerts** - Status list
+2. **Mean Time to Resolution** - Trend
+3. **Root Cause Categories** - Pie chart
+4. **Team Response Times** - Metrics
+5. **Follow-up Actions** - Task list
+
+### Automated Response Procedures
+
+#### When Fallback is Detected
+
+**Immediate Actions:**
+1. **Log to structured monitoring system**
+2. **Send alert to appropriate channel**
+3. **Create incident ticket**
+4. **Notify on-call engineer**
+
+**Automation Script Example:**
+
+```bash
+#!/bin/bash
+# fallback-alert.sh - Triggered when fallback is detected
+
+ENVIRONMENT=${1:-"unknown"}
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+BUILD_ID=${BUILD_ID:-"manual"}
+
+# Log to monitoring system
+curl -X POST "https://api.monitoring-service.com/metrics" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "metric": "docker_build_fallback",
+    "value": 1,
+    "tags": {
+      "environment": "'$ENVIRONMENT'",
+      "build_id": "'$BUILD_ID'",
+      "timestamp": "'$TIMESTAMP'"
+    }
+  }'
+
+# Send alert
+curl -X POST "https://api.alert-service.com/webhook" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "alert_type": "warning",
+    "title": "Docker Build Fallback Triggered",
+    "message": "Fallback mechanism activated in '$ENVIRONMENT' environment",
+    "priority": "high",
+    "timestamp": "'$TIMESTAMP'"
+  }'
+
+# Create incident ticket
+curl -X POST "https://api.ticket-system.com/incidents" \
+  -H "Authorization: Bearer $TICKET_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Docker Build Fallback - '$ENVIRONMENT'",
+    "description": "Fallback mechanism was triggered during build process",
+    "priority": "high",
+    "environment": "'$ENVIRONMENT'",
+    "build_id": "'$BUILD_ID'",
+    "requires_followup": true
+  }'
+```
+
+### Incident Response Playbook
+
+#### Phase 1: Immediate Response (First 30 Minutes)
+
+**Incident Commander Actions:**
+1. **Verify impact scope**
+   - Which environment was affected?
+   - Is this impacting production traffic?
+   - Are there active user impacts?
+
+2. **Assess current state**
+   - Did the deployment complete successfully?
+   - Is the application functioning normally?
+   - Are there immediate stability concerns?
+
+3. **Initial communication**
+   - Notify stakeholders of potential impact
+   - Set up incident communication channel
+   - Document initial assessment
+
+#### Phase 2: Investigation (First 2 Hours)
+
+**Technical Investigation:**
+1. **Gather diagnostic information**
+   ```bash
+   # Collect build logs
+   docker logs <container_id> > build-fallback-incident.log
+   
+   # Check lock file status
+   npm ci --dry-run > validation-check.log 2>&1
+   
+   # Document current state
+   git status > git-status.log
+   npm ls --depth=0 > dependency-list.log
+   ```
+
+2. **Identify root cause**
+   - When were package.json/lock.json last modified?
+   - Who made the changes?
+   - Were proper procedures followed?
+   - Are there merge conflicts or manual edits?
+
+3. **Determine impact assessment**
+   - Are dependencies actually different?
+   - Could this cause runtime issues?
+   - Is immediate rollback needed?
+
+#### Phase 3: Resolution and Recovery (First 24 Hours)
+
+**Immediate Fix:**
+```bash
+# Fix lock file synchronization
+npm install
+git add package.json package-lock.json
+git commit -m "Fix lock file synchronization - incident $INCIDENT_ID"
+
+# Verify fix
+npm ci --dry-run
+docker build -t fixed-build .
+```
+
+**Post-Incident Actions:**
+1. **Documentation update**
+   - Create incident report
+   - Update monitoring thresholds if needed
+   - Add to team knowledge base
+
+2. **Process improvement**
+   - Review if existing procedures were followed
+   - Identify gaps in training or documentation
+   - Implement preventive measures
+
+3. **Follow-up monitoring**
+   - Increased monitoring for 72 hours
+   - Check for any delayed issues
+   - Verify application stability
+
+### Long-term Trend Analysis
+
+#### Weekly Reporting
+
+**Metrics to Track:**
+1. **Fallback frequency trend** (week over week)
+2. **Common root causes** (categorized)
+3. **Team performance** (time to fix, recurrence rate)
+4. **Process effectiveness** (trending improvements)
+
+**Sample Report Structure:**
+
+```markdown
+# Weekly Build Health Report
+
+## Summary Period: YYYY-MM-DD to YYYY-MM-DD
+
+## Key Metrics
+- Total builds: 45
+- Fallback incidents: 2 (↓ 50% from last week)
+- Emergency bypass usage: 0
+- Average time to fix: 1.2 hours
+
+## Incidents by Category
+- Manual lock file edits: 1
+- Missing npm install after package.json changes: 1
+- Merge conflict resolution errors: 0
+
+## Team Performance
+- Fastest fix time: 30 minutes
+- Slowest fix time: 2 hours
+- Recurrence rate: 0%
+
+## Action Items
+1. [ ] Update team training on dependency management
+2. [ ] Consider pre-commit hook implementation
+3. [ ] Review merge conflict resolution procedures
+
+## Trend Analysis
+Fallback usage is decreasing, indicating improved team practices. Continue current training approach.
+```
+
+### Configuration Files
+
+#### Alert Configuration Example
+
+```yaml
+# alerts.yaml
+alerts:
+  - name: "Fallback Mechanism Triggered - Production"
+    condition: "docker_build_fallback_count > 0 AND environment == 'production'"
+    severity: "critical"
+    notification_channels:
+      - "pagerduty:production-oncall"
+      - "slack:deployment-alerts"
+    
+  - name: "High Fallback Frequency"
+    condition: "docker_build_fallback_count > 2 AND time_range == '7d'"
+    severity: "warning"
+    notification_channels:
+      - "slack:build-team"
+      - "email:devops-team"
+    
+  - name: "Emergency Bypass Usage"
+    condition: "emergency_bypass_count > 0"
+    severity: "critical"
+    notification_channels:
+      - "pagerduty:engineering-manager"
+      - "slack:incident-response"
+```
+
+#### Dashboard Configuration Example
+
+```json
+// dashboard-config.json
+{
+  "title": "Docker Build Health",
+  "panels": [
+    {
+      "title": "Fallback Usage",
+      "type": "stat",
+      "targets": [
+        {
+          "query": "sum(docker_build_fallback_count)"
+        }
+      ]
+    },
+    {
+      "title": "Build Success Rate",
+      "type": "gauge",
+      "targets": [
+        {
+          "query": "(builds_success_count / builds_total_count) * 100"
+        }
+      ]
+    }
+  ]
+}
+```
+
 ### Emergency Bypass: --skip-deps-check Flag
 
 The `--skip-deps-check` flag provides an emergency bypass for the lock file validation step in the deployment script. This should only be used in exceptional circumstances.
