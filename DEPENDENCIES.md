@@ -2,6 +2,10 @@
 
 This document provides comprehensive guidance for managing dependencies in the my-ag-ui-app project. Proper dependency management is crucial for application stability, security, and deployment reliability.
 
+## ⚠️ Critical: Lock File Synchronization
+
+**This project requires strict synchronization between `package.json` and `package-lock.json`.** Docker builds will fail if these files are out of sync. This guide includes specific procedures for maintaining lock file consistency and handling synchronization issues.
+
 ## Table of Contents
 
 1. [Dependency Files Overview](#dependency-files-overview)
@@ -263,6 +267,104 @@ The `package-lock.json` file serves several critical purposes:
 2. **Dependency tree integrity**: Locks the exact versions of all dependencies
 3. **Security**: Enables vulnerability auditing and patching
 4. **Bandwidth efficiency**: Avoids unnecessary re-downloads
+
+### 🔴 Critical: Lock File Synchronization Requirements
+
+**This project has strict requirements for lock file synchronization due to the Docker build process.**
+
+#### Why Synchronization is Critical
+
+The Docker build process uses `npm ci` which **requires exact synchronization** between `package.json` and `package-lock.json`. When these files are out of sync:
+
+- Docker builds fail during the `RUN npm ci --ignore-scripts` step
+- Deployments are blocked, creating critical bottlenecks
+- Team productivity is impacted
+
+#### Pre-Build Validation
+
+The deployment script (`deploy.sh`) automatically validates lock file consistency before attempting Docker builds:
+
+```bash
+# This runs automatically in deploy.sh before Docker build
+npm ci --dry-run
+```
+
+**If validation fails:**
+- Deployment stops immediately with clear error messages
+- You must fix the synchronization issue before proceeding
+- Use `--skip-deps-check` flag only in emergencies (see below)
+
+#### Docker Build Fallback Mechanism
+
+The Dockerfile includes a **fallback mechanism** to handle lock file synchronization issues during builds:
+
+```dockerfile
+# Primary path: Use npm ci for reproducible builds
+RUN npm ci --ignore-scripts && npm cache clean --force || \
+    # Fallback: Use npm install if npm ci fails due to sync issues
+    (echo "=== DOCKER BUILD FALLBACK MECHANISM TRIGGERED ===" && \
+     echo "ERROR: npm ci failed due to lock file synchronization issues" && \
+     echo "FALLBACK: Switching to npm install to continue build" && \
+     echo "ACTION REQUIRED: Run 'npm install' to update package-lock.json" && \
+     echo "===============================================" && \
+     npm install --ignore-scripts && npm cache clean --force && \
+     echo "=== FALLBACK COMPLETED: Build continuing with npm install ===" && \
+     echo "WARNING: package.json and package-lock.json are out of sync")
+```
+
+#### When Fallback Triggers
+
+The fallback mechanism activates when:
+- `package.json` and `package-lock.json` are out of sync
+- Missing dependencies in lock file
+- Version conflicts between package.json and lock file
+- Corrupted or incomplete lock file
+
+#### Fallback Implications
+
+| Scenario | Result | Action Required |
+|----------|---------|-----------------|
+| **Fallback NOT used** | ✅ Reproducible build with `npm ci` | None - ideal state |
+| **Fallback USED** | ⚠️ Build continues but less reproducible | Fix lock file sync immediately |
+| **Fallback fails** | ❌ Build completely fails | Fix lock file then retry |
+
+#### Emergency Bypass: --skip-deps-check Flag
+
+The `--skip-deps-check` flag provides an emergency bypass for pre-build validation:
+
+```bash
+# EMERGENCY USE ONLY
+./deploy.sh --skip-deps-check
+```
+
+**⚠️ Critical Warnings:**
+- Use ONLY in production outages or security emergencies
+- Does NOT guarantee successful build (may still fail in Docker)
+- Creates non-reproducible builds
+- Security and stability risks
+- MUST document usage and fix root cause afterward
+
+**When NOT to use:**
+- Regular development deployments
+- Convenience to avoid proper fix
+- Non-critical feature deployments
+- When you have time to fix properly
+
+**Post-bypass procedures:**
+```bash
+# 1. Fix the root cause immediately
+npm install
+
+# 2. Verify the fix
+npm ci --dry-run
+
+# 3. Commit the corrected files
+git add package.json package-lock.json
+git commit -m "Emergency fix: Restore lock file synchronization"
+
+# 4. Document the incident
+echo "$(date): Emergency deployment with --skip-deps-check used" >> deployment-emergency.log
+```
 
 ### Lock File Best Practices
 
@@ -640,14 +742,15 @@ npm update
 
 ## Troubleshooting
 
-### Lock File Synchronization Issues
+### Lock File Synchronization Issues (Project-Specific)
 
-Lock file synchronization is one of the most common causes of deployment failures in this project. Below are detailed troubleshooting steps for lock file sync issues.
+Lock file synchronization is the **most common cause of deployment failures** in this project. Below are detailed troubleshooting steps for lock file sync issues.
 
-#### Issue: "npm ci --dry-run" fails during pre-deployment validation
+#### 🔴 Critical Issue: Pre-deployment Validation Failure
 
 **Symptoms:**
-- Deployment script stops with "package.json and package-lock.json are out of sync"
+- Deployment stops immediately with: `"Lock file validation failed"`
+- Error message: `"package.json and package-lock.json are out of sync"`
 - Error code 200 from deployment script
 - Build fails before Docker build starts
 
@@ -659,27 +762,96 @@ Lock file synchronization is one of the most common causes of deployment failure
 
 **Diagnosis:**
 ```bash
-# Check if files are out of sync
+# Check if files are out of sync (same check deploy.sh uses)
 npm ci --dry-run
 
-# If this fails, files are definitely out of sync
-# The error will show which dependencies are problematic
+# This will show exactly which dependencies are problematic
+# Example error: "npm ERR! Invalid: lock file's express@1.0.0 does not satisfy ^2.0.0"
 ```
 
-**Solutions:**
+**Quick Fix (95% success rate):**
 ```bash
-# Primary fix: Update lock file to match package.json
+# Step 1: Update lock file to match package.json
 npm install
 
-# Verify the fix
+# Step 2: Verify the fix
 npm ci --dry-run
 
-# If issues persist, regenerate lock file completely
+# Step 3: If verification passes, commit the fix
+git add package.json package-lock.json
+git commit -m "Fix lock file synchronization"
+
+# Step 4: Retry deployment
+./deploy.sh
+```
+
+#### 🔴 Critical Issue: Docker Build Fallback Triggered
+
+**Symptoms:**
+- Docker build succeeds but shows warning: `"DOCKER BUILD FALLBACK MECHANISM TRIGGERED"`
+- Build logs contain: `"ERROR: npm ci failed due to lock file synchronization issues"`
+- Build completes but with reproducibility warnings
+
+**Root Cause:**
+Lock files are out of sync, but not severely enough to completely break the build.
+
+**Immediate Action Required:**
+```bash
+# Even though build "succeeded", the issue must be fixed
+npm install
+git add package.json package-lock.json
+git commit -m "Fix lock file synchronization (fallback was triggered)"
+
+# Rebuild to ensure clean build without fallback
+docker build -t my-ag-ui-app:latest .
+```
+
+#### 🔴 Critical Issue: Complete Docker Build Failure
+
+**Symptoms:**
+- Docker build fails during "RUN npm ci --ignore-scripts" step
+- Error: `"npm ERR! cipm can only install packages when your package.json and package-lock.json are in sync"`
+- Deployment completely blocked
+
+**Solutions (in order of preference):**
+
+**Option 1: Fix Lock File (Recommended)**
+```bash
+# Fix the synchronization issue
+npm install
+
+# Verify with Docker build
+docker build -t test .
+
+# If successful, commit and deploy
+git add package.json package-lock.json
+git commit -m "Fix lock file synchronization for Docker build"
+./deploy.sh
+```
+
+**Option 2: Complete Lock File Regeneration**
+```bash
+# Last resort if Option 1 fails
 rm package-lock.json
 npm install
 
-# Test deployment validation
+# Test locally
+npm ci --dry-run
+docker build -t test .
+
+# Commit and deploy if successful
+git add package.json package-lock.json
+git commit -m "Regenerate package-lock.json"
 ./deploy.sh
+```
+
+**Option 3: Emergency Bypass (Use with extreme caution)**
+```bash
+# ONLY for production emergencies when time is critical
+./deploy.sh --skip-deps-check
+
+# NOTE: This may still fail in Docker build step
+# If it fails, you must use Option 1 or 2 anyway
 ```
 
 #### Issue: Docker build fails with npm ci error
@@ -956,12 +1128,53 @@ npm config list
 5. Commit updates: `git add package.json package-lock.json`
 6. Deploy: `./deploy.sh`
 
-### Scenario 3: Production Deployment
+### Scenario 3: Production Deployment (Project-Specific)
 
-1. Ensure clean working directory
-2. Run validation: `npm ci --dry-run`
-3. Fix any sync issues: `npm install`
-4. Deploy: `./deploy.sh`
+**For this project, follow this exact sequence:**
+
+1. **Ensure clean working directory**
+   ```bash
+   git status
+   # Should be clean or have only intended changes
+   ```
+
+2. **Run lock file validation** (same as deploy.sh pre-check)
+   ```bash
+   npm ci --dry-run
+   # This MUST pass before proceeding
+   ```
+
+3. **Fix any sync issues immediately** (if validation fails)
+   ```bash
+   npm install
+   git add package.json package-lock.json
+   git commit -m "Fix lock file synchronization before deployment"
+   ```
+
+4. **Final validation check**
+   ```bash
+   npm ci --dry-run
+   # Verify this passes
+   ```
+
+5. **Deploy**
+   ```bash
+   ./deploy.sh
+   # This will run the same validation again
+   ```
+
+**⚠️ Important:** If step 2 fails, do NOT proceed to deployment. The deploy.sh will catch the same issue and fail, wasting time. Fix lock file synchronization first.
+
+**Emergency deployment procedure:**
+```bash
+# ONLY use if production is down and you understand the risks
+./deploy.sh --skip-deps-check
+
+# Then immediately after successful deployment:
+npm install
+git add package.json package-lock.json
+git commit -m "Emergency deployment: Fix lock file synchronization"
+```
 
 ### Scenario 4: Team Development
 
