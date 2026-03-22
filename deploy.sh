@@ -1,5 +1,228 @@
 
 # ===========================
+# TROUBLESHOOTING DOCUMENTATION
+# ===========================
+
+# Common Docker Setup Issues and Troubleshooting Steps
+# 
+# This section provides comprehensive troubleshooting guidance for common Docker setup issues
+# that may occur during VM Docker setup. Use this guide when encountering Docker-related problems.
+
+# 1. DOCKER CLI NOT AVAILABLE ERRORS
+# =================================
+# Symptoms:
+# - "docker: command not found" when running docker commands in VM
+# - Multipass exec commands fail to find docker binary
+#
+# Troubleshooting Steps:
+# 1. Check if Docker is installed: multipass exec '$VM_NAME' -- which docker
+# 2. Check Docker version: multipass exec '$VM_NAME' -- docker --version
+# 3. If not installed, install manually:
+#    multipass shell '$VM_NAME'
+#    curl -fsSL https://get.docker.com | sh
+# 4. Verify installation: docker --version
+# 5. Exit VM shell: exit
+#
+# Prevention:
+# - Ensure VM has network connectivity before installation
+# - Check available disk space (minimum 1GB recommended)
+# - Verify package manager is accessible (apt update)
+
+# 2. DOCKER DAEMON NOT RUNNING ERRORS
+# ====================================
+# Symptoms:
+# - "Cannot connect to Docker daemon" error
+# - "Docker daemon is not running" message
+# - docker info command fails
+#
+# Troubleshooting Steps:
+# 1. Check daemon status: multipass exec '$VM_NAME' -- sudo systemctl status docker
+# 2. Start daemon: multipass exec '$VM_NAME' -- sudo systemctl start docker
+# 3. Enable at boot: multipass exec '$VM_NAME' -- sudo systemctl enable docker
+# 4. Check daemon logs: multipass exec '$VM_NAME' -- sudo journalctl -u docker.service --no-pager
+# 5. Verify daemon is running: multipass exec '$VM_NAME' -- docker info
+#
+# Advanced Troubleshooting:
+# 1. Check for resource issues (memory/disk): multipass exec '$VM_NAME' -- free -h && df -h
+# 2. Check kernel modules: multipass exec '$VM_NAME' -- lsmod | grep -E '(overlay|aufs|bridge)'
+# 3. Load missing modules: multipass exec '$VM_NAME' -- sudo modprobe overlay && sudo modprobe aufs
+# 4. Reset daemon config: multipass exec '$VM_NAME' -- sudo mv /etc/docker/daemon.json /etc/docker/daemon.json.backup
+# 5. Restart daemon: multipass exec '$VM_NAME' -- sudo systemctl restart docker
+
+# 3. DOCKER PERMISSION ERRORS
+# ==========================
+# Symptoms:
+# - "permission denied" when running docker commands
+# - "Got permission denied while trying to connect to the Docker daemon socket"
+# - Docker commands work with sudo but not without
+#
+# Troubleshooting Steps:
+# 1. Check user groups: multipass exec '$VM_NAME' -- groups ubuntu
+# 2. Check if docker group exists: multipass exec '$VM_NAME' -- getent group docker
+# 3. Add user to docker group: multipass exec '$VM_NAME' -- sudo usermod -aG docker ubuntu
+# 4. Activate group membership: multipass exec '$VM_NAME' -- newgrp docker
+# 5. Verify permissions: multipass exec '$VM_NAME' -- docker ps
+#
+# If Still Failing:
+# 1. Check socket permissions: multipass exec '$VM_NAME' -- ls -la /var/run/docker.sock
+# 2. Fix socket permissions: multipass exec '$VM_NAME' -- sudo chmod 666 /var/run/docker.sock
+# 3. Create new shell session: multip exec '$VM_NAME' -- su -l ubuntu
+# 4. Or reboot VM: multipass restart '$VM_NAME'
+
+# 4. NETWORK CONNECTIVITY ISSUES
+# =============================
+# Symptoms:
+# - Docker installation fails with network errors
+# - "Connection refused" or "network unreachable" during installation
+# - "resolve host" errors when downloading Docker packages
+#
+# Troubleshooting Steps:
+# 1. Check VM network: multipass exec '$VM_NAME' -- ip a
+# 2. Test DNS resolution: multipass exec '$VM_NAME' -- nslookup google.com
+# 3. Test external connectivity: multipass exec '$VM_NAME' -- ping -c 2 google.com
+# 4. Check package repositories: multipass exec '$VM_NAME' -- cat /etc/apt/sources.list
+# 5. Update package lists: multipass exec '$VM_NAME' -- sudo apt update
+#
+# Proxy Configuration (if needed):
+# 1. Set proxy in VM: multipass exec '$VM_NAME' -- echo 'export HTTP_PROXY=http://proxy:port' >> ~/.bashrc
+# 2. Configure apt proxy: multipass exec '$VM_NAME' -- sudo mkdir -p /etc/apt/apt.conf.d
+# 3. Create proxy config: multipass exec '$VM_NAME' -- 'echo "Acquire::http::Proxy \"http://proxy:port\";" | sudo tee /etc/apt/apt.conf.d/95proxies'
+
+# 5. DISK SPACE ISSUES
+# ====================
+# Symptoms:
+# - "No space left on device" during Docker installation
+# - Disk space warnings in logs
+# - Docker operations fail with space-related errors
+#
+# Troubleshooting Steps:
+# 1. Check disk usage: multipass exec '$VM_NAME' -- df -h
+# 2. Clean apt cache: multipass exec '$VM_NAME' -- sudo apt clean
+# 3. Remove unused packages: multipass exec '$VM_NAME' -- sudo apt autoremove -y
+# 4. Clear system logs: multipass exec '$VM_NAME' -- sudo journalctl --vacuum-size=100M
+# 5. Check large files: multipass exec '$VM_NAME' -- sudo find /var/log -type f -size +100M -exec ls -lh {} \;
+#
+# If Still Insufficient:
+# 1. Increase VM disk size:
+#    multipass stop '$VM_NAME'
+#    multipass delete '$VM_NAME'
+#    multipass launch --name '$VM_NAME' --disk 20G
+# 2. Or cleanup Docker data: multipass exec '$VM_NAME' -- sudo systemctl stop docker && sudo rm -rf /var/lib/docker
+
+# 6. PACKAGE DEPENDENCY ISSUES
+# ============================
+# Symptoms:
+# - "Unable to locate package" errors
+# - "Dependency problems" during installation
+# - Broken package states
+#
+# Troubleshooting Steps:
+# 1. Update package lists: multipass exec '$VM_NAME' -- sudo apt update
+# 2. Fix broken dependencies: multipass exec '$VM_NAME' -- sudo apt --fix-broken install -y
+# 3. Install Docker dependencies: multipass exec '$VM_NAME' -- sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
+# 4. Clean package cache: multipass exec '$VM_NAME' -- sudo apt clean
+# 5. Update system: multipass exec '$VM_NAME' -- sudo apt upgrade -y
+#
+# Complete Reinstall (if needed):
+# 1. Remove Docker: multipass exec '$VM_NAME' -- sudo apt remove --purge docker*
+# 2. Clean up: multipass exec '$VM_NAME' -- sudo apt autoremove -y
+# 3. Reinstall: multipass exec '$VM_NAME' -- curl -fsSL https://get.docker.com | sh
+
+# 7. DOCKER DAEMON STARTUP TIMEOUTS
+# =================================
+# Symptoms:
+# - Docker daemon takes very long time to start
+# - Timeout errors during daemon startup
+# - Daemon appears to hang during initialization
+#
+# Troubleshooting Steps:
+# 1. Check system resources: multipass exec '$VM_NAME' -- free -h && multipass exec '$VM_NAME' -- top -bn1
+# 2. Increase startup timeout in deployment script
+# 3. Check for storage issues: multipass exec '$VM_NAME' -- df -h /var/lib/docker
+# 4. Monitor startup progress: multipass exec '$VM_NAME' -- sudo journalctl -u docker.service -f
+# 5. Try manual start: multipass exec '$VM_NAME' -- sudo systemctl start docker
+#
+# Performance Optimization:
+# 1. Increase VM memory: multipass stop '$VM_NAME' && multipass delete '$VM_NAME' && multipass launch --name '$VM_NAME' --memory 4G
+# 2. Use faster storage driver if available
+# 3. Disable unused Docker features
+
+# 8. VM ACCESSIBILITY ISSUES
+# ==========================
+# Symptoms:
+# - "instance does not exist" errors
+# - "instance is not running" errors
+# - "connection refused" to VM
+# - Multipass commands fail
+#
+# Troubleshooting Steps:
+# 1. Check VM status: multipass info '$VM_NAME'
+# 2. Start VM if needed: multipass start '$VM_NAME'
+# 3. Check VM accessibility: multipass exec '$VM_NAME' -- whoami
+# 4. Restart multipass service: sudo systemctl restart multipassd
+# 5. Check multipass logs: journalctl -u multipassd
+#
+# VM Recovery:
+# 1. Restart VM: multipass restart '$VM_NAME'
+# 2. If unresponsive, recreate VM:
+#    multipass stop '$VM_NAME'
+#    multipass delete '$VM_NAME'
+#    multipass launch --name '$VM_NAME'
+
+# 9. DOCKER IMAGE LOADING FAILURES
+# ===============================
+# Symptoms:
+# - Image transfer from host to VM fails
+# - "docker load" command fails in VM
+# - Images not available in VM after transfer
+#
+# Troubleshooting Steps:
+# 1. Verify Docker is running in VM: multipass exec '$VM_NAME' -- docker info
+# 2. Check VM disk space: multipass exec '$VM_NAME' -- df -h
+# 3. Verify user permissions: multipass exec '$VM_NAME' -- docker ps
+# 4. Test image loading manually:
+#    docker save my-ag-ui-app:latest | multipass exec '$VM_NAME' -- docker load
+# 5. Check loaded images: multipass exec '$VM_NAME' -- docker images
+#
+# Alternative Transfer Method:
+# 1. Save image to file: docker save -o image.tar my-ag-ui-app:latest
+# 2. Transfer file: multipass transfer image.tar '$VM_NAME':/home/ubuntu/
+# 3. Load in VM: multipass exec '$VM_NAME' -- docker load -i /home/ubuntu/image.tar
+
+# 10. GENERAL DEBUGGING APPROACH
+# =============================
+# For any Docker setup issue, follow this systematic approach:
+#
+# Step 1: Gather Information
+# - VM status: multipass info '$VM_NAME'
+# - Docker version: multipass exec '$VM_NAME' -- docker --version
+# - Daemon status: multipass exec '$VM_NAME' -- sudo systemctl status docker
+# - System resources: multipass exec '$VM_NAME' -- free -h && df -h
+#
+# Step 2: Check Logs
+# - Docker daemon logs: multipass exec '$VM_NAME' -- sudo journalctl -u docker.service --no-pager
+# - System logs: multipass exec '$VM_NAME' -- sudo dmesg | tail -n20
+# - Deployment script logs: cat /tmp/deploy-*.log
+#
+# Step 3: Test Components
+# - Test VM connectivity: multipass exec '$VM_NAME' -- whoami
+# - Test Docker daemon: multipass exec '$VM_NAME' -- docker info
+# - Test user permissions: multipass exec '$VM_NAME' -- docker ps
+#
+# Step 4: Manual Recovery
+# - Access VM directly: multipass shell '$VM_NAME'
+# - Test each component manually
+# - Apply fixes one at a time
+# - Verify each fix before proceeding
+#
+# Step 5: Escalation
+# If all troubleshooting steps fail:
+# - Document exact error messages and commands
+# - Collect diagnostic information
+# - Check for known issues with your OS/Docker version
+# - Consider recreating VM from scratch
+
+# ===========================
 # LOGGING FUNCTIONS
 # ===========================
 
