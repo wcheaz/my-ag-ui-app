@@ -377,5 +377,36 @@
     "completedTasks": [
       "5.4 Test deployment succeeds end-to-end with file transfers"
     ]
+  },
+  {
+    "timestamp": "2026-03-22T00:22:55.019Z",
+    "iteration": 28,
+    "duration": 303262,
+    "completionDetected": false,
+    "taskDetected": false,
+    "toolUsage": [],
+    "filesChanged": [
+      "openspec/changes/fix-k8s-yaml-copy-bug/tasks.md",
+      "test-error-handling.sh"
+    ],
+    "exitCode": 0,
+    "completedTasks": []
+  },
+  {
+    "timestamp": "2026-03-22T00:31:00.518Z",
+    "iteration": 29,
+    "duration": 485499,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [
+      "test-error-handling-focused.sh",
+      "test-error-handling-simple.sh",
+      "openspec/changes/fix-k8s-yaml-copy-bug/tasks.md"
+    ],
+    "exitCode": 0,
+    "completedTasks": [
+      "5.5 Test error handling provides clear messages when transfers fail"
+    ]
   }
 ]
