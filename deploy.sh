@@ -72,11 +72,30 @@ setup_vm_docker() {
     # Placeholder for Docker installation
     log "Docker installation would happen here"
     
-    # Placeholder for Docker daemon verification
-    log "Docker daemon verification would happen here"
+    # Check Docker daemon status in VM
+    log "Checking Docker daemon status in VM..."
+    if multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
+        log "✅ Docker daemon is running and accessible in VM"
+        DOCKER_DAEMON_RUNNING=true
+    else
+        log "⚠️  Docker daemon is not running or not accessible in VM"
+        DOCKER_DAEMON_RUNNING=false
+    fi
     
-    log "Docker setup in VM completed (Docker CLI check implemented)"
-    return 0
+    # Provide summary status
+    if [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = true ]; then
+        log "✅ Docker setup in VM completed successfully - Docker CLI and daemon are both available"
+        return 0
+    elif [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = false ]; then
+        log "⚠️  Docker setup in VM completed with warnings - Docker CLI available but daemon not running"
+        return 1
+    elif [ "$DOCKER_CLI_AVAILABLE" = false ] && [ "$DOCKER_DAEMON_RUNNING" = true ]; then
+        log "⚠️  Docker setup in VM completed with warnings - Docker daemon running but CLI not available"
+        return 1
+    else
+        log "❌ Docker setup in VM failed - Neither Docker CLI nor daemon are available"
+        return 1
+    fi
 }
 
 # ===========================
