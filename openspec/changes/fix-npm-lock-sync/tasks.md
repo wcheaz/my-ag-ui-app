@@ -21,7 +21,7 @@
 - [x] 3.1 Add lock file maintenance section to SETUP.md
 - [x] 3.2 Create DEPENDENCIES.md with detailed dependency management guidance
 - [x] 3.3 Document the pre-build validation process
-- [ ] 3.4 Document the fallback mechanism and when it triggers
+- [x] 3.4 Document the fallback mechanism and when it triggers
 - [x] 3.5 Add troubleshooting section for common lock file sync issues
 - [x] 3.6 Document the --skip-deps-check flag usage and warnings
 

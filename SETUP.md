@@ -240,6 +240,86 @@ git commit -m "Fix lock file synchronization"
 ./deploy.sh
 ```
 
+### Docker Build Fallback Mechanism
+
+The project includes a **Docker build fallback mechanism** to handle lock file synchronization issues during the build process. This ensures that deployments can continue even when there are minor synchronization problems between `package.json` and `package-lock.json`.
+
+#### What is the Fallback Mechanism?
+
+The Dockerfile includes a two-stage dependency installation process:
+
+1. **Primary path**: Uses `npm ci` for clean, reproducible builds when lock files are synchronized
+2. **Fallback path**: Automatically switches to `npm install` if `npm ci` fails due to sync issues
+
+This allows the build to continue while providing clear warnings about the synchronization issue.
+
+#### When the Fallback Triggers
+
+The fallback mechanism activates when:
+
+- `package.json` and `package-lock.json` are out of sync
+- Missing dependencies in the lock file
+- Version conflicts between package.json and lock file
+- Corrupted or incomplete lock file
+
+#### What Happens When Fallback Triggers
+
+When the fallback is triggered, you'll see these messages in the Docker build logs:
+
+```
+=== DOCKER BUILD FALLBACK MECHANISM TRIGGERED ===
+ERROR: npm ci failed due to lock file synchronization issues
+FALLBACK: Switching to npm install to continue build
+ACTION REQUIRED: Run 'npm install' to update package-lock.json
+===============================================
+=== FALLBACK COMPLETED: Build continuing with npm install ===
+WARNING: package.json and package-lock.json are out of sync
+```
+
+#### Implications of Using Fallback
+
+| Scenario | Result | Action Required |
+|----------|---------|-----------------|
+| **Fallback NOT used** | ✅ Reproducible build with `npm ci` | None - ideal state |
+| **Fallback USED** | ⚠️ Build continues but less reproducible | Fix lock file sync immediately |
+| **Fallback fails** | ❌ Build completely fails | Fix lock file then retry |
+
+#### What to Do When Fallback Triggers
+
+Even though the build succeeds when the fallback triggers, **you must fix the underlying issue**:
+
+1. **Immediately after deployment**, fix the lock file synchronization:
+   ```bash
+   npm install
+   git add package.json package-lock.json
+   git commit -m "Fix lock file synchronization (fallback was triggered)"
+   ```
+
+2. **Verify the fix**:
+   ```bash
+   npm ci --dry-run
+   ```
+
+3. **Rebuild to ensure clean build** without fallback:
+   ```bash
+   docker build -t my-ag-ui-app:latest .
+   ```
+
+#### Why This Matters
+
+- **Build Reproducibility**: Fallback builds may install different dependency versions across environments
+- **Security**: May install unintended versions with security vulnerabilities
+- **Deployment Consistency**: Different environments might have different dependency versions
+- **Debugging**: Issues become harder to trace if dependencies are inconsistent
+
+#### Monitoring Fallback Usage
+
+Watch for these fallback messages in your Docker build logs:
+- `"DOCKER BUILD FALLBACK MECHANISM TRIGGERED"`
+- `"WARNING: package.json and package-lock.json are out of sync"`
+
+If you see these messages frequently, investigate your team's dependency management practices to prevent synchronization issues.
+
 ## Step 5: Run the Application
 
 After setting up your environment variables and installing dependencies, run:
