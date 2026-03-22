@@ -268,6 +268,9 @@ if ! multipass transfer k8s/ingress.yaml "$VM_NAME":/home/ubuntu/k8s/ingress.yam
 fi
 log "ingress.yaml transferred successfully to VM"
 
+# Validate all transferred files exist in VM before proceeding with Kubernetes deployment
+log "Starting file validation process in VM..."
+
 # Validate that secrets.yaml exists in VM after transfer
 log "Validating that secrets.yaml exists in VM..."
 if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
