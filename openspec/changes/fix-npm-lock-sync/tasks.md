@@ -4,7 +4,7 @@
 - [x] 1.2 Implement npm install fallback when npm ci fails due to lock file sync issues
 - [x] 1.3 Add logging to indicate when fallback mechanism is triggered
 - [x] 1.4 Test Dockerfile with in-sync lock files (verify normal path works)
-- [ ] 1.5 Test Dockerfile with out-of-sync lock files (verify fallback path works)
+- [x] 1.5 Test Dockerfile with out-of-sync lock files (verify fallback path works)
 
 ## 2. Deploy.sh Validation
 
