@@ -5,15 +5,7 @@ WORKDIR /app
 
 # Install build dependencies
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts && npm cache clean --force || \
-    (echo "=== DOCKER BUILD FALLBACK MECHANISM TRIGGERED ===" && \
-    echo "ERROR: npm ci failed due to lock file synchronization issues" && \
-    echo "FALLBACK: Switching to npm install to continue build" && \
-    echo "ACTION REQUIRED: Run 'npm install' to update package-lock.json" && \
-    echo "===============================================" && \
-    npm install --ignore-scripts && npm cache clean --force && \
-    echo "=== FALLBACK COMPLETED: Build continuing with npm install ===" && \
-    echo "WARNING: package.json and package-lock.json are out of sync")
+RUN npm ci --ignore-scripts && npm cache clean --force
 
 # Copy source code and build
 COPY . .
