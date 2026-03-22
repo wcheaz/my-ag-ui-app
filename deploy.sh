@@ -180,6 +180,35 @@ handle_secrets_error() {
         esac
     fi
     
+    # Enhanced diagnostics for deployment restart error (125)
+    if [ "$error_code" -eq 125 ]; then
+        log "DEPLOYMENT RESTART DIAGNOSTIC INFO:"
+        log "VM_NAME: $VM_NAME"
+        log "VM status: $(multipass info "$VM_NAME" 2>/dev/null || echo 'Unable to get VM status')"
+        
+        log "Kubernetes deployment status:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app 2>/dev/null || log "Unable to get deployment status"
+        
+        log "Kubernetes deployment details:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o yaml 2>/dev/null | head -20 || log "Unable to get deployment details"
+        
+        log "Pod status:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>/dev/null || log "Unable to get pod status"
+        
+        log "ReplicaSet status:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get replicaset -l app=my-ag-ui-app 2>/dev/null || log "Unable to get replicaset status"
+        
+        log "Microk8s status:"
+        multipass exec "$VM_NAME" -- microk8s status 2>/dev/null | head -10 || log "Unable to get microk8s status"
+        
+        log "RECOVERY SUGGESTIONS:"
+        log "1. Check if deployment exists: multipass exec '$VM_NAME' -- microk8s kubectl get deployment my-ag-ui-app"
+        log "2. Check if deployment is in progress: multipass exec '$VM_NAME' -- microk8s kubectl rollout status deployment/my-ag-ui-app"
+        log "3. Try manual restart: multipass exec '$VM_NAME' -- microk8s kubectl rollout restart deployment/my-ag-ui-app"
+        log "4. Check microk8s is running: multipass exec '$VM_NAME' -- microk8s status"
+        log "5. If deployment is stuck, try deleting and recreating: multipass exec '$VM_NAME' -- microk8s kubectl delete deployment my-ag-ui-app && microk8s kubectl apply -f k8s/deployment.yaml"
+    fi
+    
     exit $error_code
 }
 
@@ -404,6 +433,14 @@ if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/deployment.yaml 
         "Check the deployment file: k8s/deployment.yaml. Ensure it references secrets and config maps correctly."
 fi
 log "Deployment manifest applied successfully"
+
+# 6.5 Restart deployment to trigger pod recreation with new image
+log "Restarting deployment to trigger pod recreation with new image..."
+if ! multipass exec "$VM_NAME" -- microk8s kubectl rollout restart deployment/my-ag-ui-app 2>&1 | tee -a "$LOG_FILE"; then
+    handle_secrets_error 125 "Failed to restart deployment" \
+        "Check if deployment exists: microk8s kubectl get deployment my-ag-ui-app. Ensure deployment is in a state that can be restarted."
+fi
+log "Deployment restarted successfully - pods will be recreated with new image"
 
 # Apply service manifest
 log "Applying service manifest..."
