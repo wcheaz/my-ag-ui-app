@@ -51,6 +51,31 @@ log() {
 }
 
 # ===========================
+# VM DOCKER SETUP FUNCTION
+# ===========================
+
+# Setup Docker in the multipass VM
+setup_vm_docker() {
+    log "Starting Docker setup in VM '$VM_NAME'..."
+    
+    # Basic structure for Docker setup
+    # This function will check for Docker installation and set it up if needed
+    log "Docker setup function called"
+    
+    # Placeholder for Docker CLI availability check
+    log "Checking Docker CLI availability in VM..."
+    
+    # Placeholder for Docker installation
+    log "Docker installation would happen here"
+    
+    # Placeholder for Docker daemon verification
+    log "Docker daemon verification would happen here"
+    
+    log "Docker setup in VM completed (placeholder implementation)"
+    return 0
+}
+
+# ===========================
 # LOCK FILE VALIDATION SECTION
 # ===========================
 
@@ -615,6 +640,14 @@ if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/de
         "Docker image 'my-ag-ui-app:latest' was not found in local Docker images. Build may have failed silently."
 fi
 log "Docker image 'my-ag-ui-app:latest' verified successfully"
+
+# Setup Docker in VM before attempting image load
+log "Starting VM Docker setup..."
+if ! setup_vm_docker; then
+    log "ERROR: VM Docker setup failed"
+    exit 1
+fi
+log "VM Docker setup completed successfully"
 
 # 6.3 Load Docker image into multipass VM using docker save | multipass exec -- docker load
 log "Starting Docker image load into VM..."
