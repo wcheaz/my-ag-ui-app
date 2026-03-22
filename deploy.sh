@@ -85,35 +85,10 @@ validate_lock_files() {
     local ci_status=$?
     
     if [ $ci_status -ne 0 ]; then
-        log ""
-        log "❌ VALIDATION FAILED: package.json and package-lock.json are out of sync"
-        log ""
-        log "What does this mean?"
-        log "The dependencies in your package.json don't match the versions"
-        log "recorded in package-lock.json. This prevents reliable builds."
-        log ""
-        log "How to fix this:"
-        log "1. Run this command to update the lock file:"
-        log "   npm install"
-        log ""
-        log "2. Check that the lock file was updated:"
-        log "   git status"
-        log ""
-        log "3. Commit the updated lock file to your repository:"
-        log "   git add package-lock.json"
-        log "   git commit -m 'Update package-lock.json to match package.json'"
-        log ""
-        log "4. Then run the deployment again:"
-        log "   ./deploy.sh"
-        log ""
-        log "Why is this important?"
-        log "Synchronized lock files ensure that every deployment uses"
-        log "exactly the same dependency versions, preventing surprises"
-        log "and making builds reproducible."
-        log ""
-        log "Emergency bypass (not recommended):"
-        log "   ./deploy.sh --skip-deps-check"
-        log ""
+        # Make ci_output available to handle_secrets_error by exporting it
+        export ci_output
+        handle_secrets_error 200 "Lock files are out of sync" \
+            "Run 'npm install' to update package-lock.json, then commit both files together. Use './deploy.sh --skip-deps-check' for emergency bypass."
         return 1
     fi
     
@@ -132,7 +107,7 @@ handle_secrets_error() {
     local error_message=$2
     local recovery_suggestion=$3
     
-    log "SECRETS SETUP ERROR [Code: $error_code]: $error_message"
+    log "DEPLOYMENT ERROR [Code: $error_code]: $error_message"
     log "RECOVERY SUGGESTION: $recovery_suggestion"
     
     # Enhanced recovery suggestions for file transfer errors (110-119)
@@ -206,7 +181,7 @@ handle_secrets_error() {
     fi
     
     # Log additional diagnostic information based on error code ranges
-    log "SECRETS SETUP DIAGNOSTIC INFO:"
+    log "DEPLOYMENT DIAGNOSTIC INFO:"
     log "Current directory: $(pwd)"
     log "Environment file exists: $([ -f ".env" ] && echo "yes" || echo "no")"
     log "k8s directory exists: $([ -d "k8s" ] && echo "yes" || echo "no")"
@@ -415,6 +390,38 @@ handle_secrets_error() {
         log "5. Check if there are any application startup errors: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app | grep -i error"
         log "6. If health endpoint is not implemented, check if it needs to be added to the application"
         log "7. Consider increasing probe timeouts or adjusting probe configuration in deployment.yaml if needed"
+    fi
+    
+    # Enhanced diagnostics for lock file validation error (200)
+    if [ "$error_code" -eq 200 ]; then
+        log "LOCK FILE VALIDATION DIAGNOSTIC INFO:"
+        log "Current directory: $(pwd)"
+        log "package.json exists: $([ -f "package.json" ] && echo 'yes' || echo 'no')"
+        log "package-lock.json exists: $([ -f "package-lock.json" ] && echo 'yes' || echo 'no')"
+        log "npm ci --dry-run output:"
+        log "$ci_output"
+        
+        log "DETAILED RECOVERY SUGGESTIONS:"
+        log "1. Run this command to update the lock file:"
+        log "   npm install"
+        log ""
+        log "2. Check that the lock file was updated:"
+        log "   git status"
+        log ""
+        log "3. Commit the updated lock file to your repository:"
+        log "   git add package-lock.json"
+        log "   git commit -m 'Update package-lock.json to match package.json'"
+        log ""
+        log "4. Then run the deployment again:"
+        log "   ./deploy.sh"
+        log ""
+        log "Why is this important?"
+        log "Synchronized lock files ensure that every deployment uses"
+        log "exactly the same dependency versions, preventing surprises"
+        log "and making builds reproducible."
+        log ""
+        log "Emergency bypass (not recommended):"
+        log "   ./deploy.sh --skip-deps-check"
     fi
     
     exit $error_code
