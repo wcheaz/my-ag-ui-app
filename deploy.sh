@@ -569,32 +569,234 @@ setup_vm_docker() {
     INITIAL_RETRY_DELAY=2
     MAX_RETRY_DELAY=30
     RETRY_DELAY=$INITIAL_RETRY_DELAY
+    DOCKER_DAEMON_ERROR=""
     
     while [ $DAEMON_CHECK_ATTEMPT -le $MAX_DAEMON_CHECK_ATTEMPTS ]; do
         log "Docker daemon status check attempt $DAEMON_CHECK_ATTEMPT/$MAX_DAEMON_CHECK_ATTEMPTS (delay: ${RETRY_DELAY}s)..."
         
-        if multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
+        # Capture detailed error output for analysis
+        DOCKER_INFO_OUTPUT=$(multipass exec "$VM_NAME" -- docker info 2>&1)
+        DOCKER_INFO_EXIT_CODE=$?
+        
+        if [ $DOCKER_INFO_EXIT_CODE -eq 0 ]; then
             log "✅ Docker daemon is running and accessible in VM (attempt $DAEMON_CHECK_ATTEMPT)"
             DOCKER_DAEMON_RUNNING=true
             break
         else
             log "⚠️  Docker daemon is not running or not accessible in VM (attempt $DAEMON_CHECK_ATTEMPT)"
             
-            # If this is the last attempt, provide detailed error information
+            # Store the error output for analysis
+            DOCKER_DAEMON_ERROR="$DOCKER_INFO_OUTPUT"
+            
+            # If this is the last attempt, provide comprehensive error analysis
             if [ $DAEMON_CHECK_ATTEMPT -eq $MAX_DAEMON_CHECK_ATTEMPTS ]; then
                 log "ERROR: Docker daemon did not start after $MAX_DAEMON_CHECK_ATTEMPTS attempts"
-                log "DIAGNOSTIC: Checking Docker service status..."
+                log "ERROR TYPE ANALYSIS: Docker daemon startup failure"
+                
+                # Analyze specific error patterns and provide targeted guidance
+                log "ANALYZING DOCKER DAEMON STARTUP FAILURE..."
+                
+                # Check for permission errors
+                if echo "$DOCKER_DAEMON_ERROR" | grep -q -E "(permission denied|Permission denied|Cannot connect to Docker daemon|access denied)"; then
+                    log "ERROR TYPE: DOCKER DAEMON PERMISSION FAILURE"
+                    log "DIAGNOSTIC: Docker daemon socket permission or access issue detected"
+                    log "RECOVERY STEPS:"
+                    log "1. Check Docker daemon socket permissions: multipass exec '$VM_NAME' -- ls -la /var/run/docker.sock"
+                    log "2. Verify user is in docker group: multipass exec '$VM_NAME' -- groups ubuntu"
+                    log "3. Check user permissions: multipass exec '$VM_NAME' -- id ubuntu"
+                    log "4. Fix docker group membership: multipass exec '$VM_NAME' -- sudo usermod -aG docker ubuntu"
+                    log "5. Activate group membership: multipass exec '$VM_NAME' -- newgrp docker"
+                    log "6. Manual daemon restart: multipass exec '$VM_NAME' -- sudo systemctl restart docker"
+                    
+                # Check for daemon not running errors
+                elif echo "$DOCKER_DAEMON_ERROR" | grep -q -E "(daemon is not running|Docker daemon is not running|Is the docker daemon running)"; then
+                    log "ERROR TYPE: DOCKER DAEMON NOT RUNNING"
+                    log "DIAGNOSTIC: Docker daemon process is not started or failed to start"
+                    log "RECOVERY STEPS:"
+                    log "1. Start Docker daemon: multipass exec '$VM_NAME' -- sudo systemctl start docker"
+                    log "2. Enable Docker daemon at boot: multipass exec '$VM_NAME' -- sudo systemctl enable docker"
+                    log "3. Check daemon status: multipass exec '$VM_NAME' -- sudo systemctl status docker"
+                    log "4. Check daemon logs: multipass exec '$VM_NAME' -- sudo journalctl -u docker.service --no-pager"
+                    
+                # Check for connection/refused errors
+                elif echo "$DOCKER_DAEMON_ERROR" | grep -q -E "(connection refused|Connection refused|connect: connection refused)"; then
+                    log "ERROR TYPE: DOCKER DAEMON CONNECTION REFUSED"
+                    log "DIAGNOSTIC: Docker daemon is not listening or rejecting connections"
+                    log "RECOVERY STEPS:"
+                    log "1. Check if daemon process exists: multipass exec '$VM_NAME' -- ps aux | grep docker | grep -v grep"
+                    log "2. Check Docker daemon socket: multipass exec '$VM_NAME' -- ls -la /var/run/docker.sock"
+                    log "3. Check Docker daemon configuration: multipass exec '$VM_NAME' -- cat /etc/docker/daemon.json"
+                    log "4. Restart Docker daemon: multipass exec '$VM_NAME' -- sudo systemctl restart docker"
+                    log "5. Check network connectivity: multipass exec '$VM_NAME' -- netstat -tlnp | grep docker"
+                    
+                # Check for timeout errors
+                elif echo "$DOCKER_DAEMON_ERROR" | grep -q -E "(timeout|timed out|context deadline exceeded)"; then
+                    log "ERROR TYPE: DOCKER DAEMON TIMEOUT FAILURE"
+                    log "DIAGNOSTIC: Docker daemon is not responding within expected time"
+                    log "RECOVERY STEPS:"
+                    log "1. Check system resources: multipass exec '$VM_NAME' -- free -h && multipass exec '$VM_NAME' -- df -h"
+                    log "2. Check Docker daemon logs for hangs: multipass exec '$VM_NAME' -- sudo journalctl -u docker.service --no-pager"
+                    log "3. Check running processes: multipass exec '$VM_NAME' -- ps aux | head -20"
+                    log "4. Restart Docker daemon: multipass exec '$VM_NAME' -- sudo systemctl restart docker"
+                    log "5. If persistent, increase system resources or check for resource contention"
+                    
+                # Check for resource constraint errors
+                elif echo "$DOCKER_DAEMON_ERROR" | grep -q -E "(no space left|insufficient space|out of memory|memory|resource|disk full)"; then
+                    log "ERROR TYPE: DOCKER DAEMON RESOURCE CONSTRAINT FAILURE"
+                    log "DIAGNOSTIC: System lacks sufficient resources for Docker daemon operation"
+                    log "RECOVERY STEPS:"
+                    log "1. Check disk space: multipass exec '$VM_NAME' -- df -h"
+                    log "2. Check memory usage: multipass exec '$VM_NAME' -- free -h"
+                    log "3. Clean up Docker resources: multipass exec '$VM_NAME' -- sudo docker system prune -f"
+                    log "4. Remove unused packages: multipass exec '$VM_NAME' -- sudo apt autoremove -y"
+                    log "5. Clear system logs: multipass exec '$VM_NAME' -- sudo journalctl --vacuum-size=100M"
+                    log "6. Increase VM resources if needed: multipass stop '$VM_NAME' && multipass delete '$VM_NAME' && multipass launch --name '$VM_NAME' --memory 4G --disk 20G"
+                    
+                # Check for configuration errors
+                elif echo "$DOCKER_DAEMON_ERROR" | grep -q -E "(configuration|config|failed to start|failed to initialize|daemon.json)"; then
+                    log "ERROR TYPE: DOCKER DAEMON CONFIGURATION FAILURE"
+                    log "DIAGNOSTIC: Docker daemon configuration issues preventing startup"
+                    log "RECOVERY STEPS:"
+                    log "1. Check Docker daemon config: multipass exec '$VM_NAME' -- cat /etc/docker/daemon.json"
+                    log "2. Check systemd service config: multipass exec '$VM_NAME' -- cat /lib/systemd/system/docker.service"
+                    log "3. Check Docker storage config: multipass exec '$VM_NAME' -- cat /etc/docker/daemon.json"
+                    log "4. Validate JSON syntax: multipass exec '$VM_NAME' -- python3 -m json.tool /etc/docker/daemon.json"
+                    log "5. Reset to default config: multipass exec '$VM_NAME' -- sudo mv /etc/docker/daemon.json /etc/docker/daemon.json.backup && sudo systemctl restart docker"
+                    
+                # Check for driver/storage issues
+                elif echo "$DOCKER_DAEMON_ERROR" | grep -q -E "(driver|storage|filesystem|aufs|overlay|devicemapper|graphdriver)"; then
+                    log "ERROR TYPE: DOCKER DAEMON STORAGE DRIVER FAILURE"
+                    log "DIAGNOSTIC: Docker storage driver or filesystem compatibility issues"
+                    log "RECOVERY STEPS:"
+                    log "1. Check filesystem type: multipass exec '$VM_NAME' -- df -T /"
+                    log "2. Check loaded kernel modules: multipass exec '$VM_NAME' -- lsmod | grep -E '(aufs|overlay|devicemapper)'"
+                    log "3. Check Docker storage driver: multipass exec '$VM_NAME' -- docker info 2>/dev/null | grep -A 10 'Storage Driver:' || echo 'Cannot get storage driver info'"
+                    log "4. Load required modules: multipass exec '$VM_NAME' -- sudo modprobe overlay && sudo modprobe aufs"
+                    log "5. Reboot VM if modules were loaded: multipass exec '$VM_NAME' -- sudo reboot"
+                    log "6. Consider using different storage driver if issues persist"
+                    
+                # Check for firewall/security issues
+                elif echo "$DOCKER_DAEMON_ERROR" | grep -q -E "(firewall|security|selinux|apparmor|policy|iptables)"; then
+                    log "ERROR TYPE: DOCKER DAEMON SECURITY/NETWORK RESTRICTION"
+                    log "DIAGNOSTIC: Security policies or firewall rules blocking Docker daemon"
+                    log "RECOVERY STEPS:"
+                    log "1. Check firewall status: multipass exec '$VM_NAME' -- sudo ufw status"
+                    log "2. Check AppArmor status: multipass exec '$VM_NAME' -- aa-status"
+                    log "3. Check SELinux status: multipass exec '$VM_NAME' -- getenforce"
+                    log "4. Disable firewall temporarily: multipass exec '$VM_NAME' -- sudo ufw disable"
+                    log "5. Allow Docker through firewall: multipass exec '$VM_NAME' -- sudo ufw allow 2375/tcp && sudo ufw allow 2376/tcp"
+                    log "6. Manual daemon restart: multipass exec '$VM_NAME' -- sudo systemctl restart docker"
+                    
+                # Check for Docker service issues
+                elif echo "$DOCKER_DAEMON_ERROR" | grep -q -E "(service|systemd|unit|job|failed to start service)"; then
+                    log "ERROR TYPE: DOCKER DAEMON SERVICE MANAGEMENT FAILURE"
+                    log "DIAGNOSTIC: Systemd service management issues with Docker daemon"
+                    log "RECOVERY STEPS:"
+                    log "1. Check systemd service status: multipass exec '$VM_NAME' -- sudo systemctl status docker"
+                    log "2. Check systemd service file: multipass exec '$VM_NAME' -- cat /lib/systemd/system/docker.service"
+                    log "3. Reload systemd daemon: multipass exec '$VM_NAME' -- sudo systemctl daemon-reload"
+                    log "4. Reset Docker service: multipass exec '$VM_NAME' -- sudo systemctl reset-failed docker"
+                    log "5. Restart Docker service: multipass exec '$VM_NAME' -- sudo systemctl restart docker"
+                    log "6. Check service logs: multipass exec '$VM_NAME' -- sudo journalctl -u docker.service -f"
+                    
+                # Check for network connectivity issues
+                elif echo "$DOCKER_DAEMON_ERROR" | grep -q -E "(network|connect|resolve host|connection|unreachable)"; then
+                    log "ERROR TYPE: DOCKER DAEMON NETWORK CONNECTIVITY FAILURE"
+                    log "DIAGNOSTIC: Network connectivity issues affecting Docker daemon"
+                    log "RECOVERY STEPS:"
+                    log "1. Check network interfaces: multipass exec '$VM_NAME' -- ip a"
+                    log "2. Check DNS resolution: multipass exec '$VM_NAME' -- nslookup google.com"
+                    log "3. Check network connectivity: multipass exec '$VM_NAME' -- ping -c 2 google.com"
+                    log "4. Check Docker network config: multipass exec '$VM_NAME' -- cat /etc/docker/daemon.json | grep -A 10 -B 10 network || echo 'No network config found'"
+                    log "5. Check Docker daemon network logs: multipass exec '$VM_NAME' -- sudo journalctl -u docker.service | grep -i network"
+                    log "6. Restart VM network: multipass exec '$VM_NAME' -- sudo systemctl restart networking"
+                    
+                # Check for installation/dependency issues
+                elif echo "$DOCKER_DAEMON_ERROR" | grep -q -E "(dependency|package|library|lib|so.*not found|cannot open shared object)"; then
+                    log "ERROR TYPE: DOCKER DAEMON DEPENDENCY FAILURE"
+                    log "DIAGNOSTIC: Missing or incompatible system dependencies for Docker daemon"
+                    log "RECOVERY STEPS:"
+                    log "1. Check installed Docker packages: multipass exec '$VM_NAME' -- dpkg -l | grep docker"
+                    log "2. Check for missing libraries: multipass exec '$VM_NAME' -- ldd $(which docker)"
+                    log "3. Fix broken dependencies: multipass exec '$VM_NAME' -- sudo apt --fix-broken install -y"
+                    log "4. Update system: multipass exec '$VM_NAME' -- sudo apt update && sudo apt upgrade -y"
+                    log "5. Reinstall Docker: multipass exec '$VM_NAME' -- sudo apt remove --purge docker* && sudo apt autoremove && curl -fsSL https://get.docker.com | sh"
+                    
+                # Generic/unknown errors with comprehensive diagnostic info
+                else
+                    log "ERROR TYPE: UNKNOWN DOCKER DAEMON STARTUP FAILURE"
+                    log "DIAGNOSTIC: Docker daemon failed to start with unknown error pattern"
+                    log "ERROR DETAILS:"
+                    log "Docker info command exit code: $DOCKER_INFO_EXIT_CODE"
+                    log "Docker info command output:"
+                    log "$DOCKER_DAEMON_ERROR"
+                    log "RECOVERY STEPS:"
+                    log "1. Manual daemon start attempt: multipass exec '$VM_NAME' -- sudo systemctl start docker"
+                    log "2. Check daemon status: multipass exec '$VM_NAME' -- sudo systemctl status docker"
+                    log "3. Check system logs: multipass exec '$VM_NAME' -- sudo dmesg | tail -n20"
+                    log "4. Check application logs: multipass exec '$VM_NAME' -- sudo journalctl -u docker.service --no-pager"
+                    log "5. Complete Docker reinstallation: multipash exec '$VM_NAME' -- sudo apt remove --purge docker* && sudo apt autoremove && sudo apt clean && curl -fsSL https://get.docker.com | sh"
+                fi
+                
+                # Collect comprehensive diagnostic information
+                log "COMPREHENSIVE DIAGNOSTIC INFORMATION:"
+                log "--------------------------------------------------"
+                
+                # System information
+                log "SYSTEM INFORMATION:"
+                log "- Hostname: $(multipass exec "$VM_NAME" -- hostname 2>/dev/null || echo 'Unable to get hostname')"
+                log "- OS info: $(multipass exec "$VM_NAME" -- uname -a 2>/dev/null || echo 'Unable to get OS info')"
+                log "- System uptime: $(multipass exec "$VM_NAME" -- uptime 2>/dev/null || echo 'Unable to get uptime')"
+                
+                # Docker service status
+                log "DOCKER SERVICE STATUS:"
                 multipass exec "$VM_NAME" -- sudo systemctl status docker 2>&1 | tee -a "$LOG_FILE" || true
                 
-                log "DIAGNOSTIC: Checking Docker daemon logs..."
+                # Docker daemon logs
+                log "DOCKER DAEMON LOGS (last 20 lines):"
                 multipass exec "$VM_NAME" -- sudo journalctl -u docker.service --no-pager -n 20 2>&1 | tee -a "$LOG_FILE" || true
                 
-                log "DIAGNOSTIC: Checking if Docker daemon process is running..."
+                # Docker daemon process
+                log "DOCKER DAEMON PROCESS:"
                 multipass exec "$VM_NAME" -- ps aux | grep -i docker | grep -v grep 2>&1 | tee -a "$LOG_FILE" || true
                 
-                log "DIAGNOSTIC: Checking system resources..."
+                # System resources
+                log "SYSTEM RESOURCES:"
                 multipass exec "$VM_NAME" -- df -h 2>&1 | tee -a "$LOG_FILE" || true
                 multipass exec "$VM_NAME" -- free -h 2>&1 | tee -a "$LOG_FILE" || true
+                multipass exec "$VM_NAME" -- top -bn1 | head -n10 2>&1 | tee -a "$LOG_FILE" || true
+                
+                # Docker configuration
+                log "DOCKER CONFIGURATION:"
+                multipass exec "$VM_NAME" -- ls -la /etc/docker/ 2>&1 | tee -a "$LOG_FILE" || true
+                multipass exec "$VM_NAME" -- cat /etc/docker/daemon.json 2>&1 | tee -a "$LOG_FILE" || true
+                
+                # Docker socket
+                log "DOCKER SOCKET STATUS:"
+                multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>&1 | tee -a "$LOG_FILE" || true
+                multipass exec "$VM_NAME" -- netstat -tlnp | grep docker 2>&1 | tee -a "$LOG_FILE" || true
+                
+                # Systemd service
+                log "SYSTEMD SERVICE INFO:"
+                multipass exec "$VM_NAME" -- cat /lib/systemd/system/docker.service 2>&1 | tee -a "$LOG_FILE" || true
+                
+                # Network information
+                log "NETWORK INFORMATION:"
+                multipass exec "$VM_NAME" -- ip a 2>&1 | tee -a "$LOG_FILE" || true
+                multipass exec "$VM_NAME" -- netstat -tlnp 2>&1 | head -n20 | tee -a "$LOG_FILE" || true
+                
+                # Kernel modules
+                log "KERNEL MODULES:"
+                multipass exec "$VM_NAME" -- lsmod | grep -E '(overlay|aufs|devicemapper|bridge|iptable)' 2>&1 | tee -a "$LOG_FILE" || true
+                
+                log "--------------------------------------------------"
+                log "MANUAL RECOVERY INSTRUCTIONS:"
+                log "1. Connect to VM: multipass shell '$VM_NAME'"
+                log "2. Try manual daemon start: sudo systemctl start docker"
+                log "3. Check status: sudo systemctl status docker"
+                log "4. View logs: sudo journalctl -u docker.service -f"
+                log "5. If all else fails, reinstall Docker:"
+                log "   sudo apt remove --purge docker* && sudo apt autoremove && curl -fsSL https://get.docker.com | sh"
             fi
             
             # Wait with exponential backoff before next attempt
