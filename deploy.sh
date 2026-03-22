@@ -76,6 +76,182 @@ setup_vm_docker() {
     MAX_NO_SUDO_CHECK_ATTEMPTS=8
     NO_SUDO_RETRY_DELAY=3
     
+    # VM accessibility and multipass command failure handling configuration
+    MAX_VM_ACCESSIBILITY_ATTEMPTS=5
+    VM_ACCESSIBILITY_DELAY=10
+    VM_RECOVERY_ATTEMPTS=2
+    VM_HEALTH_CHECK_TIMEOUT=15
+    MULTIPASS_COMMAND_TIMEOUT=20
+    
+    # VM Health Check Function
+    check_vm_health() {
+        local check_type="$1"
+        log "VM Health Check: $check_type"
+        
+        local vm_healthy=true
+        local health_issues=""
+        
+        # Check 1: VM exists and is accessible
+        log "Checking VM existence and basic accessibility..."
+        if ! timeout $VM_HEALTH_CHECK_TIMEOUT multipass info "$VM_NAME" >/dev/null 2>&1; then
+            vm_healthy=false
+            health_issues="$health_issues\n- VM does not exist or multipass service unavailable"
+        else
+            log "✅ VM exists and multipass service is accessible"
+        fi
+        
+        # Check 2: VM state
+        log "Checking VM state..."
+        local vm_state
+        vm_state=$(timeout $VM_HEALTH_CHECK_TIMEOUT multipass info "$VM_NAME" 2>/dev/null | grep "State:" | awk '{print $2}' || echo "unknown")
+        if [[ "$vm_state" != "Running" ]]; then
+            vm_healthy=false
+            health_issues="$health_issues\n- VM state is '$vm_state' (expected 'Running')"
+        else
+            log "✅ VM state is Running"
+        fi
+        
+        # Check 3: VM basic responsiveness
+        log "Checking VM basic responsiveness..."
+        if ! timeout $VM_HEALTH_CHECK_TIMEOUT multipass exec "$VM_NAME" -- whoami >/dev/null 2>&1; then
+            vm_healthy=false
+            health_issues="$health_issues\n- VM is not responding to basic commands"
+        else
+            log "✅ VM is responding to basic commands"
+        fi
+        
+        # Check 4: Network connectivity
+        log "Checking VM network connectivity..."
+        if ! timeout $VM_HEALTH_CHECK_TIMEOUT multipass exec "$VM_NAME" -- ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+            log "⚠️  WARNING: VM cannot ping external network (8.8.8.8)"
+            health_issues="$health_issues\n- VM network connectivity issues detected"
+        else
+            log "✅ VM has external network connectivity"
+        fi
+        
+        # Check 5: System resources
+        log "Checking VM system resources..."
+        local vm_memory
+        vm_memory=$(timeout $VM_HEALTH_CHECK_TIMEOUT multipass exec "$VM_NAME" -- free -h 2>/dev/null | grep Mem: | awk '{print $3 "/" $2}' || echo "unknown")
+        local vm_cpu_load
+        vm_cpu_load=$(timeout $VM_HEALTH_CHECK_TIMEOUT multipass exec "$VM_NAME" -- top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1 | head -n1 2>/dev/null || echo "unknown")
+        log "VM Memory Usage: $vm_memory, CPU Load: ${vm_cpu_load}%"
+        
+        # Return health status
+        if [ "$vm_healthy" = true ]; then
+            log "✅ VM Health Check PASSED: $check_type"
+            return 0
+        else
+            log "❌ VM Health Check FAILED: $check_type"
+            log "Issues detected:$health_issues"
+            return 1
+        fi
+    }
+    
+    # VM Recovery Function
+    attempt_vm_recovery() {
+        local recovery_attempt="$1"
+        log "VM Recovery Attempt $recovery_attempt/$VM_RECOVERY_ATTEMPTS"
+        
+        # Recovery Step 1: Try to restart VM
+        log "Attempting VM restart..."
+        if timeout $VM_HEALTH_CHECK_TIMEOUT multipass restart "$VM_NAME" >/dev/null 2>&1; then
+            log "✅ VM restart command successful"
+            
+            # Wait for VM to fully start up
+            log "Waiting for VM to fully start up (30 seconds)..."
+            sleep 30
+            
+            # Check if VM is responsive after restart
+            if check_vm_health "after-restart"; then
+                log "✅ VM recovery successful after restart"
+                return 0
+            else
+                log "⚠️  VM still unresponsive after restart"
+            fi
+        else
+            log "❌ VM restart command failed"
+        fi
+        
+        # Recovery Step 2: Try multipass service restart (if this fails, it might be a multipass issue)
+        log "Attempting multipass service restart..."
+        if command -v systemctl >/dev/null 2>&1; then
+            if sudo systemctl restart multipassd >/dev/null 2>&1; then
+                log "✅ Multipass service restarted successfully"
+                sleep 5
+                
+                # Check VM health again
+                if check_vm_health "after-multipass-restart"; then
+                    log "✅ VM recovery successful after multipass service restart"
+                    return 0
+                fi
+            else
+                log "❌ Multipass service restart failed"
+            fi
+        else
+            log "⚠️  systemctl not available, cannot restart multipass service"
+        fi
+        
+        # Recovery Step 3: Last resort - suggest manual intervention
+        log "❌ Automatic VM recovery failed for attempt $recovery_attempt"
+        log "Manual intervention may be required:"
+        log "1. Check multipass status: multipass list"
+        log "2. Check multipass service: sudo systemctl status multipassd"
+        log "3. Try manual VM access: multipass shell $VM_NAME"
+        log "4. If all else fails: multipass delete $VM_NAME && multipass launch --name $VM_NAME"
+        
+        return 1
+    }
+    
+    # Enhanced Multipass Command Wrapper with Retry Logic
+    robust_multipass_exec() {
+        local cmd="$1"
+        local description="$2"
+        local max_attempts="$3"
+        local retry_delay="$4"
+        
+        if [ -z "$max_attempts" ]; then
+            max_attempts=3
+        fi
+        
+        if [ -z "$retry_delay" ]; then
+            retry_delay=5
+        fi
+        
+        local attempt=1
+        local exit_code=1
+        local output=""
+        
+        while [ $attempt -le $max_attempts ]; do
+            log "Executing multipass command (attempt $attempt/$max_attempts): $description"
+            
+            # Execute the command with timeout
+            output=$(timeout $MULTIPASS_COMMAND_TIMEOUT bash -c "$cmd" 2>&1)
+            exit_code=$?
+            
+            if [ $exit_code -eq 0 ]; then
+                log "✅ Multipass command succeeded: $description"
+                echo "$output"
+                return 0
+            else
+                log "⚠️  Multipass command failed (exit code: $exit_code): $description"
+                if [ $attempt -lt $max_attempts ]; then
+                    log "Waiting ${retry_delay}s before retry..."
+                    sleep $retry_delay
+                else
+                    log "❌ Multipass command failed after $max_attempts attempts: $description"
+                    log "Command output: $output"
+                fi
+            fi
+            
+            attempt=$((attempt + 1))
+        done
+        
+        # If we get here, all attempts failed
+        echo "$output" >&2  # Send error output to stderr
+        return $exit_code
+    }
+    
     # Collect comprehensive diagnostic information at the start
     log "COLLECTING INITIAL DIAGNOSTIC INFORMATION..."
     log "=================================================="
@@ -127,6 +303,29 @@ setup_vm_docker() {
     log "- Docker Group: $(multipass exec "$VM_NAME" -- getent group docker 2>/dev/null || echo 'Docker group not found')"
     log "- Docker Socket: $(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null || echo 'Docker socket not found')"
     log "=================================================="
+    
+    # Initial VM Health Check before Docker setup
+    log "Performing initial VM health check before Docker setup..."
+    if ! check_vm_health "initial-setup"; then
+        log "⚠️  WARNING: Initial VM health check failed, attempting VM recovery..."
+        
+        for ((recovery_attempt=1; recovery_attempt<=VM_RECOVERY_ATTEMPTS; recovery_attempt++)); do
+            if attempt_vm_recovery $recovery_attempt; then
+                log "✅ VM recovery successful, proceeding with Docker setup"
+                break
+            else
+                if [ $recovery_attempt -eq $VM_RECOVERY_ATTEMPTS ]; then
+                    log "❌ ERROR: VM recovery failed after $VM_RECOVERY_ATTEMPTS attempts"
+                    log "   Docker setup cannot proceed - VM is not accessible"
+                    log "   Please check VM status manually: multipass info $VM_NAME"
+                    return 1
+                else
+                    log "Waiting 10 seconds before next recovery attempt..."
+                    sleep 10
+                fi
+            fi
+        done
+    fi
     
     # Check Docker CLI availability in VM with comprehensive error handling
     log "Checking Docker CLI availability in VM..."
@@ -307,13 +506,14 @@ setup_vm_docker() {
             log "   This may cause Docker installation to fail"
         fi
         
-        # Install Docker with comprehensive error capture
-        log "Starting Docker installation with comprehensive error capture..."
+        # Install Docker with robust error handling and retry logic
+        log "Starting Docker installation with robust error handling and retry logic..."
         local install_output
         local install_exit_code
         
-        # Capture both stdout and stderr for detailed analysis
-        install_output=$(multipass exec "$VM_NAME" -- bash -c "curl -fsSL https://get.docker.com | sh" 2>&1)
+        # Use robust multipass wrapper for Docker installation with retries
+        log "Installing Docker using robust multipass wrapper (up to 3 attempts)..."
+        install_output=$(robust_multipass_exec "multipass exec '$VM_NAME' -- bash -c 'curl -fsSL https://get.docker.com | sh'" "Docker installation via official script" 3 10)
         install_exit_code=$?
         
         # Log the full installation output for debugging
@@ -659,8 +859,9 @@ setup_vm_docker() {
     local group_add_output
     local group_add_exit_code
     
-    # Capture both stdout and stderr for detailed analysis with timeout
-    group_add_output=$(timeout $GROUP_OPERATION_TIMEOUT multipass exec "$VM_NAME" -- sudo usermod -aG docker ubuntu 2>&1)
+    # Use robust multipass wrapper for Docker group addition with retries
+    log "Adding user to docker group using robust multipass wrapper (up to 3 attempts)..."
+    group_add_output=$(robust_multipass_exec "multipass exec '$VM_NAME' -- sudo usermod -aG docker ubuntu" "Docker group membership addition" 3 5)
     group_add_exit_code=$?
     
     # Log the full output for debugging
@@ -888,6 +1089,28 @@ setup_vm_docker() {
         log "⚠️  Warning: Could not activate docker group membership after $MAX_GROUP_ACTIVATION_ATTEMPTS attempts"
         log "   This may cause issues with docker commands requiring group membership"
         log "   The system may need a reboot or complete user logout/login to activate group membership"
+    fi
+    
+    # VM health check after group activation operations
+    log "Performing VM health check after group activation operations..."
+    if ! check_vm_health "post-group-activation"; then
+        log "⚠️  WARNING: VM health check failed after group activation, attempting recovery..."
+        
+        for ((recovery_attempt=1; recovery_attempt<=VM_RECOVERY_ATTEMPTS; recovery_attempt++)); do
+            if attempt_vm_recovery $recovery_attempt; then
+                log "✅ VM recovery successful after group activation issues"
+                break
+            else
+                if [ $recovery_attempt -eq $VM_RECOVERY_ATTEMPTS ]; then
+                    log "❌ ERROR: VM recovery failed after group activation operations"
+                    log "   Docker setup cannot continue - VM is not accessible"
+                    return 1
+                else
+                    log "Waiting 10 seconds before next recovery attempt..."
+                    sleep 10
+                fi
+            fi
+        done
     fi
     
     # Start Docker daemon if it's not running
