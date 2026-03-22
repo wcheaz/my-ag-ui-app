@@ -112,22 +112,83 @@ setup_vm_docker() {
     fi
     log "✅ Docker group membership activated"
     
-    # Check Docker daemon status in VM
-    log "Checking Docker daemon status in VM..."
-    if multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
-        log "✅ Docker daemon is running and accessible in VM"
-        DOCKER_DAEMON_RUNNING=true
-    else
-        log "⚠️  Docker daemon is not running or not accessible in VM"
-        DOCKER_DAEMON_RUNNING=false
+    # Start Docker daemon if it's not running
+    log "Ensuring Docker daemon is running..."
+    if ! multipass exec "$VM_NAME" -- sudo systemctl start docker 2>&1 | tee -a "$LOG_FILE"; then
+        log "⚠️  Warning: Could not start Docker daemon with systemctl"
+        log "   This may be expected if Docker daemon is already running or uses different init system"
     fi
+    
+    # Enable Docker daemon to start on boot
+    log "Enabling Docker daemon to start on boot..."
+    if ! multipass exec "$VM_NAME" -- sudo systemctl enable docker 2>&1 | tee -a "$LOG_FILE"; then
+        log "⚠️  Warning: Could not enable Docker daemon to start on boot"
+        log "   This may be expected if Docker daemon uses different init system"
+    fi
+    
+    # Check Docker daemon status with retry loop and exponential backoff
+    log "Checking Docker daemon status in VM with retry loop..."
+    DOCKER_DAEMON_RUNNING=false
+    MAX_DAEMON_CHECK_ATTEMPTS=10
+    DAEMON_CHECK_ATTEMPT=1
+    INITIAL_RETRY_DELAY=2
+    MAX_RETRY_DELAY=30
+    RETRY_DELAY=$INITIAL_RETRY_DELAY
+    
+    while [ $DAEMON_CHECK_ATTEMPT -le $MAX_DAEMON_CHECK_ATTEMPTS ]; do
+        log "Docker daemon status check attempt $DAEMON_CHECK_ATTEMPT/$MAX_DAEMON_CHECK_ATTEMPTS (delay: ${RETRY_DELAY}s)..."
+        
+        if multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
+            log "✅ Docker daemon is running and accessible in VM (attempt $DAEMON_CHECK_ATTEMPT)"
+            DOCKER_DAEMON_RUNNING=true
+            break
+        else
+            log "⚠️  Docker daemon is not running or not accessible in VM (attempt $DAEMON_CHECK_ATTEMPT)"
+            
+            # If this is the last attempt, provide detailed error information
+            if [ $DAEMON_CHECK_ATTEMPT -eq $MAX_DAEMON_CHECK_ATTEMPTS ]; then
+                log "ERROR: Docker daemon did not start after $MAX_DAEMON_CHECK_ATTEMPTS attempts"
+                log "DIAGNOSTIC: Checking Docker service status..."
+                multipass exec "$VM_NAME" -- sudo systemctl status docker 2>&1 | tee -a "$LOG_FILE" || true
+                
+                log "DIAGNOSTIC: Checking Docker daemon logs..."
+                multipass exec "$VM_NAME" -- sudo journalctl -u docker.service --no-pager -n 20 2>&1 | tee -a "$LOG_FILE" || true
+                
+                log "DIAGNOSTIC: Checking if Docker daemon process is running..."
+                multipass exec "$VM_NAME" -- ps aux | grep -i docker | grep -v grep 2>&1 | tee -a "$LOG_FILE" || true
+                
+                log "DIAGNOSTIC: Checking system resources..."
+                multipass exec "$VM_NAME" -- df -h 2>&1 | tee -a "$LOG_FILE" || true
+                multipass exec "$VM_NAME" -- free -h 2>&1 | tee -a "$LOG_FILE" || true
+            fi
+            
+            # Wait with exponential backoff before next attempt
+            if [ $DAEMON_CHECK_ATTEMPT -lt $MAX_DAEMON_CHECK_ATTEMPTS ]; then
+                log "Waiting ${RETRY_DELAY}s before next attempt..."
+                sleep $RETRY_DELAY
+                
+                # Implement exponential backoff: double the delay, but cap at MAX_RETRY_DELAY
+                RETRY_DELAY=$((RETRY_DELAY * 2))
+                if [ $RETRY_DELAY -gt $MAX_RETRY_DELAY ]; then
+                    RETRY_DELAY=$MAX_RETRY_DELAY
+                fi
+            fi
+        fi
+        
+        DAEMON_CHECK_ATTEMPT=$((DAEMON_CHECK_ATTEMPT + 1))
+    done
     
     # Provide summary status
     if [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = true ]; then
         log "✅ Docker setup in VM completed successfully - Docker CLI and daemon are both available"
+        log "   - Docker CLI: Verified and operational"
+        log "   - Docker daemon: Started and verified with retry loop"
+        log "   - User permissions: Configured for docker group access"
         return 0
     elif [ "$DOCKER_CLI_AVAILABLE" = true ] && [ "$DOCKER_DAEMON_RUNNING" = false ]; then
-        log "⚠️  Docker setup in VM completed with warnings - Docker CLI available but daemon not running"
+        log "❌ Docker setup in VM failed - Docker CLI available but daemon not running after $MAX_DAEMON_CHECK_ATTEMPTS attempts"
+        log "RECOVERY: Try manually starting Docker daemon in VM: multipass shell $VM_NAME"
+        log "         Then run: sudo systemctl start docker && sudo systemctl enable docker"
         return 1
     elif [ "$DOCKER_CLI_AVAILABLE" = false ] && [ "$DOCKER_DAEMON_RUNNING" = true ]; then
         log "⚠️  Docker setup in VM completed with warnings - Docker daemon running but CLI not available"

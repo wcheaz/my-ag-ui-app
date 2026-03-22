@@ -5,7 +5,7 @@
 - [x] 1.3 Implement Docker daemon status check using `multipass exec <vm-name> -- docker info`
 - [x] 1.4 Implement Docker installation using official script `curl -fsSL https://get.docker.com | sh`
 - [x] 1.5 Implement user addition to docker group using `sudo usermod -aG docker ubuntu`
-- [ ] 1.6 Implement Docker daemon startup verification with retry loop and exponential backoff
+- [x] 1.6 Implement Docker daemon startup verification with retry loop and exponential backoff
 - [ ] 1.7 Implement Docker command verification without sudo using `docker ps`
 
 ## 2. Error Handling and Logging
