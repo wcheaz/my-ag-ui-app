@@ -424,14 +424,160 @@ RUN npm ci --ignore-scripts
 
 ### Pre-deployment Validation
 
-The deployment script automatically validates lock file consistency:
+The deployment script automatically validates lock file consistency before initiating any Docker build operations. This pre-build validation process is a critical safeguard that prevents deployment failures and provides immediate feedback when dependency issues are detected.
+
+#### What is Pre-Build Validation?
+
+Pre-build validation is an automated check that runs in the `deploy.sh` script before any Docker build operations begin. It uses npm's built-in validation logic to detect lock file synchronization issues that would cause `npm ci` to fail during the Docker build process.
+
+#### How the Validation Process Works
+
+The validation process is implemented in the `validate_lock_files()` function in `deploy.sh` and follows these steps:
+
+1. **File Existence Check**: Verifies that both `package.json` and `package-lock.json` exist in the current directory
+2. **Consistency Validation**: Runs `npm ci --dry-run` to check if the lock file is synchronized with package.json
+3. **Result Handling**: 
+   - If validation passes: Proceeds with Docker build
+   - If validation fails: Halts deployment with detailed error messages and recovery instructions
+
+#### Technical Implementation
+
+The validation logic in `deploy.sh`:
 
 ```bash
-# Before building Docker images, the script runs:
-npm ci --dry-run
-
-# If validation fails, it shows clear recovery instructions
+validate_lock_files() {
+    log "Starting lock file validation..."
+    
+    # Check if package.json exists
+    if [ ! -f "package.json" ]; then
+        log "ERROR: package.json not found in current directory"
+        return 1
+    fi
+    
+    # Check if package-lock.json exists
+    if [ ! -f "package-lock.json" ]; then
+        log "ERROR: package-lock.json not found in current directory"
+        return 1
+    fi
+    
+    log "Validating npm lock file consistency using npm ci --dry-run..."
+    
+    # Run npm ci --dry-run to validate lock file consistency
+    if ! npm ci --dry-run; then
+        log "ERROR: package.json and package-lock.json are out of sync"
+        log ""
+        log "RECOVERY INSTRUCTIONS:"
+        log "1. To fix this issue, run: npm install"
+        log "2. This will update package-lock.json to match package.json"
+        log "3. Commit the updated package-lock.json to your repository"
+        log "4. Then run the deployment again"
+        log ""
+        log "To bypass this check (not recommended), use: $0 --skip-deps-check"
+        log ""
+        return 1
+    fi
+    
+    log "✓ Lock file validation successful - package.json and package-lock.json are synchronized"
+    return 0
+}
 ```
+
+#### When Validation Runs
+
+The pre-build validation runs automatically in these scenarios:
+
+1. **Normal Deployment**: Every time `./deploy.sh` is executed
+2. **CI/CD Pipeline**: When the deployment script is used in automated pipelines
+3. **Manual Deployments**: Any manual execution of the deployment script
+
+The validation can be bypassed using the `--skip-deps-check` flag, but this should only be used in emergencies and with full understanding of the risks.
+
+#### Integration with Deployment Workflow
+
+The pre-build validation is seamlessly integrated into the deployment workflow:
+
+```bash
+# This runs automatically in deploy.sh before Docker build
+if [ "$SKIP_DEPS_CHECK" = false ]; then
+    if ! validate_lock_files; then
+        handle_secrets_error 200 "Lock file validation failed" \
+            "package.json and package-lock.json are out of sync. Run 'npm install' to synchronize them."
+    fi
+else
+    log "SKIPPED: Lock file validation bypassed by --skip-deps-check flag"
+fi
+```
+
+#### Validation Output
+
+##### Success Output
+When validation passes, you'll see:
+
+```
+[timestamp] Starting lock file validation...
+[timestamp] Validating npm lock file consistency using npm ci --dry-run...
+[timestamp] ✓ Lock file validation successful - package.json and package-lock.json are synchronized
+```
+
+##### Failure Output
+When validation fails, you'll see detailed error messages:
+
+```
+[timestamp] Starting lock file validation...
+[timestamp] Validating npm lock file consistency using npm ci --dry-run...
+npm ERR! Invalid: lock file's express@1.0.0 does not satisfy ^2.0.0
+[timestamp] ERROR: package.json and package-lock.json are out of sync
+
+RECOVERY INSTRUCTIONS:
+1. To fix this issue, run: npm install
+2. This will update package-lock.json to match package.json
+3. Commit the updated package-lock.json to your repository
+4. Then run the deployment again
+
+To bypass this check (not recommended), use: ./deploy.sh --skip-deps-check
+```
+
+#### Common Validation Failure Scenarios
+
+##### Scenario 1: Missing Dependencies in Lock File
+**Error**: `npm ERR! Invalid: missing dependency: package-name@version`
+
+**Cause**: A dependency was added to `package.json` but `npm install` was not run afterward
+
+**Fix**: `npm install`
+
+##### Scenario 2: Version Mismatch
+**Error**: `npm ERR! Invalid: lock file's package@1.0.0 does not satisfy ^2.0.0`
+
+**Cause**: `package.json` was updated to require a different version than what's in the lock file
+
+**Fix**: `npm install`
+
+##### Scenario 3: Missing Lock File
+**Error**: `ERROR: package-lock.json not found in current directory`
+
+**Cause**: The lock file was deleted or never created
+
+**Fix**: `npm install`
+
+##### Scenario 4: Corrupted Lock File
+**Error**: JSON parsing errors or unexpected npm behavior
+
+**Cause**: Lock file is corrupted or malformed
+
+**Fix**: `rm package-lock.json && npm install`
+
+#### Benefits of Pre-Build Validation
+
+1. **Fast Failure**: Detects issues immediately, saving time that would be wasted on Docker builds that would fail
+2. **Clear Error Messages**: Provides specific, actionable error messages with recovery instructions
+3. **Consistency Enforcement**: Ensures all deployments use consistent, reproducible dependency installations
+4. **Development Feedback**: Helps developers identify and fix lock file issues early in the development process
+5. **Deployment Reliability**: Reduces deployment failures due to dependency synchronization issues
+
+#### Performance Impact
+
+The pre-build validation typically adds 2-5 seconds to the deployment process, but this is minimal compared to the time saved by preventing Docker build failures (which can take several minutes to fail).
 
 ### Docker Build Fallback Mechanism
 
