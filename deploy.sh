@@ -529,12 +529,189 @@ setup_vm_docker() {
         log "Docker already installed, skipping installation"
     fi
     
-    # Add user to docker group
-    log "Adding user to docker group..."
-    if ! multipass exec "$VM_NAME" -- sudo usermod -aG docker ubuntu 2>&1 | tee -a "$LOG_FILE"; then
-        log "ERROR: Failed to add user to docker group"
-        log "RECOVERY: Manual group addition may be required. Connect to VM with: multipass shell $VM_NAME"
-        log "         Then run: sudo usermod -aG docker ubuntu"
+    # Add user to docker group with comprehensive error handling
+    log "Adding user to docker group with comprehensive error analysis..."
+    local group_add_output
+    local group_add_exit_code
+    
+    # Capture both stdout and stderr for detailed analysis
+    group_add_output=$(multipass exec "$VM_NAME" -- sudo usermod -aG docker ubuntu 2>&1)
+    group_add_exit_code=$?
+    
+    # Log the full output for debugging
+    log "Docker group addition output (first 500 chars):"
+    echo "$group_add_output" | head -c 500 | tee -a "$LOG_FILE"
+    if [ ${#group_add_output} -gt 500 ]; then
+        log "... (output truncated, full output logged to file)"
+        echo "$group_add_output" >> "$LOG_FILE"
+    fi
+    
+    # Analyze the result
+    if [ $group_add_exit_code -eq 0 ]; then
+        log "✅ Docker group addition command completed successfully (exit code: 0)"
+    else
+        log "ERROR: Docker group addition failed (exit code: $group_add_exit_code)"
+        
+        # Analyze specific error patterns and provide targeted guidance
+        log "ANALYZING DOCKER GROUP MEMBERSHIP FAILURE..."
+        
+        # Check for user existence errors
+        if echo "$group_add_output" | grep -q -E "(user.*does not exist|unknown user|user.*not found|cannot find user)"; then
+            log "ERROR TYPE: USER NOT FOUND FAILURE"
+            log "DIAGNOSTIC: The 'ubuntu' user does not exist in the VM"
+            log "RECOVERY STEPS:"
+            log "1. Check available users in VM: multipass exec '$VM_NAME' -- cat /etc/passwd | grep -E 'ubuntu|.*:.*:.*:.*:.*:/home' | head -10"
+            log "2. Verify default user: multipass exec '$VM_NAME' -- whoami"
+            log "3. List all users: multipass exec '$VM_NAME' -- cut -d: -f1 /etc/passwd | head -20"
+            log "4. If 'ubuntu' user doesn't exist, create it first: multipass exec '$VM_NAME' -- sudo adduser ubuntu"
+            log "5. Manual group addition: multipass shell '$VM_NAME'"
+            log "   Then run: sudo usermod -aG docker <correct-username>"
+            
+        # Check for group existence errors
+        elif echo "$group_add_output" | grep -q -E "(group.*does not exist|unknown group|group.*not found|cannot find group)"; then
+            log "ERROR TYPE: DOCKER GROUP NOT FOUND FAILURE"
+            log "DIAGNOSTIC: The 'docker' group does not exist in the VM"
+            log "RECOVERY STEPS:"
+            log "1. Check if docker group exists: multipass exec '$VM_NAME' -- grep docker /etc/group"
+            log "2. List all groups: multipass exec '$VM_NAME' -- cut -d: -f1 /etc/group | head -20"
+            log "3. Check if Docker is installed: multipass exec '$VM_NAME' -- docker --version"
+            log "4. Create docker group if missing: multipass exec '$VM_NAME' -- sudo groupadd docker"
+            log "5. Verify docker group creation: multipass exec '$VM_NAME' -- grep docker /etc/group"
+            log "6. Retry group membership: multipass exec '$VM_NAME' -- sudo usermod -aG docker ubuntu"
+            
+        # Check for permission errors
+        elif echo "$group_add_output" | grep -q -E "(permission denied|Permission denied|sudo.*error|access denied|Operation not permitted)"; then
+            log "ERROR TYPE: PERMISSION FAILURE"
+            log "DIAGNOSTIC: Insufficient permissions to add user to docker group"
+            log "RECOVERY STEPS:"
+            log "1. Check current user: multipass exec '$VM_NAME' -- whoami"
+            log "2. Check sudo privileges: multipass exec '$VM_NAME' -- sudo -l"
+            log "3. Check user permissions: multipass exec '$VM_NAME' -- id"
+            log "4. Verify user has sudo access: multipass exec '$VM_NAME' -- sudo echo 'sudo access test'"
+            log "5. If no sudo access, configure sudo: multipass exec '$VM_NAME' -- sudo visudo"
+            log "   Add: <username> ALL=(ALL) NOPASSWD: ALL"
+            log "6. Manual group addition with sudo: multipass shell '$VM_NAME'"
+            log "   Then run: sudo usermod -aG docker ubuntu"
+            
+        # Check for authentication errors
+        elif echo "$group_add_output" | grep -q -E "(authentication|auth.*failed|password|sudo:.*password)"; then
+            log "ERROR TYPE: AUTHENTICATION FAILURE"
+            log "DIAGNOSTIC: Sudo authentication required but failed"
+            log "RECOVERY STEPS:"
+            log "1. Check if passwordless sudo is configured: multipass exec '$VM_NAME' -- sudo -l"
+            log "2. Check sudoers configuration: multipass exec '$VM_NAME' -- sudo cat /etc/sudoers | grep -v '^#' | head -10"
+            log "3. Configure passwordless sudo if needed: multipass exec '$VM_NAME' -- sudo visudo"
+            log "   Add: ubuntu ALL=(ALL) NOPASSWD: ALL"
+            log "4. Test sudo without password: multipass exec '$VM_NAME' -- sudo whoami"
+            log "5. Manual group addition: multipass shell '$VM_NAME'"
+            log "   Enter password when prompted, then run: sudo usermod -aG docker ubuntu"
+            
+        # Check for VM accessibility issues
+        elif echo "$group_add_output" | grep -q -E "(multipass.*error|instance.*not.*found|instance.*not.*running|connection.*refused|network.*unreachable)"; then
+            log "ERROR TYPE: VM ACCESSIBILITY FAILURE"
+            log "DIAGNOSTIC: Cannot communicate with VM via multipass"
+            log "RECOVERY STEPS:"
+            log "1. Check VM status: multipass info '$VM_NAME'"
+            log "2. Start VM if needed: multipass start '$VM_NAME'"
+            log "3. Check VM accessibility: multipass exec '$VM_NAME' -- whoami"
+            log "4. Verify VM exists: multipass list"
+            log "5. Restart VM if needed: multipass restart '$VM_NAME'"
+            log "6. If VM is unresponsive, delete and recreate: multipass delete '$VM_NAME' && multipass launch --name '$VM_NAME'"
+            log "7. Manual VM access: multipass shell '$VM_NAME'"
+            log "   Then run: sudo usermod -aG docker ubuntu"
+            
+        # Check for system resource issues
+        elif echo "$group_add_output" | grep -q -E "(resource.*busy|file.*system.*read.*only|disk.*full|no.*space|memory|swap)"; then
+            log "ERROR TYPE: SYSTEM RESOURCE FAILURE"
+            log "DIAGNOSTIC: System resource constraints preventing group modification"
+            log "RECOVERY STEPS:"
+            log "1. Check disk space: multipass exec '$VM_NAME' -- df -h"
+            log "2. Check memory usage: multipass exec '$VM_NAME' -- free -h"
+            log "3. Check system resources: multipass exec '$VM_NAME' -- top -bn1 | head -10"
+            log "4. Check for read-only filesystem: multipass exec '$VM_NAME' -- mount | grep ' / '"
+            log "5. Clean up disk space: multipass exec '$VM_NAME' -- sudo apt autoremove -y && sudo apt clean"
+            log "6. Check system logs: multipass exec '$VM_NAME' -- dmesg | tail -n20"
+            log "7. Reboot VM if needed: multipass exec '$VM_NAME' -- sudo reboot"
+            log "8. Manual group addition after resource cleanup: multipass shell '$VM_NAME'"
+            log "   Then run: sudo usermod -aG docker ubuntu"
+            
+        # Check for usermod command specific errors
+        elif echo "$group_add_output" | grep -q -E "(usermod.*error|invalid.*option|usage.*usermod|cannot.*modify|user.*already.*member)"; then
+            log "ERROR TYPE: USERMOD COMMAND FAILURE"
+            log "DIAGNOSTIC: usermod command syntax or execution error"
+            log "RECOVERY STEPS:"
+            log "1. Check usermod command syntax: multipass exec '$VM_NAME' -- man usermod | head -20"
+            log "2. Verify user is not already in docker group: multipass exec '$VM_NAME' -- groups ubuntu"
+            log "3. Check if user exists: multipass exec '$VM_NAME' -- id ubuntu"
+            log "4. Check if docker group exists: multipass exec '$VM_NAME' -- getent group docker"
+            log "5. Alternative method - use gpasswd: multipass exec '$VM_NAME' -- sudo gpasswd -a ubuntu docker"
+            log "6. Manual verification: multipass shell '$VM_NAME'"
+            log "   Then run: groups ubuntu && sudo usermod -aG docker ubuntu"
+            
+        # Check for security policy or SELinux/AppArmor issues
+        elif echo "$group_add_output" | grep -q -E "(security.*policy|selinux|apparmor|denied.*by|policy.*violation)"; then
+            log "ERROR TYPE: SECURITY POLICY FAILURE"
+            log "DIAGNOSTIC: Security policies (SELinux/AppArmor) blocking group modification"
+            log "RECOVERY STEPS:"
+            log "1. Check SELinux status: multipass exec '$VM_NAME' -- getenforce"
+            log "2. Check AppArmor status: multipass exec '$VM_NAME' -- aa-status"
+            log "3. Check security logs: multipass exec '$VM_NAME' -- sudo journalctl --since '1 hour ago' | grep -i denied"
+            log "4. Temporarily disable SELinux if enforcing: multipass exec '$VM_NAME' -- sudo setenforce 0"
+            log "5. Check usermod security context: multipass exec '$VM_NAME' -- ls -Z $(which usermod)"
+            log "6. Manual group addition with security context adjustment: multipass shell '$VM_NAME'"
+            log "   Try: sudo setenforce 0 && sudo usermod -aG docker ubuntu"
+            
+        # Check for filesystem or permission issues with system files
+        elif echo "$group_add_output" | grep -q -E ("/etc/passwd|/etc/group|permission.*system|read.*only.*system|filesystem.*error)"; then
+            log "ERROR TYPE: SYSTEM FILESYSTEM FAILURE"
+            log "DIAGNOSTIC: Filesystem issues with system files (/etc/passwd, /etc/group)"
+            log "RECOVERY STEPS:"
+            log "1. Check system file permissions: multipass exec '$VM_NAME' -- ls -la /etc/passwd /etc/group"
+            log "2. Check filesystem status: multipass exec '$VM_NAME' -- mount | grep ' / '"
+            log "3. Check for filesystem errors: multipass exec '$VM_NAME' -- sudo fsck /dev/sda1"
+            log "4. Check if system files are writable: multipass exec '$VM_NAME' -- test -w /etc/passwd && echo 'writable' || echo 'not writable'"
+            log "5. Remount filesystem as read-write if needed: multipass exec '$VM_NAME' -- sudo mount -o remount,rw /"
+            log "6. Check disk health: multipass exec '$VM_NAME' -- sudo smartctl -a /dev/sda"
+            log "7. Manual filesystem repair: multipass shell '$VM_NAME'"
+            log "   Then run: sudo fsck /dev/sda1 && sudo usermod -aG docker ubuntu"
+            
+        # Unknown/unexpected errors with comprehensive diagnostic info
+        else
+            log "ERROR TYPE: UNKNOWN DOCKER GROUP MEMBERSHIP FAILURE"
+            log "DIAGNOSTIC: Group addition failed with unknown error pattern"
+            log "ERROR DETAILS:"
+            log "Usermod command exit code: $group_add_exit_code"
+            log "Usermod command output:"
+            log "$group_add_output"
+            log "RECOVERY STEPS:"
+            log "1. Check VM system status: multipass info '$VM_NAME'"
+            log "2. Check user and group status: multipass exec '$VM_NAME' -- id ubuntu && groups ubuntu"
+            log "3. Check system logs: multipass exec '$VM_NAME' -- sudo journalctl -n 20"
+            log "4. Alternative group addition method: multipass exec '$VM_NAME' -- sudo gpasswd -a ubuntu docker"
+            log "5. Manual intervention: multipass shell '$VM_NAME'"
+            log "   Then run: sudo usermod -aG docker ubuntu"
+            log "6. If all else fails, create new user with docker group: multipass exec '$VM_NAME' -- sudo useradd -G docker ubuntu-new"
+        fi
+        
+        # Collect comprehensive diagnostic information
+        log "COLLECTING ADDITIONAL DIAGNOSTIC INFORMATION..."
+        log "VM SYSTEM STATUS:"
+        log "- User info: $(multipass exec "$VM_NAME" -- id ubuntu 2>/dev/null || echo 'Unable to get user info')"
+        log "- User groups: $(multipass exec "$VM_NAME" -- groups ubuntu 2>/dev/null || echo 'Unable to get user groups')"
+        log "- Docker group: $(multipass exec "$VM_NAME" -- getent group docker 2>/dev/null || echo 'Docker group not found')"
+        log "- System users: $(multipass exec "$VM_NAME" -- grep -c 'ubuntu' /etc/passwd 2>/dev/null || echo 'Unable to count users') users found"
+        
+        log "VM SYSTEM CONFIGURATION:"
+        log "- passwd file: $(multipass exec "$VM_NAME" -- wc -l /etc/passwd 2>/dev/null || echo 'Unable to read passwd') lines"
+        log "- group file: $(multipass exec "$VM_NAME" -- wc -l /etc/group 2>/dev/null || echo 'Unable to read group') lines"
+        log "- sudoers configuration: $(multipass exec "$VM_NAME" -- sudo test -f /etc/sudoers && echo 'exists' || echo 'missing')"
+        log "- filesystem status: $(multipass exec "$VM_NAME" -- mount | grep ' / ' 2>/dev/null | head -n1 || echo 'Unable to get mount info')"
+        
+        log "VM ACCESSIBILITY:"
+        log "- VM status: $(multipass info "$VM_NAME" 2>/dev/null | head -n1 || echo 'Unable to get VM status')"
+        log "- Multipass version: $(multipass version 2>/dev/null || echo 'Unable to get multipass version')"
+        log "- VM accessibility test: $(multipass exec "$VM_NAME" -- whoami 2>/dev/null || echo 'VM not accessible')"
+        
         return 1
     fi
     log "✅ User added to docker group successfully"
