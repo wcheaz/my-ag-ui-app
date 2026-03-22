@@ -39,4 +39,4 @@
 - [x] 5.4 Test deployment succeeds end-to-end with file transfers
 - [x] 5.5 Test error handling provides clear messages when transfers fail
 - [x] 5.6 Verify log file contains all new log messages
-- [ ] 5.7 Verify deployment script exits with non-zero status on file transfer failures
+- [x] 5.7 Verify deployment script exits with non-zero status on file transfer failures
