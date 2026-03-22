@@ -70,6 +70,12 @@ setup_vm_docker() {
     EXTENDED_RETRY_ATTEMPTS=5
     EXTENDED_RETRY_DELAY=60
     
+    # Docker group membership activation configuration
+    MAX_GROUP_ACTIVATION_ATTEMPTS=3
+    GROUP_ACTIVATION_DELAY=5
+    MAX_NO_SUDO_CHECK_ATTEMPTS=8
+    NO_SUDO_RETRY_DELAY=3
+    
     # Collect comprehensive diagnostic information at the start
     log "COLLECTING INITIAL DIAGNOSTIC INFORMATION..."
     log "=================================================="
@@ -835,13 +841,54 @@ setup_vm_docker() {
     fi
     log "✅ User added to docker group successfully"
     
-    # Create new shell session to activate docker group membership
-    log "Activating docker group membership..."
-    if ! multipass exec "$VM_NAME" -- newgrp docker 2>&1 | tee -a "$LOG_FILE"; then
-        log "⚠️  Warning: Could not activate docker group membership with newgrp, continuing..."
+    # Enhanced Docker group membership activation with multiple methods and retries
+    log "Activating docker group membership with multiple methods..."
+    GROUP_ACTIVATION_SUCCESS=false
+    
+    for ((GROUP_ACT_ATTEMPT=1; GROUP_ACT_ATTEMPT<=MAX_GROUP_ACTIVATION_ATTEMPTS; GROUP_ACT_ATTEMPT++)); do
+        log "Group activation attempt $GROUP_ACT_ATTEMPT/$MAX_GROUP_ACTIVATION_ATTEMPTS..."
+        
+        # Method 1: Try newgrp (most common method)
+        if multipass exec "$VM_NAME" -- newgrp docker 2>&1 | tee -a "$LOG_FILE"; then
+            log "✅ Method 1 (newgrp) succeeded for group activation"
+            GROUP_ACTIVATION_SUCCESS=true
+            break
+        else
+            log "⚠️  Method 1 (newgrp) failed for group activation (attempt $GROUP_ACT_ATTEMPT)"
+        fi
+        
+        # Method 2: Try su -l to create new login session
+        if multipass exec "$VM_NAME" -- su -l ubuntu -c "groups" 2>&1 | grep -q docker; then
+            log "✅ Method 2 (su -l) succeeded for group activation"
+            GROUP_ACTIVATION_SUCCESS=true
+            break
+        else
+            log "⚠️  Method 2 (su -l) failed for group activation (attempt $GROUP_ACT_ATTEMPT)"
+        fi
+        
+        # Method 3: Direct group verification
+        if multipass exec "$VM_NAME" -- groups ubuntu 2>&1 | grep -q docker; then
+            log "✅ Method 3 (direct verification) shows user is in docker group"
+            GROUP_ACTIVATION_SUCCESS=true
+            break
+        else
+            log "⚠️  Method 3 (direct verification) shows user not in docker group (attempt $GROUP_ACT_ATTEMPT)"
+        fi
+        
+        # If this is not the last attempt, wait before retrying
+        if [ $GROUP_ACT_ATTEMPT -lt $MAX_GROUP_ACTIVATION_ATTEMPTS ]; then
+            log "Waiting ${GROUP_ACTIVATION_DELAY}s before next group activation attempt..."
+            sleep $GROUP_ACTIVATION_DELAY
+        fi
+    done
+    
+    if [ "$GROUP_ACTIVATION_SUCCESS" = true ]; then
+        log "✅ Docker group membership activated successfully"
+    else
+        log "⚠️  Warning: Could not activate docker group membership after $MAX_GROUP_ACTIVATION_ATTEMPTS attempts"
         log "   This may cause issues with docker commands requiring group membership"
+        log "   The system may need a reboot or complete user logout/login to activate group membership"
     fi
-    log "✅ Docker group membership activated"
     
     # Start Docker daemon if it's not running
     log "Ensuring Docker daemon is running..."
@@ -1185,12 +1232,10 @@ setup_vm_docker() {
         return 1
     fi
     
-    # Verify Docker commands work without sudo
-    log "Verifying Docker commands work without sudo..."
+    # Verify Docker commands work without sudo with enhanced group membership handling
+    log "Verifying Docker commands work without sudo with enhanced group membership handling..."
     DOCKER_NO_SUDO_WORKING=false
-    MAX_NO_SUDO_CHECK_ATTEMPTS=5
     NO_SUDO_CHECK_ATTEMPT=1
-    NO_SUDO_RETRY_DELAY=2
     
     while [ $NO_SUDO_CHECK_ATTEMPT -le $MAX_NO_SUDO_CHECK_ATTEMPTS ]; do
         log "Docker no-sudo verification attempt $NO_SUDO_CHECK_ATTEMPT/$MAX_NO_SUDO_CHECK_ATTEMPTS..."
@@ -1202,27 +1247,78 @@ setup_vm_docker() {
         else
             log "⚠️  Docker commands require sudo in VM (attempt $NO_SUDO_CHECK_ATTEMPT)"
             
-            # If this is the last attempt, provide detailed error information
-            if [ $NO_SUDO_CHECK_ATTEMPT -eq $MAX_NO_SUDO_CHECK_ATTEMPTS ]; then
-                log "ERROR: Docker commands still require sudo after $MAX_NO_SUDO_CHECK_ATTEMPTS attempts"
-                log "DIAGNOSTIC: Checking docker group membership..."
-                multipass exec "$VM_NAME" -- groups ubuntu 2>&1 | tee -a "$LOG_FILE" || true
+            # Enhanced diagnostics during retries (not just on final failure)
+            log "DIAGNOSTIC: Checking group membership status (attempt $NO_SUDO_CHECK_ATTEMPT)..."
+            
+            # Check if user is in docker group
+            local user_groups
+            user_groups=$(multipass exec "$VM_NAME" -- groups ubuntu 2>/dev/null || echo "unable to get groups")
+            log "User groups: $user_groups"
+            
+            # Check if docker group exists
+            local docker_group_exists
+            docker_group_exists=$(multipass exec "$VM_NAME" -- getent group docker 2>/dev/null && echo "yes" || echo "no")
+            log "Docker group exists: $docker_group_exists"
+            
+            # Try to re-activate group membership if user is in docker group but commands don't work
+            if echo "$user_groups" | grep -q docker && [ "$docker_group_exists" = "yes" ]; then
+                log "User is in docker group but commands don't work - trying group re-activation..."
                 
-                log "DIAGNOSTIC: Checking if user is in docker group..."
-                multipass exec "$VM_NAME" -- id ubuntu | grep docker 2>&1 | tee -a "$LOG_FILE" || true
-                
-                log "DIAGNOSTIC: Testing sudo docker ps for comparison..."
-                multipass exec "$VM_NAME" -- sudo docker ps 2>&1 | tee -a "$LOG_FILE" || true
-                
-                log "DIAGNOSTIC: Checking current user session..."
-                multipass exec "$VM_NAME" -- whoami 2>&1 | tee -a "$LOG_FILE" || true
-                multipass exec "$VM_NAME" -- echo $USER 2>&1 | tee -a "$LOG_FILE" || true
+                # Try newgrp again to re-activate group membership
+                if multipass exec "$VM_NAME" -- newgrp docker 2>&1 | tee -a "$LOG_FILE"; then
+                    log "✅ Group re-activation with newgrp succeeded"
+                else
+                    log "⚠️  Group re-activation with newgrp failed"
+                    
+                    # Alternative: Try su to create new session
+                    if multipass exec "$VM_NAME" -- su -l ubuntu -c "whoami" 2>/dev/null | grep -q ubuntu; then
+                        log "✅ Alternative session activation with su succeeded"
+                    else
+                        log "⚠️  Alternative session activation with su failed"
+                    fi
+                fi
+            else
+                log "DIAGNOSTIC: User not in docker group or docker group doesn't exist"
+                log "This indicates a previous group membership setup issue"
             fi
             
-            # Wait before next attempt
+            # If this is the last attempt, provide comprehensive error information
+            if [ $NO_SUDO_CHECK_ATTEMPT -eq $MAX_NO_SUDO_CHECK_ATTEMPTS ]; then
+                log "ERROR: Docker commands still require sudo after $MAX_NO_SUDO_CHECK_ATTEMPTS attempts"
+                log "DIAGNOSTIC: Comprehensive group membership analysis..."
+                
+                # Detailed group membership information
+                log "DETAILED GROUP MEMBERSHIP ANALYSIS:"
+                log "- User groups: $(multipass exec "$VM_NAME" -- groups ubuntu 2>&1 || echo 'Unable to get groups')"
+                log "- User ID and groups: $(multipass exec "$VM_NAME" -- id ubuntu 2>&1 || echo 'Unable to get id')"
+                log "- Docker group exists: $(multipass exec "$VM_NAME" -- getent group docker 2>/dev/null && echo 'YES' || echo 'NO')"
+                log "- Docker group members: $(multipass exec "$VM_NAME" -- getent group docker 2>/dev/null | cut -d: -f4 || echo 'NONE')"
+                
+                # Test different Docker access methods
+                log "DOCKER ACCESS TESTS:"
+                log "- Sudo docker ps test: $(multipass exec "$VM_NAME" -- sudo docker ps 2>&1 | head -n1 || echo 'FAILED')"
+                log "- Docker socket permissions: $(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null | head -n1 || echo 'SOCKET NOT FOUND')"
+                log "- Current user session: $(multipass exec "$VM_NAME" -- whoami 2>&1 || echo 'UNKNOWN')"
+                log "- Current user environment: $(multipass exec "$VM_NAME" -- echo $USER 2>&1 || echo 'UNKNOWN')"
+                
+                # System information for context
+                log "SYSTEM CONTEXT:"
+                log "- VM uptime: $(multipass exec "$VM_NAME" -- uptime 2>/dev/null || echo 'UNKNOWN')"
+                log "- Docker daemon status: $(multipass exec "$VM_NAME" -- sudo systemctl is-active docker 2>/dev/null || echo 'UNKNOWN')"
+                
+                log "RECOVERY RECOMMENDATIONS:"
+                log "1. Manual group activation: multipass shell '$VM_NAME' && newgrp docker"
+                log "2. Complete session restart: multipass shell '$VM_NAME' && exit && multipass shell '$VM_NAME'"
+                log "3. VM reboot: multipass restart '$VM_NAME'"
+                log "4. Manual verification: multipass shell '$VM_NAME' && docker ps"
+            fi
+            
+            # Wait before next attempt with progressive delays
             if [ $NO_SUDO_CHECK_ATTEMPT -lt $MAX_NO_SUDO_CHECK_ATTEMPTS ]; then
-                log "Waiting ${NO_SUDO_RETRY_DELAY}s before next attempt..."
-                sleep $NO_SUDO_RETRY_DELAY
+                # Increase delay for later attempts (group activation can take time)
+                local current_delay=$((NO_SUDO_RETRY_DELAY * NO_SUDO_CHECK_ATTEMPT))
+                log "Waiting ${current_delay}s before next attempt (progressive delay for group activation)..."
+                sleep $current_delay
             fi
         fi
         
