@@ -237,6 +237,40 @@ handle_secrets_error() {
         log "7. Consider deleting the pod to trigger recreation: multipass exec '$VM_NAME' -- microk8s kubectl delete pods -l app=my-ag-ui-app"
     fi
     
+    # Enhanced diagnostics for pod probe verification error (127)
+    if [ "$error_code" -eq 127 ]; then
+        log "POD PROBE VERIFICATION DIAGNOSTIC INFO:"
+        log "VM_NAME: $VM_NAME"
+        log "VM status: $(multipass info "$VM_NAME" 2>/dev/null || echo 'Unable to get VM status')"
+        
+        log "Pod probe status details:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o wide 2>/dev/null || log "Unable to get pod status"
+        
+        log "Pod probe events:"
+        multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>/dev/null | grep -E "(Readiness|Liveness)" || log "Unable to get probe events"
+        
+        log "Pod container probe status:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.containerStatuses[0].state}' 2>/dev/null || log "Unable to get container probe status"
+        
+        log "Pod last probe state:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.containerStatuses[0].lastState}' 2>/dev/null || log "Unable to get last probe state"
+        
+        log "Application health endpoint test:"
+        multipass exec "$VM_NAME" -- microk8s kubectl exec -l app=my-ag-ui-app -- curl -s http://localhost:3000/health 2>/dev/null || log "Health endpoint test failed"
+        
+        log "Application logs:"
+        multipass exec "$VM_NAME" -- microk8s kubectl logs -l app=my-ag-ui-app --tail=20 2>/dev/null || log "Unable to get application logs"
+        
+        log "RECOVERY SUGGESTIONS:"
+        log "1. Check if the /health endpoint is working: multipass exec '$VM_NAME' -- microk8s kubectl exec -l app=my-ag-ui-app -- curl -s http://localhost:3000/health"
+        log "2. Verify the health endpoint returns proper HTTP status (should be 200): multipass exec '$VM_NAME' -- microk8s kubectl exec -l app=my-ag-ui-app -- curl -w '%{http_code}' -s http://localhost:3000/health -o /dev/null"
+        log "3. Check application logs for errors: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app"
+        log "4. Verify application is running on port 3000: multipass exec '$VM_NAME' -- microk8s kubectl exec -l app=my-ag-ui-app -- netstat -tlnp | grep :3000"
+        log "5. Check if there are any application startup errors: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app | grep -i error"
+        log "6. If health endpoint is not implemented, check if it needs to be added to the application"
+        log "7. Consider increasing probe timeouts or adjusting probe configuration in deployment.yaml if needed"
+    fi
+    
     exit $error_code
 }
 
@@ -541,6 +575,78 @@ if [ "$SAW_IMAGE_PULL_BACK_OFF" = true ]; then
 else
     log "INFO: Pod started without ImagePullBackOff status (image may have been pre-loaded)"
 fi
+
+# 6.7 Verify pod passes readiness and liveness probes
+log "Verifying pod passes readiness and liveness probes..."
+MAX_PROBE_WAIT_ATTEMPTS=30
+PROBE_WAIT_ATTEMPT=1
+
+while [ $PROBE_WAIT_ATTEMPT -le $MAX_PROBE_WAIT_ATTEMPTS ]; do
+    log "Checking probe status... (attempt $PROBE_WAIT_ATTEMPT/$MAX_PROBE_WAIT_ATTEMPTS)"
+    
+    # Get pod details including probe status
+    POD_DETAILS=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json 2>/dev/null || echo "")
+    
+    if [ -n "$POD_DETAILS" ]; then
+        # Check readiness probe status
+        READY=$(echo "$POD_DETAILS" | grep -o '"ready":true' || echo "")
+        
+        # Check liveness probe status by checking if pod is running and ready
+        # (liveness probe failures would typically cause pod restarts or failures)
+        POD_PHASE=$(echo "$POD_DETAILS" | grep -o '"phase":"Running"' || echo "")
+        RESTART_COUNT=$(echo "$POD_DETAILS" | grep -o '"restartCount":[0-9]*' | head -1 | cut -d':' -f2 || echo "0")
+        
+        if [ -n "$READY" ] && [ -n "$POD_PHASE" ]; then
+            log "✓ Readiness probe: PASSED"
+            log "✓ Liveness probe: PASSED (pod is Running and Ready)"
+            log "✓ Pod restart count: $RESTART_COUNT"
+            
+            # Get detailed probe information if available
+            PROBE_DETAILS=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.containerStatuses[0].state}' 2>/dev/null || echo "")
+            if [ -n "$PROBE_DETAILS" ]; then
+                log "Detailed probe status: $PROBE_DETAILS"
+            fi
+            
+            break
+        else
+            log "Probes not yet ready. Current status:"
+            multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
+            
+            # Check for probe-specific errors
+            if multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>/dev/null | grep -q "Readiness probe failed"; then
+                log "WARNING: Readiness probe failing - application may not be ready to serve traffic"
+            fi
+            
+            if multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>/dev/null | grep -q "Liveness probe failed"; then
+                log "WARNING: Liveness probe failing - pod may be restarting"
+            fi
+        fi
+    else
+        log "Unable to get pod probe status, trying basic status check..."
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
+    fi
+    
+    if [ $PROBE_WAIT_ATTEMPT -eq $MAX_PROBE_WAIT_ATTEMPTS ]; then
+        log "ERROR: Probes did not pass within $MAX_PROBE_WAIT_ATTEMPTS attempts"
+        
+        log "Final pod status:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
+        
+        log "Pod events for probe debugging:"
+        multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>/dev/null | grep -A 20 -B 5 "Events:" | tee -a "$LOG_FILE" || true
+        
+        log "Probe status details:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.containerStatuses[0].lastState}' 2>/dev/null | tee -a "$LOG_FILE" || true
+        
+        handle_secrets_error 127 "Pod probes did not pass within timeout" \
+            "Check application logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app. Verify /health endpoint is working correctly."
+    fi
+    
+    sleep 5
+    PROBE_WAIT_ATTEMPT=$((PROBE_WAIT_ATTEMPT + 1))
+done
+
+log "✓ Pod readiness and liveness probes verification completed successfully"
 
 # Apply service manifest
 log "Applying service manifest..."

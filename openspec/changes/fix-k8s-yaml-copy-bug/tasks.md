@@ -49,5 +49,5 @@
 - [x] 6.4 Verify image is available in VM's Docker daemon
 - [x] 6.5 Restart deployment to trigger pod recreation with new image
 - [x] 6.6 Verify pod status changes from ImagePullBackOff to Running
-- [ ] 6.7 Verify pod passes readiness and liveness probes
+- [x] 6.7 Verify pod passes readiness and liveness probes
 - [ ] 6.8 Test application accessibility via ingress endpoint
