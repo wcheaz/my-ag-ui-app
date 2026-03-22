@@ -459,7 +459,8 @@ validate_lock_files() {
     log "Validating npm lock file consistency using npm ci --dry-run..."
     
     # Run npm ci --dry-run to validate lock file consistency
-    if ! npm ci --dry-run >/dev/null 2>&1; then
+    log "Running npm ci --dry-run to check for lock file synchronization..."
+    if ! npm ci --dry-run; then
         log "ERROR: package.json and package-lock.json are out of sync"
         log ""
         log "RECOVERY INSTRUCTIONS:"
