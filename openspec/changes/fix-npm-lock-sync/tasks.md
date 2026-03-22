@@ -28,7 +28,7 @@
 ## 4. Testing and Verification
 
 - [x] 4.1 Run full deployment with in-sync lock files (verify normal path)
-- [ ] 4.2 Run full deployment with out-of-sync lock files (verify fallback path)
+- [x] 4.2 Run full deployment with out-of-sync lock files (verify fallback path)
 - [ ] 4.3 Verify error messages are clear and actionable
 - [ ] 4.4 Test --skip-deps-check flag functionality
 - [ ] 4.5 Verify Docker build logs show fallback activation when appropriate
