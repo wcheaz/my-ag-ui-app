@@ -8,13 +8,18 @@
 
 The deployment process fails when attempting to load Docker images into the multipass VM because Docker is not installed or the Docker daemon is not running in the VM. The error "bash: line 1: docker: command not found" indicates the Docker CLI is unavailable, and "Docker daemon in VM: not running" confirms the daemon is not operational. This prevents the image load step from completing, causing the entire deployment to fail with error code 124.
 
+Additionally, even after Docker is set up in the VM, the image loading process may fail silently, resulting in the image not being available in the VM's Docker images. This manifests as "Docker image verification in VM failed" with error code 124, suggesting the image load command is not completing successfully despite Docker being operational.
+
 ## What Changes
 
 - Fix existing syntax errors in deploy.sh that prevent script execution (line 408: `start_total_deployment_timing: command not found`, line 2594: syntax error near `}`)
 - Add Docker installation and daemon startup verification in the multipass VM before attempting image load operations
 - Implement automatic Docker installation in the VM if not present
 - Add Docker daemon health checks in the VM before proceeding with image loading
-- Enhance error messages to provide specific recovery steps when Docker is unavailable in the VM
+- Debug and fix silent image loading failures - ensure image is successfully transferred to VM
+- Add comprehensive logging and error checking for image load operations
+- Implement image load verification with detailed error reporting and recovery steps
+- Enhance error messages to provide specific recovery steps when Docker is unavailable in the VM or image loading fails
 - Update the deployment script to wait for Docker daemon to be ready before loading images
 
 ## Capabilities
@@ -346,6 +351,8 @@ The system SHALL integrate Docker setup into the existing deployment flow at the
 
 The current deployment process builds Docker images on the host system and attempts to load them into the multipass VM's Docker daemon using `multipass exec <vm-name> -- docker load`. However, this fails because Docker is not installed or the Docker daemon is not running in the VM. The error manifests as "bash: line 1: docker: command not found" followed by "Docker daemon in VM: not running".
 
+Additionally, even after Docker is set up in the VM, the image loading process may fail silently. The error "Docker image verification in VM failed" with error code 124 indicates that the image load command is not completing successfully despite Docker being operational. The image is not found in the VM's Docker images list, suggesting the load operation is failing without proper error reporting.
+
 Additionally, the deployment script ([`deploy.sh`](deploy.sh)) has existing syntax errors that prevent it from executing at all:
 - Line 408: `start_total_deployment_timing: command not found`
 - Line 2594: syntax error near unexpected token `}`
@@ -411,6 +418,23 @@ The deployment script currently assumes Docker is pre-installed and running in t
 
 **Implementation:** Add a new function `setup_vm_docker()` in [`deploy.sh`](deploy.sh) that is called after VM creation and before image loading.
 
+### Decision 7: Implement robust image loading with verification
+
+**Rationale:** The current image loading process using `docker save | multipass exec -- docker load` may fail silently. We need to add comprehensive logging, error checking, and verification to ensure the image is successfully transferred to the VM.
+
+**Implementation:**
+- Add detailed logging to capture stdout/stderr from both `docker save` and `docker load` commands
+- Verify image exists in VM immediately after load using `docker images`
+- Test alternative image transfer methods (e.g., `multipass transfer` + `docker load`)
+- Add retry logic for image load if first attempt fails
+- Implement explicit error checking after each step of the image load process
+- Provide detailed error messages with specific recovery steps for different failure modes
+
+**Alternatives Considered:**
+- Current pipe method: Simple but lacks error visibility
+- File transfer method: More complex but provides better error handling and verification
+- Docker registry: Would require setting up a registry, adding complexity
+
 ## Risks / Trade-offs
 
 ### Risk 1: Network connectivity required for Docker installation
@@ -443,6 +467,11 @@ The deployment script currently assumes Docker is pre-installed and running in t
 
 **Mitigation:** Check daemon status with `docker info`, provide detailed error logs, and suggest manual troubleshooting steps.
 
+### Risk 7: Image loading failures
+**Risk:** The image loading process may fail silently or intermittently, causing the image to not be available in the VM despite Docker being operational.
+
+**Mitigation:** Add comprehensive logging and error checking for each step of the image load process, verify image exists immediately after load, implement retry logic, and test alternative transfer methods if needed.
+
 ## Migration Plan
 
 ### Deployment Steps
@@ -469,7 +498,15 @@ The deployment script currently assumes Docker is pre-installed and running in t
    - Provide clear error messages on failure
    - Include recovery suggestions
 
-4. Test the deployment:
+4. Debug and fix image loading:
+   - Investigate why image load fails silently
+   - Add detailed logging to image load command
+   - Verify image exists in VM immediately after load
+   - Test alternative image transfer methods if needed
+   - Implement retry logic for image load
+   - Add comprehensive error reporting for image load failures
+
+5. Test the deployment:
    - Test with a fresh VM (no Docker installed)
    - Test with an existing VM (Docker already installed)
    - Test with network issues
@@ -492,6 +529,9 @@ After deployment, verify:
 - Docker daemon is running: `multipass exec <vm-name> -- docker info`
 - User can run Docker commands without sudo: `multipass exec <vm-name> -- docker ps`
 - Image loading works: Run the full deployment and verify the image is loaded successfully
+- Image is present in VM: `multipass exec <vm-name> -- docker images | grep my-ag-ui-app`
+- Image load logs show successful transfer with no errors
+- Deployment completes successfully with no error code 124
 
 ## Open Questions
 
@@ -505,14 +545,17 @@ After deployment, verify:
 
 5. **Alternative container runtimes:** Should we consider supporting containerd or other runtimes? (Recommendation: No, Docker is the standard and Kubernetes supports it well)
 
+6. **Image loading method:** Should we use the current pipe method (`docker save | multipass exec -- docker load`) or switch to a file transfer method (`multipass transfer` + `docker load`)? (Recommendation: Test both methods, use the one with better error handling and reliability)
+
 ## Current Task Context
 
 ## Current Task
-- 0.4 Test that deploy.sh can be executed without immediate syntax errors
+- [x] 8.1 Investigate why Docker image load fails silently in VM
 ## Completed Tasks for Git Commit
 - [x] 0.1 Investigate and fix `start_total_deployment_timing: command not found` error on line 408 of deploy.sh
 - [x] 0.2 Investigate and fix syntax error near unexpected token `}` on line 2594 of deploy.sh
 - [x] 0.3 Verify deploy.sh has no syntax errors by running `bash -n deploy.sh`
+- [x] 0.4 Test that deploy.sh can be executed without immediate syntax errors
 - [x] 1.1 Create `setup_vm_docker()` function in deploy.sh with function signature and basic structure
 - [x] 1.2 Implement Docker CLI availability check using `multipass exec <vm-name> -- docker --version`
 - [x] 1.3 Implement Docker daemon status check using `multipass exec <vm-name> -- docker info`

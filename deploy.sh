@@ -3050,24 +3050,102 @@ fi
 log "VM Docker setup completed successfully"
 end_phase_timing "VM_DOCKER_SETUP"
 
-# 6.3 Load Docker image into multipass VM using docker save | multipass exec -- docker load
+# 6.3 Load Docker image into multipass VM with detailed logging and error handling
 start_phase_timing "DOCKER_IMAGE_LOAD"
 log "Starting Docker image load into VM..."
 log "Loading Docker image 'my-ag-ui-app:latest' into multipass VM..."
 
-# Load Docker image into VM using docker save | multipass exec -- docker load
-if ! docker save my-ag-ui-app:latest | multipass exec "$VM_NAME" -- docker load 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 123 "Failed to load Docker image into VM" \
-        "Check if Docker is running in the VM: multipass exec '$VM_NAME' -- docker info. Ensure VM has sufficient disk space for the image."
+# First, verify the image exists on the host
+log "Verifying Docker image exists on host..."
+if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "my-ag-ui-app:latest"; then
+    handle_secrets_error 122 "Docker image not found on host" \
+        "Docker image 'my-ag-ui-app:latest' does not exist on host. Build the image first using 'docker build -t my-ag-ui-app:latest .'"
 fi
-log "Docker image 'my-ag-ui-app:latest' loaded successfully into VM"
+log "Docker image 'my-ag-ui-app:latest' found on host"
+
+# Create temporary directory for image transfer
+TEMP_DIR="/tmp/docker-image-load-$$"
+log "Creating temporary directory for image transfer: $TEMP_DIR"
+mkdir -p "$TEMP_DIR"
+if [ $? -ne 0 ]; then
+    handle_secrets_error 125 "Failed to create temporary directory" \
+        "Could not create temporary directory '$TEMP_DIR'. Check permissions and available disk space."
+fi
+
+# Save Docker image to file with detailed logging
+IMAGE_FILE="$TEMP_DIR/my-ag-ui-app-latest.tar"
+log "Saving Docker image to file: $IMAGE_FILE"
+if ! docker save my-ag-ui-app:latest > "$IMAGE_FILE" 2>&1; then
+    rm -rf "$TEMP_DIR"
+    handle_secrets_error 126 "Failed to save Docker image to file" \
+        "Docker save command failed. Check Docker daemon on host and available disk space."
+fi
+
+# Verify saved file exists and has content
+if [ ! -f "$IMAGE_FILE" ] || [ ! -s "$IMAGE_FILE" ]; then
+    rm -rf "$TEMP_DIR"
+    handle_secrets_error 127 "Saved image file is empty or missing" \
+        "Docker save completed but file '$IMAGE_FILE' is empty or missing. Check Docker save command output."
+fi
+
+IMAGE_SIZE=$(du -h "$IMAGE_FILE" | cut -f1)
+log "Docker image saved successfully. File size: $IMAGE_SIZE"
+
+# Transfer image file to VM
+log "Transferring image file to VM..."
+if ! multipass transfer "$IMAGE_FILE" "$VM_NAME:/home/ubuntu/my-ag-ui-app-latest.tar" 2>&1 | tee -a "$LOG_FILE"; then
+    rm -rf "$TEMP_DIR"
+    handle_secrets_error 128 "Failed to transfer image file to VM" \
+        "Multipass transfer failed. Check VM connectivity and available disk space in VM: multipass info '$VM_NAME'"
+fi
+log "Image file transferred successfully to VM"
+
+# Load image in VM with detailed logging and error handling
+log "Loading Docker image in VM..."
+VM_LOAD_OUTPUT=$(multipass exec "$VM_NAME" -- sh -c "docker load -i /home/ubuntu/my-ag-ui-app-latest.tar 2>&1" 2>&1)
+VM_LOAD_EXIT_CODE=$?
+
+# Log the output from docker load command
+log "Docker load command output in VM:"
+echo "$VM_LOAD_OUTPUT" | tee -a "$LOG_FILE"
+
+# Check if docker load succeeded
+if [ $VM_LOAD_EXIT_CODE -ne 0 ]; then
+    rm -rf "$TEMP_DIR"
+    handle_secrets_error 129 "Docker load command failed in VM" \
+        "Docker load in VM failed with exit code $VM_LOAD_EXIT_CODE. Check Docker daemon in VM: multipass exec '$VM_NAME' -- docker info"
+fi
+
+log "Docker image loaded successfully in VM"
+
+# Clean up temporary file in VM
+log "Cleaning up temporary file in VM..."
+multipass exec "$VM_NAME" -- rm -f /home/ubuntu/my-ag-ui-app-latest.tar 2>&1 | tee -a "$LOG_FILE"
+
+# Clean up local temporary directory
+rm -rf "$TEMP_DIR"
+log "Temporary files cleaned up"
+
 end_phase_timing "DOCKER_IMAGE_LOAD"
 
-# 6.4 Verify image is available in VM's Docker daemon
+# 6.4 Verify image is available in VM's Docker daemon with detailed logging
 log "Verifying Docker image is available in VM's Docker daemon..."
-if ! multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "my-ag-ui-app:latest"; then
+VM_IMAGES_OUTPUT=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>&1)
+VM_IMAGES_EXIT_CODE=$?
+
+# Log all images in VM for debugging
+log "All Docker images in VM:"
+echo "$VM_IMAGES_OUTPUT" | tee -a "$LOG_FILE"
+
+if [ $VM_IMAGES_EXIT_CODE -ne 0 ]; then
+    handle_secrets_error 130 "Failed to list Docker images in VM" \
+        "Docker images command failed in VM with exit code $VM_IMAGES_EXIT_CODE. Check Docker daemon in VM."
+fi
+
+# Check if our specific image is in the list
+if ! echo "$VM_IMAGES_OUTPUT" | grep -q "my-ag-ui-app.*latest"; then
     handle_secrets_error 124 "Docker image verification in VM failed" \
-        "Docker image 'my-ag-ui-app:latest' was not found in VM's Docker images. Image load may have failed silently."
+        "Docker image 'my-ag-ui-app:latest' was not found in VM's Docker images. Image load may have failed silently. Check the docker load output above for errors."
 fi
 log "Docker image 'my-ag-ui-app:latest' verified successfully in VM"
 
