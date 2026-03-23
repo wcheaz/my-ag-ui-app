@@ -1627,22 +1627,54 @@ enable_microk8s_registry() {
         
         # Provide specific error handling based on common failure scenarios
         if echo "$registry_enable_output" | grep -q "microk8s is not running"; then
-            log "ERROR TYPE: MICROK8S NOT RUNNING"
-            log "RECOVERY: Start microk8s first: multipass exec '$VM_NAME' -- microk8s start"
+            log "❌ ERROR TYPE: MICROK8S NOT RUNNING"
+            log "   CAUSE: microk8s service is not started in the VM"
+            log "   IMPACT: Cannot enable registry without microk8s running"
+            log "   RECOVERY: Start microk8s first: multipass exec '$VM_NAME' -- microk8s start"
+            log "   VERIFICATION: After starting microk8s, run: multipass exec '$VM_NAME' -- microk8s status"
         elif echo "$registry_enable_output" | grep -q "permission denied"; then
-            log "ERROR TYPE: PERMISSION DENIED"
-            log "RECOVERY: Run with sudo: multipass exec '$VM_NAME' -- sudo microk8s enable registry"
+            log "❌ ERROR TYPE: PERMISSION DENIED"
+            log "   CAUSE: Insufficient privileges to enable microk8s registry"
+            log "   IMPACT: Registry enablement requires administrative permissions"
+            log "   RECOVERY: Run with sudo: multipass exec '$VM_NAME' -- sudo microk8s enable registry"
+            log "   ALTERNATIVE: Ensure user has proper microk8s group permissions"
         elif echo "$registry_enable_output" | grep -q "already enabled"; then
             log "ℹ️  INFO: Registry is already enabled (this is normal)"
             # This is actually success, not an error
-            log "✅ microk8s registry is already enabled"
+            log "✅ microk8s registry is already enabled and accessible"
             return 0
         elif echo "$registry_enable_output" | grep -q "timeout"; then
-            log "ERROR TYPE: TIMEOUT"
-            log "RECOVERY: Check system resources and try again"
+            log "❌ ERROR TYPE: REGISTRY ENABLEMENT TIMEOUT"
+            log "   CAUSE: Registry enablement took too long to complete"
+            log "   IMPACT: Registry may not be properly configured or system is overloaded"
+            log "   RECOVERY: Check system resources and try again"
+            log "   VERIFICATION: Check microk8s status: multipass exec '$VM_NAME' -- microk8s status"
+        elif echo "$registry_enable_output" | grep -q "port.*32000\|address.*in use\|bind.*failed"; then
+            log "❌ ERROR TYPE: PORT CONFLICT"
+            log "   CAUSE: Port 32000 is already in use by another service"
+            log "   IMPACT: Registry cannot bind to required port (localhost:32000)"
+            log "   RECOVERY: Check what's using port 32000: multipass exec '$VM_NAME' -- sudo netstat -tlnp | grep 32000"
+            log "   ALTERNATIVE: Stop conflicting service or restart microk8s to free the port"
+            log "   VERIFICATION: After freeing port, retry registry enablement"
+        elif echo "$registry_enable_output" | grep -q "not.*available\|unavailable\|cannot.*connect"; then
+            log "❌ ERROR TYPE: MICROK8S UNAVAILABLE"
+            log "   CAUSE: microk8s command is not available or responsive"
+            log "   IMPACT: Cannot perform registry operations without microk8s"
+            log "   RECOVERY: Install microk8s: sudo snap install microk8s --classic"
+            log "   VERIFICATION: Test microk8s: multipass exec '$VM_NAME' -- microk8s status"
+        elif echo "$registry_enable_output" | grep -q "network\|connection\|refused"; then
+            log "❌ ERROR TYPE: NETWORK CONNECTIVITY ISSUE"
+            log "   CAUSE: Network connectivity problems affecting registry enablement"
+            log "   IMPACT: Registry service cannot be started due to network issues"
+            log "   RECOVERY: Check VM network configuration and retry"
+            log "   VERIFICATION: Test network connectivity: multipass exec '$VM_NAME' -- ping -c 3 localhost"
         else
-            log "ERROR TYPE: UNKNOWN REGISTRY ENABLEMENT FAILURE"
-            log "RECOVERY: Check microk8s status: multipass exec '$VM_NAME' -- microk8s status"
+            log "❌ ERROR TYPE: UNKNOWN REGISTRY ENABLEMENT FAILURE"
+            log "   CAUSE: Registry enablement failed for unknown reason"
+            log "   IMPACT: Unable to enable microk8s registry for local image distribution"
+            log "   RECOVERY: Check microk8s status: multipass exec '$VM_NAME' -- microk8s status"
+            log "   VERIFICATION: Review microk8s logs: multipass exec '$VM_NAME' -- journalctl -u snap.microk8s.daemon -l"
+            log "   DEBUG OUTPUT: Full command output logged above"
         fi
         
         return 1
