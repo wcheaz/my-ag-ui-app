@@ -3415,6 +3415,20 @@ handle_secrets_error() {
         esac
     fi
     
+    # Enhanced recovery suggestions for Docker image load errors (124)
+    if [ "$error_code" -eq 124 ]; then
+        log "ENHANCED RECOVERY SUGGESTIONS FOR IMAGE LOAD FAILURES:"
+        log "1. Verify Docker daemon is running in VM: multipass exec '$VM_NAME' -- docker info"
+        log "2. Start Docker daemon if needed: multipass exec '$VM_NAME' -- sudo systemctl start docker"
+        log "3. Check Docker disk space: multipass exec '$VM_NAME' -- docker system df"
+        log "4. Prune unused Docker images: multipass exec '$VM_NAME' -- docker image prune -f"
+        log "5. Verify image was built correctly: docker images my-ag-ui-app:latest"
+        log "6. Manual image load test: multipass transfer my-ag-ui-app.tar '$VM_NAME':/tmp/ && multipass exec '$VM_NAME' -- docker load -i /tmp/my-ag-ui-app.tar"
+        log "7. If transfer fails, rebuild image: docker build -t my-ag-ui-app:latest . && docker save -o my-ag-ui-app.tar my-ag-ui-app:latest"
+        log "8. Check VM disk space: multipass exec '$VM_NAME' -- df -h"
+        log "9. Verify multipass transfer works: multipass transfer /etc/hosts '$VM_NAME':/tmp/test && echo 'Transfer OK' || echo 'Transfer failed'"
+    fi
+    
     # Log essential diagnostic information
     log "ESSENTIAL DIAGNOSTIC INFO:"
     log "Current directory: $(pwd)"
@@ -3455,8 +3469,12 @@ handle_secrets_error() {
             121)
                 log "Docker version: $(docker --version 2>/dev/null || echo 'Docker not available')"
                 ;;
-            122|123|124)
+            122|123)
                 log "Docker daemon in VM: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null > /dev/null && echo 'running' || echo 'not running')"
+                ;;
+            124)
+                log "Docker daemon in VM: $(multipass exec "$VM_NAME" -- docker info 2>/dev/null > /dev/null && echo 'running' || echo 'not running')"
+                log "Docker images in VM: $(multipass exec "$VM_NAME" -- docker images 2>/dev/null | head -5 || echo 'Unable to list images')"
                 ;;
         esac
     fi
@@ -5025,8 +5043,8 @@ if diagnose_docker_image_load_issues; then
     log "✅ Docker image load investigation completed successfully"
 else
     log "❌ Docker image load investigation failed - see findings above"
-    handle_secrets_error 124 "Docker image verification in VM failed" \
-        "Comprehensive investigation identified issues with Docker image loading. Check the investigation findings above for specific details."
+    handle_secrets_error 124 "Docker image load and verification failed in VM" \
+        "Comprehensive investigation identified critical issues with Docker image loading in the VM. This could be due to Docker daemon problems, disk space issues, transfer failures, or image corruption. See enhanced recovery suggestions below for step-by-step troubleshooting."
 fi
 
 end_phase_timing "DOCKER_IMAGE_LOAD"
