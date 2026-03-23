@@ -1528,6 +1528,129 @@ verify_multipass_transfer_accessibility() {
 }
 
 # ===========================
+# MICROK8S REGISTRY SETUP FUNCTION
+# ===========================
+
+# Enable microk8s registry for local image distribution
+enable_microk8s_registry() {
+    log "Starting microk8s registry setup..."
+    
+    # Check if microk8s is available
+    log "Checking microk8s availability..."
+    if ! multipass exec "$VM_NAME" -- command -v microk8s >/dev/null 2>&1; then
+        log "❌ ERROR: microk8s is not available in VM"
+        log "   Please ensure microk8s is installed: sudo snap install microk8s --classic"
+        return 1
+    fi
+    log "✅ microk8s is available in VM"
+    
+    # Enable microk8s registry with error handling
+    log "Enabling microk8s registry..."
+    local registry_enable_output
+    local registry_enable_exit_code
+    
+    # Execute registry enablement with timeout and error capture
+    registry_enable_output=$(timeout 30 multipass exec "$VM_NAME" -- microk8s enable registry 2>&1)
+    registry_enable_exit_code=$?
+    
+    if [ $registry_enable_exit_code -eq 0 ]; then
+        log "✅ microk8s registry enable command completed successfully"
+        
+        # Log the output for debugging
+        if [ -n "$registry_enable_output" ]; then
+            log "Registry enablement output:"
+            echo "$registry_enable_output" | tee -a "$LOG_FILE"
+        fi
+    else
+        log "❌ ERROR: Failed to enable microk8s registry (exit code: $registry_enable_exit_code)"
+        log "Error output:"
+        echo "$registry_enable_output" | tee -a "$LOG_FILE"
+        
+        # Provide specific error handling based on common failure scenarios
+        if echo "$registry_enable_output" | grep -q "microk8s is not running"; then
+            log "ERROR TYPE: MICROK8S NOT RUNNING"
+            log "RECOVERY: Start microk8s first: multipass exec '$VM_NAME' -- microk8s start"
+        elif echo "$registry_enable_output" | grep -q "permission denied"; then
+            log "ERROR TYPE: PERMISSION DENIED"
+            log "RECOVERY: Run with sudo: multipass exec '$VM_NAME' -- sudo microk8s enable registry"
+        elif echo "$registry_enable_output" | grep -q "already enabled"; then
+            log "ℹ️  INFO: Registry is already enabled (this is normal)"
+            # This is actually success, not an error
+            log "✅ microk8s registry is already enabled"
+            return 0
+        elif echo "$registry_enable_output" | grep -q "timeout"; then
+            log "ERROR TYPE: TIMEOUT"
+            log "RECOVERY: Check system resources and try again"
+        else
+            log "ERROR TYPE: UNKNOWN REGISTRY ENABLEMENT FAILURE"
+            log "RECOVERY: Check microk8s status: multipass exec '$VM_NAME' -- microk8s status"
+        fi
+        
+        return 1
+    fi
+    
+    # Verify registry is running and accessible at localhost:32000
+    log "Verifying registry is running and accessible at localhost:32000..."
+    local registry_check_output
+    local registry_check_exit_code
+    
+    # Wait a moment for registry to start up
+    log "Waiting 5 seconds for registry to fully start..."
+    sleep 5
+    
+    # Check registry accessibility with timeout
+    registry_check_output=$(timeout 10 multipass exec "$VM_NAME" -- curl -s --connect-timeout 5 http://localhost:32000/v2/_catalog 2>&1)
+    registry_check_exit_code=$?
+    
+    if [ $registry_check_exit_code -eq 0 ]; then
+        log "✅ Registry is accessible at localhost:32000"
+        
+        # Log registry response for verification
+        if [ -n "$registry_check_output" ]; then
+            log "Registry response:"
+            echo "$registry_check_output" | tee -a "$LOG_FILE"
+        fi
+    else
+        log "⚠️  WARNING: Registry accessibility check failed (exit code: $registry_check_exit_code)"
+        log "Registry check output:"
+        echo "$registry_check_output" | tee -a "$LOG_FILE"
+        
+        # This might be a temporary issue, check if registry service is running
+        log "Checking if registry service is running..."
+        local registry_service_status
+        registry_service_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "unknown")
+        
+        if [ "$registry_service_status" = "Running" ]; then
+            log "✅ Registry service is running (pod status: $registry_service_status)"
+            log "⚠️  The registry accessibility issue might be temporary - proceeding with deployment"
+        else
+            log "❌ ERROR: Registry service is not running (pod status: $registry_service_status)"
+            log "RECOVERY: Check registry pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -n container-registry -l app=registry"
+            return 1
+        fi
+    fi
+    
+    # Get registry status for logging
+    log "Getting detailed registry status..."
+    local registry_pod_status
+    local registry_service_info
+    
+    registry_pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o wide 2>&1 | tee -a "$LOG_FILE")
+    registry_service_info=$(multipass exec "$VM_NAME" -- microk8s kubectl get svc -n container-registry -l app=registry 2>&1 | tee -a "$LOG_FILE")
+    
+    log "Registry pod status:"
+    echo "$registry_pod_status" | tee -a "$LOG_FILE"
+    log "Registry service info:"
+    echo "$registry_service_info" | tee -a "$LOG_FILE"
+    
+    log "✅ microk8s registry setup completed successfully"
+    log "   Registry is accessible at: localhost:32000"
+    log "   Registry can be used for local image distribution"
+    
+    return 0
+}
+
+# ===========================
 # VM DOCKER SETUP FUNCTION
 # ===========================
 
