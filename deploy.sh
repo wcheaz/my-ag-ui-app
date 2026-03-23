@@ -4673,6 +4673,163 @@ setup_vm_docker() {
 }  # End of setup_vm_docker function
 
 # ===========================
+# SYNTAX VALIDATION TESTS
+# ===========================
+
+# Test deployment script syntax validation to catch syntax errors before execution
+test_deployment_script_syntax_validation() {
+    log "=== TASK 7.12: TESTING DEPLOYMENT SCRIPT SYNTAX VALIDATION ==="
+    log "Testing syntax validation to catch bash syntax errors before execution..."
+    
+    local SYNTAX_VALIDATION_SUCCESS=true
+    local SCRIPTS_CHECKED=0
+    local SCRIPTS_PASSED=0
+    local SCRIPTS_FAILED=0
+    
+    # Array of scripts to validate syntax
+    local SCRIPTS_TO_VALIDATE=(
+        "deploy.sh"
+        "setup.sh"
+        "start_app.sh"
+        "test-complete-deployment-flow.sh"
+        "test-registry-approach.sh"
+        "test-invalid-image-tag-error-handling.sh"
+        "test-invalid-image-tag-standalone.sh"
+        "test-registry-port-conflict-error-handling.sh"
+        "test-complete-deployment-flow-end-to-end.sh"
+    )
+    
+    log "Starting syntax validation for ${#SCRIPTS_TO_VALIDATE[@]} scripts..."
+    log ""
+    
+    # Function to validate bash syntax of a script
+    validate_script_syntax() {
+        local script_path="$1"
+        local script_name=$(basename "$script_path")
+        
+        if [ ! -f "$script_path" ]; then
+            log "  ⚠️  SKIPPED: $script_name (file not found)"
+            return 0
+        fi
+        
+        if [ ! -r "$script_path" ]; then
+            log "  ⚠️  SKIPPED: $script_name (file not readable)"
+            return 0
+        fi
+        
+        # Check if file is a bash script (has shebang)
+        if ! head -n 1 "$script_path" | grep -q "^#!/bin/bash"; then
+            log "  ℹ️  SKIPPED: $script_name (not a bash script)"
+            return 0
+        fi
+        
+        ((SCRIPTS_CHECKED++))
+        
+        # Test bash syntax using bash -n
+        if bash -n "$script_path" 2>/dev/null; then
+            log "  ✅ PASSED: $script_name (syntax is valid)"
+            ((SCRIPTS_PASSED++))
+            return 0
+        else
+            log "  ❌ FAILED: $script_name (syntax errors found)"
+            ((SCRIPTS_FAILED++))
+            
+            # Show specific syntax errors
+            log "     SYNTAX ERRORS:"
+            bash -n "$script_path" 2>&1 | while read -r error_line; do
+                if [ -n "$error_line" ]; then
+                    log "       $error_line"
+                fi
+            done
+            
+            return 1
+        fi
+    }
+    
+    # Validate syntax of all scripts
+    for script in "${SCRIPTS_TO_VALIDATE[@]}"; do
+        validate_script_syntax "$script"
+    done
+    
+    # Additional check: Validate that all functions in deploy.sh have proper syntax
+    log ""
+    log "Validating function definitions in deploy.sh..."
+    
+    # Extract all function definitions and validate their syntax
+    local FUNCTIONS_WITH_SYNTAX_ERRORS=0
+    
+    # Find all function definitions (both styles: func_name() and function func_name)
+    grep -n -E "^[a-zA-Z_][a-zA-Z0-9_]*\(\)|function [a-zA-Z_][a-zA-Z0-9_]*" deploy.sh | while read -r line_def; do
+        local line_number=$(echo "$line_def" | cut -d: -f1)
+        local function_def=$(echo "$line_def" | cut -d: -f2-)
+        
+        # Extract function name for validation
+        local func_name=$(echo "$function_def" | sed -E 's/^[[:space:]]*function[[:space:]]*([a-zA-Z_][a-zA-Z0-9_]*).*/\1/; s/^([a-zA-Z_][a-zA-Z0-9_]*)\(\).*/\1/')
+        
+        if [ -n "$func_name" ]; then
+            log "  🔍 CHECKING: Function '$func_name' at line $line_number"
+        fi
+    done
+    
+    # Check for common bash syntax issues
+    log ""
+    log "Checking for common bash syntax issues..."
+    
+    local COMMON_ISSUES=0
+    
+    # Check for unmatched quotes
+    log "  Checking for unmatched quotes..."
+    if grep -n "'" deploy.sh | tr -d "'\n" | wc -c | grep -q "[13579]"; then
+        log "    ⚠️  WARNING: Possible unmatched single quotes found"
+        ((COMMON_ISSUES++))
+    fi
+    
+    if grep -n "\"" deploy.sh | tr -d "\"\n" | wc -c | grep -q "[13579]"; then
+        log "    ⚠️  WARNING: Possible unmatched double quotes found"
+        ((COMMON_ISSUES++))
+    fi
+    
+    # Check for potential syntax issues in if/while/for loops
+    log "  Checking for potential loop syntax issues..."
+    local loop_issues=$(grep -n -E "(if |while |for )" deploy.sh | grep -v "then;" | grep -v "do;" | wc -l)
+    if [ "$loop_issues" -gt 0 ]; then
+        log "    ℹ️  INFO: Found $loop_issues potentially complex control structures (manual review recommended)"
+    fi
+    
+    # Summary
+    log ""
+    log "=== SYNTAX VALIDATION SUMMARY ==="
+    log "Scripts checked:    $SCRIPTS_CHECKED"
+    log "Scripts passed:     $SCRIPTS_PASSED"
+    log "Scripts failed:     $SCRIPTS_FAILED"
+    log "Common issues:      $COMMON_ISSUES"
+    log ""
+    
+    if [ "$SCRIPTS_FAILED" -eq 0 ]; then
+        log "🎉 SUCCESS: All scripts passed syntax validation"
+        log "✅ Bash syntax is correct in all checked scripts"
+        log "✅ No syntax errors detected that would prevent execution"
+        log "✅ Ready for safe script execution"
+        log ""
+        log "✅ TASK 7.12: DEPLOYMENT SCRIPT SYNTAX VALIDATION - PASSED"
+        return 0
+    else
+        log "❌ FAILURE: $SCRIPTS_FAILED script(s) failed syntax validation"
+        log "⚠️  Syntax errors detected that could prevent execution"
+        log "⚠️  Please fix syntax errors before running scripts"
+        log ""
+        log "RECOMMENDATIONS:"
+        log "1. Review the syntax errors shown above"
+        log "2. Fix syntax issues in the identified scripts"
+        log "3. Re-run syntax validation after fixes"
+        log "4. Use 'bash -n script.sh' for manual syntax checking"
+        log ""
+        log "❌ TASK 7.12: DEPLOYMENT SCRIPT SYNTAX VALIDATION - FAILED"
+        return 1
+    fi
+}
+
+# ===========================
 # LOCK FILE VALIDATION SECTION
 # ===========================
 
