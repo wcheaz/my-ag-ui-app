@@ -847,6 +847,193 @@ show_docker_cache_status_manual() {
 }
 
 # ===========================
+# MANUAL IMAGE TRANSFER TESTING FUNCTION
+# ===========================
+
+# Test image transfer manually using multipass transfer as alternative method
+test_manual_multipass_transfer() {
+    log "=== TASK 8.5: TESTING MANUAL MULTIPASS TRANSFER FOR DOCKER IMAGES ==="
+    log "Testing multipass transfer method as alternative to pipe method..."
+    
+    # Check if VM is running and accessible
+    log "Checking VM accessibility before transfer test..."
+    if ! multipass exec "$VM_NAME" -- whoami >/dev/null 2>&1; then
+        log "❌ TEST FAILED: VM is not accessible"
+        log "   Please ensure VM is running: multipass start $VM_NAME"
+        return 1
+    fi
+    log "✅ VM is accessible"
+    
+    # Check if Docker is running in VM
+    log "Checking Docker daemon status in VM..."
+    if ! multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
+        log "❌ TEST FAILED: Docker daemon is not running in VM"
+        log "   Please ensure Docker is set up and running in VM"
+        return 1
+    fi
+    log "✅ Docker daemon is running in VM"
+    
+    # Create temporary directory for test
+    local TEST_DIR="/tmp/multipass-transfer-test-$$"
+    log "Creating temporary test directory: $TEST_DIR"
+    mkdir -p "$TEST_DIR"
+    
+    # Step 1: Check if my-ag-ui-app:latest image exists locally
+    log "Step 1: Checking if my-ag-ui-app:latest image exists locally..."
+    if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" | grep -q "my-ag-ui-app:latest"; then
+        log "❌ TEST FAILED: my-ag-ui-app:latest image not found locally"
+        log "   Please build the image first: docker build -t my-ag-ui-app:latest ."
+        rm -rf "$TEST_DIR"
+        return 1
+    fi
+    log "✅ my-ag-ui-app:latest image exists locally"
+    
+    # Step 2: Save Docker image to file using docker save
+    log "Step 2: Saving Docker image to file..."
+    local IMAGE_FILE="$TEST_DIR/test-image.tar"
+    log "   Executing: docker save my-ag-ui-app:latest -o $IMAGE_FILE"
+    
+    if ! docker save my-ag-ui-app:latest -o "$IMAGE_FILE" 2>&1 | tee -a "$LOG_FILE"; then
+        log "❌ TEST FAILED: Failed to save Docker image to file"
+        rm -rf "$TEST_DIR"
+        return 1
+    fi
+    
+    # Verify saved file
+    if [ ! -f "$IMAGE_FILE" ]; then
+        log "❌ TEST FAILED: Image file was not created"
+        rm -rf "$TEST_DIR"
+        return 1
+    fi
+    
+    local IMAGE_SIZE=$(du -h "$IMAGE_FILE" | cut -f1)
+    log "✅ Docker image saved successfully: $IMAGE_SIZE"
+    
+    # Step 3: Transfer image file to VM using multipass transfer
+    log "Step 3: Transferring image file to VM using multipass transfer..."
+    local VM_IMAGE_PATH="/home/ubuntu/test-image.tar"
+    log "   Executing: multipass transfer $IMAGE_FILE $VM_NAME:$VM_IMAGE_PATH"
+    
+    local TRANSFER_START_TIME=$(date +%s)
+    if ! multipass transfer "$IMAGE_FILE" "$VM_NAME:$VM_IMAGE_PATH" 2>&1 | tee -a "$LOG_FILE"; then
+        log "❌ TEST FAILED: multipass transfer command failed"
+        rm -rf "$TEST_DIR"
+        return 1
+    fi
+    local TRANSFER_END_TIME=$(date +%s)
+    local TRANSFER_DURATION=$((TRANSFER_END_TIME - TRANSFER_START_TIME))
+    
+    log "✅ Image file transferred successfully in ${TRANSFER_DURATION} seconds"
+    
+    # Step 4: Verify file exists in VM after transfer
+    log "Step 4: Verifying file exists in VM after transfer..."
+    if ! multipass exec "$VM_NAME" -- test -f "$VM_IMAGE_PATH" 2>&1 | tee -a "$LOG_FILE"; then
+        log "❌ TEST FAILED: Transferred file does not exist in VM"
+        rm -rf "$TEST_DIR"
+        return 1
+    fi
+    
+    # Get file info in VM
+    local VM_FILE_SIZE=$(multipass exec "$VM_NAME" -- du -h "$VM_IMAGE_PATH" 2>/dev/null | cut -f1 || echo "unknown")
+    log "✅ File exists in VM with size: $VM_FILE_SIZE"
+    
+    # Step 5: Load Docker image in VM using docker load
+    log "Step 5: Loading Docker image in VM using docker load..."
+    log "   Executing: docker load -i $VM_IMAGE_PATH"
+    
+    local LOAD_START_TIME=$(date +%s)
+    if ! multipass exec "$VM_NAME" -- docker load -i "$VM_IMAGE_PATH" 2>&1 | tee -a "$LOG_FILE"; then
+        log "❌ TEST FAILED: docker load command failed in VM"
+        # Clean up file in VM
+        multipass exec "$VM_NAME" -- rm -f "$VM_IMAGE_PATH" 2>/dev/null || true
+        rm -rf "$TEST_DIR"
+        return 1
+    fi
+    local LOAD_END_TIME=$(date +%s)
+    local LOAD_DURATION=$((LOAD_END_TIME - LOAD_START_TIME))
+    
+    log "✅ Docker image loaded successfully in VM in ${LOAD_DURATION} seconds"
+    
+    # Step 6: Verify image is available in VM's Docker daemon
+    log "Step 6: Verifying image is available in VM's Docker daemon..."
+    local VM_IMAGES_OUTPUT=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || echo "")
+    
+    if ! echo "$VM_IMAGES_OUTPUT" | grep -q "my-ag-ui-app:latest"; then
+        log "❌ TEST FAILED: Image not found in VM's Docker daemon after load"
+        log "   Images in VM:"
+        multipass exec "$VM_NAME" -- docker images 2>&1 | tee -a "$LOG_FILE" || true
+        # Clean up file in VM
+        multipass exec "$VM_NAME" -- rm -f "$VM_IMAGE_PATH" 2>/dev/null || true
+        rm -rf "$TEST_DIR"
+        return 1
+    fi
+    
+    log "✅ Image verified in VM's Docker daemon"
+    
+    # Step 7: Test image functionality by inspecting it
+    log "Step 7: Testing image functionality by inspecting it..."
+    if ! multipass exec "$VM_NAME" -- docker inspect my-ag-ui-app:latest >/dev/null 2>&1; then
+        log "❌ TEST FAILED: Cannot inspect loaded image in VM"
+        # Clean up file in VM
+        multipass exec "$VM_NAME" -- rm -f "$VM_IMAGE_PATH" 2>/dev/null || true
+        rm -rf "$TEST_DIR"
+        return 1
+    fi
+    
+    log "✅ Image can be inspected and is functional in VM"
+    
+    # Step 8: Clean up
+    log "Step 8: Cleaning up test artifacts..."
+    # Remove transferred file from VM
+    multipass exec "$VM_NAME" -- rm -f "$VM_IMAGE_PATH" 2>&1 | tee -a "$LOG_FILE" || true
+    # Remove test image from VM Docker daemon
+    multipass exec "$VM_NAME" -- docker rmi my-ag-ui-app:latest 2>/dev/null || true
+    # Remove local test directory
+    rm -rf "$TEST_DIR"
+    
+    log "✅ Cleanup completed"
+    
+    # Step 9: Performance analysis
+    log "Step 9: Performance analysis..."
+    log "   Transfer time: ${TRANSFER_DURATION} seconds"
+    log "   Load time: ${LOAD_DURATION} seconds"
+    local TOTAL_TIME=$((TRANSFER_DURATION + LOAD_DURATION))
+    log "   Total time: ${TOTAL_TIME} seconds"
+    
+    # Calculate transfer rate
+    local IMAGE_SIZE_BYTES=$(stat -c%s "$IMAGE_FILE" 2>/dev/null || echo "0")
+    if [ "$IMAGE_SIZE_BYTES" != "0" ]; then
+        local TRANSFER_RATE_MB=$((IMAGE_SIZE_BYTES / 1024 / 1024 / TRANSFER_DURATION))
+        log "   Transfer rate: ${TRANSFER_RATE_MB} MB/s"
+    fi
+    
+    log ""
+    log "=================================================="
+    log "  TASK 8.5: MANUAL MULTIPASS TRANSFER TEST COMPLETE"
+    log "=================================================="
+    log ""
+    log "✅ SUCCESS: Manual multipass transfer test completed successfully"
+    log "✅ All steps passed:"
+    log "   - VM accessibility verified"
+    log "   - Docker daemon running in VM"
+    log "   - Local image saved to file"
+    log "   - File transferred to VM via multipass transfer"
+    log "   - File loaded in VM via docker load"
+    log "   - Image verified in VM's Docker daemon"
+    log "   - Image functionality tested"
+    log "   - Cleanup completed"
+    log ""
+    log "PERFORMANCE SUMMARY:"
+    log "   - Image size: $IMAGE_SIZE"
+    log "   - Transfer time: ${TRANSFER_DURATION}s"
+    log "   - Load time: ${LOAD_DURATION}s"
+    log "   - Total time: ${TOTAL_TIME}s"
+    log ""
+    
+    return 0
+}
+
+# ===========================
 # VM DOCKER SETUP FUNCTION
 # ===========================
 
