@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Capability for building Docker images and loading them into multipass VM's container runtime. This enables deployment process to build application images locally and transfer them to VM for Kubernetes deployment, supporting both Docker and containerd runtimes.
+Capability for building Docker images and distributing them to multipass VM's container runtime. This enables deployment process to build application images locally and make them available to Kubernetes via microk8s local registry, using standard Docker push/pull workflow.
 
 ## MODIFIED Requirements
 
@@ -41,75 +41,61 @@ The deployment process SHALL build a Docker image from the project's Dockerfile 
 - **AND** script SHALL exit with a non-zero status code
 - **AND** script SHALL NOT proceed with deployment
 
-### Requirement: Docker image load into container runtime
-The deployment process SHALL verify the appropriate container runtime (Docker or containerd) is available in multipass VM before loading the built Docker image. For microk8s deployments, containerd SHALL be used as the primary target runtime.
+### Requirement: Docker image distribution via local registry
+The deployment process SHALL verify microk8s local registry is available and push the built Docker image to it for Kubernetes deployment.
 
-#### Scenario: Successful image load into containerd for microk8s
-- **WHEN** deployment script executes image load command
-- **AND** microk8s is detected as the Kubernetes distribution
-- **AND** containerd tools (ctr or crictl) are available in VM
-- **THEN** script SHALL save image using docker save
-- **THEN** script SHALL transfer image file to VM using multipass transfer
-- **THEN** script SHALL import image into containerd namespace
-- **AND** script SHALL verify image is available in containerd
-- **AND** script SHALL log successful load with container runtime type
+#### Scenario: Successful image push to microk8s local registry
+- **WHEN** deployment script executes image distribution commands
+- **AND** microk8s registry is enabled and accessible
+- **AND** Docker image is built and tagged for registry
+- **THEN** script SHALL tag image as `localhost:32000/my-ag-ui-app:latest`
+- **THEN** script SHALL push image to microk8s registry
+- **AND** script SHALL verify image is available in registry
+- **AND** script SHALL log successful distribution with registry details
 
-#### Scenario: Successful image load into Docker daemon
-- **WHEN** deployment script executes image load command
-- **AND** Docker is installed in VM
-- **AND** Docker daemon is running in VM
-- **AND** containerd is not the target runtime
-- **THEN** script SHALL save image using docker save
-- **THEN** script SHALL pipe image to multipass exec with docker load
-- **AND** script SHALL verify image is available in Docker
-- **AND** script SHALL log successful load with container runtime type
-
-#### Scenario: Image load failure due to containerd tools not available
-- **WHEN** deployment script attempts to execute image load command
-- **AND** microk8s is detected as the Kubernetes distribution
-- **AND** neither ctr nor crictl is available in VM
-- **THEN** script SHALL log a clear error that containerd tools are not available
-- **AND** script SHALL provide instructions to install containerd tools
+#### Scenario: Image distribution failure due to registry not enabled
+- **WHEN** deployment script attempts to push image
+- **AND** microk8s registry is not enabled
+- **THEN** script SHALL log clear error that registry is not available
+- **AND** script SHALL provide instructions to enable registry
 - **AND** script SHALL exit with a non-zero status code
 - **AND** script SHALL NOT attempt to restart deployment
 
-#### Scenario: Image load failure due to Docker not installed in VM
-- **WHEN** deployment script attempts to execute image load command
-- **AND** Docker is not installed in VM
-- **AND** Docker is the target runtime
-- **THEN** script SHALL log a clear error that Docker is not available in VM
-- **AND** script SHALL provide instructions to install Docker in VM
-- **AND** script SHALL exit with a non-zero status code
-- **AND** script SHALL NOT attempt to restart deployment
-
-#### Scenario: Image load failure due to Docker daemon not running in VM
-- **WHEN** deployment script attempts to execute image load command
-- **AND** Docker is installed in VM
-- **AND** Docker daemon is not running in VM
-- **AND** Docker is the target runtime
-- **THEN** script SHALL log a clear error that Docker daemon is not running
+#### Scenario: Image distribution failure due to Docker daemon not running
+- **WHEN** deployment script attempts to tag or push image
+- **AND** Docker daemon is not running
+- **THEN** script SHALL log clear error that Docker daemon is not available
 - **AND** script SHALL provide instructions to start Docker daemon
 - **AND** script SHALL exit with a non-zero status code
 - **AND** script SHALL NOT attempt to restart deployment
 
-#### Scenario: Image load failure
-- **WHEN** the image load command fails
-- **AND** container runtime is available in VM
-- **AND** failure is not related to container runtime availability
-- **THEN** script SHALL log load error with context
+#### Scenario: Image distribution failure due to registry not accessible
+- **WHEN** deployment script attempts to push image
+- **AND** microk8s registry is enabled but not accessible
+- **THEN** script SHALL log error that registry is not accessible
+- **AND** script SHALL provide troubleshooting steps
 - **AND** script SHALL exit with a non-zero status code
 - **AND** script SHALL NOT attempt to restart deployment
 
-#### Scenario: Container runtime availability verification before image load
-- **WHEN** deployment script is about to load image
-- **THEN** script SHALL detect which container runtime to use (Docker or containerd)
-- **AND** script SHALL verify appropriate runtime tools are available in VM
-- **AND** script SHALL verify container runtime is operational
-- **AND** script SHALL log container runtime type and status
-- **AND** script SHALL proceed with image load only if runtime is available
+#### Scenario: Image distribution failure
+- **WHEN** the image push command fails
+- **AND** registry and Docker daemon are available
+- **AND** failure is not related to availability
+- **THEN** script SHALL log distribution error with context
+- **AND** script SHALL implement retry logic for transient failures
+- **AND** script SHALL exit with a non-zero status code after retries exhausted
+- **AND** script SHALL NOT attempt to restart deployment
+
+#### Scenario: Registry availability verification before image distribution
+- **WHEN** deployment script is about to distribute image
+- **THEN** script SHALL verify microk8s registry is enabled
+- **AND** script SHALL verify registry is accessible at localhost:32000
+- **AND** script SHALL verify Docker daemon is running
+- **AND** script SHALL log registry and Docker status
+- **AND** script SHALL proceed with distribution only if both are available
 
 ### Requirement: Pod restart with new image
-The deployment process SHALL restart the Kubernetes deployment to trigger pod recreation with the newly loaded image.
+The deployment process SHALL restart the Kubernetes deployment to trigger pod recreation with the newly pushed image.
 
 #### Scenario: Successful deployment restart
 - **WHEN** deployment script restarts deployment

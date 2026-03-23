@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Capability for deploying application containers to Kubernetes using microk8s, including deployment manifests, services, and configuration management. Supports both registry-pulled and locally imported containerd images.
+Capability for deploying application containers to Kubernetes using microk8s, including deployment manifests, services, and configuration management. Supports images distributed via microk8s local registry using standard Docker push/pull workflow.
 
 ## MODIFIED Requirements
 
 ### Requirement: System must provide Kubernetes deployment manifest
-The system SHALL provide a deployment.yaml manifest that defines how application container is deployed in Kubernetes, including replicas, resource limits, health checks, and image pull policy.
+The system SHALL provide a deployment.yaml manifest that defines how application container is deployed in Kubernetes, including replicas, resource limits, health checks, and image reference to local registry.
 
 #### Scenario: Deployment manifest is valid
 - **WHEN** `microk8s kubectl apply -f deployment.yaml` is executed
@@ -19,11 +19,11 @@ The system SHALL provide a deployment.yaml manifest that defines how application
 - **THEN** it creates specified number of replica pods
 - **AND** all pods are running and ready
 
-#### Scenario: Deployment uses correct image pull policy
+#### Scenario: Deployment uses local registry image reference
 - **WHEN** deployment manifest is examined
-- **THEN** it includes `imagePullPolicy: Never` for locally imported images
-- **AND** it prevents Kubernetes from attempting to pull from external registries
-- **AND** it allows Kubernetes to use images already available in containerd
+- **THEN** it includes image reference `localhost:32000/my-ag-ui-app:latest`
+- **AND** it references image from microk8s local registry
+- **AND** it allows Kubernetes to pull image from local registry
 
 ### Requirement: Deployment must include resource limits
 The system SHALL configure CPU and memory requests and limits for deployment to prevent resource exhaustion and ensure fair resource allocation.
@@ -138,37 +138,37 @@ The system SHALL use microk8s as the Kubernetes distribution, configured with ap
 - **WHEN** deployment script is executed
 - **THEN** microk8s is installed in VM
 - **AND** microk8s is in "Ready" state
-- **AND** required add-ons (dns, storage, ingress) are enabled
+- **AND** required add-ons (dns, storage, ingress, registry) are enabled
 
 #### Scenario: Microk8s add-ons are enabled
 - **WHEN** `microk8s status` is checked
 - **THEN** dns add-on is enabled
 - **AND** storage add-on is enabled
 - **AND** ingress add-on is enabled
+- **AND** registry add-on is enabled
 
 ### Requirement: System must handle container image deployment
-The system SHALL build container image and deploy it to Kubernetes cluster using containerd for microk8s deployments, either importing locally built images or pulling from a registry.
+The system SHALL build container image and distribute it to Kubernetes cluster using microk8s local registry, enabling standard Docker push/pull workflow.
 
 #### Scenario: Container image is built
 - **WHEN** deployment script is executed
 - **THEN** Docker image is built successfully
 - **AND** image is tagged appropriately
 
-#### Scenario: Container image is imported into containerd for microk8s
-- **WHEN** deployment is applied to microk8s cluster
-- **AND** imagePullPolicy is set to Never
-- **THEN** Kubernetes cluster uses image imported into containerd
-- **AND** pods start with the locally imported image
-- **AND** no attempt is made to pull from external registry
+#### Scenario: Container image is pushed to local registry
+- **WHEN** deployment script pushes image to microk8s registry
+- **AND** registry is enabled and accessible
+- **THEN** image is successfully pushed to `localhost:32000/my-ag-ui-app:latest`
+- **AND** image is available to Kubernetes cluster
 
 #### Scenario: Container image is available to cluster
 - **WHEN** deployment is applied
-- **THEN** Kubernetes cluster can access container image from containerd
+- **THEN** Kubernetes cluster can pull container image from local registry
 - **AND** pods start with the correct image
 - **AND** pods do not enter ImagePullBackOff state
 
 ### Requirement: System must provide deployment verification
-The system SHALL include verification steps to ensure deployment is successful, including pod status checks, image availability verification in containerd, and application access tests.
+The system SHALL include verification steps to ensure deployment is successful, including pod status checks, registry image availability verification, and application access tests.
 
 #### Scenario: Deployment status is verified
 - **WHEN** deployment is complete
@@ -176,10 +176,10 @@ The system SHALL include verification steps to ensure deployment is successful, 
 - **AND** all pods are "Ready"
 - **AND** deployment is "Available"
 
-#### Scenario: Image availability in containerd is verified
+#### Scenario: Image availability in registry is verified
 - **WHEN** deployment is initiated
-- **THEN** script SHALL verify image exists in containerd namespace
-- **AND** script SHALL confirm image tag matches deployment manifest
+- **THEN** script SHALL verify image exists in microk8s registry
+- **THEN** script SHALL confirm image tag matches deployment manifest
 - **AND** script SHALL log image availability before attempting deployment
 
 #### Scenario: Application access is verified
