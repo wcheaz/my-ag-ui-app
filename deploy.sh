@@ -3134,14 +3134,41 @@ diagnose_docker_image_load_issues() {
     log "   Saving Docker image to file: $IMAGE_FILE"
     log "   This may take a while for large images..."
     
-    # Capture both stdout and stderr for docker save
-    DOCKER_SAVE_OUTPUT=$(docker save my-ag-ui-app:latest > "$IMAGE_FILE" 2>&1)
+    # Capture detailed logging for docker save - separate stdout and stderr
+    log "   EXECUTING: docker save my-ag-ui-app:latest > \"$IMAGE_FILE\""
+    log "   Capturing stdout and stderr separately for detailed debugging..."
+    
+    DOCKER_SAVE_START_TIME=$(date +%s)
+    # Create temporary files to capture stdout and stderr separately
+    DOCKER_SAVE_STDOUT_FILE="$TEMP_DIR/docker_save_stdout.log"
+    DOCKER_SAVE_STDERR_FILE="$TEMP_DIR/docker_save_stderr.log"
+    
+    # Execute docker save with separate stdout and stderr capture
+    docker save my-ag-ui-app:latest > "$IMAGE_FILE" 2> "$DOCKER_SAVE_STDERR_FILE"
     DOCKER_SAVE_EXIT_CODE=$?
+    DOCKER_SAVE_END_TIME=$(date +%s)
+    DOCKER_SAVE_DURATION=$((DOCKER_SAVE_END_TIME - DOCKER_SAVE_START_TIME))
+    
+    # Read the captured stderr (stdout is redirected to the image file)
+    DOCKER_SAVE_STDERR=$(cat "$DOCKER_SAVE_STDERR_FILE" 2>/dev/null || echo "")
+    
+    log "   Docker save command completed in ${DOCKER_SAVE_DURATION} seconds"
+    log "   Docker save exit code: $DOCKER_SAVE_EXIT_CODE"
     
     if [ $DOCKER_SAVE_EXIT_CODE -ne 0 ]; then
         log "❌ INVESTIGATION FINDING: Docker save command failed (exit code: $DOCKER_SAVE_EXIT_CODE)"
-        log "   Docker save error output:"
-        echo "$DOCKER_SAVE_OUTPUT" | tee -a "$LOG_FILE"
+        log "   Docker save execution time: ${DOCKER_SAVE_DURATION} seconds"
+        
+        log "   === DETAILED DOCKER SAVE ERROR LOGGING ==="
+        log "   Command executed: docker save my-ag-ui-app:latest > \"$IMAGE_FILE\""
+        log "   Stdout (should be empty - redirected to file): N/A (redirected to image file)"
+        log "   Stderr content:"
+        if [ -s "$DOCKER_SAVE_STDERR_FILE" ]; then
+            echo "$DOCKER_SAVE_STDERR" | tee -a "$LOG_FILE"
+        else
+            log "   No stderr output captured"
+        fi
+        log "   === END DOCKER SAVE ERROR LOGGING ==="
         
         log "   POSSIBLE CAUSES:"
         log "   - Docker daemon not running"
@@ -3150,8 +3177,28 @@ diagnose_docker_image_load_issues() {
         log "   - Permission issues with Docker socket"
         log "   RECOVERY: Check Docker daemon status and available disk space"
         
+        # Clean up temporary files
+        rm -f "$DOCKER_SAVE_STDERR_FILE" 2>/dev/null || true
         rm -rf "$TEMP_DIR"
         return 1
+    else
+        log "✅ INVESTIGATION FINDING: Docker save command succeeded"
+        log "   Docker save execution time: ${DOCKER_SAVE_DURATION} seconds"
+        
+        # Log successful docker save details
+        log "   === DETAILED DOCKER SAVE SUCCESS LOGGING ==="
+        log "   Command executed: docker save my-ag-ui-app:latest > \"$IMAGE_FILE\""
+        log "   Stdout: Successfully redirected to image file"
+        if [ -n "$DOCKER_SAVE_STDERR" ]; then
+            log "   Stderr (warnings/info):"
+            echo "$DOCKER_SAVE_STDERR" | tee -a "$LOG_FILE"
+        else
+            log "   Stderr: No warnings or errors"
+        fi
+        log "   === END DOCKER SAVE SUCCESS LOGGING ==="
+        
+        # Clean up temporary stderr file
+        rm -f "$DOCKER_SAVE_STDERR_FILE" 2>/dev/null || true
     fi
     
     # Verify saved file properties
@@ -3334,18 +3381,56 @@ diagnose_docker_image_load_issues() {
     log "   Loading Docker image in VM..."
     log "   This may take a while for large images..."
     
-    # Capture docker load output with detailed timing
+    # Create temporary files for detailed stdout/stderr capture in VM
+    VM_LOAD_STDOUT_FILE="$TEMP_DIR/vm_load_stdout.log"
+    VM_LOAD_STDERR_FILE="$TEMP_DIR/vm_load_stderr.log"
+    
+    log "   EXECUTING: multipass exec \"$VM_NAME\" -- sh -c \"docker load -i /home/ubuntu/my-ag-ui-app-latest.tar\""
+    log "   Capturing stdout and stderr separately in VM for detailed debugging..."
+    
+    # Capture docker load output with detailed timing and separate stdout/stderr
     VM_LOAD_START_TIME=$(date +%s)
-    VM_LOAD_OUTPUT=$(multipass exec "$VM_NAME" -- sh -c "docker load -i /home/ubuntu/my-ag-ui-app-latest.tar 2>&1" 2>&1)
+    
+    # Execute command with separate stdout and stderr capture
+    multipass exec "$VM_NAME" -- sh -c "docker load -i /home/ubuntu/my-ag-ui-app-latest.tar 1> /tmp/vm_load_stdout.log 2> /tmp/vm_load_stderr.log"
     VM_LOAD_EXIT_CODE=$?
+    
+    # Retrieve the separate stdout and stderr files from VM
+    multipass exec "$VM_NAME" -- sh -c "cat /tmp/vm_load_stdout.log 2>/dev/null || echo ''" > "$VM_LOAD_STDOUT_FILE"
+    multipass exec "$VM_NAME" -- sh -c "cat /tmp/vm_load_stderr.log 2>/dev/null || echo ''" > "$VM_LOAD_STDERR_FILE"
+    
+    # Combine for compatibility with existing code
+    VM_LOAD_OUTPUT="$(cat "$VM_LOAD_STDOUT_FILE" 2>/dev/null)$(cat "$VM_LOAD_STDERR_FILE" 2>/dev/null)"
+    
     VM_LOAD_END_TIME=$(date +%s)
     VM_LOAD_DURATION=$((VM_LOAD_END_TIME - VM_LOAD_START_TIME))
     
     log "   Docker load command completed in ${VM_LOAD_DURATION} seconds"
     log "   Docker load exit code: $VM_LOAD_EXIT_CODE"
     
-    # Log the full docker load output
-    log "   Docker load command output in VM:"
+    # Log detailed docker load output with stdout/stderr separation
+    log "   === DETAILED DOCKER LOAD LOGGING ==="
+    log "   Command executed in VM: docker load -i /home/ubuntu/my-ag-ui-app-latest.tar"
+    
+    # Log stdout
+    log "   Stdout content:"
+    if [ -s "$VM_LOAD_STDOUT_FILE" ]; then
+        cat "$VM_LOAD_STDOUT_FILE" | tee -a "$LOG_FILE"
+    else
+        log "   No stdout output captured"
+    fi
+    
+    # Log stderr
+    log "   Stderr content:"
+    if [ -s "$VM_LOAD_STDERR_FILE" ]; then
+        cat "$VM_LOAD_STDERR_FILE" | tee -a "$LOG_FILE"
+    else
+        log "   No stderr output captured"
+    fi
+    log "   === END DETAILED DOCKER LOAD LOGGING ==="
+    
+    # Also log the combined output for backward compatibility
+    log "   Docker load combined output (stdout + stderr):"
     echo "$VM_LOAD_OUTPUT" | tee -a "$LOG_FILE"
     
     # Check if docker load succeeded
@@ -3354,26 +3439,95 @@ diagnose_docker_image_load_issues() {
         log "   Exit code: $VM_LOAD_EXIT_CODE"
         log "   Duration: ${VM_LOAD_DURATION} seconds"
         
-        # Analyze the error output
-        if echo "$VM_LOAD_OUTPUT" | grep -q "no space left"; then
-            log "   ERROR TYPE: Insufficient disk space in VM"
-            log "   RECOVERY: Free up disk space in VM or increase VM disk size"
-        elif echo "$VM_LOAD_OUTPUT" | grep -q "permission denied"; then
-            log "   ERROR TYPE: Permission denied in VM"
-            log "   RECOVERY: Check user permissions and docker group membership"
-        elif echo "$VM_LOAD_OUTPUT" | grep -q "invalid tar"; then
-            log "   ERROR TYPE: Invalid tar archive (corrupted file)"
-            log "   RECOVERY: Rebuild and retransfer the image"
-        elif echo "$VM_LOAD_OUTPUT" | grep -q "docker daemon"; then
-            log "   ERROR TYPE: Docker daemon not running or not accessible"
-            log "   RECOVERY: Start Docker daemon in VM"
-        else
-            log "   ERROR TYPE: Unknown docker load failure"
-            log "   Check the error output above for specific details"
+        log "   === DETAILED DOCKER LOAD ERROR ANALYSIS ==="
+        
+        # Read separate stdout and stderr for analysis
+        VM_LOAD_STDOUT_CONTENT=$(cat "$VM_LOAD_STDOUT_FILE" 2>/dev/null || echo "")
+        VM_LOAD_STDERR_CONTENT=$(cat "$VM_LOAD_STDERR_FILE" 2>/dev/null || echo "")
+        
+        # Analyze stdout for errors
+        if [ -n "$VM_LOAD_STDOUT_CONTENT" ]; then
+            log "   Stdout analysis:"
+            if echo "$VM_LOAD_STDOUT_CONTENT" | grep -q "Loaded image"; then
+                log "   ✓ Stdout indicates successful image load despite error code"
+            else
+                log "   - Stdout does not indicate successful load"
+            fi
         fi
         
+        # Analyze stderr for specific error patterns
+        if [ -n "$VM_LOAD_STDERR_CONTENT" ]; then
+            log "   Stderr analysis:"
+            if echo "$VM_LOAD_STDERR_CONTENT" | grep -q "no space left"; then
+                log "   ERROR TYPE: Insufficient disk space in VM"
+                log "   RECOVERY: Free up disk space in VM or increase VM disk size"
+            elif echo "$VM_LOAD_STDERR_CONTENT" | grep -q "permission denied"; then
+                log "   ERROR TYPE: Permission denied in VM"
+                log "   RECOVERY: Check user permissions and docker group membership"
+            elif echo "$VM_LOAD_STDERR_CONTENT" | grep -q "invalid tar"; then
+                log "   ERROR TYPE: Invalid tar archive (corrupted file)"
+                log "   RECOVERY: Rebuild and retransfer the image"
+            elif echo "$VM_LOAD_STDERR_CONTENT" | grep -q "docker daemon"; then
+                log "   ERROR TYPE: Docker daemon not running or not accessible"
+                log "   RECOVERY: Start Docker daemon in VM"
+            elif echo "$VM_LOAD_STDERR_CONTENT" | grep -q "Cannot connect"; then
+                log "   ERROR TYPE: Docker daemon connection failed"
+                log "   RECOVERY: Check Docker daemon status in VM"
+            elif echo "$VM_LOAD_STDERR_CONTENT" | grep -q "Error response"; then
+                log "   ERROR TYPE: Docker daemon error response"
+                log "   RECOVERY: Check Docker daemon logs in VM"
+            else
+                log "   ERROR TYPE: Unknown docker load failure"
+                log "   Check stderr content above for specific details"
+            fi
+        else
+            log "   No stderr content captured - may indicate command execution failure"
+        fi
+        
+        log "   === END DOCKER LOAD ERROR ANALYSIS ==="
+        
+        # Clean up temporary files
+        rm -f "$VM_LOAD_STDOUT_FILE" "$VM_LOAD_STDERR_FILE" 2>/dev/null || true
         rm -rf "$TEMP_DIR"
         return 1
+    else
+        log "✅ INVESTIGATION FINDING: Docker load command succeeded in VM"
+        log "   Duration: ${VM_LOAD_DURATION} seconds"
+        
+        log "   === DETAILED DOCKER LOAD SUCCESS ANALYSIS ==="
+        
+        # Analyze stdout for success indicators
+        VM_LOAD_STDOUT_CONTENT=$(cat "$VM_LOAD_STDOUT_FILE" 2>/dev/null || echo "")
+        VM_LOAD_STDERR_CONTENT=$(cat "$VM_LOAD_STDERR_FILE" 2>/dev/null || echo "")
+        
+        if [ -n "$VM_LOAD_STDOUT_CONTENT" ]; then
+            log "   Stdout analysis:"
+            if echo "$VM_LOAD_STDOUT_CONTENT" | grep -q "Loaded image"; then
+                log "   ✓ Stdout confirms successful image load"
+                # Extract image name if available
+                LOADED_IMAGE=$(echo "$VM_LOAD_STDOUT_CONTENT" | sed -n 's/Loaded image: //p' || echo "unknown")
+                if [ "$LOADED_IMAGE" != "unknown" ]; then
+                    log "   ✓ Loaded image: $LOADED_IMAGE"
+                fi
+            else
+                log "   - Stdout does not contain 'Loaded image' confirmation"
+                log "   - This may indicate silent failure despite exit code 0"
+            fi
+        else
+            log "   - No stdout content captured"
+            log "   - This is unusual for successful docker load"
+        fi
+        
+        if [ -n "$VM_LOAD_STDERR_CONTENT" ]; then
+            log "   Stderr warnings/info (non-critical):"
+            echo "$VM_LOAD_STDERR_CONTENT" | tee -a "$LOG_FILE"
+        else
+            log "   - No stderr content (clean execution)"
+        fi
+        
+        log "   === END DOCKER LOAD SUCCESS ANALYSIS ==="
+        
+        # Clean up temporary files (keep for now, will be cleaned later)
     fi
     
     # Check disk space after docker load
@@ -3470,6 +3624,15 @@ diagnose_docker_image_load_issues() {
     log ""
     log "INVESTIGATION CLEANUP: Removing temporary file in VM..."
     multipass exec "$VM_NAME" -- rm -f /home/ubuntu/my-ag-ui-app-latest.tar 2>&1 | tee -a "$LOG_FILE" || true
+    
+    # Clean up temporary stdout/stderr files
+    log "INVESTIGATION CLEANUP: Removing detailed logging temporary files..."
+    rm -f "$TEMP_DIR/docker_save_stdout.log" "$TEMP_DIR/docker_save_stderr.log" 2>/dev/null || true
+    rm -f "$TEMP_DIR/vm_load_stdout.log" "$TEMP_DIR/vm_load_stderr.log" 2>/dev/null || true
+    
+    # Clean up temporary files in VM
+    log "INVESTIGATION CLEANUP: Removing temporary files in VM..."
+    multipass exec "$VM_NAME" -- rm -f /tmp/vm_load_stdout.log /tmp/vm_load_stderr.log 2>&1 | tee -a "$LOG_FILE" || true
     
     # Clean up local temporary directory
     log "INVESTIGATION CLEANUP: Removing local temporary directory..."

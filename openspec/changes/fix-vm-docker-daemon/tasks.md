@@ -72,7 +72,7 @@
 ## 8. Image Loading Verification and Debugging
 
 - [x] 8.1 Investigate why Docker image load fails silently in VM
-- [ ] 8.2 Add detailed logging to image load command to capture stdout/stderr
+- [x] 8.2 Add detailed logging to image load command to capture stdout/stderr
 - [ ] 8.3 Verify `docker save` command is executing correctly on host
 - [ ] 8.4 Verify `docker load` command is being received and executed in VM
 - [ ] 8.5 Test image transfer manually using `multipass transfer` as alternative method
