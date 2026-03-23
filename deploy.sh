@@ -1531,6 +1531,65 @@ verify_multipass_transfer_accessibility() {
 # MICROK8S REGISTRY SETUP FUNCTION
 # ===========================
 
+# Verify microk8s registry is running and accessible at localhost:32000
+verify_microk8s_registry() {
+    log "Verifying registry is running and accessible at localhost:32000..."
+    
+    local registry_check_output
+    local registry_check_exit_code
+    
+    # Check registry accessibility with timeout
+    registry_check_output=$(timeout 10 multipass exec "$VM_NAME" -- curl -s --connect-timeout 5 http://localhost:32000/v2/_catalog 2>&1)
+    registry_check_exit_code=$?
+    
+    if [ $registry_check_exit_code -eq 0 ]; then
+        log "✅ Registry is accessible at localhost:32000"
+        
+        # Log registry response for verification
+        if [ -n "$registry_check_output" ]; then
+            log "Registry response:"
+            echo "$registry_check_output" | tee -a "$LOG_FILE"
+        fi
+    else
+        log "⚠️  WARNING: Registry accessibility check failed (exit code: $registry_check_exit_code)"
+        log "Registry check output:"
+        echo "$registry_check_output" | tee -a "$LOG_FILE"
+        
+        # This might be a temporary issue, check if registry service is running
+        log "Checking if registry service is running..."
+        local registry_service_status
+        registry_service_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "unknown")
+        
+        if [ "$registry_service_status" = "Running" ]; then
+            log "✅ Registry service is running (pod status: $registry_service_status)"
+            log "⚠️  The registry accessibility issue might be temporary - proceeding with deployment"
+        else
+            log "❌ ERROR: Registry service is not running (pod status: $registry_service_status)"
+            log "RECOVERY: Check registry pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -n container-registry -l app=registry"
+            return 1
+        fi
+    fi
+    
+    # Get registry status for logging
+    log "Getting detailed registry status..."
+    local registry_pod_status
+    local registry_service_info
+    
+    registry_pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o wide 2>&1 | tee -a "$LOG_FILE")
+    registry_service_info=$(multipass exec "$VM_NAME" -- microk8s kubectl get svc -n container-registry -l app=registry 2>&1 | tee -a "$LOG_FILE")
+    
+    log "Registry pod status:"
+    echo "$registry_pod_status" | tee -a "$LOG_FILE"
+    log "Registry service info:"
+    echo "$registry_service_info" | tee -a "$LOG_FILE"
+    
+    log "✅ Registry verification completed successfully"
+    log "   Registry is accessible at: localhost:32000"
+    log "   Registry can be used for local image distribution"
+    
+    return 0
+}
+
 # Enable microk8s registry for local image distribution
 enable_microk8s_registry() {
     log "Starting microk8s registry setup..."
@@ -1589,63 +1648,17 @@ enable_microk8s_registry() {
         return 1
     fi
     
-    # Verify registry is running and accessible at localhost:32000
-    log "Verifying registry is running and accessible at localhost:32000..."
-    local registry_check_output
-    local registry_check_exit_code
-    
     # Wait a moment for registry to start up
     log "Waiting 5 seconds for registry to fully start..."
     sleep 5
     
-    # Check registry accessibility with timeout
-    registry_check_output=$(timeout 10 multipass exec "$VM_NAME" -- curl -s --connect-timeout 5 http://localhost:32000/v2/_catalog 2>&1)
-    registry_check_exit_code=$?
-    
-    if [ $registry_check_exit_code -eq 0 ]; then
-        log "✅ Registry is accessible at localhost:32000"
-        
-        # Log registry response for verification
-        if [ -n "$registry_check_output" ]; then
-            log "Registry response:"
-            echo "$registry_check_output" | tee -a "$LOG_FILE"
-        fi
-    else
-        log "⚠️  WARNING: Registry accessibility check failed (exit code: $registry_check_exit_code)"
-        log "Registry check output:"
-        echo "$registry_check_output" | tee -a "$LOG_FILE"
-        
-        # This might be a temporary issue, check if registry service is running
-        log "Checking if registry service is running..."
-        local registry_service_status
-        registry_service_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "unknown")
-        
-        if [ "$registry_service_status" = "Running" ]; then
-            log "✅ Registry service is running (pod status: $registry_service_status)"
-            log "⚠️  The registry accessibility issue might be temporary - proceeding with deployment"
-        else
-            log "❌ ERROR: Registry service is not running (pod status: $registry_service_status)"
-            log "RECOVERY: Check registry pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -n container-registry -l app=registry"
-            return 1
-        fi
+    # Verify registry is running and accessible
+    if ! verify_microk8s_registry; then
+        log "❌ ERROR: Registry verification failed after enablement"
+        return 1
     fi
     
-    # Get registry status for logging
-    log "Getting detailed registry status..."
-    local registry_pod_status
-    local registry_service_info
-    
-    registry_pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o wide 2>&1 | tee -a "$LOG_FILE")
-    registry_service_info=$(multipass exec "$VM_NAME" -- microk8s kubectl get svc -n container-registry -l app=registry 2>&1 | tee -a "$LOG_FILE")
-    
-    log "Registry pod status:"
-    echo "$registry_pod_status" | tee -a "$LOG_FILE"
-    log "Registry service info:"
-    echo "$registry_service_info" | tee -a "$LOG_FILE"
-    
     log "✅ microk8s registry setup completed successfully"
-    log "   Registry is accessible at: localhost:32000"
-    log "   Registry can be used for local image distribution"
     
     return 0
 }
