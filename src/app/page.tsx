@@ -74,13 +74,11 @@ function CustomInput(props: InputProps) {
 
     const newFiles: { name: string, content: string }[] = [];
     let processedCount = 0;
-    let skippedCount = 0;
 
     Array.from(files).forEach(file => {
       // 1. Check File Size BEFORE reading
       if (file.size > MAX_FILE_SIZE_BYTES) {
         alert(`File "${file.name}" is too large (max 2MB). Skipping.`);
-        skippedCount++;
         processedCount++;
         if (processedCount === files.length) finalizeUpload(newFiles);
         return;
@@ -284,6 +282,8 @@ function YourMainContent({
 }: {
   themeColor: string;
 }) {
+  // themeColor is reserved for future theming functionality
+  void themeColor;
   // 🪁 Shared State: https://docs.copilotkit.ai/pydantic-ai/shared-state
   const { state, setState } = useCoAgent<AgentState>({
     name: "my_agent",

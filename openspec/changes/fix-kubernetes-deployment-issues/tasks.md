@@ -56,17 +56,17 @@
 - [x] 7.5 Test error handling when registry is not enabled
 - [x] 7.6 Test error handling with Docker daemon not running
 - [x] 7.7 Test error handling with invalid image tags
-- [ ] 7.8 Test error handling with registry port conflicts
-- [ ] 7.9 Verify pods reach Running state after successful registry push
-- [ ] 7.10 Verify application is accessible via ingress after deployment
-- [ ] 7.11 Test complete deployment flow end-to-end
+- [x] 7.8 Test error handling with registry port conflicts
+- [x] 7.9 Verify pods reach Running state after successful registry push
+- [x] 7.10 Verify application is accessible via ingress after deployment
+- [x] 7.11 Test complete deployment flow end-to-end
 
 ## 8. Documentation and Cleanup
 
-- [ ] 8.1 Update deployment script comments to explain registry approach
-- [ ] 8.2 Add README section explaining microk8s registry workflow
-- [ ] 8.3 Document troubleshooting steps for common registry issues
-- [ ] 8.4 Update project documentation with new deployment workflow
-- [ ] 8.5 Clean up any test images or temporary files from development
-- [ ] 8.6 Verify all code follows project coding standards
+- [x] 8.1 Update deployment script comments to explain registry approach
+- [x] 8.2 Add README section explaining microk8s registry workflow
+- [x] 8.3 Document troubleshooting steps for common registry issues
+- [x] 8.4 Update project documentation with new deployment workflow
+- [x] 8.5 Clean up any test images or temporary files from development
+- [x] 8.6 Verify all code follows project coding standards
 - [ ] 8.7 Commit changes with descriptive commit message referencing this change
