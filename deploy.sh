@@ -3568,96 +3568,165 @@ diagnose_docker_image_load_issues() {
     log "   Loading Docker image in VM..."
     log "   This may take a while for large images..."
     
+    # TASK 8.8: Add retry logic for image load if first attempt fails
+    log "   === TASK 8.8: DOCKER LOAD WITH RETRY LOGIC ==="
+    
+    # Set up retry parameters for image loading
+    local MAX_IMAGE_LOAD_ATTEMPTS=3
+    local INITIAL_IMAGE_LOAD_DELAY=2
+    local MAX_IMAGE_LOAD_DELAY=10
+    local IMAGE_LOAD_ATTEMPT=1
+    local RETRY_DELAY=$INITIAL_IMAGE_LOAD_DELAY
+    local VM_LOAD_SUCCESS=false
+    
+    log "   Docker load will attempt up to $MAX_IMAGE_LOAD_ATTEMPTS times with exponential backoff"
+    
     # Create temporary files for detailed stdout/stderr capture in VM
     VM_LOAD_STDOUT_FILE="$TEMP_DIR/vm_load_stdout.log"
     VM_LOAD_STDERR_FILE="$TEMP_DIR/vm_load_stderr.log"
     
-    # TASK 8.4: Verify docker load command is being received and executed in VM
-    log "   === TASK 8.4: VERIFY DOCKER LOAD COMMAND RECEPTION AND EXECUTION ==="
-    
-    # Step 1: Verify command transmission to VM
-    log "   Step 1: Verifying command transmission to VM..."
-    log "   EXECUTING: multipass exec \"$VM_NAME\" -- sh -c \"docker load -i /home/ubuntu/my-ag-ui-app-latest.tar\""
-    log "   Capturing stdout and stderr separately in VM for detailed debugging..."
-    
-    # Step 2: Create command receipt verification in VM
-    log "   Step 2: Creating command receipt verification in VM..."
-    RECEIPT_VERIFICATION_CMD="echo 'DOCKER_LOAD_COMMAND_RECEIVED: $(date +%s.%N)' > /tmp/docker_load_receipt.log"
-    multipass exec "$VM_NAME" -- sh -c "$RECEIPT_VERIFICATION_CMD"
-    RECEIPT_VERIFICATION_EXIT_CODE=$?
-    
-    if [ $RECEIPT_VERIFICATION_EXIT_CODE -eq 0 ]; then
-        log "   ✓ Command receipt verification: VM is ready to receive commands"
-        # Retrieve and log the receipt confirmation
-        RECEIPT_CONFIRMATION=$(multipass exec "$VM_NAME" -- cat /tmp/docker_load_receipt.log 2>/dev/null || echo "UNKNOWN")
-        log "   ✓ Receipt confirmation: $RECEIPT_CONFIRMATION"
-    else
-        log "   ⚠️  Command receipt verification: VM may not be ready to receive commands (exit code: $RECEIPT_VERIFICATION_EXIT_CODE)"
-        log "      Continuing with load attempt, but this may indicate VM accessibility issues"
-    fi
-    
-    # Step 3: Execute the docker load command with transmission verification
-    log "   Step 3: Executing docker load command with transmission verification..."
-    
-    # Capture docker load output with detailed timing and separate stdout/stderr
-    VM_LOAD_START_TIME=$(date +%s)
-    
-    # Execute command with separate stdout and stderr capture AND execution verification
-    EXECUTION_VERIFICATION_CMD="docker load -i /home/ubuntu/my-ag-ui-app-latest.tar 1> /tmp/vm_load_stdout.log 2> /tmp/vm_load_stderr.log; echo 'DOCKER_LOAD_EXECUTION_ATTEMPTED: \$?' > /tmp/docker_load_execution.log"
-    
-    log "   EXECUTING in VM: $EXECUTION_VERIFICATION_CMD"
-    multipass exec "$VM_NAME" -- sh -c "$EXECUTION_VERIFICATION_CMD"
-    VM_LOAD_EXIT_CODE=$?
-    
-    # Step 4: Verify command execution in VM
-    log "   Step 4: Verifying command execution in VM..."
-    
-    # Retrieve the execution verification log
-    EXECUTION_VERIFICATION_LOG=$(multipass exec "$VM_NAME" -- cat /tmp/docker_load_execution.log 2>/dev/null || echo "EXECUTION_VERIFICATION_FAILED")
-    log "   Execution verification log: $EXECUTION_VERIFICATION_LOG"
-    
-    # Check if execution was attempted by analyzing the verification log
-    if echo "$EXECUTION_VERIFICATION_LOG" | grep -q "DOCKER_LOAD_EXECUTION_ATTEMPTED"; then
-        # Extract the exit code from the execution verification log
-        VM_INTERNAL_EXIT_CODE=$(echo "$EXECUTION_VERIFICATION_LOG" | sed -n 's/DOCKER_LOAD_EXECUTION_ATTEMPTED: //p' | head -n1)
-        log "   ✓ Command execution verified in VM (internal exit code: $VM_INTERNAL_EXIT_CODE)"
+    # Retry loop for docker load
+    while [ $IMAGE_LOAD_ATTEMPT -le $MAX_IMAGE_LOAD_ATTEMPTS ]; do
+        log "   === DOCKER LOAD ATTEMPT $IMAGE_LOAD_ATTEMPT/$MAX_IMAGE_LOAD_ATTEMPTS ==="
         
-        # Compare multipass exit code with VM internal exit code
-        if [ "$VM_LOAD_EXIT_CODE" = "$VM_INTERNAL_EXIT_CODE" ]; then
-            log "   ✓ Exit code consistency verified between multipass and VM internal"
+        # TASK 8.4: Verify docker load command is being received and executed in VM
+        log "   === TASK 8.4: VERIFY DOCKER LOAD COMMAND RECEPTION AND EXECUTION ==="
+        
+        # Step 1: Verify command transmission to VM
+        log "   Step 1: Verifying command transmission to VM..."
+        log "   EXECUTING: multipass exec \"$VM_NAME\" -- sh -c \"docker load -i /home/ubuntu/my-ag-ui-app-latest.tar\""
+        log "   Capturing stdout and stderr separately in VM for detailed debugging..."
+        
+        # Step 2: Create command receipt verification in VM
+        log "   Step 2: Creating command receipt verification in VM..."
+        RECEIPT_VERIFICATION_CMD="echo 'DOCKER_LOAD_COMMAND_RECEIVED: $(date +%s.%N)' > /tmp/docker_load_receipt.log"
+        multipass exec "$VM_NAME" -- sh -c "$RECEIPT_VERIFICATION_CMD"
+        RECEIPT_VERIFICATION_EXIT_CODE=$?
+        
+        if [ $RECEIPT_VERIFICATION_EXIT_CODE -eq 0 ]; then
+            log "   ✓ Command receipt verification: VM is ready to receive commands"
+            # Retrieve and log the receipt confirmation
+            RECEIPT_CONFIRMATION=$(multipass exec "$VM_NAME" -- cat /tmp/docker_load_receipt.log 2>/dev/null || echo "UNKNOWN")
+            log "   ✓ Receipt confirmation: $RECEIPT_CONFIRMATION"
         else
-            log "   ⚠️  Exit code mismatch - multipass: $VM_LOAD_EXIT_CODE, VM internal: $VM_INTERNAL_EXIT_CODE"
-            log "      This may indicate communication issues between host and VM"
+            log "   ⚠️  Command receipt verification: VM may not be ready to receive commands (exit code: $RECEIPT_VERIFICATION_EXIT_CODE)"
+            log "      Continuing with load attempt, but this may indicate VM accessibility issues"
         fi
+        
+        # Step 3: Execute the docker load command with transmission verification
+        log "   Step 3: Executing docker load command with transmission verification..."
+        
+        # Capture docker load output with detailed timing and separate stdout/stderr
+        VM_LOAD_START_TIME=$(date +%s)
+        
+        # Execute command with separate stdout and stderr capture AND execution verification
+        EXECUTION_VERIFICATION_CMD="docker load -i /home/ubuntu/my-ag-ui-app-latest.tar 1> /tmp/vm_load_stdout.log 2> /tmp/vm_load_stderr.log; echo 'DOCKER_LOAD_EXECUTION_ATTEMPTED: \$?' > /tmp/docker_load_execution.log"
+        
+        log "   EXECUTING in VM: $EXECUTION_VERIFICATION_CMD"
+        multipass exec "$VM_NAME" -- sh -c "$EXECUTION_VERIFICATION_CMD"
+        VM_LOAD_EXIT_CODE=$?
+        
+        # Check if this attempt succeeded
+        if [ $VM_LOAD_EXIT_CODE -eq 0 ]; then
+            log "   ✅ DOCKER LOAD ATTEMPT $IMAGE_LOAD_ATTEMPT SUCCEEDED"
+            VM_LOAD_SUCCESS=true
+            break
+        else
+            log "   ❌ DOCKER LOAD ATTEMPT $IMAGE_LOAD_ATTEMPT FAILED (exit code: $VM_LOAD_EXIT_CODE)"
+            
+            # If this is not the last attempt, prepare for retry
+            if [ $IMAGE_LOAD_ATTEMPT -lt $MAX_IMAGE_LOAD_ATTEMPTS ]; then
+                log "   Waiting ${RETRY_DELAY}s before retry..."
+                sleep $RETRY_DELAY
+                
+                # Implement exponential backoff: double the delay, but cap at MAX_IMAGE_LOAD_DELAY
+                RETRY_DELAY=$((RETRY_DELAY * 2))
+                if [ $RETRY_DELAY -gt $MAX_IMAGE_LOAD_DELAY ]; then
+                    RETRY_DELAY=$MAX_IMAGE_LOAD_DELAY
+                fi
+                
+                IMAGE_LOAD_ATTEMPT=$((IMAGE_LOAD_ATTEMPT + 1))
+            else
+                log "   ❌ ALL DOCKER LOAD ATTEMPTS FAILED"
+            fi
+        fi
+    done
+    
+    # Only proceed with output verification if at least one attempt succeeded
+    if [ "$VM_LOAD_SUCCESS" = true ]; then
+        # Step 4: Verify command execution in VM
+        log "   Step 4: Verifying command execution in VM..."
+        
+        # Retrieve the execution verification log
+        EXECUTION_VERIFICATION_LOG=$(multipass exec "$VM_NAME" -- cat /tmp/docker_load_execution.log 2>/dev/null || echo "EXECUTION_VERIFICATION_FAILED")
+        log "   Execution verification log: $EXECUTION_VERIFICATION_LOG"
+        
+        # Check if execution was attempted by analyzing the verification log
+        if echo "$EXECUTION_VERIFICATION_LOG" | grep -q "DOCKER_LOAD_EXECUTION_ATTEMPTED"; then
+            # Extract the exit code from the execution verification log
+            VM_INTERNAL_EXIT_CODE=$(echo "$EXECUTION_VERIFICATION_LOG" | sed -n 's/DOCKER_LOAD_EXECUTION_ATTEMPTED: //p' | head -n1)
+            log "   ✓ Command execution verified in VM (internal exit code: $VM_INTERNAL_EXIT_CODE)"
+            
+            # Compare multipass exit code with VM internal exit code
+            if [ "$VM_LOAD_EXIT_CODE" = "$VM_INTERNAL_EXIT_CODE" ]; then
+                log "   ✓ Exit code consistency verified between multipass and VM internal"
+            else
+                log "   ⚠️  Exit code mismatch - multipass: $VM_LOAD_EXIT_CODE, VM internal: $VM_INTERNAL_EXIT_CODE"
+                log "      This may indicate communication issues between host and VM"
+            fi
+        else
+            log "   ❌ Command execution verification failed in VM"
+            log "      The command may not have been executed properly in the VM"
+            log "      Verification log content: $EXECUTION_VERIFICATION_LOG"
+        fi
+        
+        # Step 5: Retrieve the separate stdout and stderr files from VM
+        log "   Step 5: Retrieving command output from VM..."
+        
+        # Check if output files exist in VM
+        STDOUT_EXISTS=$(multipass exec "$VM_NAME" -- test -f /tmp/vm_load_stdout.log && echo "yes" || echo "no")
+        STDERR_EXISTS=$(multipass exec "$VM_NAME" -- test -f /tmp/vm_load_stderr.log && echo "yes" || echo "no")
+        
+        log "   Stdout file exists in VM: $STDOUT_EXISTS"
+        log "   Stderr file exists in VM: $STDERR_EXISTS"
+        
+        # Retrieve the output files
+        multipass exec "$VM_NAME" -- sh -c "cat /tmp/vm_load_stdout.log 2>/dev/null || echo ''" > "$VM_LOAD_STDOUT_FILE"
+        multipass exec "$VM_NAME" -- sh -c "cat /tmp/vm_load_stderr.log 2>/dev/null || echo ''" > "$VM_LOAD_STDERR_FILE"
+        
+        # Combine for compatibility with existing code
+        VM_LOAD_OUTPUT="$(cat "$VM_LOAD_STDOUT_FILE" 2>/dev/null)$(cat "$VM_LOAD_STDERR_FILE" 2>/dev/null)"
+        
+        VM_LOAD_END_TIME=$(date +%s)
+        VM_LOAD_DURATION=$((VM_LOAD_END_TIME - VM_LOAD_START_TIME))
+        
+        log "   === END TASK 8.4: DOCKER LOAD COMMAND VERIFICATION ==="
+        log "   Docker load command completed in ${VM_LOAD_DURATION} seconds"
+        log "   Docker load exit code: $VM_LOAD_EXIT_CODE"
     else
-        log "   ❌ Command execution verification failed in VM"
-        log "      The command may not have been executed properly in the VM"
-        log "      Verification log content: $EXECUTION_VERIFICATION_LOG"
+        # All attempts failed - retrieve output from the last attempt for debugging
+        log "   ❌ === ALL DOCKER LOAD ATTEMPTS FAILED - RETRIEVING DEBUG INFO ==="
+        
+        # Try to retrieve the execution verification log from the last attempt
+        EXECUTION_VERIFICATION_LOG=$(multipass exec "$VM_NAME" -- cat /tmp/docker_load_execution.log 2>/dev/null || echo "EXECUTION_VERIFICATION_FAILED")
+        log "   Last attempt execution verification log: $EXECUTION_VERIFICATION_LOG"
+        
+        # Try to retrieve output files from the last attempt
+        multipass exec "$VM_NAME" -- sh -c "cat /tmp/vm_load_stdout.log 2>/dev/null || echo ''" > "$VM_LOAD_STDOUT_FILE" 2>/dev/null || true
+        multipass exec "$VM_NAME" -- sh -c "cat /tmp/vm_load_stderr.log 2>/dev/null || echo ''" > "$VM_LOAD_STDERR_FILE" 2>/dev/null || true
+        
+        # Combine for compatibility with existing code
+        VM_LOAD_OUTPUT="$(cat "$VM_LOAD_STDOUT_FILE" 2>/dev/null)$(cat "$VM_LOAD_STDERR_FILE" 2>/dev/null)"
+        
+        VM_LOAD_END_TIME=$(date +%s)
+        VM_LOAD_DURATION=$((VM_LOAD_END_TIME - VM_LOAD_START_TIME))
+        
+        log "   === END TASK 8.4: DOCKER LOAD COMMAND VERIFICATION (ALL ATTEMPTS FAILED) ==="
+        log "   All docker load attempts failed within ${VM_LOAD_DURATION} seconds"
+        log "   Final exit code: $VM_LOAD_EXIT_CODE"
     fi
     
-    # Step 5: Retrieve the separate stdout and stderr files from VM
-    log "   Step 5: Retrieving command output from VM..."
-    
-    # Check if output files exist in VM
-    STDOUT_EXISTS=$(multipass exec "$VM_NAME" -- test -f /tmp/vm_load_stdout.log && echo "yes" || echo "no")
-    STDERR_EXISTS=$(multipass exec "$VM_NAME" -- test -f /tmp/vm_load_stderr.log && echo "yes" || echo "no")
-    
-    log "   Stdout file exists in VM: $STDOUT_EXISTS"
-    log "   Stderr file exists in VM: $STDERR_EXISTS"
-    
-    # Retrieve the output files
-    multipass exec "$VM_NAME" -- sh -c "cat /tmp/vm_load_stdout.log 2>/dev/null || echo ''" > "$VM_LOAD_STDOUT_FILE"
-    multipass exec "$VM_NAME" -- sh -c "cat /tmp/vm_load_stderr.log 2>/dev/null || echo ''" > "$VM_LOAD_STDERR_FILE"
-    
-    # Combine for compatibility with existing code
-    VM_LOAD_OUTPUT="$(cat "$VM_LOAD_STDOUT_FILE" 2>/dev/null)$(cat "$VM_LOAD_STDERR_FILE" 2>/dev/null)"
-    
-    VM_LOAD_END_TIME=$(date +%s)
-    VM_LOAD_DURATION=$((VM_LOAD_END_TIME - VM_LOAD_START_TIME))
-    
-    log "   === END TASK 8.4: DOCKER LOAD COMMAND VERIFICATION ==="
-    log "   Docker load command completed in ${VM_LOAD_DURATION} seconds"
-    log "   Docker load exit code: $VM_LOAD_EXIT_CODE"
+    log "   === END TASK 8.8: DOCKER LOAD WITH RETRY LOGIC ==="
     
     # Log detailed docker load output with stdout/stderr separation
     log "   === DETAILED DOCKER LOAD LOGGING ==="
@@ -3684,11 +3753,18 @@ diagnose_docker_image_load_issues() {
     log "   Docker load combined output (stdout + stderr):"
     echo "$VM_LOAD_OUTPUT" | tee -a "$LOG_FILE"
     
-    # Check if docker load succeeded
-    if [ $VM_LOAD_EXIT_CODE -ne 0 ]; then
-        log "❌ INVESTIGATION FINDING: Docker load command failed in VM"
-        log "   Exit code: $VM_LOAD_EXIT_CODE"
-        log "   Duration: ${VM_LOAD_DURATION} seconds"
+    # Check if docker load succeeded (considering retry attempts)
+    if [ "$VM_LOAD_SUCCESS" = false ] || [ $VM_LOAD_EXIT_CODE -ne 0 ]; then
+        if [ "$VM_LOAD_SUCCESS" = false ]; then
+            log "❌ INVESTIGATION FINDING: Docker load command failed in VM after $MAX_IMAGE_LOAD_ATTEMPTS attempts"
+            log "   All retry attempts exhausted"
+            log "   Final exit code: $VM_LOAD_EXIT_CODE"
+            log "   Total duration: ${VM_LOAD_DURATION} seconds"
+        else
+            log "❌ INVESTIGATION FINDING: Docker load command failed in VM"
+            log "   Exit code: $VM_LOAD_EXIT_CODE"
+            log "   Duration: ${VM_LOAD_DURATION} seconds"
+        fi
         
         log "   === DETAILED DOCKER LOAD ERROR ANALYSIS ==="
         
@@ -3742,8 +3818,18 @@ diagnose_docker_image_load_issues() {
         rm -rf "$TEMP_DIR"
         return 1
     else
-        log "✅ INVESTIGATION FINDING: Docker load command succeeded in VM"
-        log "   Duration: ${VM_LOAD_DURATION} seconds"
+        if [ "$VM_LOAD_SUCCESS" = true ]; then
+            if [ $IMAGE_LOAD_ATTEMPT -gt 1 ]; then
+                log "✅ INVESTIGATION FINDING: Docker load command succeeded in VM after $IMAGE_LOAD_ATTEMPT attempts"
+                log "   Retry logic was successful"
+            else
+                log "✅ INVESTIGATION FINDING: Docker load command succeeded in VM on first attempt"
+            fi
+            log "   Duration: ${VM_LOAD_DURATION} seconds"
+        else
+            log "✅ INVESTIGATION FINDING: Docker load command succeeded in VM"
+            log "   Duration: ${VM_LOAD_DURATION} seconds"
+        fi
         
         log "   === DETAILED DOCKER LOAD SUCCESS ANALYSIS ==="
         
