@@ -3778,6 +3778,106 @@ diagnose_docker_image_load_issues() {
         
         log "   === END DOCKER LOAD SUCCESS ANALYSIS ==="
         
+        # TASK 8.6: Add explicit error checking after docker load command in VM
+        log "   === TASK 8.6: EXPLICIT DOCKER LOAD ERROR CHECKING ==="
+        
+        # Explicit Validation Step 1: Verify docker load operation completed successfully
+        log "   Explicit Validation Step 1: Verifying docker load operation completion..."
+        DOCKER_LOAD_SUCCESS=0
+        
+        # Check if stdout contains explicit success confirmation
+        if [ -n "$VM_LOAD_STDOUT_CONTENT" ]; then
+            if echo "$VM_LOAD_STDOUT_CONTENT" | grep -q "Loaded image"; then
+                log "   ✓ EXPLICIT: Docker load operation reported success in stdout"
+                DOCKER_LOAD_SUCCESS=1
+            else
+                log "   ❌ EXPLICIT: Docker load operation did not report success in stdout"
+                log "      Expected: 'Loaded image' in stdout"
+                log "      Actual: $VM_LOAD_STDOUT_CONTENT"
+            fi
+        else
+            log "   ❌ EXPLICIT: No stdout content from docker load operation"
+            log "      This indicates the command may have failed silently"
+        fi
+        
+        # Explicit Validation Step 2: Check for silent failures despite zero exit code
+        log "   Explicit Validation Step 2: Checking for silent failures..."
+        if [ -n "$VM_LOAD_STDERR_CONTENT" ]; then
+            if echo "$VM_LOAD_STDERR_CONTENT" | grep -q "Error\|Failed\|Cannot\|denied\|invalid"; then
+                log "   ❌ EXPLICIT: Silent failure detected in stderr despite zero exit code"
+                log "      Error patterns found in stderr: $VM_LOAD_STDERR_CONTENT"
+                DOCKER_LOAD_SUCCESS=0
+            else
+                log "   ✓ EXPLICIT: No error patterns detected in stderr"
+            fi
+        else
+            log "   ✓ EXPLICIT: No stderr content (clean execution)"
+        fi
+        
+        # Explicit Validation Step 3: Verify image file processing completion
+        log "   Explicit Validation Step 3: Verifying image file processing..."
+        IMAGE_FILE_PROCESSED=0
+        if [ -n "$VM_LOAD_STDOUT_CONTENT" ]; then
+            # Check for evidence that the image file was actually processed
+            if echo "$VM_LOAD_STDOUT_CONTENT" | grep -q "Loaded image ID:\|sha256:"; then
+                log "   ✓ EXPLICIT: Image file processing completed (found image ID/sha256)"
+                IMAGE_FILE_PROCESSED=1
+            elif echo "$VM_LOAD_STDOUT_CONTENT" | grep -q "Loaded image"; then
+                log "   ✓ EXPLICIT: Image file processing completed (found success message)"
+                IMAGE_FILE_PROCESSED=1
+            else
+                log "   ❌ EXPLICIT: Image file processing not verified"
+                log "      No evidence of successful image processing in stdout"
+            fi
+        else
+            log "   ❌ EXPLICIT: Cannot verify image file processing (no stdout)"
+        fi
+        
+        # Explicit Validation Step 4: Verify Docker daemon properly handled the load
+        log "   Explicit Validation Step 4: Verifying Docker daemon processing..."
+        DAEMON_PROCESSING_SUCCESS=0
+        
+        # Check if there are any Docker daemon related messages
+        if [ -n "$VM_LOAD_STDERR_CONTENT" ]; then
+            if echo "$VM_LOAD_STDERR_CONTENT" | grep -q "daemon\|socket\|connection"; then
+                log "   ❌ EXPLICIT: Docker daemon processing issues detected"
+                log "      Daemon-related messages: $VM_LOAD_STDERR_CONTENT"
+                DAEMON_PROCESSING_SUCCESS=0
+            else
+                log "   ✓ EXPLICIT: No Docker daemon processing issues detected"
+                DAEMON_PROCESSING_SUCCESS=1
+            fi
+        else
+            log "   ✓ EXPLICIT: No Docker daemon processing issues (no stderr)"
+            DAEMON_PROCESSING_SUCCESS=1
+        fi
+        
+        # Explicit Validation Step 5: Overall docker load validation
+        log "   Explicit Validation Step 5: Overall docker load validation..."
+        if [ $DOCKER_LOAD_SUCCESS -eq 1 ] && [ $IMAGE_FILE_PROCESSED -eq 1 ] && [ $DAEMON_PROCESSING_SUCCESS -eq 1 ]; then
+            log "   ✅ EXPLICIT: All explicit validation checks passed"
+            log "      ✓ Docker load operation completed successfully"
+            log "      ✓ Image file was properly processed"
+            log "      ✓ Docker daemon handled the load correctly"
+        else
+            log "   ❌ EXPLICIT: Docker load validation failed"
+            log "      FAILURE DETAILS:"
+            [ $DOCKER_LOAD_SUCCESS -eq 0 ] && log "      - Docker load operation did not report success"
+            [ $IMAGE_FILE_PROCESSED -eq 0 ] && log "      - Image file processing not verified"
+            [ $DAEMON_PROCESSING_SUCCESS -eq 1 ] || log "      - Docker daemon processing issues detected"
+            
+            log "      RECOVERY: This indicates a silent docker load failure"
+            log "      ACTION: Check Docker daemon logs in VM: sudo journalctl -u docker.service"
+            log "      ACTION: Verify image file integrity and retry load operation"
+            
+            # Clean up and exit with error
+            rm -f "$VM_LOAD_STDOUT_FILE" "$VM_LOAD_STDERR_FILE" 2>/dev/null || true
+            rm -rf "$TEMP_DIR"
+            return 1
+        fi
+        
+        log "   === END TASK 8.6: EXPLICIT DOCKER LOAD ERROR CHECKING ==="
+        
         # Clean up temporary files (keep for now, will be cleaned later)
     fi
     

@@ -195,3 +195,5 @@ After deployment, verify:
 4. **Cleanup on VM deletion:** Should we clean up Docker data when the VM is deleted? (Recommendation: No, multipass handles VM cleanup)
 
 5. **Alternative container runtimes:** Should we consider supporting containerd or other runtimes? (Recommendation: No, Docker is the standard and Kubernetes supports it well)
+
+6. **Image loading method:** Should we use the current pipe method (`docker save | multipass exec -- docker load`) or switch to a file transfer method (`multipass transfer` + `docker load`)? (Recommendation: Test both methods, use the one with better error handling and reliability)

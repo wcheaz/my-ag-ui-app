@@ -1,8 +1,8 @@
 {
-  "active": false,
-  "iteration": 36,
+  "active": true,
+  "iteration": 44,
   "minIterations": 1,
-  "maxIterations": 50,
+  "maxIterations": 100,
   "completionPromise": "COMPLETE",
   "taskPromise": "READY_FOR_NEXT_TASK",
   "tasksMode": true,
@@ -11,7 +11,6 @@
   "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-vm-docker-daemon/.ralph/prompt-template.md",
   "noCommit": false,
   "model": "",
-  "startedAt": "2026-03-23T02:02:34.492Z",
-  "resumedAt": "2026-03-23T02:02:34.492Z",
-  "completedAt": "2026-03-23T02:06:21.596Z"
+  "startedAt": "2026-03-23T02:26:12.144Z",
+  "resumedAt": "2026-03-23T02:26:12.144Z"
 }
