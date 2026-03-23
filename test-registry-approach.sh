@@ -333,23 +333,180 @@ test_image_build() {
 # Test 3: Image push to registry
 test_image_push() {
     log_registry "Phase 3: Image Push to Registry"
-    log_registry "Testing comprehensive image push with verification"
+    log_registry "Testing comprehensive image push with verification and error handling"
     
-    # Test registry accessibility before push
-    run_registry_test "pre-push registry check" "curl -s http://localhost:32000/v2/_catalog >/dev/null 2>&1"
+    # Test 3.1: Pre-flight registry accessibility check
+    log_registry "Test 3.1: Pre-flight registry accessibility check..."
+    if curl -s http://localhost:32000/v2/_catalog >/dev/null 2>&1; then
+        log_success "Registry is accessible before push operation"
+    else
+        log_error "Registry is not accessible before push operation"
+        log_info "This may indicate the registry is not running or not enabled"
+        log_info "Diagnostic: Check registry pod status: microk8s kubectl get pods -n container-registry"
+        return 1
+    fi
     
-    # Push image to registry
-    log_info "Pushing image to registry (this may take a while)..."
-    run_registry_test "push image" "docker push $REGISTRY_IMAGE"
+    # Test 3.2: Verify tagged image exists locally before push
+    log_registry "Test 3.2: Verifying tagged image exists locally..."
+    local registry_image="localhost:32000/my-ag-ui-app:latest"
+    if docker images "$registry_image" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "$registry_image"; then
+        log_success "Tagged image exists locally: $registry_image"
+        
+        # Show image details
+        log_registry "Local image details:"
+        docker images "$registry_image" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null | head -2 || log_info "Could not get image details"
+        
+    else
+        log_error "Tagged image does not exist locally: $registry_image"
+        log_info "Run image build and tagging tests first"
+        return 1
+    fi
     
-    # Verify image in registry
-    log_info "Verifying image in registry..."
-    run_registry_test "image in registry" "curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list | grep -q 'latest'"
+    # Test 3.3: Test comprehensive push functionality with error handling
+    log_registry "Test 3.3: Testing comprehensive push functionality..."
     
-    # Test registry manifest accessibility
-    run_registry_test "registry manifest accessible" "curl -s http://localhost:32000/v2/my-ag-ui-app/manifests/latest >/dev/null 2>&1"
+    # Create a comprehensive push test function
+    test_comprehensive_push() {
+        local target_image="$registry_image"
+        local max_attempts=3
+        local attempt=1
+        local push_success=false
+        
+        log_registry "Starting comprehensive push test with retry logic..."
+        
+        while [ $attempt -le $max_attempts ]; do
+            log_registry "Push attempt $attempt/$max_attempts..."
+            
+            # Pre-push verification
+            log_registry "Pre-push verification for attempt $attempt..."
+            if ! curl -s http://localhost:32000/v2/_catalog >/dev/null 2>&1; then
+                log_error "Registry not accessible for push attempt $attempt"
+                if [ $attempt -lt $max_attempts ]; then
+                    log_info "Waiting 5 seconds before retry..."
+                    sleep 5
+                fi
+                ((attempt++))
+                continue
+            fi
+            
+            # Perform the push with error capture
+            log_registry "Executing docker push $target_image..."
+            local push_output
+            local push_exit_code
+            
+            if push_output=$(timeout 60 docker push "$target_image" 2>&1); then
+                push_exit_code=0
+                log_success "Docker push completed successfully (attempt $attempt)"
+                push_success=true
+                break
+            else
+                push_exit_code=$?
+                log_error "Docker push failed (exit code: $push_exit_code, attempt $attempt)"
+                
+                # Analyze error type
+                log_registry "Analyzing push failure..."
+                if echo "$push_output" | grep -q -E "(connection refused|timeout|timed out|network unreachable|temporary failure)"; then
+                    log_info "Error type: TRANSIENT NETWORK FAILURE"
+                    log_info "Recovery: Will retry (attempt $attempt/$max_attempts)"
+                    
+                elif echo "$push_output" | grep -q -E "(permission denied|unauthorized|authentication failed)"; then
+                    log_info "Error type: AUTHENTICATION FAILURE"
+                    log_info "Recovery: This should not occur with local registry"
+                    
+                elif echo "$push_output" | grep -q -E "(no such image|image not found|manifest unknown)"; then
+                    log_info "Error type: IMAGE NOT FOUND"
+                    log_info "Recovery: Verify image was tagged correctly"
+                    break
+                    
+                elif echo "$push_output" | grep -q -E "(registry.*not found|registry.*unavailable|registry.*down)"; then
+                    log_info "Error type: REGISTRY UNAVAILABLE"
+                    log_info "Recovery: Check registry status and restart if needed"
+                    break
+                    
+                elif echo "$push_output" | grep -q -E "(disk full|no space|insufficient space)"; then
+                    log_info "Error type: DISK SPACE FAILURE"
+                    log_info "Recovery: Check disk space and clean up if needed"
+                    break
+                    
+                else
+                    log_info "Error type: UNKNOWN PUSH FAILURE"
+                    log_info "Error details: $push_output"
+                fi
+                
+                if [ $attempt -lt $max_attempts ]; then
+                    log_info "Waiting 5 seconds before retry..."
+                    sleep 5
+                fi
+                ((attempt++))
+            fi
+        done
+        
+        if [ "$push_success" = true ]; then
+            log_success "Comprehensive push test completed successfully"
+            return 0
+        else
+            log_error "Comprehensive push test failed after $max_attempts attempts"
+            return 1
+        fi
+    }
     
-    log_registry "Phase 3 completed"
+    # Run the comprehensive push test
+    if test_comprehensive_push; then
+        log_success "Image push to registry completed successfully"
+    else
+        log_error "Image push to registry failed"
+        return 1
+    fi
+    
+    # Test 3.4: Verify image in registry after push
+    log_registry "Test 3.4: Verifying image in registry after push..."
+    local registry_response
+    if registry_response=$(curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list 2>/dev/null); then
+        if echo "$registry_response" | grep -q '"latest"'; then
+            log_success "Image verified in registry catalog"
+            log_info "Registry response: $registry_response"
+        else
+            log_error "Image not found in registry catalog"
+            log_info "Registry response: $registry_response"
+            return 1
+        fi
+    else
+        log_error "Failed to query registry catalog"
+        return 1
+    fi
+    
+    # Test 3.5: Test registry manifest accessibility
+    log_registry "Test 3.5: Testing registry manifest accessibility..."
+    if curl -s http://localhost:32000/v2/my-ag-ui-app/manifests/latest >/dev/null 2>&1; then
+        log_success "Registry manifest is accessible"
+    else
+        log_error "Registry manifest is not accessible"
+        log_info "This may indicate the push was incomplete or corrupted"
+        return 1
+    fi
+    
+    # Test 3.6: Test image pull from registry (verification that push was successful)
+    log_registry "Test 3.6: Testing image pull from registry (verification)..."
+    
+    # First, remove the local image to test pull
+    log_registry "Removing local image to test pull from registry..."
+    if docker rmi "$registry_image" >/dev/null 2>&1; then
+        log_info "Local image removed for pull test"
+    else
+        log_info "Local image could not be removed (may be in use or have multiple tags)"
+    fi
+    
+    # Attempt to pull from registry
+    log_registry "Attempting to pull image from registry..."
+    if docker pull "$registry_image" >/dev/null 2>&1; then
+        log_success "Image pull from registry successful - push verification completed"
+    else
+        log_error "Failed to pull image from registry"
+        log_info "This indicates the push operation may not have completed successfully"
+        return 1
+    fi
+    
+    log_registry "Phase 3: Image Push to Registry - ALL TESTS COMPLETED"
 }
 
 # Test 4: Kubernetes deployment with registry image
