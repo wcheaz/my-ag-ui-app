@@ -4,6 +4,12 @@
 - [x] 0.2 Investigate and fix syntax error near unexpected token `}` on line 2594 of deploy.sh
 - [x] 0.3 Verify deploy.sh has no syntax errors by running `bash -n deploy.sh`
 - [x] 0.4 Test that deploy.sh can be executed without immediate syntax errors
+- [x] 0.5 Investigate and fix `local: can only be used in a function` error on line 1229 of deploy.sh
+- [x] 0.6 Identify all instances of `local` keyword used outside of functions in deploy.sh
+- [x] 0.7 Replace `local` variables outside functions with regular variable declarations or move code into functions
+- [x] 0.8 Verify all `local` keyword usage is inside function definitions only
+- [x] 0.9 Re-run `bash -n deploy.sh` to verify no more syntax errors remain
+- [x] 0.10 Test that deploy.sh can be executed without any syntax errors
 
 ## 1. Core Function Implementation
 

@@ -6,9 +6,12 @@ Additionally, even after Docker is set up in the VM, the image loading process m
 
 **Investigation Finding:** Debugging revealed that multipass transfer fails with error: `[sftp] cannot access /tmp/docker-image-load-364049/my-ag-ui-app-latest.tar: No such file or directory`. This indicates the `docker save` command is not creating the file in the expected location or the file path is incorrect, causing the image transfer to fail.
 
+**Additional Syntax Error:** The deploy.sh script has a bash syntax error on line 1229: `local: can only be used in a function`. The `local` keyword is being used multiple times outside of function definitions, which is not valid in bash. This prevents the script from executing at all and must be fixed before any other implementation work.
+
 ## What Changes
 
 - Fix existing syntax errors in deploy.sh that prevent script execution (line 408: `start_total_deployment_timing: command not found`, line 2594: syntax error near `}`)
+- Fix `local: can only be used in a function` error on line 1229 - identify and fix all instances of `local` keyword used outside of functions
 - Add Docker installation and daemon startup verification in the multipass VM before attempting image load operations
 - Implement automatic Docker installation in the VM if not present
 - Add Docker daemon health checks in the VM before proceeding with image loading

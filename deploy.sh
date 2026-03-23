@@ -1199,7 +1199,6 @@ test_image_loading_methods() {
     log ""
     
     return 0
-}
     
     # Step 3: Transfer image file to VM using multipass transfer
     log "Step 3: Transferring image file to VM using multipass transfer..."
@@ -3741,14 +3740,14 @@ fi
 log "Docker image 'my-ag-ui-app:latest' verified successfully"
 
 # Setup Docker in VM before attempting image load
-start_phase_timing "VM_DOCKER_SETUP")
+start_phase_timing "VM_DOCKER_SETUP"
 log "Starting VM Docker setup..."
 if ! setup_vm_docker; then
     log "ERROR: VM Docker setup failed"
     exit 1
 fi
 log "VM Docker setup completed successfully"
-end_phase_timing "VM_DOCKER_SETUP")
+end_phase_timing "VM_DOCKER_SETUP"
 
 # 6.3 Test image loading with different methods (pipe vs file transfer)
 log ""
@@ -3764,7 +3763,7 @@ else
 fi
 
 # 6.3 Load Docker image into multipass VM with detailed logging and error handling
-start_phase_timing "DOCKER_IMAGE_LOAD")
+start_phase_timing "DOCKER_IMAGE_LOAD"
 log "Starting Docker image load into VM..."
 log "Loading Docker image 'my-ag-ui-app:latest' into multipass VM..."
 

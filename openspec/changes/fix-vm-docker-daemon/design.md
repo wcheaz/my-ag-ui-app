@@ -7,6 +7,7 @@ Additionally, even after Docker is set up in the VM, the image loading process m
 Additionally, the deployment script ([`deploy.sh`](deploy.sh)) has existing syntax errors that prevent it from executing at all:
 - Line 408: `start_total_deployment_timing: command not found`
 - Line 2594: syntax error near unexpected token `}`
+ - Line 1229: `local: can only be used in a function` - `local` keyword is being used outside of function definitions
 
 These syntax errors must be fixed before implementing the Docker setup functionality.
 
@@ -137,8 +138,12 @@ The deployment script currently assumes Docker is pre-installed and running in t
 0. Fix existing syntax errors in [`deploy.sh`](deploy.sh):
    - Investigate and fix `start_total_deployment_timing: command not found` error on line 408
    - Investigate and fix syntax error near unexpected token `}` on line 2594
-   - Verify deploy.sh has no syntax errors by running `bash -n deploy.sh`
-   - Test that deploy.sh can be executed without immediate syntax errors
+   - Investigate and fix `local: can only be used in a function` error on line 1229
+   - Identify all instances of `local` keyword used outside of functions
+   - Replace `local` variables outside functions with regular variable declarations or move code into functions
+   - Verify all `local` keyword usage is inside function definitions only
+   - Re-run `bash -n deploy.sh` to verify no more syntax errors remain
+   - Test that deploy.sh can be executed without any syntax errors
 
 1. Add the `setup_vm_docker()` function to [`deploy.sh`](deploy.sh) that:
    - Checks if Docker is already installed

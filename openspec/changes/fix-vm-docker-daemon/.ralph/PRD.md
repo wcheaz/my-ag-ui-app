@@ -12,9 +12,12 @@ Additionally, even after Docker is set up in the VM, the image loading process m
 
 **Investigation Finding:** Debugging revealed that multipass transfer fails with error: `[sftp] cannot access /tmp/docker-image-load-364049/my-ag-ui-app-latest.tar: No such file or directory`. This indicates the `docker save` command is not creating the file in the expected location or the file path is incorrect, causing the image transfer to fail.
 
+**Additional Syntax Error:** The deploy.sh script has a bash syntax error on line 1229: `local: can only be used in a function`. The `local` keyword is being used multiple times outside of function definitions, which is not valid in bash. This prevents the script from executing at all and must be fixed before any other implementation work.
+
 ## What Changes
 
 - Fix existing syntax errors in deploy.sh that prevent script execution (line 408: `start_total_deployment_timing: command not found`, line 2594: syntax error near `}`)
+- Fix `local: can only be used in a function` error on line 1229 - identify and fix all instances of `local` keyword used outside of functions
 - Add Docker installation and daemon startup verification in the multipass VM before attempting image load operations
 - Implement automatic Docker installation in the VM if not present
 - Add Docker daemon health checks in the VM before proceeding with image loading
@@ -363,6 +366,7 @@ Additionally, even after Docker is set up in the VM, the image loading process m
 Additionally, the deployment script ([`deploy.sh`](deploy.sh)) has existing syntax errors that prevent it from executing at all:
 - Line 408: `start_total_deployment_timing: command not found`
 - Line 2594: syntax error near unexpected token `}`
+ - Line 1229: `local: can only be used in a function` - `local` keyword is being used outside of function definitions
 
 These syntax errors must be fixed before implementing the Docker setup functionality.
 
@@ -493,8 +497,12 @@ The deployment script currently assumes Docker is pre-installed and running in t
 0. Fix existing syntax errors in [`deploy.sh`](deploy.sh):
    - Investigate and fix `start_total_deployment_timing: command not found` error on line 408
    - Investigate and fix syntax error near unexpected token `}` on line 2594
-   - Verify deploy.sh has no syntax errors by running `bash -n deploy.sh`
-   - Test that deploy.sh can be executed without immediate syntax errors
+   - Investigate and fix `local: can only be used in a function` error on line 1229
+   - Identify all instances of `local` keyword used outside of functions
+   - Replace `local` variables outside functions with regular variable declarations or move code into functions
+   - Verify all `local` keyword usage is inside function definitions only
+   - Re-run `bash -n deploy.sh` to verify no more syntax errors remain
+   - Test that deploy.sh can be executed without any syntax errors
 
 1. Add the `setup_vm_docker()` function to [`deploy.sh`](deploy.sh) that:
    - Checks if Docker is already installed
@@ -564,7 +572,7 @@ After deployment, verify:
 ## Current Task Context
 
 ## Current Task
-- 8.10 Fix file path issue: `docker save` output file not found at `/tmp/docker-image-load-*/my-ag-ui-app-latest.tar`
+- 0.5 Investigate and fix `local: can only be used in a function` error on line 1229 of deploy.sh
 ## Completed Tasks for Git Commit
 - [x] 0.1 Investigate and fix `start_total_deployment_timing: command not found` error on line 408 of deploy.sh
 - [x] 0.2 Investigate and fix syntax error near unexpected token `}` on line 2594 of deploy.sh
@@ -622,3 +630,13 @@ After deployment, verify:
 - [x] 8.7 Verify image exists in VM immediately after load using `docker images`
 - [x] 8.8 Add retry logic for image load if first attempt fails
 - [x] 8.9 Implement image load verification with detailed error reporting
+- [x] 8.10 Fix file path issue: `docker save` output file not found at `/tmp/docker-image-load-*/my-ag-ui-app-latest.tar`
+- [x] 8.11 Verify `docker save` command creates file in correct location with correct permissions
+- [x] 8.12 Check if temporary directory `/tmp/docker-image-load-*` exists before multipass transfer
+- [x] 8.13 Add explicit file existence check after `docker save` before attempting multipass transfer
+- [x] 8.14 Log exact file path and permissions after `docker save` completes
+- [x] 8.15 Test alternative file locations (e.g., `/tmp/` without subdirectory, current working directory)
+- [x] 8.16 Verify multipass transfer can access the file from the host system
+- [x] 8.17 Test image loading with different methods (pipe vs file transfer)
+- [x] 8.18 Document the working image load method and update deployment script accordingly
+- [x] 8.19 Add comprehensive error messages for image load failures with specific recovery steps
