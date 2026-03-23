@@ -1728,6 +1728,11 @@ enable_microk8s_registry() {
 tag_image_for_local_registry() {
     log "Starting Docker image tagging for local registry..."
     
+    # Track tagging operation start time for performance measurement
+    local TAGGING_START_TIME
+    TAGGING_START_TIME=$(date +%s)
+    log "⏱️  Tagging operation started at: $(date -d "@$TAGGING_START_TIME" '+%Y-%m-%d %H:%M:%S')"
+    
     # Validate Docker daemon availability before checking images
     log "Validating Docker daemon availability before image existence check..."
     if ! docker info >/dev/null 2>&1; then
@@ -1989,6 +1994,14 @@ tag_image_for_local_registry() {
     log "   Image tagged as: $target_image_tag"
     log "   Ready for: Push to microk8s local registry at localhost:32000"
     log "   Next step: Use the registry push function to push this tagged image"
+    
+    # Calculate and log tagging operation duration
+    local TAGGING_END_TIME
+    TAGGING_END_TIME=$(date +%s)
+    local TAGGING_DURATION
+    TAGGING_DURATION=$((TAGGING_END_TIME - TAGGING_START_TIME))
+    log "⏱️  Tagging operation completed at: $(date -d "@$TAGGING_END_TIME" '+%Y-%m-%d %H:%M:%S')"
+    log "⏱️  Total tagging operation duration: $TAGGING_DURATION seconds"
     
     return 0
 }
