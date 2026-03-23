@@ -7,7 +7,7 @@
 
 ## 2. Image Tagging for Local Registry
 
-- [ ] 2.1 Add function to tag Docker image with local registry endpoint (localhost:32000/my-ag-ui-app:latest)
+- [x] 2.1 Add function to tag Docker image with local registry endpoint (localhost:32000/my-ag-ui-app:latest)
 - [ ] 2.2 Add validation to ensure source image exists before tagging
 - [ ] 2.3 Add error handling for tagging failures with clear messages
 - [ ] 2.4 Add logging for tagging operations

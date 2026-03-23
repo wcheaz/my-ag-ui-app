@@ -1721,6 +1721,209 @@ enable_microk8s_registry() {
 }
 
 # ===========================
+# IMAGE TAGGING FUNCTION
+# ===========================
+
+# Tag Docker image with local registry endpoint (localhost:32000/my-ag-ui-app:latest)
+tag_image_for_local_registry() {
+    log "Starting Docker image tagging for local registry..."
+    
+    # Check if source image exists before tagging
+    log "Checking if source image my-ag-ui-app:latest exists locally..."
+    if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" | grep -q "my-ag-ui-app:latest"; then
+        log "❌ ERROR: Source image my-ag-ui-app:latest not found locally"
+        log "   Please build the image first: docker build -t my-ag-ui-app:latest ."
+        log "   Or ensure the image exists and has the correct tag"
+        return 1
+    fi
+    log "✅ Source image my-ag-ui-app:latest exists locally"
+    
+    # Get source image details for logging
+    local source_image_details
+    source_image_details=$(docker images my-ag-ui-app:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
+    log "Source image details:"
+    echo "$source_image_details" | tee -a "$LOG_FILE"
+    
+    # Define the target registry image tag
+    local target_image_tag="localhost:32000/my-ag-ui-app:latest"
+    log "Target registry image tag: $target_image_tag"
+    
+    # Check if target tag already exists to avoid conflicts
+    log "Checking if target tag already exists..."
+    if docker images "$target_image_tag" --format "{{.Repository}}:{{.Tag}}" | grep -q "$target_image_tag"; then
+        log "⚠️  WARNING: Target tag $target_image_tag already exists"
+        log "   Removing existing tag to avoid conflicts..."
+        if ! docker rmi "$target_image_tag" 2>&1 | tee -a "$LOG_FILE"; then
+            log "⚠️  WARNING: Could not remove existing tag $target_image_tag"
+            log "   This may cause the tagging operation to fail"
+            log "   You can manually remove it: docker rmi $target_image_tag"
+        else
+            log "✅ Existing tag $target_image_tag removed successfully"
+        fi
+    else
+        log "✅ Target tag $target_image_tag does not exist (safe to proceed)"
+    fi
+    
+    # Tag the image with local registry endpoint
+    log "Tagging image with local registry endpoint..."
+    log "   Command: docker tag my-ag-ui-app:latest $target_image_tag"
+    log "   This makes the image addressable by the microk8s local registry"
+    
+    local tag_output
+    local tag_exit_code
+    
+    # Execute the tagging command with error capture
+    if tag_output=$(docker tag my-ag-ui-app:latest "$target_image_tag" 2>&1); then
+        tag_exit_code=0
+        log "✅ Docker image tagging command completed successfully"
+        log "   Tagging operation: COMPLETED"
+    else
+        tag_exit_code=$?
+        log "❌ ERROR: Failed to tag Docker image (exit code: $tag_exit_code)"
+        log "   Tagging operation: FAILED"
+        log "Error output:"
+        echo "$tag_output" | tee -a "$LOG_FILE"
+        
+        # Analyze specific error patterns and provide targeted guidance
+        log "ANALYZING IMAGE TAGGING FAILURE..."
+        
+        if echo "$tag_output" | grep -q -E "(No such image|image not found|not found|does not exist)"; then
+            log "ERROR TYPE: SOURCE IMAGE NOT FOUND"
+            log "DIAGNOSTIC: The source image my-ag-ui-app:latest does not exist or is not accessible"
+            log "RECOVERY STEPS:"
+            log "1. Verify image exists: docker images my-ag-ui-app:latest"
+            log "2. Build image if missing: docker build -t my-ag-ui-app:latest ."
+            log "3. Check image name and tag: docker images | head -20"
+            
+        elif echo "$tag_output" | grep -q -E "(permission denied|Permission denied|access denied|Operation not permitted)"; then
+            log "ERROR TYPE: PERMISSION FAILURE"
+            log "DIAGNOSTIC: Insufficient permissions to tag Docker images"
+            log "RECOVERY STEPS:"
+            log "1. Check Docker daemon access: docker info"
+            log "2. Check user permissions: groups | grep docker"
+            log "3. Run with proper Docker group permissions: usermod -aG docker \$USER"
+            log "4. Or use sudo: sudo docker tag my-ag-ui-app:latest $target_image_tag"
+            
+        elif echo "$tag_output" | grep -q -E ("daemon|Docker daemon|Cannot connect to Docker daemon|connection refused)"; then
+            log "ERROR TYPE: DOCKER DAEMON ACCESS FAILURE"
+            log "DIAGNOSTIC: Cannot connect to Docker daemon service"
+            log "RECOVERY STEPS:"
+            log "1. Start Docker daemon: sudo systemctl start docker"
+            log "2. Check Docker daemon status: sudo systemctl status docker"
+            log "3. Verify Docker is running: docker info"
+            log "4. Restart Docker if needed: sudo systemctl restart docker"
+            
+        elif echo "$tag_output" | grep -q -E "(repository|repository name|invalid repository|malformed repository)"; then
+            log "ERROR TYPE: INVALID REPOSITORY NAME"
+            log "DIAGNOSTIC: The target registry tag contains invalid characters or format"
+            log "RECOVERY STEPS:"
+            log "1. Verify target tag format: $target_image_tag"
+            log "2. Ensure registry endpoint is correct: localhost:32000"
+            log "3. Check for invalid characters in image name"
+            log "4. Valid format: [registry_host:port/][namespace/]repository[:tag]"
+            
+        elif echo "$tag_output" | grep -q -E "(tag|tag name|invalid tag|tag already exists|conflict)"; then
+            log "ERROR TYPE: TAG CONFLICT OR INVALID TAG"
+            log "DIAGNOSTIC: Tag already exists, conflicts with existing tag, or tag format is invalid"
+            log "RECOVERY STEPS:"
+            log "1. Remove existing tag: docker rmi $target_image_tag"
+            log "2. Verify tag format: localhost:32000/my-ag-ui-app:latest"
+            log "3. Use force flag if needed: docker tag -f my-ag-ui-app:latest $target_image_tag"
+            log "4. Check existing tags: docker images | grep localhost:32000"
+            
+        elif echo "$tag_output" | grep -q -E "(filesystem|storage|disk space|no space|out of space|layer|overlay)"; then
+            log "ERROR TYPE: FILESYSTEM OR STORAGE FAILURE"
+            log "DIAGNOSTIC: Docker storage or filesystem issues preventing image tagging"
+            log "RECOVERY STEPS:"
+            log "1. Check disk space: df -h"
+            log "2. Check Docker storage: docker info | grep -A 10 'Storage Driver'"
+            log "3. Clean up Docker resources: docker system prune -f"
+            log "4. Check filesystem permissions: ls -la /var/lib/docker"
+            
+        elif echo "$tag_output" | grep -q -E "(memory|OOM|out of memory|resource|allocation|cannot allocate)"; then
+            log "ERROR TYPE: MEMORY OR RESOURCE CONSTRAINT FAILURE"
+            log "DIAGNOSTIC: System lacks sufficient memory or resources for Docker operations"
+            log "RECOVERY STEPS:"
+            log "1. Check memory usage: free -h"
+            log "2. Check system resources: top -bn1 | head -20"
+            log "3. Free up memory: sudo apt autoremove -y && sudo apt clean"
+            log "4. Close unnecessary applications or increase system memory"
+            
+        else
+            log "ERROR TYPE: UNKNOWN IMAGE TAGGING FAILURE"
+            log "DIAGNOSTIC: Image tagging failed with unknown error pattern"
+            log "ERROR DETAILS:"
+            log "Tag command exit code: $tag_exit_code"
+            log "Source image: my-ag-ui-app:latest"
+            log "Target tag: $target_image_tag"
+            log "Tag command output:"
+            echo "$tag_output" | tee -a "$LOG_FILE"
+            log "RECOVERY STEPS:"
+            log "1. Verify Docker is working: docker --version && docker info"
+            log "2. Check source image: docker images my-ag-ui-app:latest"
+            log "3. Try manual tagging: docker tag my-ag-ui-app:latest $target_image_tag"
+            log "4. Check Docker daemon logs: sudo journalctl -u docker.service -n 20"
+        fi
+        
+        return 1
+    fi
+    
+    # Verify the tagging was successful
+    log "Verifying image tagging was successful..."
+    if docker images "$target_image_tag" --format "{{.Repository}}:{{.Tag}}" | grep -q "$target_image_tag"; then
+        log "✅ Image tagging verification successful"
+        log "   Target tag $target_image_tag exists and is accessible"
+        
+        # Get tagged image details for logging
+        local tagged_image_details
+        tagged_image_details=$(docker images "$target_image_tag" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
+        log "Tagged image details:"
+        echo "$tagged_image_details" | tee -a "$LOG_FILE"
+        
+        # Verify that both images (source and tagged) exist and have the same image ID
+        local source_image_id
+        local tagged_image_id
+        
+        source_image_id=$(docker images my-ag-ui-app:latest --format "{{.ID}}" 2>/dev/null || echo "unknown")
+        tagged_image_id=$(docker images "$target_image_tag" --format "{{.ID}}" 2>/dev/null || echo "unknown")
+        
+        if [ "$source_image_id" = "$tagged_image_id" ] && [ "$source_image_id" != "unknown" ]; then
+            log "✅ Image ID verification successful - both images reference the same underlying image"
+            log "   Source image ID: $source_image_id"
+            log "   Tagged image ID: $tagged_image_id"
+        else
+            log "⚠️  WARNING: Image ID verification failed or IDs are different"
+            log "   Source image ID: $source_image_id"
+            log "   Tagged image ID: $tagged_image_id"
+            log "   This may indicate the tagging operation didn't work as expected"
+        fi
+        
+    else
+        log "❌ ERROR: Image tagging verification failed"
+        log "   Target tag $target_image_tag does not exist after tagging operation"
+        log "   This indicates the tagging command may have silently failed"
+        
+        # Check if the source image still exists
+        if docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" | grep -q "my-ag-ui-app:latest"; then
+            log "✅ Source image still exists: my-ag-ui-app:latest"
+        else
+            log "❌ CRITICAL: Source image my-ag-ui-app:latest is missing after failed tagging"
+            log "   This may indicate a serious issue with the Docker daemon"
+            log "   RECOVERY: You may need to rebuild the image: docker build -t my-ag-ui-app:latest ."
+        fi
+        
+        return 1
+    fi
+    
+    log "✅ Docker image tagging for local registry completed successfully"
+    log "   Image tagged as: $target_image_tag"
+    log "   Ready for: Push to microk8s local registry at localhost:32000"
+    log "   Next step: Use the registry push function to push this tagged image"
+    
+    return 0
+}
+
+# ===========================
 # VM DOCKER SETUP FUNCTION
 # ===========================
 
@@ -3858,10 +4061,10 @@ else
     end_phase_timing "DEPENDENCY_VALIDATION"
 fi
 
-# 6.1 Build Docker image using Dockerfile in project root
+ # 6.1 Build Docker image using Dockerfile in project root
 start_phase_timing "DOCKER_IMAGE_BUILD"
 log "Starting Docker image build process..."
-log "Building Docker image 'my-ag-ui-app:latest' using project Dockerfile..."
+log "Building Docker image 'localhost:32000/my-ag-ui-app:latest' using project Dockerfile..."
 
 # Check Docker daemon socket permissions before attempting build
 log "Checking Docker daemon socket permissions..."
@@ -3900,10 +4103,10 @@ fi
 log "Dockerfile found: $(pwd)/Dockerfile"
 
 # Build Docker image with enhanced error handling for permission issues
-log "Building Docker image 'my-ag-ui-app:latest'..."
-if ! docker build -t my-ag-ui-app:latest . 2>&1 | tee -a "$LOG_FILE"; then
+log "Building Docker image 'localhost:32000/my-ag-ui-app:latest'..."
+if ! docker build -t localhost:32000/my-ag-ui-app:latest . 2>&1 | tee -a "$LOG_FILE"; then
     # Check if the build failed due to permission issues
-    BUILD_LOG=$(docker build -t my-ag-ui-app:latest . 2>&1 || true)
+    BUILD_LOG=$(docker build -t localhost:32000/my-ag-ui-app:latest . 2>&1 || true)
     if echo "$BUILD_LOG" | grep -q "permission denied"; then
         log "ERROR: Docker build failed due to permission issues"
         log "RECOVERY INSTRUCTIONS:"
@@ -3921,1434 +4124,71 @@ if ! docker build -t my-ag-ui-app:latest . 2>&1 | tee -a "$LOG_FILE"; then
             "Check Docker build output above for errors. Ensure Docker is running and accessible. Check Dockerfile for syntax errors."
     fi
 fi
-log "Docker image 'my-ag-ui-app:latest' built successfully"
+log "Docker image 'localhost:32000/my-ag-ui-app:latest' built successfully"
 end_phase_timing "DOCKER_IMAGE_BUILD"
 
 # 6.2 Verify Docker image was built successfully
 log "Verifying Docker image was built successfully..."
-if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "my-ag-ui-app:latest"; then
+if ! docker images localhost:32000/my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "localhost:32000/my-ag-ui-app:latest"; then
     handle_secrets_error 122 "Docker image verification failed" \
-        "Docker image 'my-ag-ui-app:latest' was not found in local Docker images. Build may have failed silently."
+        "Docker image 'localhost:32000/my-ag-ui-app:latest' was not found in local Docker images. Build may have failed silently."
 fi
-log "Docker image 'my-ag-ui-app:latest' verified successfully"
+log "Docker image 'localhost:32000/my-ag-ui-app:latest' verified successfully"
 
-# Setup Docker in VM before attempting image load
-start_phase_timing "VM_DOCKER_SETUP"
-log "Starting VM Docker setup..."
-if ! setup_vm_docker; then
-    log "ERROR: VM Docker setup failed"
-    exit 1
+ # Setup Docker in VM before attempting image load
+ start_phase_timing "VM_DOCKER_SETUP"
+ log "Starting VM Docker setup..."
+ if ! setup_vm_docker; then
+     log "ERROR: VM Docker setup failed"
+     exit 1
+ fi
+ log "VM Docker setup completed successfully"
+ end_phase_timing "VM_DOCKER_SETUP"
+
+ # Enable microk8s registry for local image distribution
+ start_phase_timing "MICROK8S_REGISTRY_SETUP"
+ log "Starting microk8s registry setup..."
+ if ! enable_microk8s_registry; then
+     log "ERROR: microk8s registry setup failed"
+     log "   This is required for local image distribution"
+     exit 1
+ fi
+ log "microk8s registry setup completed successfully"
+ end_phase_timing "MICROK8S_REGISTRY_SETUP"
+
+ # 6.3 Push Docker image to microk8s registry (simplified registry approach)
+ start_phase_timing "DOCKER_REGISTRY_PUSH"
+ log "Starting Docker image push to microk8s registry..."
+ log "Pushing Docker image 'localhost:32000/my-ag-ui-app:latest' to microk8s registry..."
+
+ # Push the image to the local registry
+ log "Executing: docker push localhost:32000/my-ag-ui-app:latest"
+ if ! docker push localhost:32000/my-ag-ui-app:latest 2>&1 | tee -a "$LOG_FILE"; then
+     handle_secrets_error 131 "Failed to push Docker image to microk8s registry" \
+         "Docker push command failed. Check if microk8s registry is running and accessible. Verify registry is enabled: microk8s enable registry"
+ fi
+
+ log "Docker image 'localhost:32000/my-ag-ui-app:latest' pushed to registry successfully"
+ end_phase_timing "DOCKER_REGISTRY_PUSH"
+
+ # Verify image is available in registry (basic verification)
+ log "Verifying image is available in microk8s registry..."
+ if ! curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list 2>/dev/null | grep -q "latest"; then
+     log "⚠️  WARNING: Image verification failed, but continuing with deployment"
+     log "   This may be a temporary issue - the registry may need a moment to update"
+ else
+     log "✅ Image 'localhost:32000/my-ag-ui-app:latest' verified in registry"
+ fi
+
+ # Note: With registry approach, we no longer need complex VM image loading and verification
+ # The image will be pulled directly by Kubernetes from the local registry during deployment
+
+# 6.4 Verify registry is ready before deployment
+log "Verifying microk8s registry is ready for deployment..."
+if ! verify_microk8s_registry; then
+    handle_secrets_error 132 "microk8s registry verification failed" \
+        "Registry is not accessible. Check if microk8s registry is enabled and running."
 fi
-log "VM Docker setup completed successfully"
-end_phase_timing "VM_DOCKER_SETUP"
-
-# 6.3 Test image loading with different methods (pipe vs file transfer)
-log ""
-log "Starting image loading methods comparison test..."
-if test_image_loading_methods; then
-    log "✅ Image loading methods comparison test completed successfully"
-    log "   Both pipe and file transfer methods have been tested"
-    log "   See test results above for detailed comparison"
-else
-    log "❌ Image loading methods comparison test failed"
-    log "   This may indicate issues with the Docker environment or VM connectivity"
-    log "   Continuing with deployment, but method-specific issues may occur"
-fi
-
-# 6.3 Load Docker image into multipass VM with detailed logging and error handling
-start_phase_timing "DOCKER_IMAGE_LOAD"
-log "Starting Docker image load into VM..."
-log "Loading Docker image 'my-ag-ui-app:latest' into multipass VM..."
-
-# ===========================
-# WORKING DOCKER IMAGE LOAD METHOD
-# ===========================
-#
-# OVERVIEW:
-# After extensive testing and investigation, the following Docker image load method 
-# has been identified as the most reliable and robust approach for transferring 
-# Docker images from host to multipass VM:
-#
-# WORKING METHOD: File Transfer with Comprehensive Verification
-#
-# STEP 1: Save Docker image to file on host
-#   - Command: docker save my-ag-ui-app:latest -o /tmp/docker-image-load-[PID]/my-ag-ui-app-latest.tar
-#   - Verification: Check file exists, has correct permissions, and can be loaded back locally
-#
-# STEP 2: Transfer image file to VM using multipass transfer
-#   - Command: multipass transfer /tmp/docker-image-load-[PID]/my-ag-ui-app-latest.tar VM_NAME:/home/ubuntu/my-ag-ui-app-latest.tar
-#   - Verification: Check file exists in VM with correct size and MD5 hash
-#
-# STEP 3: Load Docker image in VM
-#   - Command: multipass exec VM_NAME -- docker load -i /home/ubuntu/my-ag-ui-app-latest.tar
-#   - Verification: Check stdout for "Loaded image" confirmation, verify no error patterns in stderr
-#
-# STEP 4: Verify image exists in VM's Docker daemon
-#   - Command: multipass exec VM_NAME -- docker images my-ag-ui-app:latest
-#   - Verification: Confirm image is present and accessible in VM
-#
-# KEY FEATURES:
-# - Comprehensive error checking at each step
-# - Detailed logging with separate stdout/stderr capture
-# - Retry logic for image loading (up to 3 attempts with exponential backoff)
-# - File integrity verification (size, MD5 hash comparison)
-# - Silent failure detection and handling
-# - Network connectivity and system resource diagnostics
-#
-# WHY THIS METHOD WORKS:
-# 1. FILE TRANSFER RELIABILITY: multipass transfer is more reliable than pipe methods
-#    for large files and provides better error visibility
-#
-# 2. INDEPENDENT VERIFICATION: Each step can be verified independently,
-#    making it easier to identify where failures occur
-#
-# 3. COMPREHENSIVE LOGGING: Separate stdout/stderr capture and detailed
-#    error analysis enable precise troubleshooting
-#
-# 4. ROBUST ERROR HANDLING: Multiple validation layers ensure silent
-#    failures are detected and reported
-#
-# 5. RETRY CAPABILITY: Automatic retry with exponential backoff handles
-#    intermittent failures gracefully
-#
-# ALTERNATIVE METHODS TESTED:
-# - Pipe method: docker save | multipass exec -- docker load
-#   * Issue: Poor error visibility, silent failures, difficult debugging
-#   * Result: Abandoned due to reliability concerns
-#
-# - Direct registry push/pull: docker push/pull from registry
-#   * Issue: Requires additional infrastructure, network dependencies
-#   * Result: Not implemented due to complexity and external dependencies
-#
-# PERFORMANCE:
-# - Typical execution time: 30-90 seconds (depending on image size)
-# - Memory usage: Moderate (temporary file storage required)
-# - Network usage: High (file transfer to VM)
-# - Reliability: Very high (multiple verification layers)
-#
-# ===========================
-
-# INVESTIGATION: Function to diagnose Docker image load failures
-diagnose_docker_image_load_issues() {
-    log ""
-    log "=================================================="
-    log "      DOCKER IMAGE LOAD FAILURE INVESTIGATION"
-    log "=================================================="
-    log ""
-    
-    # Investigation Step 1: Verify the image exists on the host
-    log "INVESTIGATION STEP 1: Verifying Docker image exists on host..."
-    if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null | grep -q "my-ag-ui-app:latest"; then
-        log "❌ INVESTIGATION FINDING: Docker image 'my-ag-ui-app:latest' does not exist on host"
-        log "   POSSIBLE CAUSES:"
-        log "   - Previous build step failed"
-        log "   - Image was removed/cleaned up"
-        log "   - Build was not completed successfully"
-        log "   RECOVERY: Build the image first using 'docker build -t my-ag-ui-app:latest .'"
-        return 1
-    else
-        log "✅ INVESTIGATION FINDING: Docker image 'my-ag-ui-app:latest' exists on host"
-        # Show detailed image information
-        log "   Host image details:"
-        docker images my-ag-ui-app:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>&1 | tee -a "$LOG_FILE" || true
-    fi
-    
-    # Investigation Step 2: Check VM disk space before transfer
-    log ""
-    log "INVESTIGATION STEP 2: Checking VM disk space before transfer..."
-    VM_DISK_INFO=$(multipass exec "$VM_NAME" -- df -h / 2>&1 || echo "Unable to get disk info")
-    log "   VM disk information:"
-    echo "$VM_DISK_INFO" | tee -a "$LOG_FILE"
-    
-    # Extract available disk space
-    VM_AVAILABLE_SPACE=$(echo "$VM_DISK_INFO" | awk 'NR==2 {print $4}' | sed 's/G//' | head -n1 2>/dev/null || echo "unknown")
-    if [ "$VM_AVAILABLE_SPACE" != "unknown" ]; then
-        if [ "${VM_AVAILABLE_SPACE%.*}" -lt 1 ]; then
-            log "⚠️  INVESTIGATION WARNING: Low disk space in VM (${VM_AVAILABLE_SPACE}GB available)"
-            log "   This could cause image transfer or loading failures"
-        else
-            log "✅ INVESTIGATION FINDING: Sufficient disk space in VM (${VM_AVAILABLE_SPACE}GB available)"
-        fi
-    fi
-    
-    # Investigation Step 3: Test alternative file locations for Docker image save
-    log ""
-    log "INVESTIGATION STEP 3: Testing alternative file locations for Docker image save..."
-    
-    # TASK 8.15: Test alternative file locations (e.g., `/tmp/` without subdirectory, current working directory)
-    # Define alternative file locations to test
-    local -a FILE_LOCATIONS=(
-        "/tmp/my-ag-ui-app-latest-$$-alternative1.tar"  # /tmp/ without subdirectory
-        "./my-ag-ui-app-latest-$$-alternative2.tar"      # Current working directory
-        "/tmp/docker-image-load-$$/my-ag-ui-app-latest.tar"  # Original: /tmp/ with subdirectory
-    )
-    
-    # Track which location works
-    local SUCCESSFUL_LOCATION=""
-    local SUCCESSFUL_LOCATION_INDEX=""
-    
-    # Test each file location
-    for i in "${!FILE_LOCATIONS[@]}"; do
-        local CURRENT_LOCATION="${FILE_LOCATIONS[$i]}"
-        local LOCATION_NAME=""
-        
-        # Determine location name for logging
-        case $i in
-            0) LOCATION_NAME="/tmp/ without subdirectory" ;;
-            1) LOCATION_NAME="Current working directory" ;;
-            2) LOCATION_NAME="/tmp/ with subdirectory (original)" ;;
-        esac
-        
-        log ""
-        log "Testing file location $((i+1))/${#FILE_LOCATIONS[@]}: $LOCATION_NAME"
-        log "   File path: $CURRENT_LOCATION"
-        
-        # Create directory if needed (for subdirectory case)
-        if [[ "$CURRENT_LOCATION" == */* ]] && [ "${CURRENT_LOCATION%/*}" != "." ] && [ "${CURRENT_LOCATION%/*}" != "/tmp" ]; then
-            local TEMP_DIR="${CURRENT_LOCATION%/*}"
-            log "   Creating directory: $TEMP_DIR"
-            if ! mkdir -p "$TEMP_DIR"; then
-                log "❌ Location $((i+1)): Failed to create directory $TEMP_DIR"
-                continue
-            fi
-            log "✅ Location $((i+1)): Directory created successfully"
-        fi
-        
-        # Test docker save to this location
-        log "   Testing docker save to: $CURRENT_LOCATION"
-        
-        # Clean up any existing file first
-        if [ -f "$CURRENT_LOCATION" ]; then
-            rm -f "$CURRENT_LOCATION"
-        fi
-        
-        # Execute docker save with error handling
-        if docker save my-ag-ui-app:latest -o "$CURRENT_LOCATION" 2>/dev/null; then
-            # Verify file was created and is not empty
-            if [ -f "$CURRENT_LOCATION" ] && [ -s "$CURRENT_LOCATION" ]; then
-                local FILE_SIZE=$(du -h "$CURRENT_LOCATION" | cut -f1 2>/dev/null || echo "unknown")
-                log "✅ Location $((i+1)): Docker save successful"
-                log "   File size: $FILE_SIZE"
-                
-                # Test multipass transfer with this file
-                log "   Testing multipass transfer with this file..."
-                if multipass transfer "$CURRENT_LOCATION" "$VM_NAME:/home/ubuntu/test-image-$$-$i.tar" 2>/dev/null; then
-                    log "✅ Location $((i+1)): Multipass transfer successful"
-                    
-                    # Verify file exists in VM
-                    if multipass exec "$VM_NAME" -- test -f "/home/ubuntu/test-image-$$-$i.tar"; then
-                        log "✅ Location $((i+1)): File exists in VM"
-                        
-                        # Test docker load in VM
-                        if multipass exec "$VM_NAME" -- docker load -i "/home/ubuntu/test-image-$$-$i.tar" 2>/dev/null; then
-                            log "✅ Location $((i+1)): Docker load successful in VM"
-                            log "✅ Location $((i+1)): FULL SUCCESS - All operations completed"
-                            
-                            # Mark this location as successful
-                            SUCCESSFUL_LOCATION="$CURRENT_LOCATION"
-                            SUCCESSFUL_LOCATION_INDEX="$i"
-                            break
-                        else
-                            log "❌ Location $((i+1)): Docker load failed in VM"
-                        fi
-                    else
-                        log "❌ Location $((i+1)): File does not exist in VM after transfer"
-                    fi
-                else
-                    log "❌ Location $((i+1)): Multipass transfer failed"
-                fi
-            else
-                log "❌ Location $((i+1)): File not created or is empty"
-            fi
-        else
-            log "❌ Location $((i+1)): Docker save failed"
-        fi
-        
-        # Clean up test file
-        if [ -f "$CURRENT_LOCATION" ]; then
-            rm -f "$CURRENT_LOCATION"
-        fi
-        
-        # Clean up VM test file
-        multipass exec "$VM_NAME" -- rm -f "/home/ubuntu/test-image-$$-$i.tar" 2>/dev/null || true
-    done
-    
-    # Report test results
-    log ""
-    log "=================================================="
-    log "      ALTERNATIVE FILE LOCATION TEST RESULTS"
-    log "=================================================="
-    
-    if [ -n "$SUCCESSFUL_LOCATION" ]; then
-        log "✅ SUCCESS: Found working file location"
-        log "   Working location: $SUCCESSFUL_LOCATION"
-        
-        # Set the working location for the rest of the function
-        IMAGE_FILE="$SUCCESSFUL_LOCATION"
-        TEMP_DIR="${IMAGE_FILE%/*}"  # Extract directory from file path
-        if [ "$TEMP_DIR" = "$IMAGE_FILE" ]; then
-            TEMP_DIR="."  # File is in current directory
-        fi
-        
-        log "   Using this location for detailed diagnostics..."
-    else
-        log "❌ FAILURE: No file location worked"
-        log "   All tested locations failed at various stages"
-        log "   This indicates a fundamental issue with the environment"
-        
-        # Fall back to original location for detailed diagnostics
-        TEMP_DIR="/tmp/docker-image-load-$$"
-        IMAGE_FILE="$TEMP_DIR/my-ag-ui-app-latest.tar"
-        
-        log "   Falling back to original location for detailed diagnostics: $IMAGE_FILE"
-    fi
-    
-    # Create the directory if it doesn't exist (for the selected location)
-    if [ "$TEMP_DIR" != "." ] && [ ! -d "$TEMP_DIR" ]; then
-        log "Creating directory for selected location: $TEMP_DIR"
-        mkdir -p "$TEMP_DIR" || true
-    fi
-    
-    # Investigation Step 4: Save Docker image to file with comprehensive diagnostics (using selected location)
-    log ""
-    log "INVESTIGATION STEP 4: Saving Docker image to file with comprehensive diagnostics..."
-    
-    # TASK 8.10 & 8.15: Validate file path construction for selected location
-    log "   Validating file path construction for selected location..."
-    
-    # For current directory (.), we don't need directory validation
-    if [ "$TEMP_DIR" != "." ] && [ "$TEMP_DIR" != "/tmp" ] && [ -n "$TEMP_DIR" ]; then
-        if [ ! -d "$TEMP_DIR" ]; then
-            log "❌ INVESTIGATION FINDING: Directory is invalid or does not exist"
-            log "   EXPECTED: $TEMP_DIR"
-            log "   ACTUAL: Directory not found"
-            log "   RECOVERY: Create directory: mkdir -p $TEMP_DIR"
-            return 1
-        fi
-    fi
-    
-    # Validate that IMAGE_FILE is properly constructed (no wildcard patterns)
-    if echo "$IMAGE_FILE" | grep -q '/tmp/docker-image-load-\*'; then
-        log "❌ INVESTIGATION FINDING: File path contains wildcard pattern"
-        log "   CURRENT: $IMAGE_FILE"
-        log "   ISSUE: Wildcard patterns can cause file not found errors"
-        log "   RECOVERY: Use specific directory path with process ID"
-        return 1
-    fi
-    
-    # Validate IMAGE_FILE path structure
-    if [ -z "$IMAGE_FILE" ]; then
-        log "❌ INVESTIGATION FINDING: Image file path is empty"
-        log "   RECOVERY: Set IMAGE_FILE variable to a valid path"
-        return 1
-    fi
-    
-    # For current directory files, ensure the filename is valid
-    if [ "$TEMP_DIR" = "." ]; then
-        if [[ "$IMAGE_FILE" != ./* ]] && [[ "$IMAGE_FILE" != */* ]]; then
-            log "⚠️  INVESTIGATION WARNING: File in current directory should start with './'"
-            log "   CURRENT: $IMAGE_FILE"
-            log "   This may cause path resolution issues"
-        fi
-    fi
-    
-    log "✅ INVESTIGATION FINDING: File path validation passed"
-    log "   Selected location: $IMAGE_FILE"
-    if [ "$TEMP_DIR" != "." ]; then
-        log "   Directory: $TEMP_DIR"
-    else
-        log "   Directory: Current working directory"
-    fi
-    
-    log "   Checking Docker daemon status on host..."
-    HOST_DOCKER_STATUS=$(docker info 2>/dev/null > /dev/null && echo "running" || echo "not running")
-    log "   Host Docker daemon status: $HOST_DOCKER_STATUS"
-    
-    if [ "$HOST_DOCKER_STATUS" != "running" ]; then
-        log "❌ INVESTIGATION FINDING: Docker daemon not running on host"
-        log "   This will cause docker save to fail"
-        log "   RECOVERY: Start Docker daemon: sudo systemctl start docker"
-        return 1
-    fi
-    
-    log "   Saving Docker image to file: $IMAGE_FILE"
-    log "   This may take a while for large images..."
-    
-    # Capture detailed logging for docker save - separate stdout and stderr
-    log "   EXECUTING: docker save my-ag-ui-app:latest > \"$IMAGE_FILE\""
-    log "   Capturing stdout and stderr separately for detailed debugging..."
-    
-    DOCKER_SAVE_START_TIME=$(date +%s)
-    # Create temporary files to capture stdout and stderr separately
-    DOCKER_SAVE_STDOUT_FILE="$TEMP_DIR/docker_save_stdout.log"
-    DOCKER_SAVE_STDERR_FILE="$TEMP_DIR/docker_save_stderr.log"
-    
-    # Execute docker save with separate stdout and stderr capture
-    docker save my-ag-ui-app:latest > "$IMAGE_FILE" 2> "$DOCKER_SAVE_STDERR_FILE"
-    DOCKER_SAVE_EXIT_CODE=$?
-    DOCKER_SAVE_END_TIME=$(date +%s)
-    DOCKER_SAVE_DURATION=$((DOCKER_SAVE_END_TIME - DOCKER_SAVE_START_TIME))
-    
-    # Read the captured stderr (stdout is redirected to the image file)
-    DOCKER_SAVE_STDERR=$(cat "$DOCKER_SAVE_STDERR_FILE" 2>/dev/null || echo "")
-    
-    log "   Docker save command completed in ${DOCKER_SAVE_DURATION} seconds"
-    log "   Docker save exit code: $DOCKER_SAVE_EXIT_CODE"
-    
-    if [ $DOCKER_SAVE_EXIT_CODE -ne 0 ]; then
-        log "❌ INVESTIGATION FINDING: Docker save command failed (exit code: $DOCKER_SAVE_EXIT_CODE)"
-        log "   Docker save execution time: ${DOCKER_SAVE_DURATION} seconds"
-        
-        log "   === DETAILED DOCKER SAVE ERROR LOGGING ==="
-        log "   Command executed: docker save my-ag-ui-app:latest > \"$IMAGE_FILE\""
-        log "   Stdout (should be empty - redirected to file): N/A (redirected to image file)"
-        log "   Stderr content:"
-        if [ -s "$DOCKER_SAVE_STDERR_FILE" ]; then
-            echo "$DOCKER_SAVE_STDERR" | tee -a "$LOG_FILE"
-        else
-            log "   No stderr output captured"
-        fi
-        log "   === END DOCKER SAVE ERROR LOGGING ==="
-        
-        log "   POSSIBLE CAUSES:"
-        log "   - Docker daemon not running"
-        log "   - Image corrupted or incomplete"
-        log "   - Disk space full on host"
-        log "   - Permission issues with Docker socket"
-        log "   RECOVERY: Check Docker daemon status and available disk space"
-        
-        # Clean up temporary files
-        rm -f "$DOCKER_SAVE_STDERR_FILE" 2>/dev/null || true
-        rm -rf "$TEMP_DIR"
-        return 1
-    else
-        log "✅ INVESTIGATION FINDING: Docker save command succeeded"
-        log "   Docker save execution time: ${DOCKER_SAVE_DURATION} seconds"
-        
-        # Log successful docker save details
-        log "   === DETAILED DOCKER SAVE SUCCESS LOGGING ==="
-        log "   Command executed: docker save my-ag-ui-app:latest > \"$IMAGE_FILE\""
-        log "   Stdout: Successfully redirected to image file"
-        if [ -n "$DOCKER_SAVE_STDERR" ]; then
-            log "   Stderr (warnings/info):"
-            echo "$DOCKER_SAVE_STDERR" | tee -a "$LOG_FILE"
-        else
-            log "   Stderr: No warnings or errors"
-        fi
-        log "   === END DOCKER SAVE SUCCESS LOGGING ==="
-        
-        # Clean up temporary stderr file
-        rm -f "$DOCKER_SAVE_STDERR_FILE" 2>/dev/null || true
-    fi
-    
-    # Verify saved file properties
-    log "   Verifying saved file properties..."
-    if [ ! -f "$IMAGE_FILE" ]; then
-        log "❌ INVESTIGATION FINDING: Saved image file does not exist"
-        log "   Docker save completed but no file was created"
-        log "   POSSIBLE CAUSES: File system error, permission issues"
-        rm -rf "$TEMP_DIR"
-        return 1
-    fi
-    
-    if [ ! -s "$IMAGE_FILE" ]; then
-        log "❌ INVESTIGATION FINDING: Saved image file is empty (0 bytes)"
-        log "   Docker save completed but file is empty"
-        log "   POSSIBLE CAUSES: Image corruption, Docker daemon issues"
-        rm -rf "$TEMP_DIR"
-        return 1
-    fi
-    
-    # Get file information
-    IMAGE_SIZE_BYTES=$(stat -c%s "$IMAGE_FILE" 2>/dev/null || echo "unknown")
-    IMAGE_SIZE_HUMAN=$(du -h "$IMAGE_FILE" | cut -f1 2>/dev/null || echo "unknown")
-    IMAGE_MD5=$(md5sum "$IMAGE_FILE" | cut -d' ' -f1 2>/dev/null || echo "unknown")
-    
-    log "✅ INVESTIGATION FINDING: Docker image saved successfully"
-    log "   File path: $IMAGE_FILE"
-    log "   File size: $IMAGE_SIZE_HUMAN ($IMAGE_SIZE_BYTES bytes)"
-    log "   File MD5 hash: $IMAGE_MD5"
-    
-    # Investigation Step 5: Test file integrity before transfer
-    log ""
-    log "INVESTIGATION STEP 5: Testing file integrity before transfer..."
-    
-    # Try to load the saved image back locally to verify it's valid
-    log "   Testing saved image by loading it back locally..."
-    TEST_LOAD_OUTPUT=$(docker load -i "$IMAGE_FILE" 2>&1)
-    TEST_LOAD_EXIT_CODE=$?
-    
-    if [ $TEST_LOAD_EXIT_CODE -eq 0 ]; then
-        log "✅ INVESTIGATION FINDING: Saved image file integrity verified (can be loaded back locally)"
-        
-        # Clean up the test loaded image
-        docker rmi my-ag-ui-app:latest 2>/dev/null || true
-    else
-        log "❌ INVESTIGATION FINDING: Saved image file is corrupted (cannot be loaded back locally)"
-        log "   Load test error output:"
-        echo "$TEST_LOAD_OUTPUT" | tee -a "$LOG_FILE"
-        
-        log "   POSSIBLE CAUSES:"
-        log "   - Docker save process was interrupted"
-        log "   - File system corruption during save"
-        log "   - Disk errors"
-        log "   RECOVERY: Rebuild the Docker image"
-        
-        rm -rf "$TEMP_DIR"
-        return 1
-    fi
-    
-    # Investigation Step 6: Transfer image file to VM with detailed diagnostics
-    log ""
-    log "INVESTIGATION STEP 6: Transferring image file to VM with detailed diagnostics..."
-    
-    log "   Checking VM accessibility before transfer..."
-    if ! multipass exec "$VM_NAME" -- whoami >/dev/null 2>&1; then
-        log "❌ INVESTIGATION FINDING: VM is not accessible"
-        log "   POSSIBLE CAUSES:"
-        log "   - VM is not running"
-        log "   - Multipass service issues"
-        log "   - Network connectivity issues"
-        log "   RECOVERY: Check VM status: multipass info '$VM_NAME'"
-        rm -rf "$TEMP_DIR"
-        return 1
-    fi
-    log "✅ INVESTIGATION FINDING: VM is accessible"
-    
-    log "   Transferring image file to VM: $VM_NAME:/home/ubuntu/my-ag-ui-app-latest.tar"
-    log "   This may take a while for large images..."
-    
-    # Capture multipass transfer output
-    TRANSFER_OUTPUT=$(multipass transfer "$IMAGE_FILE" "$VM_NAME:/home/ubuntu/my-ag-ui-app-latest.tar" 2>&1)
-    TRANSFER_EXIT_CODE=$?
-    
-    if [ $TRANSFER_EXIT_CODE -ne 0 ]; then
-        log "❌ INVESTIGATION FINDING: Multipass transfer failed (exit code: $TRANSFER_EXIT_CODE)"
-        log "   Transfer error output:"
-        echo "$TRANSFER_OUTPUT" | tee -a "$LOG_FILE"
-        
-        log "   POSSIBLE CAUSES:"
-        log "   - VM disk space full"
-        log "   - Network connectivity issues"
-        log "   - VM file system issues"
-        log "   - Permission issues in VM"
-        log "   RECOVERY: Check VM disk space and connectivity"
-        
-        rm -rf "$TEMP_DIR"
-        return 1
-    fi
-    
-    log "✅ INVESTIGATION FINDING: Image file transferred successfully to VM"
-    
-    # Investigation Step 7: Verify file exists in VM after transfer
-    log ""
-    log "INVESTIGATION STEP 7: Verifying file exists in VM after transfer..."
-    
-    VM_FILE_CHECK=$(multipass exec "$VM_NAME" -- ls -la /home/ubuntu/my-ag-ui-app-latest.tar 2>&1)
-    VM_FILE_EXIT_CODE=$?
-    
-    if [ $VM_FILE_EXIT_CODE -ne 0 ]; then
-        log "❌ INVESTIGATION FINDING: Transferred file does not exist in VM"
-        log "   File check error output:"
-        echo "$VM_FILE_CHECK" | tee -a "$LOG_FILE"
-        
-        log "   POSSIBLE CAUSES:"
-        log "   - Transfer silently failed"
-        log "   - File system issues in VM"
-        log "   - Permission issues in VM"
-        log "   RECOVERY: Check VM file system and permissions"
-        
-        rm -rf "$TEMP_DIR"
-        return 1
-    fi
-    
-    # Get VM file information
-    VM_FILE_SIZE=$(multipass exec "$VM_NAME" -- stat -c%s /home/ubuntu/my-ag-ui-app-latest.tar 2>/dev/null || echo "unknown")
-    VM_FILE_SIZE_HUMAN=$(multipass exec "$VM_NAME" -- du -h /home/ubuntu/my-ag-ui-app-latest.tar 2>/dev/null | cut -f1 || echo "unknown")
-    VM_FILE_MD5=$(multipass exec "$VM_NAME" -- md5sum /home/ubuntu/my-ag-ui-app-latest.tar 2>/dev/null | cut -d' ' -f1 || echo "unknown")
-    
-    log "✅ INVESTIGATION FINDING: Transferred file exists in VM"
-    log "   VM file path: /home/ubuntu/my-ag-ui-app-latest.tar"
-    log "   VM file size: $VM_FILE_SIZE_HUMAN ($VM_FILE_SIZE bytes)"
-    log "   VM file MD5 hash: $VM_FILE_MD5"
-    
-    # Compare file sizes and hashes
-    if [ "$IMAGE_SIZE_BYTES" != "unknown" ] && [ "$VM_FILE_SIZE" != "unknown" ]; then
-        if [ "$IMAGE_SIZE_BYTES" = "$VM_FILE_SIZE" ]; then
-            log "✅ INVESTIGATION FINDING: File size matches between host and VM"
-        else
-            log "⚠️  INVESTIGATION WARNING: File size mismatch between host and VM"
-            log "   Host: $IMAGE_SIZE_BYTES bytes, VM: $VM_FILE_SIZE bytes"
-            log "   This indicates transfer corruption or truncation"
-        fi
-    fi
-    
-    if [ "$IMAGE_MD5" != "unknown" ] && [ "$VM_FILE_MD5" != "unknown" ]; then
-        if [ "$IMAGE_MD5" = "$VM_FILE_MD5" ]; then
-            log "✅ INVESTIGATION FINDING: File MD5 hash matches between host and VM"
-            log "   File integrity verified - no corruption during transfer"
-        else
-            log "❌ INVESTIGATION FINDING: File MD5 hash mismatch between host and VM"
-            log "   Host: $IMAGE_MD5, VM: $VM_FILE_MD5"
-            log "   This indicates file corruption during transfer"
-            log "   POSSIBLE CAUSES: Network issues, disk errors during transfer"
-            rm -rf "$TEMP_DIR"
-            return 1
-        fi
-    fi
-    
-    # Investigation Step 8: Load Docker image in VM with comprehensive monitoring
-    log ""
-    log "INVESTIGATION STEP 8: Loading Docker image in VM with comprehensive monitoring..."
-    
-    log "   Checking Docker daemon status in VM before load..."
-    VM_DOCKER_STATUS=$(multipass exec "$VM_NAME" -- docker info 2>/dev/null > /dev/null && echo "running" || echo "not running")
-    log "   VM Docker daemon status: $VM_DOCKER_STATUS"
-    
-    if [ "$VM_DOCKER_STATUS" != "running" ]; then
-        log "❌ INVESTIGATION FINDING: Docker daemon not running in VM"
-        log "   This will cause docker load to fail"
-        log "   RECOVERY: Start Docker daemon in VM: sudo systemctl start docker"
-        rm -rf "$TEMP_DIR"
-        return 1
-    fi
-    
-    # Check disk space again in VM before docker load
-    log "   Checking VM disk space before docker load..."
-    VM_DISK_BEFORE=$(multipass exec "$VM_NAME" -- df -h / 2>&1 | awk 'NR==2 {print $4}' | sed 's/G//' || echo "unknown")
-    log "   VM disk space before load: ${VM_DISK_BEFORE}GB available"
-    
-    log "   Loading Docker image in VM..."
-    log "   This may take a while for large images..."
-    
-    # TASK 8.8: Add retry logic for image load if first attempt fails
-    log "   === TASK 8.8: DOCKER LOAD WITH RETRY LOGIC ==="
-    
-    # Set up retry parameters for image loading
-    local MAX_IMAGE_LOAD_ATTEMPTS=3
-    local INITIAL_IMAGE_LOAD_DELAY=2
-    local MAX_IMAGE_LOAD_DELAY=10
-    local IMAGE_LOAD_ATTEMPT=1
-    local RETRY_DELAY=$INITIAL_IMAGE_LOAD_DELAY
-    local VM_LOAD_SUCCESS=false
-    
-    log "   Docker load will attempt up to $MAX_IMAGE_LOAD_ATTEMPTS times with exponential backoff"
-    
-    # Create temporary files for detailed stdout/stderr capture in VM
-    VM_LOAD_STDOUT_FILE="$TEMP_DIR/vm_load_stdout.log"
-    VM_LOAD_STDERR_FILE="$TEMP_DIR/vm_load_stderr.log"
-    
-    # Retry loop for docker load
-    while [ $IMAGE_LOAD_ATTEMPT -le $MAX_IMAGE_LOAD_ATTEMPTS ]; do
-        log "   === DOCKER LOAD ATTEMPT $IMAGE_LOAD_ATTEMPT/$MAX_IMAGE_LOAD_ATTEMPTS ==="
-        
-        # TASK 8.4: Verify docker load command is being received and executed in VM
-        log "   === TASK 8.4: VERIFY DOCKER LOAD COMMAND RECEPTION AND EXECUTION ==="
-        
-        # Step 1: Verify command transmission to VM
-        log "   Step 1: Verifying command transmission to VM..."
-        log "   EXECUTING: multipass exec \"$VM_NAME\" -- sh -c \"docker load -i /home/ubuntu/my-ag-ui-app-latest.tar\""
-        log "   Capturing stdout and stderr separately in VM for detailed debugging..."
-        
-        # Step 2: Create command receipt verification in VM
-        log "   Step 2: Creating command receipt verification in VM..."
-        RECEIPT_VERIFICATION_CMD="echo 'DOCKER_LOAD_COMMAND_RECEIVED: $(date +%s.%N)' > /tmp/docker_load_receipt.log"
-        multipass exec "$VM_NAME" -- sh -c "$RECEIPT_VERIFICATION_CMD"
-        RECEIPT_VERIFICATION_EXIT_CODE=$?
-        
-        if [ $RECEIPT_VERIFICATION_EXIT_CODE -eq 0 ]; then
-            log "   ✓ Command receipt verification: VM is ready to receive commands"
-            # Retrieve and log the receipt confirmation
-            RECEIPT_CONFIRMATION=$(multipass exec "$VM_NAME" -- cat /tmp/docker_load_receipt.log 2>/dev/null || echo "UNKNOWN")
-            log "   ✓ Receipt confirmation: $RECEIPT_CONFIRMATION"
-        else
-            log "   ⚠️  Command receipt verification: VM may not be ready to receive commands (exit code: $RECEIPT_VERIFICATION_EXIT_CODE)"
-            log "      Continuing with load attempt, but this may indicate VM accessibility issues"
-        fi
-        
-        # Step 3: Execute the docker load command with transmission verification
-        log "   Step 3: Executing docker load command with transmission verification..."
-        
-        # Capture docker load output with detailed timing and separate stdout/stderr
-        VM_LOAD_START_TIME=$(date +%s)
-        
-        # Execute command with separate stdout and stderr capture AND execution verification
-        EXECUTION_VERIFICATION_CMD="docker load -i /home/ubuntu/my-ag-ui-app-latest.tar 1> /tmp/vm_load_stdout.log 2> /tmp/vm_load_stderr.log; echo 'DOCKER_LOAD_EXECUTION_ATTEMPTED: \$?' > /tmp/docker_load_execution.log"
-        
-        log "   EXECUTING in VM: $EXECUTION_VERIFICATION_CMD"
-        multipass exec "$VM_NAME" -- sh -c "$EXECUTION_VERIFICATION_CMD"
-        VM_LOAD_EXIT_CODE=$?
-        
-        # Check if this attempt succeeded
-        if [ $VM_LOAD_EXIT_CODE -eq 0 ]; then
-            log "   ✅ DOCKER LOAD ATTEMPT $IMAGE_LOAD_ATTEMPT SUCCEEDED"
-            VM_LOAD_SUCCESS=true
-            break
-        else
-            log "   ❌ DOCKER LOAD ATTEMPT $IMAGE_LOAD_ATTEMPT FAILED (exit code: $VM_LOAD_EXIT_CODE)"
-            
-            # If this is not the last attempt, prepare for retry
-            if [ $IMAGE_LOAD_ATTEMPT -lt $MAX_IMAGE_LOAD_ATTEMPTS ]; then
-                log "   Waiting ${RETRY_DELAY}s before retry..."
-                sleep $RETRY_DELAY
-                
-                # Implement exponential backoff: double the delay, but cap at MAX_IMAGE_LOAD_DELAY
-                RETRY_DELAY=$((RETRY_DELAY * 2))
-                if [ $RETRY_DELAY -gt $MAX_IMAGE_LOAD_DELAY ]; then
-                    RETRY_DELAY=$MAX_IMAGE_LOAD_DELAY
-                fi
-                
-                IMAGE_LOAD_ATTEMPT=$((IMAGE_LOAD_ATTEMPT + 1))
-            else
-                log "   ❌ ALL DOCKER LOAD ATTEMPTS FAILED"
-            fi
-        fi
-    done
-    
-    # Only proceed with output verification if at least one attempt succeeded
-    if [ "$VM_LOAD_SUCCESS" = true ]; then
-        # Step 4: Verify command execution in VM
-        log "   Step 4: Verifying command execution in VM..."
-        
-        # Retrieve the execution verification log
-        EXECUTION_VERIFICATION_LOG=$(multipass exec "$VM_NAME" -- cat /tmp/docker_load_execution.log 2>/dev/null || echo "EXECUTION_VERIFICATION_FAILED")
-        log "   Execution verification log: $EXECUTION_VERIFICATION_LOG"
-        
-        # Check if execution was attempted by analyzing the verification log
-        if echo "$EXECUTION_VERIFICATION_LOG" | grep -q "DOCKER_LOAD_EXECUTION_ATTEMPTED"; then
-            # Extract the exit code from the execution verification log
-            VM_INTERNAL_EXIT_CODE=$(echo "$EXECUTION_VERIFICATION_LOG" | sed -n 's/DOCKER_LOAD_EXECUTION_ATTEMPTED: //p' | head -n1)
-            log "   ✓ Command execution verified in VM (internal exit code: $VM_INTERNAL_EXIT_CODE)"
-            
-            # Compare multipass exit code with VM internal exit code
-            if [ "$VM_LOAD_EXIT_CODE" = "$VM_INTERNAL_EXIT_CODE" ]; then
-                log "   ✓ Exit code consistency verified between multipass and VM internal"
-            else
-                log "   ⚠️  Exit code mismatch - multipass: $VM_LOAD_EXIT_CODE, VM internal: $VM_INTERNAL_EXIT_CODE"
-                log "      This may indicate communication issues between host and VM"
-            fi
-        else
-            log "   ❌ Command execution verification failed in VM"
-            log "      The command may not have been executed properly in the VM"
-            log "      Verification log content: $EXECUTION_VERIFICATION_LOG"
-        fi
-        
-        # Step 5: Retrieve the separate stdout and stderr files from VM
-        log "   Step 5: Retrieving command output from VM..."
-        
-        # Check if output files exist in VM
-        STDOUT_EXISTS=$(multipass exec "$VM_NAME" -- test -f /tmp/vm_load_stdout.log && echo "yes" || echo "no")
-        STDERR_EXISTS=$(multipass exec "$VM_NAME" -- test -f /tmp/vm_load_stderr.log && echo "yes" || echo "no")
-        
-        log "   Stdout file exists in VM: $STDOUT_EXISTS"
-        log "   Stderr file exists in VM: $STDERR_EXISTS"
-        
-        # Retrieve the output files
-        multipass exec "$VM_NAME" -- sh -c "cat /tmp/vm_load_stdout.log 2>/dev/null || echo ''" > "$VM_LOAD_STDOUT_FILE"
-        multipass exec "$VM_NAME" -- sh -c "cat /tmp/vm_load_stderr.log 2>/dev/null || echo ''" > "$VM_LOAD_STDERR_FILE"
-        
-        # Combine for compatibility with existing code
-        VM_LOAD_OUTPUT="$(cat "$VM_LOAD_STDOUT_FILE" 2>/dev/null)$(cat "$VM_LOAD_STDERR_FILE" 2>/dev/null)"
-        
-        VM_LOAD_END_TIME=$(date +%s)
-        VM_LOAD_DURATION=$((VM_LOAD_END_TIME - VM_LOAD_START_TIME))
-        
-        log "   === END TASK 8.4: DOCKER LOAD COMMAND VERIFICATION ==="
-        log "   Docker load command completed in ${VM_LOAD_DURATION} seconds"
-        log "   Docker load exit code: $VM_LOAD_EXIT_CODE"
-    else
-        # All attempts failed - retrieve output from the last attempt for debugging
-        log "   ❌ === ALL DOCKER LOAD ATTEMPTS FAILED - RETRIEVING DEBUG INFO ==="
-        
-        # Try to retrieve the execution verification log from the last attempt
-        EXECUTION_VERIFICATION_LOG=$(multipass exec "$VM_NAME" -- cat /tmp/docker_load_execution.log 2>/dev/null || echo "EXECUTION_VERIFICATION_FAILED")
-        log "   Last attempt execution verification log: $EXECUTION_VERIFICATION_LOG"
-        
-        # Try to retrieve output files from the last attempt
-        multipass exec "$VM_NAME" -- sh -c "cat /tmp/vm_load_stdout.log 2>/dev/null || echo ''" > "$VM_LOAD_STDOUT_FILE" 2>/dev/null || true
-        multipass exec "$VM_NAME" -- sh -c "cat /tmp/vm_load_stderr.log 2>/dev/null || echo ''" > "$VM_LOAD_STDERR_FILE" 2>/dev/null || true
-        
-        # Combine for compatibility with existing code
-        VM_LOAD_OUTPUT="$(cat "$VM_LOAD_STDOUT_FILE" 2>/dev/null)$(cat "$VM_LOAD_STDERR_FILE" 2>/dev/null)"
-        
-        VM_LOAD_END_TIME=$(date +%s)
-        VM_LOAD_DURATION=$((VM_LOAD_END_TIME - VM_LOAD_START_TIME))
-        
-        log "   === END TASK 8.4: DOCKER LOAD COMMAND VERIFICATION (ALL ATTEMPTS FAILED) ==="
-        log "   All docker load attempts failed within ${VM_LOAD_DURATION} seconds"
-        log "   Final exit code: $VM_LOAD_EXIT_CODE"
-    fi
-    
-    log "   === END TASK 8.8: DOCKER LOAD WITH RETRY LOGIC ==="
-    
-    # Log detailed docker load output with stdout/stderr separation
-    log "   === DETAILED DOCKER LOAD LOGGING ==="
-    log "   Command executed in VM: docker load -i /home/ubuntu/my-ag-ui-app-latest.tar"
-    
-    # Log stdout
-    log "   Stdout content:"
-    if [ -s "$VM_LOAD_STDOUT_FILE" ]; then
-        cat "$VM_LOAD_STDOUT_FILE" | tee -a "$LOG_FILE"
-    else
-        log "   No stdout output captured"
-    fi
-    
-    # Log stderr
-    log "   Stderr content:"
-    if [ -s "$VM_LOAD_STDERR_FILE" ]; then
-        cat "$VM_LOAD_STDERR_FILE" | tee -a "$LOG_FILE"
-    else
-        log "   No stderr output captured"
-    fi
-    log "   === END DETAILED DOCKER LOAD LOGGING ==="
-    
-    # Also log the combined output for backward compatibility
-    log "   Docker load combined output (stdout + stderr):"
-    echo "$VM_LOAD_OUTPUT" | tee -a "$LOG_FILE"
-    
-    # Check if docker load succeeded (considering retry attempts)
-    if [ "$VM_LOAD_SUCCESS" = false ] || [ $VM_LOAD_EXIT_CODE -ne 0 ]; then
-        if [ "$VM_LOAD_SUCCESS" = false ]; then
-            log "❌ INVESTIGATION FINDING: Docker load command failed in VM after $MAX_IMAGE_LOAD_ATTEMPTS attempts"
-            log "   All retry attempts exhausted"
-            log "   Final exit code: $VM_LOAD_EXIT_CODE"
-            log "   Total duration: ${VM_LOAD_DURATION} seconds"
-        else
-            log "❌ INVESTIGATION FINDING: Docker load command failed in VM"
-            log "   Exit code: $VM_LOAD_EXIT_CODE"
-            log "   Duration: ${VM_LOAD_DURATION} seconds"
-        fi
-        
-        log "   === DETAILED DOCKER LOAD ERROR ANALYSIS ==="
-        
-        # Read separate stdout and stderr for analysis
-        VM_LOAD_STDOUT_CONTENT=$(cat "$VM_LOAD_STDOUT_FILE" 2>/dev/null || echo "")
-        VM_LOAD_STDERR_CONTENT=$(cat "$VM_LOAD_STDERR_FILE" 2>/dev/null || echo "")
-        
-        # Analyze stdout for errors
-        if [ -n "$VM_LOAD_STDOUT_CONTENT" ]; then
-            log "   Stdout analysis:"
-            if echo "$VM_LOAD_STDOUT_CONTENT" | grep -q "Loaded image"; then
-                log "   ✓ Stdout indicates successful image load despite error code"
-            else
-                log "   - Stdout does not indicate successful load"
-            fi
-        fi
-        
-        # Analyze stderr for specific error patterns
-        if [ -n "$VM_LOAD_STDERR_CONTENT" ]; then
-            log "   Stderr analysis:"
-            if echo "$VM_LOAD_STDERR_CONTENT" | grep -q "no space left"; then
-                log "   ERROR TYPE: Insufficient disk space in VM"
-                log "   RECOVERY: Free up disk space in VM or increase VM disk size"
-            elif echo "$VM_LOAD_STDERR_CONTENT" | grep -q "permission denied"; then
-                log "   ERROR TYPE: Permission denied in VM"
-                log "   RECOVERY: Check user permissions and docker group membership"
-            elif echo "$VM_LOAD_STDERR_CONTENT" | grep -q "invalid tar"; then
-                log "   ERROR TYPE: Invalid tar archive (corrupted file)"
-                log "   RECOVERY: Rebuild and retransfer the image"
-            elif echo "$VM_LOAD_STDERR_CONTENT" | grep -q "docker daemon"; then
-                log "   ERROR TYPE: Docker daemon not running or not accessible"
-                log "   RECOVERY: Start Docker daemon in VM"
-            elif echo "$VM_LOAD_STDERR_CONTENT" | grep -q "Cannot connect"; then
-                log "   ERROR TYPE: Docker daemon connection failed"
-                log "   RECOVERY: Check Docker daemon status in VM"
-            elif echo "$VM_LOAD_STDERR_CONTENT" | grep -q "Error response"; then
-                log "   ERROR TYPE: Docker daemon error response"
-                log "   RECOVERY: Check Docker daemon logs in VM"
-            else
-                log "   ERROR TYPE: Unknown docker load failure"
-                log "   Check stderr content above for specific details"
-            fi
-        else
-            log "   No stderr content captured - may indicate command execution failure"
-        fi
-        
-        log "   === END DOCKER LOAD ERROR ANALYSIS ==="
-        
-        # Clean up temporary files
-        rm -f "$VM_LOAD_STDOUT_FILE" "$VM_LOAD_STDERR_FILE" 2>/dev/null || true
-        rm -rf "$TEMP_DIR"
-        return 1
-    else
-        if [ "$VM_LOAD_SUCCESS" = true ]; then
-            if [ $IMAGE_LOAD_ATTEMPT -gt 1 ]; then
-                log "✅ INVESTIGATION FINDING: Docker load command succeeded in VM after $IMAGE_LOAD_ATTEMPT attempts"
-                log "   Retry logic was successful"
-            else
-                log "✅ INVESTIGATION FINDING: Docker load command succeeded in VM on first attempt"
-            fi
-            log "   Duration: ${VM_LOAD_DURATION} seconds"
-        else
-            log "✅ INVESTIGATION FINDING: Docker load command succeeded in VM"
-            log "   Duration: ${VM_LOAD_DURATION} seconds"
-        fi
-        
-        log "   === DETAILED DOCKER LOAD SUCCESS ANALYSIS ==="
-        
-        # Analyze stdout for success indicators
-        VM_LOAD_STDOUT_CONTENT=$(cat "$VM_LOAD_STDOUT_FILE" 2>/dev/null || echo "")
-        VM_LOAD_STDERR_CONTENT=$(cat "$VM_LOAD_STDERR_FILE" 2>/dev/null || echo "")
-        
-        if [ -n "$VM_LOAD_STDOUT_CONTENT" ]; then
-            log "   Stdout analysis:"
-            if echo "$VM_LOAD_STDOUT_CONTENT" | grep -q "Loaded image"; then
-                log "   ✓ Stdout confirms successful image load"
-                # Extract image name if available
-                LOADED_IMAGE=$(echo "$VM_LOAD_STDOUT_CONTENT" | sed -n 's/Loaded image: //p' || echo "unknown")
-                if [ "$LOADED_IMAGE" != "unknown" ]; then
-                    log "   ✓ Loaded image: $LOADED_IMAGE"
-                fi
-            else
-                log "   - Stdout does not contain 'Loaded image' confirmation"
-                log "   - This may indicate silent failure despite exit code 0"
-            fi
-        else
-            log "   - No stdout content captured"
-            log "   - This is unusual for successful docker load"
-        fi
-        
-        if [ -n "$VM_LOAD_STDERR_CONTENT" ]; then
-            log "   Stderr warnings/info (non-critical):"
-            echo "$VM_LOAD_STDERR_CONTENT" | tee -a "$LOG_FILE"
-        else
-            log "   - No stderr content (clean execution)"
-        fi
-        
-        log "   === END DOCKER LOAD SUCCESS ANALYSIS ==="
-        
-        # TASK 8.6: Add explicit error checking after docker load command in VM
-        log "   === TASK 8.6: EXPLICIT DOCKER LOAD ERROR CHECKING ==="
-        
-        # Explicit Validation Step 1: Verify docker load operation completed successfully
-        log "   Explicit Validation Step 1: Verifying docker load operation completion..."
-        DOCKER_LOAD_SUCCESS=0
-        
-        # Check if stdout contains explicit success confirmation
-        if [ -n "$VM_LOAD_STDOUT_CONTENT" ]; then
-            if echo "$VM_LOAD_STDOUT_CONTENT" | grep -q "Loaded image"; then
-                log "   ✓ EXPLICIT: Docker load operation reported success in stdout"
-                DOCKER_LOAD_SUCCESS=1
-            else
-                log "   ❌ EXPLICIT: Docker load operation did not report success in stdout"
-                log "      Expected: 'Loaded image' in stdout"
-                log "      Actual: $VM_LOAD_STDOUT_CONTENT"
-            fi
-        else
-            log "   ❌ EXPLICIT: No stdout content from docker load operation"
-            log "      This indicates the command may have failed silently"
-        fi
-        
-        # Explicit Validation Step 2: Check for silent failures despite zero exit code
-        log "   Explicit Validation Step 2: Checking for silent failures..."
-        if [ -n "$VM_LOAD_STDERR_CONTENT" ]; then
-            if echo "$VM_LOAD_STDERR_CONTENT" | grep -q "Error\|Failed\|Cannot\|denied\|invalid"; then
-                log "   ❌ EXPLICIT: Silent failure detected in stderr despite zero exit code"
-                log "      Error patterns found in stderr: $VM_LOAD_STDERR_CONTENT"
-                DOCKER_LOAD_SUCCESS=0
-            else
-                log "   ✓ EXPLICIT: No error patterns detected in stderr"
-            fi
-        else
-            log "   ✓ EXPLICIT: No stderr content (clean execution)"
-        fi
-        
-        # Explicit Validation Step 3: Verify image file processing completion
-        log "   Explicit Validation Step 3: Verifying image file processing..."
-        IMAGE_FILE_PROCESSED=0
-        if [ -n "$VM_LOAD_STDOUT_CONTENT" ]; then
-            # Check for evidence that the image file was actually processed
-            if echo "$VM_LOAD_STDOUT_CONTENT" | grep -q "Loaded image ID:\|sha256:"; then
-                log "   ✓ EXPLICIT: Image file processing completed (found image ID/sha256)"
-                IMAGE_FILE_PROCESSED=1
-            elif echo "$VM_LOAD_STDOUT_CONTENT" | grep -q "Loaded image"; then
-                log "   ✓ EXPLICIT: Image file processing completed (found success message)"
-                IMAGE_FILE_PROCESSED=1
-            else
-                log "   ❌ EXPLICIT: Image file processing not verified"
-                log "      No evidence of successful image processing in stdout"
-            fi
-        else
-            log "   ❌ EXPLICIT: Cannot verify image file processing (no stdout)"
-        fi
-        
-        # Explicit Validation Step 4: Verify Docker daemon properly handled the load
-        log "   Explicit Validation Step 4: Verifying Docker daemon processing..."
-        DAEMON_PROCESSING_SUCCESS=0
-        
-        # Check if there are any Docker daemon related messages
-        if [ -n "$VM_LOAD_STDERR_CONTENT" ]; then
-            if echo "$VM_LOAD_STDERR_CONTENT" | grep -q "daemon\|socket\|connection"; then
-                log "   ❌ EXPLICIT: Docker daemon processing issues detected"
-                log "      Daemon-related messages: $VM_LOAD_STDERR_CONTENT"
-                DAEMON_PROCESSING_SUCCESS=0
-            else
-                log "   ✓ EXPLICIT: No Docker daemon processing issues detected"
-                DAEMON_PROCESSING_SUCCESS=1
-            fi
-        else
-            log "   ✓ EXPLICIT: No Docker daemon processing issues (no stderr)"
-            DAEMON_PROCESSING_SUCCESS=1
-        fi
-        
-        # Explicit Validation Step 5: Overall docker load validation
-        log "   Explicit Validation Step 5: Overall docker load validation..."
-        if [ $DOCKER_LOAD_SUCCESS -eq 1 ] && [ $IMAGE_FILE_PROCESSED -eq 1 ] && [ $DAEMON_PROCESSING_SUCCESS -eq 1 ]; then
-            log "   ✅ EXPLICIT: All explicit validation checks passed"
-            log "      ✓ Docker load operation completed successfully"
-            log "      ✓ Image file was properly processed"
-            log "      ✓ Docker daemon handled the load correctly"
-        else
-            log "   ❌ EXPLICIT: Docker load validation failed"
-            log "      FAILURE DETAILS:"
-            [ $DOCKER_LOAD_SUCCESS -eq 0 ] && log "      - Docker load operation did not report success"
-            [ $IMAGE_FILE_PROCESSED -eq 0 ] && log "      - Image file processing not verified"
-            [ $DAEMON_PROCESSING_SUCCESS -eq 1 ] || log "      - Docker daemon processing issues detected"
-            
-            log "      RECOVERY: This indicates a silent docker load failure"
-            log "      ACTION: Check Docker daemon logs in VM: sudo journalctl -u docker.service"
-            log "      ACTION: Verify image file integrity and retry load operation"
-            
-            # Clean up and exit with error
-            rm -f "$VM_LOAD_STDOUT_FILE" "$VM_LOAD_STDERR_FILE" 2>/dev/null || true
-            rm -rf "$TEMP_DIR"
-            return 1
-        fi
-        
-        log "   === END TASK 8.6: EXPLICIT DOCKER LOAD ERROR CHECKING ==="
-        
-        # Clean up temporary files (keep for now, will be cleaned later)
-    fi
-    
-    # Check disk space after docker load
-    log "   Checking VM disk space after docker load..."
-    VM_DISK_AFTER=$(multipass exec "$VM_NAME" -- df -h / 2>&1 | awk 'NR==2 {print $4}' | sed 's/G//' || echo "unknown")
-    log "   VM disk space after load: ${VM_DISK_AFTER}GB available"
-    
-    if [ "$VM_DISK_BEFORE" != "unknown" ] && [ "$VM_DISK_AFTER" != "unknown" ]; then
-        DISK_USED=$((VM_DISK_BEFORE - VM_DISK_AFTER))
-        log "   Disk space used by image: ${DISK_USED}GB"
-    fi
-    
-    log "✅ INVESTIGATION FINDING: Docker image loaded successfully in VM"
-    log "   Load duration: ${VM_LOAD_DURATION} seconds"
-    
-    # Investigation Step 9: Verify image exists in VM's Docker daemon
-    log ""
-    log "INVESTIGATION STEP 9: Verifying image exists in VM's Docker daemon..."
-    
-    # Wait a moment after load before checking (sometimes there's a delay)
-    log "   Waiting 2 seconds after load before verification..."
-    sleep 2
-    
-    VM_IMAGES_OUTPUT=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>&1)
-    VM_IMAGES_EXIT_CODE=$?
-    
-    log "   Docker images command in VM (exit code: $VM_IMAGES_EXIT_CODE):"
-    echo "$VM_IMAGES_OUTPUT" | tee -a "$LOG_FILE"
-    
-    if [ $VM_IMAGES_EXIT_CODE -ne 0 ]; then
-        log "❌ INVESTIGATION FINDING: Failed to list Docker images in VM"
-        log "   Docker daemon may have crashed or become unresponsive after load"
-        log "   RECOVERY: Restart Docker daemon in VM and retry"
-        rm -rf "$TEMP_DIR"
-        return 1
-    fi
-    
-    # Check if our specific image is in the list
-    if echo "$VM_IMAGES_OUTPUT" | grep -q "my-ag-ui-app.*latest"; then
-        log "✅ INVESTIGATION FINDING: Docker image 'my-ag-ui-app:latest' found in VM"
-        
-        # Extract image details
-        VM_IMAGE_SIZE=$(echo "$VM_IMAGES_OUTPUT" | awk '/my-ag-ui-app.*latest/ {print $3}' || echo "unknown")
-        VM_IMAGE_CREATED=$(echo "$VM_IMAGES_OUTPUT" | awk '/my-ag-ui-app.*latest/ {print $4,$5}' || echo "unknown")
-        
-        log "   VM image size: $VM_IMAGE_SIZE"
-        log "   VM image created: $VM_IMAGE_CREATED"
-    else
-        log "❌ INVESTIGATION FINDING: Docker image 'my-ag-ui-app:latest' NOT found in VM"
-        log "   This indicates silent load failure - docker load succeeded but image not available"
-        log "   POSSIBLE CAUSES:"
-        log "   - Docker load command returned success but actually failed"
-        log "   - Image was loaded but with different name/tag"
-        log "   - Docker daemon internal error"
-        log "   RECOVERY: Check Docker daemon logs in VM: sudo journalctl -u docker.service"
-        
-        # List all images in VM for debugging
-        log "   All images currently in VM:"
-        multipass exec "$VM_NAME" -- docker images 2>&1 | tee -a "$LOG_FILE" || true
-        
-        rm -rf "$TEMP_DIR"
-        return 1
-    fi
-    
-    # Investigation Step 10: Enhanced system diagnostics and error reporting
-    log ""
-    log "INVESTIGATION STEP 10: Enhanced system diagnostics and error reporting..."
-    
-    # Enhanced Diagnostic 10.1: Network connectivity diagnostics
-    log "   Enhanced Diagnostic 10.1: Network connectivity diagnostics..."
-    
-    log "   Testing host-to-VM network connectivity..."
-    NETWORK_TEST_START=$(date +%s)
-    
-    # Test basic connectivity
-    if ! multipass exec "$VM_NAME" -- ping -c 1 8.8.8.8 >/dev/null 2>&1; then
-        log "   ⚠️  NETWORK: VM cannot reach external network (8.8.8.8)"
-        log "      This may affect image pulling or Docker operations"
-    else
-        log "   ✓ NETWORK: VM can reach external network"
-    fi
-    
-    # Test DNS resolution
-    if ! multipass exec "$VM_NAME" -- nslookup google.com >/dev/null 2>&1; then
-        log "   ⚠️  NETWORK: DNS resolution failing in VM"
-        log "      This may affect Docker registry access"
-    else
-        log "   ✓ NETWORK: DNS resolution working in VM"
-    fi
-    
-    # Test Docker registry connectivity
-    if ! multipass exec "$VM_NAME" -- curl -s --connect-timeout 5 https://registry-1.docker.io/v2/ >/dev/null 2>&1; then
-        log "   ⚠️  NETWORK: Cannot connect to Docker registry"
-        log "      This may affect future Docker operations"
-    else
-        log "   ✓ NETWORK: Docker registry accessible"
-    fi
-    
-    NETWORK_TEST_END=$(date +%s)
-    NETWORK_TEST_DURATION=$((NETWORK_TEST_END - NETWORK_TEST_START))
-    log "   Network diagnostics completed in ${NETWORK_TEST_DURATION} seconds"
-    
-    # Enhanced Diagnostic 10.2: System resource monitoring
-    log "   Enhanced Diagnostic 10.2: System resource monitoring..."
-    
-    log "   Collecting VM system resource information..."
-    
-    # Get CPU info
-    VM_CPU_INFO=$(multipass exec "$VM_NAME" -- cat /proc/cpuinfo | grep "model name" | head -n1 | cut -d':' -f2 | sed 's/^ *//' || echo "unknown")
-    VM_CPU_CORES=$(multipass exec "$VM_NAME" -- nproc 2>/dev/null || echo "unknown")
-    log "   CPU: $VM_CPU_INFO ($VM_CPU_CORES cores)"
-    
-    # Get memory info
-    VM_MEM_INFO=$(multipass exec "$VM_NAME" -- free -h 2>/dev/null | grep "^Mem:" || echo "unknown")
-    VM_MEM_TOTAL=$(echo "$VM_MEM_INFO" | awk '{print $2}' || echo "unknown")
-    VM_MEM_AVAILABLE=$(echo "$VM_MEM_INFO" | awk '{print $7}' || echo "unknown")
-    log "   Memory: Total=$VM_MEM_TOTAL, Available=$VM_MEM_AVAILABLE"
-    
-    # Get load average
-    VM_LOAD_AVG=$(multipass exec "$VM_NAME" -- uptime 2>/dev/null | awk -F'load average:' '{print $2}' | sed 's/^ *//' || echo "unknown")
-    log "   Load average:$VM_LOAD_AVG"
-    
-    # Check for resource exhaustion
-    if [ "$VM_MEM_AVAILABLE" != "unknown" ]; then
-        VM_MEM_AVAILABLE_MB=$(echo "$VM_MEM_AVAILABLE" | sed 's/[^0-9.]//g')
-        if [ "$(echo "$VM_MEM_AVAILABLE_MB < 100" | bc -l 2>/dev/null || echo 0)" = "1" ]; then
-            log "   ❌ RESOURCE: Critically low memory available ($VM_MEM_AVAILABLE)"
-            log "      This may cause Docker operations to fail"
-        fi
-    fi
-    
-    # Enhanced Diagnostic 10.3: Docker daemon configuration verification
-    log "   Enhanced Diagnostic 10.3: Docker daemon configuration verification..."
-    
-    log "   Checking Docker daemon configuration in VM..."
-    
-    # Check Docker daemon status
-    VM_DOCKER_SERVICE_STATUS=$(multipass exec "$VM_NAME" -- systemctl is-active docker 2>/dev/null || echo "unknown")
-    log "   Docker service status: $VM_DOCKER_SERVICE_STATUS"
-    
-    # Check Docker daemon configuration file
-    VM_DOCKER_CONFIG_EXISTS=$(multipass exec "$VM_NAME" -- test -f /etc/docker/daemon.json && echo "yes" || echo "no")
-    log "   Docker daemon config exists: $VM_DOCKER_CONFIG_EXISTS"
-    
-    if [ "$VM_DOCKER_CONFIG_EXISTS" = "yes" ]; then
-        VM_DOCKER_CONFIG_CONTENT=$(multipass exec "$VM_NAME" -- cat /etc/docker/daemon.json 2>/dev/null || echo "unable to read")
-        log "   Docker daemon config content: $VM_DOCKER_CONFIG_CONTENT"
-    fi
-    
-    # Check Docker daemon logs for recent errors
-    log "   Checking Docker daemon logs for recent errors..."
-    VM_DOCKER_LOGS=$(multipass exec "$VM_NAME" -- journalctl -u docker.service --since "10 minutes ago" --no-pager 2>/dev/null || echo "unable to retrieve logs")
-    
-    if echo "$VM_DOCKER_LOGS" | grep -qi "error\|failed\|warning"; then
-        log "   ⚠️  DOCKER: Recent errors/warnings found in Docker daemon logs"
-        log "      Relevant log entries:"
-        echo "$VM_DOCKER_LOGS" | grep -i "error\|failed\|warning" | head -5 | tee -a "$LOG_FILE" || true
-    else
-        log "   ✓ DOCKER: No recent errors in Docker daemon logs"
-    fi
-    
-    # Enhanced Diagnostic 10.4: File system validation
-    log "   Enhanced Diagnostic 10.4: File system validation..."
-    
-    log "   Checking file system health in VM..."
-    
-    # Check root file system
-    VM_FS_INFO=$(multipass exec "$VM_NAME" -- df -h / 2>/dev/null | tail -n1 || echo "unknown")
-    VM_FS_TYPE=$(echo "$VM_FS_INFO" | awk '{print $1}' || echo "unknown")
-    VM_FS_SIZE=$(echo "$VM_FS_INFO" | awk '{print $2}' || echo "unknown")
-    VM_FS_USED=$(echo "$VM_FS_INFO" | awk '{print $3}' || echo "unknown")
-    VM_FS_AVAIL=$(echo "$VM_FS_INFO" | awk '{print $4}' || echo "unknown")
-    VM_FS_USE_PERCENT=$(echo "$VM_FS_INFO" | awk '{print $5}' || echo "unknown")
-    
-    log "   File system: $VM_FS_TYPE, Size: $VM_FS_SIZE, Used: $VM_FS_USED, Available: $VM_FS_AVAIL ($VM_FS_USE_PERCENT used)"
-    
-    # Check for file system errors
-    if [ "$VM_FS_USE_PERCENT" != "unknown" ]; then
-        VM_FS_USE_NUM=$(echo "$VM_FS_USE_PERCENT" | sed 's/%//')
-        if [ "$VM_FS_USE_NUM" -gt 90 ]; then
-            log "   ❌ FILESYSTEM: critically high disk usage ($VM_FS_USE_PERCENT)"
-            log "      This may cause Docker operations to fail"
-        elif [ "$VM_FS_USE_NUM" -gt 75 ]; then
-            log "   ⚠️  FILESYSTEM: high disk usage ($VM_FS_USE_PERCENT)"
-            log "      Consider freeing up disk space"
-        else
-            log "   ✓ FILESYSTEM: healthy disk usage ($VM_FS_USE_PERCENT)"
-        fi
-    fi
-    
-    # Check Docker data directory
-    VM_DOCKER_DIR_EXISTS=$(multipass exec "$VM_NAME" -- test -d /var/lib/docker && echo "yes" || echo "no")
-    log "   Docker data directory exists: $VM_DOCKER_DIR_EXISTS"
-    
-    if [ "$VM_DOCKER_DIR_EXISTS" = "yes" ]; then
-        VM_DOCKER_DIR_SIZE=$(multipass exec "$VM_NAME" -- du -sh /var/lib/docker 2>/dev/null | cut -f1 || echo "unknown")
-        log "   Docker data directory size: $VM_DOCKER_DIR_SIZE"
-    fi
-    
-    # Enhanced Diagnostic 10.5: Comprehensive error context collection
-    log "   Enhanced Diagnostic 10.5: Comprehensive error context collection..."
-    
-    log "   Collecting system information for error context..."
-    
-    # Get OS information
-    VM_OS_INFO=$(multipass exec "$VM_NAME" -- cat /etc/os-release 2>/dev/null | grep "PRETTY_NAME" | cut -d'"' -f2 || echo "unknown")
-    log "   Operating System: $VM_OS_INFO"
-    
-    # Get kernel version
-    VM_KERNEL_VERSION=$(multipass exec "$VM_NAME" -- uname -r 2>/dev/null || echo "unknown")
-    log "   Kernel version: $VM_KERNEL_VERSION"
-    
-    # Get Docker version
-    VM_DOCKER_VERSION=$(multipass exec "$VM_NAME" -- docker --version 2>/dev/null || echo "unknown")
-    log "   Docker version: $VM_DOCKER_VERSION"
-    
-    # Get user information
-    VM_CURRENT_USER=$(multipass exec "$VM_NAME" -- whoami 2>/dev/null || echo "unknown")
-    VM_USER_GROUPS=$(multipass exec "$VM_NAME" -- groups 2>/dev/null || echo "unknown")
-    log "   Current user: $VM_CURRENT_USER"
-    log "   User groups: $VM_USER_GROUPS"
-    
-    # Check if user is in docker group
-    if echo "$VM_USER_GROUPS" | grep -q "docker"; then
-        log "   ✓ USER: user is in docker group"
-    else
-        log "   ❌ USER: user is NOT in docker group"
-        log "      This may cause permission errors with Docker commands"
-    fi
-    
-    # Check Docker socket permissions
-    VM_DOCKER_SOCKET_PERMS=$(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null || echo "unable to check")
-    log "   Docker socket permissions: $VM_DOCKER_SOCKET_PERMS"
-    
-    # Investigation Step 11: Test Docker image functionality in VM
-    log ""
-    log "INVESTIGATION STEP 11: Testing Docker image functionality in VM..."
-    
-    log "   Testing if image can be inspected..."
-    VM_INSPECT_OUTPUT=$(multipass exec "$VM_NAME" -- docker inspect my-ag-ui-app:latest 2>&1)
-    VM_INSPECT_EXIT_CODE=$?
-    
-    if [ $VM_INSPECT_EXIT_CODE -eq 0 ]; then
-        log "✅ INVESTIGATION FINDING: Docker image can be inspected in VM"
-        
-        # Extract some basic image info
-        VM_IMAGE_ID=$(echo "$VM_INSPECT_OUTPUT" | grep -o '"Id": *"[^"]*"' | cut -d'"' -f4 | head -c12)
-        log "   VM image ID: $VM_IMAGE_ID"
-        
-        # Get image size in bytes
-        VM_IMAGE_SIZE_BYTES=$(echo "$VM_INSPECT_OUTPUT" | grep -o '"Size": *[0-9]*' | cut -d':' -f2 | tr -d ' ' || echo "unknown")
-        log "   VM image size: $VM_IMAGE_SIZE_BYTES bytes"
-    else
-        log "❌ INVESTIGATION FINDING: Cannot inspect Docker image in VM"
-        log "   Inspect error output:"
-        echo "$VM_INSPECT_OUTPUT" | tee -a "$LOG_FILE"
-        log "   This indicates image is corrupted or inaccessible"
-        
-        rm -rf "$TEMP_DIR"
-        return 1
-    fi
-    
-    # Clean up temporary file in VM
-    log ""
-    log "INVESTIGATION CLEANUP: Removing temporary file in VM..."
-    multipass exec "$VM_NAME" -- rm -f /home/ubuntu/my-ag-ui-app-latest.tar 2>&1 | tee -a "$LOG_FILE" || true
-    
-    # Clean up temporary stdout/stderr files
-    log "INVESTIGATION CLEANUP: Removing detailed logging temporary files..."
-    rm -f "$TEMP_DIR/docker_save_stdout.log" "$TEMP_DIR/docker_save_stderr.log" 2>/dev/null || true
-    rm -f "$TEMP_DIR/vm_load_stdout.log" "$TEMP_DIR/vm_load_stderr.log" 2>/dev/null || true
-    
-    # Clean up temporary files in VM
-    log "INVESTIGATION CLEANUP: Removing temporary files in VM..."
-    multipass exec "$VM_NAME" -- rm -f /tmp/vm_load_stdout.log /tmp/vm_load_stderr.log 2>&1 | tee -a "$LOG_FILE" || true
-    
-    # Clean up local temporary directory
-    log "INVESTIGATION CLEANUP: Removing local temporary directory..."
-    rm -rf "$TEMP_DIR"
-    
-    log ""
-    log "=================================================="
-    log "      ENHANCED INVESTIGATION COMPLETED SUCCESSFULLY"
-    log "=================================================="
-    log ""
-    log "✅ All investigation steps passed"
-    log "✅ Docker image is properly loaded and functional in VM"
-    log "✅ Image transfer was successful with no corruption"
-    log "✅ Image can be accessed and inspected in VM"
-    log "✅ Network connectivity verified and healthy"
-    log "✅ System resources monitored and sufficient"
-    log "✅ Docker daemon configuration validated"
-    log "✅ File system health confirmed"
-    log "✅ Comprehensive error context collected"
-    log ""
-    
-    return 0
-}
-
-# Run multipass transfer accessibility verification before image loading
-log ""
-log "Starting multipass transfer accessibility verification..."
-if verify_multipass_transfer_accessibility; then
-    log "✅ Multipass transfer accessibility verification completed successfully"
-else
-    log "❌ Multipass transfer accessibility verification failed"
-    log "This may indicate fundamental issues with file transfer from host to VM"
-    log "Continuing with image load investigation, but transfer failures may occur"
-fi
-
-# Run the comprehensive investigation
-log ""
-log "Starting comprehensive Docker image load investigation..."
-if diagnose_docker_image_load_issues; then
-    log "✅ Docker image load investigation completed successfully"
-else
-    log "❌ Docker image load investigation failed - see findings above"
-    handle_secrets_error 124 "Docker image load and verification failed in VM" \
-        "Comprehensive investigation identified critical issues with Docker image loading in the VM. This could be due to Docker daemon problems, disk space issues, transfer failures, or image corruption. See enhanced recovery suggestions below for step-by-step troubleshooting."
-fi
-
-end_phase_timing "DOCKER_IMAGE_LOAD"
-
-# 6.4 Verify image is available in VM's Docker daemon with detailed logging
-log "Verifying Docker image is available in VM's Docker daemon..."
-VM_IMAGES_OUTPUT=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>&1)
-VM_IMAGES_EXIT_CODE=$?
-
-# Log all images in VM for debugging
-log "All Docker images in VM:"
-echo "$VM_IMAGES_OUTPUT" | tee -a "$LOG_FILE"
-
-if [ $VM_IMAGES_EXIT_CODE -ne 0 ]; then
-    handle_secrets_error 130 "Failed to list Docker images in VM" \
-        "Docker images command failed in VM with exit code $VM_IMAGES_EXIT_CODE. Check Docker daemon in VM."
-fi
-
-# Check if our specific image is in the list
-if ! echo "$VM_IMAGES_OUTPUT" | grep -q "my-ag-ui-app.*latest"; then
-    handle_secrets_error 124 "Docker image verification in VM failed" \
-        "Docker image 'my-ag-ui-app:latest' was not found in VM's Docker images. Image load may have failed silently. Check the docker load output above for errors."
-fi
-log "Docker image 'my-ag-ui-app:latest' verified successfully in VM"
-
-# Create k8s directory in VM before file transfer
-start_phase_timing "KUBERNETES_FILE_TRANSFER"
-log "Preparing to create k8s directory in VM..."
-log "Creating k8s directory in VM..."
-if ! multipass exec "$VM_NAME" -- mkdir -p /home/ubuntu/k8s 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 110 "Failed to create k8s directory in VM" \
-        "Check if VM is running and accessible: multipass info '$VM_NAME'. Ensure user has sufficient permissions to create directories in VM."
-fi
-log "k8s directory created successfully in VM"
-
-# Transfer secrets.yaml to VM
-log "Transferring secrets.yaml to VM..."
-if ! multipass transfer k8s/secrets.yaml "$VM_NAME":/home/ubuntu/k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 111 "Failed to transfer secrets.yaml to VM" \
-        "Check if secrets.yaml exists in k8s directory: $(pwd)/k8s/secrets.yaml. Ensure VM is running and accessible: multipass info '$VM_NAME'."
-fi
-log "secrets.yaml transferred successfully to VM"
-
-# Transfer deployment.yaml to VM
-log "Transferring deployment.yaml to VM..."
-if ! multipass transfer k8s/deployment.yaml "$VM_NAME":/home/ubuntu/k8s/deployment.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 112 "Failed to transfer deployment.yaml to VM" \
-        "Check if deployment.yaml exists in k8s directory: $(pwd)/k8s/deployment.yaml. Ensure VM is running and accessible: multipass info '$VM_NAME'."
-fi
-log "deployment.yaml transferred successfully to VM"
-
-# Transfer service.yaml to VM
-log "Transferring service.yaml to VM..."
-if ! multipass transfer k8s/service.yaml "$VM_NAME":/home/ubuntu/k8s/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 113 "Failed to transfer service.yaml to VM" \
-        "Check if service.yaml exists in k8s directory: $(pwd)/k8s/service.yaml. Ensure VM is running and accessible: multipass info '$VM_NAME'."
-fi
-log "service.yaml transferred successfully to VM"
-
-# Transfer ingress.yaml to VM
-log "Transferring ingress.yaml to VM..."
-if ! multipass transfer k8s/ingress.yaml "$VM_NAME":/home/ubuntu/k8s/ingress.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 114 "Failed to transfer ingress.yaml to VM" \
-        "Check if ingress.yaml exists in k8s directory: $(pwd)/k8s/ingress.yaml. Ensure VM is running and accessible: multipass info '$VM_NAME'."
-fi
-log "ingress.yaml transferred successfully to VM"
-
-# Validate all transferred files exist in VM before proceeding with Kubernetes deployment
-log "Starting file validation process in VM..."
-
-# Validate that secrets.yaml exists in VM after transfer
-log "Validating that secrets.yaml exists in VM..."
-if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 115 "secrets.yaml does not exist in VM after transfer" \
-        "Check if file transfer was successful. Verify VM is accessible: multipass info '$VM_NAME'. Check logs for transfer errors."
-fi
-log "secrets.yaml validation successful - file exists in VM"
-
-# Validate that deployment.yaml exists in VM after transfer
-log "Validating that deployment.yaml exists in VM..."
-if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/deployment.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 116 "deployment.yaml does not exist in VM after transfer" \
-        "Check if file transfer was successful. Verify VM is accessible: multipass info '$VM_NAME'. Check logs for transfer errors."
-fi
-log "deployment.yaml validation successful - file exists in VM"
-
-# Validate that service.yaml exists in VM after transfer
-log "Validating that service.yaml exists in VM..."
-if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 117 "service.yaml does not exist in VM after transfer" \
-        "Check if file transfer was successful. Verify VM is accessible: multipass info '$VM_NAME'. Check logs for transfer errors."
-fi
-log "service.yaml validation successful - file exists in VM"
-
-# Validate that ingress.yaml exists in VM after transfer
-log "Validating that ingress.yaml exists in VM..."
-if ! multipass exec "$VM_NAME" -- test -f /home/ubuntu/k8s/ingress.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 118 "ingress.yaml does not exist in VM after transfer" \
-        "Check if file transfer was successful. Verify VM is accessible: multipass info '$VM_NAME'. Check logs for transfer errors."
-fi
-log "ingress.yaml validation successful - file exists in VM"
-log "All Kubernetes files validated successfully in VM"
-end_phase_timing "KUBERNETES_FILE_TRANSFER"
-
-start_phase_timing "KUBERNETES_SECRETS_SETUP"
-log "Applying Kubernetes secrets..."
-if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 105 "Failed to apply Kubernetes secrets" \
-        "Check the secrets file: k8s/secrets.yaml. Ensure it's properly formatted and all variables are set."
-fi
-log "Kubernetes secrets applied successfully"
-end_phase_timing "KUBERNETES_SECRETS_SETUP"
 
 start_phase_timing "KUBERNETES_DEPLOYMENT"
 # Apply deployment manifest
@@ -5396,9 +4236,6 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
         
         if [ -n "$POD_PHASE" ] && [ -n "$POD_READY" ]; then
             log "✓ Pod status changed to Running - verification successful"
-            log "Pod phase: Running"
-            log "Pod container status: Ready"
-            break
         else
             log "Pod not yet running. Current status:"
             multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
