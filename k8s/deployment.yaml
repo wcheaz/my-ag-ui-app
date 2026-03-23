@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: my-ag-ui-app
-        image: my-ag-ui-app:latest
+        image: localhost:32000/my-ag-ui-app:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
