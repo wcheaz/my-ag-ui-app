@@ -73,10 +73,16 @@ The deployment script currently assumes Docker is pre-installed and running in t
 
 **Rationale:** The current image loading process using `docker save | multipass exec -- docker load` may fail silently. We need to add comprehensive logging, error checking, and verification to ensure the image is successfully transferred to the VM.
 
+**Investigation Finding:** Debugging revealed that multipass transfer fails with error: `[sftp] cannot access /tmp/docker-image-load-364049/my-ag-ui-app-latest.tar: No such file or directory`. This indicates the `docker save` command is not creating the file in the expected location or the file path is incorrect.
+
 **Implementation:**
 - Add detailed logging to capture stdout/stderr from both `docker save` and `docker load` commands
+- Verify `docker save` creates file in correct location with correct permissions
+- Add explicit file existence check after `docker save` before attempting multipass transfer
+- Log exact file path and permissions after `docker save` completes
+- Test alternative file locations (e.g., `/tmp/` without subdirectory, current working directory)
+- Verify multipass transfer can access the file from the host system
 - Verify image exists in VM immediately after load using `docker images`
-- Test alternative image transfer methods (e.g., `multipass transfer` + `docker load`)
 - Add retry logic for image load if first attempt fails
 - Implement explicit error checking after each step of the image load process
 - Provide detailed error messages with specific recovery steps for different failure modes
@@ -85,6 +91,7 @@ The deployment script currently assumes Docker is pre-installed and running in t
 - Current pipe method: Simple but lacks error visibility
 - File transfer method: More complex but provides better error handling and verification
 - Docker registry: Would require setting up a registry, adding complexity
+- Direct pipe to VM: `docker save | multipass exec -- docker load` (current method, needs better error handling)
 
 ## Risks / Trade-offs
 

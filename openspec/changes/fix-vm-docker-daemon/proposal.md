@@ -4,6 +4,8 @@ The deployment process fails when attempting to load Docker images into the mult
 
 Additionally, even after Docker is set up in the VM, the image loading process may fail silently, resulting in the image not being available in the VM's Docker images. This manifests as "Docker image verification in VM failed" with error code 124, suggesting the image load command is not completing successfully despite Docker being operational.
 
+**Investigation Finding:** Debugging revealed that multipass transfer fails with error: `[sftp] cannot access /tmp/docker-image-load-364049/my-ag-ui-app-latest.tar: No such file or directory`. This indicates the `docker save` command is not creating the file in the expected location or the file path is incorrect, causing the image transfer to fail.
+
 ## What Changes
 
 - Fix existing syntax errors in deploy.sh that prevent script execution (line 408: `start_total_deployment_timing: command not found`, line 2594: syntax error near `}`)
@@ -11,6 +13,11 @@ Additionally, even after Docker is set up in the VM, the image loading process m
 - Implement automatic Docker installation in the VM if not present
 - Add Docker daemon health checks in the VM before proceeding with image loading
 - Debug and fix silent image loading failures - ensure image is successfully transferred to VM
+- Fix file path issue: `docker save` output file not found at `/tmp/docker-image-load-*/my-ag-ui-app-latest.tar`
+- Add explicit file existence check after `docker save` before attempting multipass transfer
+- Log exact file path and permissions after `docker save` completes
+- Test alternative file locations (e.g., `/tmp/` without subdirectory, current working directory)
+- Verify multipass transfer can access the file from the host system
 - Add comprehensive logging and error checking for image load operations
 - Implement image load verification with detailed error reporting and recovery steps
 - Enhance error messages to provide specific recovery steps when Docker is unavailable in the VM or image loading fails
