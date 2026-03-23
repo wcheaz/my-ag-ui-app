@@ -82,3 +82,6 @@ k8s/secrets.yaml
 
 # Kubernetes test scripts (moved to test/kubernetes/ directory)
 test/kubernetes/
+
+# Tar files (large build artifacts that should not be committed)
+*.tar
