@@ -1728,15 +1728,85 @@ enable_microk8s_registry() {
 tag_image_for_local_registry() {
     log "Starting Docker image tagging for local registry..."
     
-    # Check if source image exists before tagging
-    log "Checking if source image my-ag-ui-app:latest exists locally..."
-    if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" | grep -q "my-ag-ui-app:latest"; then
-        log "❌ ERROR: Source image my-ag-ui-app:latest not found locally"
-        log "   Please build the image first: docker build -t my-ag-ui-app:latest ."
-        log "   Or ensure the image exists and has the correct tag"
+    # Validate Docker daemon availability before checking images
+    log "Validating Docker daemon availability before image existence check..."
+    if ! docker info >/dev/null 2>&1; then
+        log "❌ ERROR: Docker daemon is not accessible"
+        log "   Cannot validate image existence without Docker daemon access"
+        log "RECOVERY STEPS:"
+        log "1. Start Docker daemon: sudo systemctl start docker"
+        log "2. Check Docker daemon status: sudo systemctl status docker"
+        log "3. Verify Docker is running: docker info"
+        log "4. Restart Docker if needed: sudo systemctl restart docker"
         return 1
     fi
-    log "✅ Source image my-ag-ui-app:latest exists locally"
+    log "✅ Docker daemon is accessible for image validation"
+    
+    # Comprehensive validation to ensure source image exists before tagging
+    log "Performing comprehensive validation of source image my-ag-ui-app:latest..."
+    
+    # Method 1: Check exact tag match (primary method)
+    log "Method 1: Checking exact tag match for my-ag-ui-app:latest..."
+    local exact_match_result
+    exact_match_result=$(docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || echo "")
+    if echo "$exact_match_result" | grep -q "my-ag-ui-app:latest"; then
+        log "✅ Source image found with exact tag match: my-ag-ui-app:latest"
+    else
+        log "⚠️  Exact tag match not found - checking for alternatives..."
+        
+        # Method 2: Check for any my-ag-ui-app image with any tag
+        log "Method 2: Checking for any my-ag-ui-app image with any tag..."
+        local any_tag_result
+        any_tag_result=$(docker images my-ag-ui-app --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || echo "")
+        if [ -n "$any_tag_result" ]; then
+            log "⚠️  Found my-ag-ui-app images with different tags:"
+            echo "$any_tag_result" | tee -a "$LOG_FILE"
+            log "   But my-ag-ui-app:latest specifically is missing"
+            log "   This may indicate the image was built with a different tag"
+        else
+            log "⚠️  No my-ag-ui-app images found with any tag"
+        fi
+        
+        # Method 3: Check for images containing "my-ag-ui-app" in repository name
+        log "Method 3: Checking for images containing 'my-ag-ui-app' in repository name..."
+        local similar_images
+        similar_images=$(docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -i "my-ag-ui-app" || echo "")
+        if [ -n "$similar_images" ]; then
+            log "⚠️  Found similar images that might be related:"
+            echo "$similar_images" | tee -a "$LOG_FILE"
+        else
+            log "⚠️  No images found containing 'my-ag-ui-app' in repository name"
+        fi
+        
+        # Method 4: List all available images for debugging
+        log "Method 4: Listing all available Docker images for debugging..."
+        local all_images
+        all_images=$(docker images --format "{{.Repository}}:{{.Tag}} {{.Size}} {{.CreatedAt}}" 2>/dev/null | head -20 || echo "")
+        if [ -n "$all_images" ]; then
+            log "Available Docker images (first 20):"
+            echo "$all_images" | tee -a "$LOG_FILE"
+        else
+            log "⚠️  No Docker images found in local daemon"
+        fi
+        
+        # Final determination: image does not exist
+        log "❌ ERROR: Source image my-ag-ui-app:latest not found locally after comprehensive validation"
+        log "   Image existence validation failed using multiple methods"
+        log ""
+        log "REQUIRED ACTION:"
+        log "1. Build the image first: docker build -t my-ag-ui-app:latest ."
+        log "2. Or tag an existing image: docker tag <source-image> my-ag-ui-app:latest"
+        log "3. Or pull the image if it exists in a registry: docker pull my-ag-ui-app:latest"
+        log ""
+        log "TROUBLESHOOTING:"
+        log "- Check if image was built with different name/tag: docker images | grep my-ag"
+        log("- Check Docker daemon status: docker info")
+        log("- Verify you're in the correct directory with Dockerfile present")
+        log("- Ensure Docker build process completed successfully")
+        
+        return 1
+    fi
+    log "✅ Comprehensive validation passed: Source image my-ag-ui-app:latest exists locally"
     
     # Get source image details for logging
     local source_image_details
