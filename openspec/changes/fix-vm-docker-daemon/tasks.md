@@ -68,3 +68,18 @@
 - [x] 7.2 Implement caching or state tracking to avoid redundant checks
 - [x] 7.3 Tune retry intervals and timeouts for optimal performance
 - [x] 7.4 Measure and document performance impact on deployment time
+
+## 8. Image Loading Verification and Debugging
+
+- [ ] 8.1 Investigate why Docker image load fails silently in VM
+- [ ] 8.2 Add detailed logging to image load command to capture stdout/stderr
+- [ ] 8.3 Verify `docker save` command is executing correctly on host
+- [ ] 8.4 Verify `docker load` command is being received and executed in VM
+- [ ] 8.5 Test image transfer manually using `multipass transfer` as alternative method
+- [ ] 8.6 Add explicit error checking after `docker load` command in VM
+- [ ] 8.7 Verify image exists in VM immediately after load using `docker images`
+- [ ] 8.8 Add retry logic for image load if first attempt fails
+- [ ] 8.9 Implement image load verification with detailed error reporting
+- [ ] 8.10 Test image loading with different methods (pipe vs file transfer)
+- [ ] 8.11 Document the working image load method and update deployment script accordingly
+- [ ] 8.12 Add comprehensive error messages for image load failures with specific recovery steps
