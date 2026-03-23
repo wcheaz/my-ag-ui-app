@@ -1721,6 +1721,260 @@ enable_microk8s_registry() {
 }
 
 # ===========================
+# IMAGE PUSH FUNCTION
+# ===========================
+
+# Push tagged Docker image to microk8s registry using docker push command
+push_image_to_registry() {
+    log "Starting Docker image push to microk8s registry..."
+    
+    # Track push operation start time for performance measurement
+    local PUSH_START_TIME
+    PUSH_START_TIME=$(date +%s)
+    log "⏱️  Push operation started at: $(date -d "@$PUSH_START_TIME" '+%Y-%m-%d %H:%M:%S')"
+    
+    # Define the target registry image
+    local target_image="localhost:32000/my-ag-ui-app:latest"
+    log "Target registry image: $target_image"
+    
+    # Pre-flight check: Verify Docker daemon is accessible
+    log "Performing pre-flight check: Docker daemon accessibility..."
+    if ! docker info >/dev/null 2>&1; then
+        log "❌ ERROR: Docker daemon is not accessible"
+        log "   Cannot perform image push without Docker daemon access"
+        log "RECOVERY STEPS:"
+        log "1. Start Docker daemon: sudo systemctl start docker"
+        log "2. Check Docker daemon status: sudo systemctl status docker"
+        log "3. Verify Docker is running: docker info"
+        log "4. Restart Docker if needed: sudo systemctl restart docker"
+        return 1
+    fi
+    log "✅ Docker daemon is accessible for image push"
+    
+    # Pre-flight check: Verify tagged image exists locally
+    log "Performing pre-flight check: Verifying tagged image exists locally..."
+    if ! docker images "$target_image" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "$target_image"; then
+        log "❌ ERROR: Target image $target_image not found locally"
+        log "   Cannot push image that does not exist in local Docker daemon"
+        log ""
+        log "REQUIRED ACTION:"
+        log "1. Build and tag the image first: docker build -t my-ag-ui-app:latest ."
+        log "2. Tag the image for registry: docker tag my-ag-ui-app:latest $target_image"
+        log "3. Then retry the push operation"
+        log ""
+        log "TROUBLESHOOTING:"
+        log "- Check available images: docker images | head -20"
+        log "- Look for similar images: docker images | grep my-ag-ui-app"
+        log "- Verify image was tagged correctly: docker images | grep localhost:32000"
+        
+        return 1
+    fi
+    
+    # Get local image details for logging
+    local local_image_details
+    local_image_details=$(docker images "$target_image" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
+    log "Local image to be pushed:"
+    echo "$local_image_details" | tee -a "$LOG_FILE"
+    log "✅ Tagged image exists locally and is ready for push"
+    
+    # Pre-flight check: Verify registry is accessible before attempting push
+    log "Performing pre-flight check: Verifying microk8s registry is accessible..."
+    if ! verify_microk8s_registry; then
+        log "❌ ERROR: microk8s registry is not accessible at localhost:32000"
+        log "   Cannot push image to inaccessible registry"
+        log ""
+        log "RECOVERY STEPS:"
+        log "1. Enable microk8s registry: microk8s enable registry"
+        log "2. Wait for registry to start: sleep 10"
+        log "3. Verify registry is accessible: curl -s http://localhost:32000/v2/_catalog"
+        log "4. Check registry pod status: microk8s kubectl get pods -n container-registry"
+        log "5. Retry the push operation after registry is ready"
+        
+        return 1
+    fi
+    log "✅ microk8s registry is accessible and ready for push"
+    
+    # Push the image to microk8s registry with enhanced error handling and retry logic
+    log "Pushing image to microk8s registry with retry logic..."
+    log "   Command: docker push $target_image"
+    log "   This distributes the image to the local microk8s registry for Kubernetes deployment"
+    
+    # Configure retry parameters for transient network issues
+    local MAX_PUSH_ATTEMPTS=3
+    local PUSH_RETRY_DELAY=5
+    local PUSH_ATTEMPT=1
+    local push_success=false
+    
+    while [ $PUSH_ATTEMPT -le $MAX_PUSH_ATTEMPTS ]; do
+        log "Push attempt $PUSH_ATTEMPT/$MAX_PUSH_ATTEMPTS..."
+        
+        local push_output
+        local push_exit_code
+        
+        # Execute docker push with error capture and timeout
+        log "   Executing: timeout 60 docker push $target_image"
+        if push_output=$(timeout 60 docker push "$target_image" 2>&1); then
+            push_exit_code=0
+            log "✅ Docker push command completed successfully (attempt $PUSH_ATTEMPT)"
+            push_success=true
+            break
+        else
+            push_exit_code=$?
+            log "❌ Docker push command failed (exit code: $push_exit_code, attempt $PUSH_ATTEMPT)"
+            
+            # Log the error output for analysis
+            log "Push error output (attempt $PUSH_ATTEMPT):"
+            echo "$push_output" | tee -a "$LOG_FILE"
+            
+            # Analyze specific error patterns and provide targeted guidance
+            if [ $PUSH_ATTEMPT -lt $MAX_PUSH_ATTEMPTS ]; then
+                log "ANALYZING PUSH FAILURE (attempt $PUSH_ATTEMPT)..."
+                
+                if echo "$push_output" | grep -q -E "(connection refused|Connection refused|timeout|timed out|network unreachable|resolve host)"; then
+                    log "ERROR TYPE: NETWORK CONNECTIVITY FAILURE"
+                    log "DIAGNOSTIC: Network connectivity issues preventing registry communication"
+                    log "RECOVERY: Will retry in $PUSH_RETRY_DELAY seconds (transient network issue)"
+                    
+                elif echo "$push_output" | grep -q -E "(permission denied|Permission denied|access denied|unauthorized|authentication failed)"; then
+                    log "ERROR TYPE: REGISTRY AUTHENTICATION FAILURE"
+                    log "DIAGNOSTIC: Registry authentication or permission issues"
+                    log "RECOVERY: This should not occur with local microk8s registry - check registry configuration"
+                    
+                elif echo "$push_output" | grep -q -E "(no such image|image not found|manifest unknown|blob unknown)"; then
+                    log "ERROR TYPE: IMAGE NOT FOUND IN LOCAL DAEMON"
+                    log "DIAGNOSTIC: The specified image does not exist in local Docker daemon"
+                    log "RECOVERY: Verify image was tagged correctly: docker images | grep localhost:32000"
+                    break  # No point retrying if image doesn't exist
+                    
+                elif echo "$push_output" | grep -q -E "(registry.*not found|registry.*unavailable|registry.*down|name does not resolve)"; then
+                    log "ERROR TYPE: REGISTRY UNAVAILABLE"
+                    log "DIAGNOSTIC: microk8s registry is not running or accessible"
+                    log "RECOVERY: Check registry status: verify_microk8s_registry"
+                    break  # No point retrying if registry is down
+                    
+                elif echo "$push_output" | grep -q -E "(disk full|no space|out of space|insufficient space)"; then
+                    log "ERROR TYPE: DISK SPACE FAILURE"
+                    log "DIAGNOSTIC: Insufficient disk space for image push operation"
+                    log "RECOVERY: Check disk space: df -h"
+                    break  # No point retrying if disk is full
+                    
+                elif echo "$push_output" | grep -q -E "(daemon.*not running|Cannot connect to Docker daemon|docker.*daemon)"; then
+                    log "ERROR TYPE: DOCKER DAEMON FAILURE"
+                    log "DIAGNOSTIC: Docker daemon is not running or accessible"
+                    log "RECOVERY: Check Docker daemon: docker info"
+                    break  # No point retrying if Docker daemon is down
+                    
+                else
+                    log "ERROR TYPE: UNKNOWN PUSH FAILURE"
+                    log "DIAGNOSTIC: Push failed with unknown error pattern"
+                    log "RECOVERY: Will retry in $PUSH_RETRY_DELAY seconds (attempting to resolve transient issue)"
+                fi
+                
+                # Wait before retry (only for transient issues)
+                log "Waiting ${PUSH_RETRY_DELAY}s before retry attempt..."
+                sleep $PUSH_RETRY_DELAY
+            else
+                log "ERROR: Final push attempt failed - no more retries available"
+            fi
+        fi
+        
+        PUSH_ATTEMPT=$((PUSH_ATTEMPT + 1))
+    done
+    
+    # Check if push was ultimately successful
+    if [ "$push_success" = false ]; then
+        log "❌ ERROR: All push attempts failed ($MAX_PUSH_ATTEMPTS attempts)"
+        log "   Image could not be pushed to microk8s registry"
+        log ""
+        log "COMPREHENSIVE RECOVERY STEPS:"
+        log "1. Verify Docker daemon is running: docker info"
+        log "2. Check image exists locally: docker images $target_image"
+        log "3. Verify registry is accessible: curl -s http://localhost:32000/v2/_catalog"
+        log "4. Enable registry if needed: microk8s enable registry"
+        log "5. Check network connectivity: ping -c 2 localhost"
+        log "6. Check disk space: df -h"
+        log "7. Manual push attempt: docker push $target_image"
+        log "8. Check registry logs: microk8s kubectl logs -n container-registry -l app=registry"
+        
+        return 1
+    fi
+    
+    # Log successful push output
+    log "✅ Image push completed successfully"
+    log "   Push command output summary:"
+    echo "$push_output" | head -20 | tee -a "$LOG_FILE"  # Log first 20 lines
+    if [ $(echo "$push_output" | wc -l) -gt 20 ]; then
+        log "   ... (output truncated, full output logged to file)"
+        echo "$push_output" >> "$LOG_FILE"
+    fi
+    
+    # Verify the image was successfully pushed to registry
+    log "Verifying image was successfully pushed to registry..."
+    local registry_verification_attempts=0
+    local max_registry_verification_attempts=5
+    local registry_verification_delay=2
+    local image_verified_in_registry=false
+    
+    while [ $registry_verification_attempts -lt $max_registry_verification_attempts ]; do
+        registry_verification_attempts=$((registry_verification_attempts + 1))
+        log "Registry verification attempt $registry_verification_attempts/$max_registry_verification_attempts..."
+        
+        # Check if image appears in registry catalog
+        if curl -s "http://localhost:32000/v2/my-ag-ui-app/tags/list" 2>/dev/null | grep -q '"latest"'; then
+            log "✅ Image 'my-ag-ui-app:latest' found in registry tags list"
+            image_verified_in_registry=true
+            break
+        else
+            log "⚠️  Image not immediately found in registry catalog (attempt $registry_verification_attempts)"
+            
+            # The registry may take a moment to update after push
+            if [ $registry_verification_attempts -lt $max_registry_verification_attempts ]; then
+                log "Waiting ${registry_verification_delay}s for registry to update..."
+                sleep $registry_verification_delay
+            fi
+        fi
+    done
+    
+    if [ "$image_verified_in_registry" = true ]; then
+        log "✅ Image verification successful - image is available in registry"
+        
+        # Get registry image details for logging
+        log "Registry image details:"
+        if curl -s "http://localhost:32000/v2/my-ag-ui-app/manifests/latest" 2>/dev/null | head -c 200 | tee -a "$LOG_FILE"; then
+            log "✅ Registry manifest accessible"
+        else
+            log "⚠️  Registry manifest not immediately accessible (this may be normal)"
+        fi
+    else
+        log "⚠️  WARNING: Image verification failed - image not found in registry catalog"
+        log "   This may be a temporary issue - the registry may need additional time to update"
+        log "   The push operation completed successfully, but verification could not confirm registry availability"
+        log ""
+        log "MANUAL VERIFICATION STEPS:"
+        log "1. Check registry catalog: curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list"
+        log "2. Check registry status: verify_microk8s_registry"
+        log "3. List images in registry: curl -s http://localhost:32000/v2/_catalog"
+        log "4. The image should be available despite verification failure"
+    fi
+    
+    # Calculate and log push operation duration
+    local PUSH_END_TIME
+    PUSH_END_TIME=$(date +%s)
+    local PUSH_DURATION
+    PUSH_DURATION=$((PUSH_END_TIME - PUSH_START_TIME))
+    log "⏱️  Push operation completed at: $(date -d "@$PUSH_END_TIME" '+%Y-%m-%d %H:%M:%S')"
+    log "⏱️  Total push operation duration: $PUSH_DURATION seconds"
+    
+    log "✅ Docker image push to microk8s registry completed successfully"
+    log "   Image: $target_image"
+    log "   Status: PUSHED and VERIFIED (or verification pending)"
+    log "   Registry: http://localhost:32000"
+    log "   Ready for: Kubernetes deployment using registry image reference"
+    
+    return 0
+}
+
+# ===========================
 # IMAGE TAGGING FUNCTION
 # ===========================
 
@@ -1805,9 +2059,9 @@ tag_image_for_local_registry() {
         log ""
         log "TROUBLESHOOTING:"
         log "- Check if image was built with different name/tag: docker images | grep my-ag"
-        log("- Check Docker daemon status: docker info")
-        log("- Verify you're in the correct directory with Dockerfile present")
-        log("- Ensure Docker build process completed successfully")
+        log "- Check Docker daemon status: docker info"
+        log "- Verify you're in the correct directory with Dockerfile present"
+        log "- Ensure Docker build process completed successfully"
         
         return 1
     fi
@@ -1879,7 +2133,7 @@ tag_image_for_local_registry() {
             log "3. Run with proper Docker group permissions: usermod -aG docker \$USER"
             log "4. Or use sudo: sudo docker tag my-ag-ui-app:latest $target_image_tag"
             
-        elif echo "$tag_output" | grep -q -E ("daemon|Docker daemon|Cannot connect to Docker daemon|connection refused)"; then
+        elif echo "$tag_output" | grep -q -E "daemon|Docker daemon|Cannot connect to Docker daemon|connection refused"; then
             log "ERROR TYPE: DOCKER DAEMON ACCESS FAILURE"
             log "DIAGNOSTIC: Cannot connect to Docker daemon service"
             log "RECOVERY STEPS:"
@@ -3907,6 +4161,22 @@ handle_secrets_error() {
         log "9. Verify multipass transfer works: multipass transfer /etc/hosts '$VM_NAME':/tmp/test && echo 'Transfer OK' || echo 'Transfer failed'"
     fi
     
+    # Enhanced recovery suggestions for Docker registry push errors (131)
+    if [ "$error_code" -eq 131 ]; then
+        log "ENHANCED RECOVERY SUGGESTIONS FOR REGISTRY PUSH FAILURES:"
+        log "1. Verify Docker daemon is running: docker info"
+        log "2. Start Docker daemon if needed: sudo systemctl start docker"
+        log "3. Verify tagged image exists: docker images localhost:32000/my-ag-ui-app:latest"
+        log "4. Verify microk8s registry is accessible: curl -s http://localhost:32000/v2/_catalog"
+        log "5. Enable microk8s registry if needed: microk8s enable registry"
+        log "6. Check registry pod status: microk8s kubectl get pods -n container-registry"
+        log "7. Check registry logs: microk8s kubectl logs -n container-registry -l app=registry"
+        log "8. Check network connectivity: ping -c 2 localhost"
+        log "9. Check disk space: df -h"
+        log "10. Manual push attempt: docker push localhost:32000/my-ag-ui-app:latest"
+        log "11. If all else fails, restart registry: microk8s stop && microk8s start"
+    fi
+    
     # Log essential diagnostic information
     log "ESSENTIAL DIAGNOSTIC INFO:"
     log "Current directory: $(pwd)"
@@ -4239,29 +4509,19 @@ log "Docker image 'localhost:32000/my-ag-ui-app:latest' verified successfully"
  log "microk8s registry setup completed successfully"
  end_phase_timing "MICROK8S_REGISTRY_SETUP"
 
- # 6.3 Push Docker image to microk8s registry (simplified registry approach)
+ # 6.3 Push Docker image to microk8s registry (comprehensive registry approach)
  start_phase_timing "DOCKER_REGISTRY_PUSH"
  log "Starting Docker image push to microk8s registry..."
- log "Pushing Docker image 'localhost:32000/my-ag-ui-app:latest' to microk8s registry..."
-
- # Push the image to the local registry
- log "Executing: docker push localhost:32000/my-ag-ui-app:latest"
- if ! docker push localhost:32000/my-ag-ui-app:latest 2>&1 | tee -a "$LOG_FILE"; then
+ log "Using comprehensive push function with validation, error handling, and verification..."
+ 
+ # Use the comprehensive image push function with full validation and error handling
+ if ! push_image_to_registry; then
      handle_secrets_error 131 "Failed to push Docker image to microk8s registry" \
-         "Docker push command failed. Check if microk8s registry is running and accessible. Verify registry is enabled: microk8s enable registry"
+         "Comprehensive image push failed. Check logs above for detailed error analysis and recovery steps."
  fi
 
- log "Docker image 'localhost:32000/my-ag-ui-app:latest' pushed to registry successfully"
+ log "Docker image push to registry completed with comprehensive validation"
  end_phase_timing "DOCKER_REGISTRY_PUSH"
-
- # Verify image is available in registry (basic verification)
- log "Verifying image is available in microk8s registry..."
- if ! curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list 2>/dev/null | grep -q "latest"; then
-     log "⚠️  WARNING: Image verification failed, but continuing with deployment"
-     log "   This may be a temporary issue - the registry may need a moment to update"
- else
-     log "✅ Image 'localhost:32000/my-ag-ui-app:latest' verified in registry"
- fi
 
  # Note: With registry approach, we no longer need complex VM image loading and verification
  # The image will be pulled directly by Kubernetes from the local registry during deployment
