@@ -3055,76 +3055,450 @@ start_phase_timing "DOCKER_IMAGE_LOAD"
 log "Starting Docker image load into VM..."
 log "Loading Docker image 'my-ag-ui-app:latest' into multipass VM..."
 
-# First, verify the image exists on the host
-log "Verifying Docker image exists on host..."
-if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "my-ag-ui-app:latest"; then
-    handle_secrets_error 122 "Docker image not found on host" \
-        "Docker image 'my-ag-ui-app:latest' does not exist on host. Build the image first using 'docker build -t my-ag-ui-app:latest .'"
-fi
-log "Docker image 'my-ag-ui-app:latest' found on host"
-
-# Create temporary directory for image transfer
-TEMP_DIR="/tmp/docker-image-load-$$"
-log "Creating temporary directory for image transfer: $TEMP_DIR"
-mkdir -p "$TEMP_DIR"
-if [ $? -ne 0 ]; then
-    handle_secrets_error 125 "Failed to create temporary directory" \
-        "Could not create temporary directory '$TEMP_DIR'. Check permissions and available disk space."
-fi
-
-# Save Docker image to file with detailed logging
-IMAGE_FILE="$TEMP_DIR/my-ag-ui-app-latest.tar"
-log "Saving Docker image to file: $IMAGE_FILE"
-if ! docker save my-ag-ui-app:latest > "$IMAGE_FILE" 2>&1; then
+# INVESTIGATION: Function to diagnose Docker image load failures
+diagnose_docker_image_load_issues() {
+    log ""
+    log "=================================================="
+    log "      DOCKER IMAGE LOAD FAILURE INVESTIGATION"
+    log "=================================================="
+    log ""
+    
+    # Investigation Step 1: Verify the image exists on the host
+    log "INVESTIGATION STEP 1: Verifying Docker image exists on host..."
+    if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null | grep -q "my-ag-ui-app:latest"; then
+        log "❌ INVESTIGATION FINDING: Docker image 'my-ag-ui-app:latest' does not exist on host"
+        log "   POSSIBLE CAUSES:"
+        log "   - Previous build step failed"
+        log "   - Image was removed/cleaned up"
+        log "   - Build was not completed successfully"
+        log "   RECOVERY: Build the image first using 'docker build -t my-ag-ui-app:latest .'"
+        return 1
+    else
+        log "✅ INVESTIGATION FINDING: Docker image 'my-ag-ui-app:latest' exists on host"
+        # Show detailed image information
+        log "   Host image details:"
+        docker images my-ag-ui-app:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>&1 | tee -a "$LOG_FILE" || true
+    fi
+    
+    # Investigation Step 2: Check VM disk space before transfer
+    log ""
+    log "INVESTIGATION STEP 2: Checking VM disk space before transfer..."
+    VM_DISK_INFO=$(multipass exec "$VM_NAME" -- df -h / 2>&1 || echo "Unable to get disk info")
+    log "   VM disk information:"
+    echo "$VM_DISK_INFO" | tee -a "$LOG_FILE"
+    
+    # Extract available disk space
+    VM_AVAILABLE_SPACE=$(echo "$VM_DISK_INFO" | awk 'NR==2 {print $4}' | sed 's/G//' | head -n1 2>/dev/null || echo "unknown")
+    if [ "$VM_AVAILABLE_SPACE" != "unknown" ]; then
+        if [ "${VM_AVAILABLE_SPACE%.*}" -lt 1 ]; then
+            log "⚠️  INVESTIGATION WARNING: Low disk space in VM (${VM_AVAILABLE_SPACE}GB available)"
+            log "   This could cause image transfer or loading failures"
+        else
+            log "✅ INVESTIGATION FINDING: Sufficient disk space in VM (${VM_AVAILABLE_SPACE}GB available)"
+        fi
+    fi
+    
+    # Investigation Step 3: Create temporary directory and verify file system
+    log ""
+    log "INVESTIGATION STEP 3: Creating temporary directory and verifying file system..."
+    TEMP_DIR="/tmp/docker-image-load-$$"
+    log "   Creating temporary directory: $TEMP_DIR"
+    
+    if ! mkdir -p "$TEMP_DIR"; then
+        log "❌ INVESTIGATION FINDING: Failed to create temporary directory"
+        log "   POSSIBLE CAUSES:"
+        log "   - Permission denied on host"
+        log "   - File system read-only"
+        log "   - Disk full on host"
+        log "   RECOVERY: Check host permissions and disk space"
+        return 1
+    fi
+    log "✅ INVESTIGATION FINDING: Temporary directory created successfully"
+    
+    # Investigation Step 4: Save Docker image to file with comprehensive diagnostics
+    log ""
+    log "INVESTIGATION STEP 4: Saving Docker image to file with comprehensive diagnostics..."
+    IMAGE_FILE="$TEMP_DIR/my-ag-ui-app-latest.tar"
+    
+    log "   Checking Docker daemon status on host..."
+    HOST_DOCKER_STATUS=$(docker info 2>/dev/null > /dev/null && echo "running" || echo "not running")
+    log "   Host Docker daemon status: $HOST_DOCKER_STATUS"
+    
+    if [ "$HOST_DOCKER_STATUS" != "running" ]; then
+        log "❌ INVESTIGATION FINDING: Docker daemon not running on host"
+        log "   This will cause docker save to fail"
+        log "   RECOVERY: Start Docker daemon: sudo systemctl start docker"
+        return 1
+    fi
+    
+    log "   Saving Docker image to file: $IMAGE_FILE"
+    log "   This may take a while for large images..."
+    
+    # Capture both stdout and stderr for docker save
+    DOCKER_SAVE_OUTPUT=$(docker save my-ag-ui-app:latest > "$IMAGE_FILE" 2>&1)
+    DOCKER_SAVE_EXIT_CODE=$?
+    
+    if [ $DOCKER_SAVE_EXIT_CODE -ne 0 ]; then
+        log "❌ INVESTIGATION FINDING: Docker save command failed (exit code: $DOCKER_SAVE_EXIT_CODE)"
+        log "   Docker save error output:"
+        echo "$DOCKER_SAVE_OUTPUT" | tee -a "$LOG_FILE"
+        
+        log "   POSSIBLE CAUSES:"
+        log "   - Docker daemon not running"
+        log "   - Image corrupted or incomplete"
+        log "   - Disk space full on host"
+        log "   - Permission issues with Docker socket"
+        log "   RECOVERY: Check Docker daemon status and available disk space"
+        
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    # Verify saved file properties
+    log "   Verifying saved file properties..."
+    if [ ! -f "$IMAGE_FILE" ]; then
+        log "❌ INVESTIGATION FINDING: Saved image file does not exist"
+        log "   Docker save completed but no file was created"
+        log "   POSSIBLE CAUSES: File system error, permission issues"
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    if [ ! -s "$IMAGE_FILE" ]; then
+        log "❌ INVESTIGATION FINDING: Saved image file is empty (0 bytes)"
+        log "   Docker save completed but file is empty"
+        log "   POSSIBLE CAUSES: Image corruption, Docker daemon issues"
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    # Get file information
+    IMAGE_SIZE_BYTES=$(stat -c%s "$IMAGE_FILE" 2>/dev/null || echo "unknown")
+    IMAGE_SIZE_HUMAN=$(du -h "$IMAGE_FILE" | cut -f1 2>/dev/null || echo "unknown")
+    IMAGE_MD5=$(md5sum "$IMAGE_FILE" | cut -d' ' -f1 2>/dev/null || echo "unknown")
+    
+    log "✅ INVESTIGATION FINDING: Docker image saved successfully"
+    log "   File path: $IMAGE_FILE"
+    log "   File size: $IMAGE_SIZE_HUMAN ($IMAGE_SIZE_BYTES bytes)"
+    log "   File MD5 hash: $IMAGE_MD5"
+    
+    # Investigation Step 5: Test file integrity before transfer
+    log ""
+    log "INVESTIGATION STEP 5: Testing file integrity before transfer..."
+    
+    # Try to load the saved image back locally to verify it's valid
+    log "   Testing saved image by loading it back locally..."
+    TEST_LOAD_OUTPUT=$(docker load -i "$IMAGE_FILE" 2>&1)
+    TEST_LOAD_EXIT_CODE=$?
+    
+    if [ $TEST_LOAD_EXIT_CODE -eq 0 ]; then
+        log "✅ INVESTIGATION FINDING: Saved image file integrity verified (can be loaded back locally)"
+        
+        # Clean up the test loaded image
+        docker rmi my-ag-ui-app:latest 2>/dev/null || true
+    else
+        log "❌ INVESTIGATION FINDING: Saved image file is corrupted (cannot be loaded back locally)"
+        log "   Load test error output:"
+        echo "$TEST_LOAD_OUTPUT" | tee -a "$LOG_FILE"
+        
+        log "   POSSIBLE CAUSES:"
+        log "   - Docker save process was interrupted"
+        log "   - File system corruption during save"
+        log "   - Disk errors"
+        log "   RECOVERY: Rebuild the Docker image"
+        
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    # Investigation Step 6: Transfer image file to VM with detailed diagnostics
+    log ""
+    log "INVESTIGATION STEP 6: Transferring image file to VM with detailed diagnostics..."
+    
+    log "   Checking VM accessibility before transfer..."
+    if ! multipass exec "$VM_NAME" -- whoami >/dev/null 2>&1; then
+        log "❌ INVESTIGATION FINDING: VM is not accessible"
+        log "   POSSIBLE CAUSES:"
+        log "   - VM is not running"
+        log "   - Multipass service issues"
+        log "   - Network connectivity issues"
+        log "   RECOVERY: Check VM status: multipass info '$VM_NAME'"
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    log "✅ INVESTIGATION FINDING: VM is accessible"
+    
+    log "   Transferring image file to VM: $VM_NAME:/home/ubuntu/my-ag-ui-app-latest.tar"
+    log "   This may take a while for large images..."
+    
+    # Capture multipass transfer output
+    TRANSFER_OUTPUT=$(multipass transfer "$IMAGE_FILE" "$VM_NAME:/home/ubuntu/my-ag-ui-app-latest.tar" 2>&1)
+    TRANSFER_EXIT_CODE=$?
+    
+    if [ $TRANSFER_EXIT_CODE -ne 0 ]; then
+        log "❌ INVESTIGATION FINDING: Multipass transfer failed (exit code: $TRANSFER_EXIT_CODE)"
+        log "   Transfer error output:"
+        echo "$TRANSFER_OUTPUT" | tee -a "$LOG_FILE"
+        
+        log "   POSSIBLE CAUSES:"
+        log "   - VM disk space full"
+        log "   - Network connectivity issues"
+        log "   - VM file system issues"
+        log "   - Permission issues in VM"
+        log "   RECOVERY: Check VM disk space and connectivity"
+        
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    log "✅ INVESTIGATION FINDING: Image file transferred successfully to VM"
+    
+    # Investigation Step 7: Verify file exists in VM after transfer
+    log ""
+    log "INVESTIGATION STEP 7: Verifying file exists in VM after transfer..."
+    
+    VM_FILE_CHECK=$(multipass exec "$VM_NAME" -- ls -la /home/ubuntu/my-ag-ui-app-latest.tar 2>&1)
+    VM_FILE_EXIT_CODE=$?
+    
+    if [ $VM_FILE_EXIT_CODE -ne 0 ]; then
+        log "❌ INVESTIGATION FINDING: Transferred file does not exist in VM"
+        log "   File check error output:"
+        echo "$VM_FILE_CHECK" | tee -a "$LOG_FILE"
+        
+        log "   POSSIBLE CAUSES:"
+        log "   - Transfer silently failed"
+        log "   - File system issues in VM"
+        log "   - Permission issues in VM"
+        log "   RECOVERY: Check VM file system and permissions"
+        
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    # Get VM file information
+    VM_FILE_SIZE=$(multipass exec "$VM_NAME" -- stat -c%s /home/ubuntu/my-ag-ui-app-latest.tar 2>/dev/null || echo "unknown")
+    VM_FILE_SIZE_HUMAN=$(multipass exec "$VM_NAME" -- du -h /home/ubuntu/my-ag-ui-app-latest.tar 2>/dev/null | cut -f1 || echo "unknown")
+    VM_FILE_MD5=$(multipass exec "$VM_NAME" -- md5sum /home/ubuntu/my-ag-ui-app-latest.tar 2>/dev/null | cut -d' ' -f1 || echo "unknown")
+    
+    log "✅ INVESTIGATION FINDING: Transferred file exists in VM"
+    log "   VM file path: /home/ubuntu/my-ag-ui-app-latest.tar"
+    log "   VM file size: $VM_FILE_SIZE_HUMAN ($VM_FILE_SIZE bytes)"
+    log "   VM file MD5 hash: $VM_FILE_MD5"
+    
+    # Compare file sizes and hashes
+    if [ "$IMAGE_SIZE_BYTES" != "unknown" ] && [ "$VM_FILE_SIZE" != "unknown" ]; then
+        if [ "$IMAGE_SIZE_BYTES" = "$VM_FILE_SIZE" ]; then
+            log "✅ INVESTIGATION FINDING: File size matches between host and VM"
+        else
+            log "⚠️  INVESTIGATION WARNING: File size mismatch between host and VM"
+            log "   Host: $IMAGE_SIZE_BYTES bytes, VM: $VM_FILE_SIZE bytes"
+            log "   This indicates transfer corruption or truncation"
+        fi
+    fi
+    
+    if [ "$IMAGE_MD5" != "unknown" ] && [ "$VM_FILE_MD5" != "unknown" ]; then
+        if [ "$IMAGE_MD5" = "$VM_FILE_MD5" ]; then
+            log "✅ INVESTIGATION FINDING: File MD5 hash matches between host and VM"
+            log "   File integrity verified - no corruption during transfer"
+        else
+            log "❌ INVESTIGATION FINDING: File MD5 hash mismatch between host and VM"
+            log "   Host: $IMAGE_MD5, VM: $VM_FILE_MD5"
+            log "   This indicates file corruption during transfer"
+            log "   POSSIBLE CAUSES: Network issues, disk errors during transfer"
+            rm -rf "$TEMP_DIR"
+            return 1
+        fi
+    fi
+    
+    # Investigation Step 8: Load Docker image in VM with comprehensive monitoring
+    log ""
+    log "INVESTIGATION STEP 8: Loading Docker image in VM with comprehensive monitoring..."
+    
+    log "   Checking Docker daemon status in VM before load..."
+    VM_DOCKER_STATUS=$(multipass exec "$VM_NAME" -- docker info 2>/dev/null > /dev/null && echo "running" || echo "not running")
+    log "   VM Docker daemon status: $VM_DOCKER_STATUS"
+    
+    if [ "$VM_DOCKER_STATUS" != "running" ]; then
+        log "❌ INVESTIGATION FINDING: Docker daemon not running in VM"
+        log "   This will cause docker load to fail"
+        log "   RECOVERY: Start Docker daemon in VM: sudo systemctl start docker"
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    # Check disk space again in VM before docker load
+    log "   Checking VM disk space before docker load..."
+    VM_DISK_BEFORE=$(multipass exec "$VM_NAME" -- df -h / 2>&1 | awk 'NR==2 {print $4}' | sed 's/G//' || echo "unknown")
+    log "   VM disk space before load: ${VM_DISK_BEFORE}GB available"
+    
+    log "   Loading Docker image in VM..."
+    log "   This may take a while for large images..."
+    
+    # Capture docker load output with detailed timing
+    VM_LOAD_START_TIME=$(date +%s)
+    VM_LOAD_OUTPUT=$(multipass exec "$VM_NAME" -- sh -c "docker load -i /home/ubuntu/my-ag-ui-app-latest.tar 2>&1" 2>&1)
+    VM_LOAD_EXIT_CODE=$?
+    VM_LOAD_END_TIME=$(date +%s)
+    VM_LOAD_DURATION=$((VM_LOAD_END_TIME - VM_LOAD_START_TIME))
+    
+    log "   Docker load command completed in ${VM_LOAD_DURATION} seconds"
+    log "   Docker load exit code: $VM_LOAD_EXIT_CODE"
+    
+    # Log the full docker load output
+    log "   Docker load command output in VM:"
+    echo "$VM_LOAD_OUTPUT" | tee -a "$LOG_FILE"
+    
+    # Check if docker load succeeded
+    if [ $VM_LOAD_EXIT_CODE -ne 0 ]; then
+        log "❌ INVESTIGATION FINDING: Docker load command failed in VM"
+        log "   Exit code: $VM_LOAD_EXIT_CODE"
+        log "   Duration: ${VM_LOAD_DURATION} seconds"
+        
+        # Analyze the error output
+        if echo "$VM_LOAD_OUTPUT" | grep -q "no space left"; then
+            log "   ERROR TYPE: Insufficient disk space in VM"
+            log "   RECOVERY: Free up disk space in VM or increase VM disk size"
+        elif echo "$VM_LOAD_OUTPUT" | grep -q "permission denied"; then
+            log "   ERROR TYPE: Permission denied in VM"
+            log "   RECOVERY: Check user permissions and docker group membership"
+        elif echo "$VM_LOAD_OUTPUT" | grep -q "invalid tar"; then
+            log "   ERROR TYPE: Invalid tar archive (corrupted file)"
+            log "   RECOVERY: Rebuild and retransfer the image"
+        elif echo "$VM_LOAD_OUTPUT" | grep -q "docker daemon"; then
+            log "   ERROR TYPE: Docker daemon not running or not accessible"
+            log "   RECOVERY: Start Docker daemon in VM"
+        else
+            log "   ERROR TYPE: Unknown docker load failure"
+            log "   Check the error output above for specific details"
+        fi
+        
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    # Check disk space after docker load
+    log "   Checking VM disk space after docker load..."
+    VM_DISK_AFTER=$(multipass exec "$VM_NAME" -- df -h / 2>&1 | awk 'NR==2 {print $4}' | sed 's/G//' || echo "unknown")
+    log "   VM disk space after load: ${VM_DISK_AFTER}GB available"
+    
+    if [ "$VM_DISK_BEFORE" != "unknown" ] && [ "$VM_DISK_AFTER" != "unknown" ]; then
+        DISK_USED=$((VM_DISK_BEFORE - VM_DISK_AFTER))
+        log "   Disk space used by image: ${DISK_USED}GB"
+    fi
+    
+    log "✅ INVESTIGATION FINDING: Docker image loaded successfully in VM"
+    log "   Load duration: ${VM_LOAD_DURATION} seconds"
+    
+    # Investigation Step 9: Verify image exists in VM's Docker daemon
+    log ""
+    log "INVESTIGATION STEP 9: Verifying image exists in VM's Docker daemon..."
+    
+    # Wait a moment after load before checking (sometimes there's a delay)
+    log "   Waiting 2 seconds after load before verification..."
+    sleep 2
+    
+    VM_IMAGES_OUTPUT=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>&1)
+    VM_IMAGES_EXIT_CODE=$?
+    
+    log "   Docker images command in VM (exit code: $VM_IMAGES_EXIT_CODE):"
+    echo "$VM_IMAGES_OUTPUT" | tee -a "$LOG_FILE"
+    
+    if [ $VM_IMAGES_EXIT_CODE -ne 0 ]; then
+        log "❌ INVESTIGATION FINDING: Failed to list Docker images in VM"
+        log "   Docker daemon may have crashed or become unresponsive after load"
+        log "   RECOVERY: Restart Docker daemon in VM and retry"
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    # Check if our specific image is in the list
+    if echo "$VM_IMAGES_OUTPUT" | grep -q "my-ag-ui-app.*latest"; then
+        log "✅ INVESTIGATION FINDING: Docker image 'my-ag-ui-app:latest' found in VM"
+        
+        # Extract image details
+        VM_IMAGE_SIZE=$(echo "$VM_IMAGES_OUTPUT" | awk '/my-ag-ui-app.*latest/ {print $3}' || echo "unknown")
+        VM_IMAGE_CREATED=$(echo "$VM_IMAGES_OUTPUT" | awk '/my-ag-ui-app.*latest/ {print $4,$5}' || echo "unknown")
+        
+        log "   VM image size: $VM_IMAGE_SIZE"
+        log "   VM image created: $VM_IMAGE_CREATED"
+    else
+        log "❌ INVESTIGATION FINDING: Docker image 'my-ag-ui-app:latest' NOT found in VM"
+        log "   This indicates silent load failure - docker load succeeded but image not available"
+        log "   POSSIBLE CAUSES:"
+        log "   - Docker load command returned success but actually failed"
+        log "   - Image was loaded but with different name/tag"
+        log "   - Docker daemon internal error"
+        log "   RECOVERY: Check Docker daemon logs in VM: sudo journalctl -u docker.service"
+        
+        # List all images in VM for debugging
+        log "   All images currently in VM:"
+        multipass exec "$VM_NAME" -- docker images 2>&1 | tee -a "$LOG_FILE" || true
+        
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    # Investigation Step 10: Test Docker image functionality in VM
+    log ""
+    log "INVESTIGATION STEP 10: Testing Docker image functionality in VM..."
+    
+    log "   Testing if image can be inspected..."
+    VM_INSPECT_OUTPUT=$(multipass exec "$VM_NAME" -- docker inspect my-ag-ui-app:latest 2>&1)
+    VM_INSPECT_EXIT_CODE=$?
+    
+    if [ $VM_INSPECT_EXIT_CODE -eq 0 ]; then
+        log "✅ INVESTIGATION FINDING: Docker image can be inspected in VM"
+        
+        # Extract some basic image info
+        VM_IMAGE_ID=$(echo "$VM_INSPECT_OUTPUT" | grep -o '"Id": *"[^"]*"' | cut -d'"' -f4 | head -c12)
+        log "   VM image ID: $VM_IMAGE_ID"
+        
+        # Get image size in bytes
+        VM_IMAGE_SIZE_BYTES=$(echo "$VM_INSPECT_OUTPUT" | grep -o '"Size": *[0-9]*' | cut -d':' -f2 | tr -d ' ' || echo "unknown")
+        log "   VM image size: $VM_IMAGE_SIZE_BYTES bytes"
+    else
+        log "❌ INVESTIGATION FINDING: Cannot inspect Docker image in VM"
+        log "   Inspect error output:"
+        echo "$VM_INSPECT_OUTPUT" | tee -a "$LOG_FILE"
+        log "   This indicates image is corrupted or inaccessible"
+        
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    # Clean up temporary file in VM
+    log ""
+    log "INVESTIGATION CLEANUP: Removing temporary file in VM..."
+    multipass exec "$VM_NAME" -- rm -f /home/ubuntu/my-ag-ui-app-latest.tar 2>&1 | tee -a "$LOG_FILE" || true
+    
+    # Clean up local temporary directory
+    log "INVESTIGATION CLEANUP: Removing local temporary directory..."
     rm -rf "$TEMP_DIR"
-    handle_secrets_error 126 "Failed to save Docker image to file" \
-        "Docker save command failed. Check Docker daemon on host and available disk space."
+    
+    log ""
+    log "=================================================="
+    log "      INVESTIGATION COMPLETED SUCCESSFULLY"
+    log "=================================================="
+    log ""
+    log "✅ All investigation steps passed"
+    log "✅ Docker image is properly loaded and functional in VM"
+    log "✅ Image transfer was successful with no corruption"
+    log "✅ Image can be accessed and inspected in VM"
+    log ""
+    
+    return 0
+}
+
+# Run the comprehensive investigation
+log ""
+log "Starting comprehensive Docker image load investigation..."
+if diagnose_docker_image_load_issues; then
+    log "✅ Docker image load investigation completed successfully"
+else
+    log "❌ Docker image load investigation failed - see findings above"
+    handle_secrets_error 124 "Docker image verification in VM failed" \
+        "Comprehensive investigation identified issues with Docker image loading. Check the investigation findings above for specific details."
 fi
-
-# Verify saved file exists and has content
-if [ ! -f "$IMAGE_FILE" ] || [ ! -s "$IMAGE_FILE" ]; then
-    rm -rf "$TEMP_DIR"
-    handle_secrets_error 127 "Saved image file is empty or missing" \
-        "Docker save completed but file '$IMAGE_FILE' is empty or missing. Check Docker save command output."
-fi
-
-IMAGE_SIZE=$(du -h "$IMAGE_FILE" | cut -f1)
-log "Docker image saved successfully. File size: $IMAGE_SIZE"
-
-# Transfer image file to VM
-log "Transferring image file to VM..."
-if ! multipass transfer "$IMAGE_FILE" "$VM_NAME:/home/ubuntu/my-ag-ui-app-latest.tar" 2>&1 | tee -a "$LOG_FILE"; then
-    rm -rf "$TEMP_DIR"
-    handle_secrets_error 128 "Failed to transfer image file to VM" \
-        "Multipass transfer failed. Check VM connectivity and available disk space in VM: multipass info '$VM_NAME'"
-fi
-log "Image file transferred successfully to VM"
-
-# Load image in VM with detailed logging and error handling
-log "Loading Docker image in VM..."
-VM_LOAD_OUTPUT=$(multipass exec "$VM_NAME" -- sh -c "docker load -i /home/ubuntu/my-ag-ui-app-latest.tar 2>&1" 2>&1)
-VM_LOAD_EXIT_CODE=$?
-
-# Log the output from docker load command
-log "Docker load command output in VM:"
-echo "$VM_LOAD_OUTPUT" | tee -a "$LOG_FILE"
-
-# Check if docker load succeeded
-if [ $VM_LOAD_EXIT_CODE -ne 0 ]; then
-    rm -rf "$TEMP_DIR"
-    handle_secrets_error 129 "Docker load command failed in VM" \
-        "Docker load in VM failed with exit code $VM_LOAD_EXIT_CODE. Check Docker daemon in VM: multipass exec '$VM_NAME' -- docker info"
-fi
-
-log "Docker image loaded successfully in VM"
-
-# Clean up temporary file in VM
-log "Cleaning up temporary file in VM..."
-multipass exec "$VM_NAME" -- rm -f /home/ubuntu/my-ag-ui-app-latest.tar 2>&1 | tee -a "$LOG_FILE"
-
-# Clean up local temporary directory
-rm -rf "$TEMP_DIR"
-log "Temporary files cleaned up"
 
 end_phase_timing "DOCKER_IMAGE_LOAD"
 
