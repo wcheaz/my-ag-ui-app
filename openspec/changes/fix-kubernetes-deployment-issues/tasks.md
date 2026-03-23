@@ -53,7 +53,7 @@
 - [x] 7.2 Test image tagging for local registry
 - [x] 7.3 Test image push to local registry
 - [x] 7.4 Test deployment with registry image reference
-- [ ] 7.5 Test error handling when registry is not enabled
+- [x] 7.5 Test error handling when registry is not enabled
 - [ ] 7.6 Test error handling with Docker daemon not running
 - [ ] 7.7 Test error handling with invalid image tags
 - [ ] 7.8 Test error handling with registry port conflicts
