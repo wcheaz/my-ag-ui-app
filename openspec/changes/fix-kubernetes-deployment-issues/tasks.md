@@ -3,7 +3,7 @@
 - [x] 1.1 Add function to enable microk8s registry using `microk8s enable registry` command
 - [x] 1.2 Add function to verify registry is running and accessible at localhost:32000
 - [x] 1.3 Add error handling for registry enablement failures with clear messages
-- [ ] 1.4 Add logging for registry status and enablement
+- [x] 1.4 Add logging for registry status and enablement
 
 ## 2. Image Tagging for Local Registry
 

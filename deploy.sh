@@ -1534,24 +1534,34 @@ verify_multipass_transfer_accessibility() {
 # Verify microk8s registry is running and accessible at localhost:32000
 verify_microk8s_registry() {
     log "Verifying registry is running and accessible at localhost:32000..."
+    log "   Registry endpoint: http://localhost:32000"
+    log "   Connection timeout: 5 seconds"
+    log "   Overall timeout: 10 seconds"
     
     local registry_check_output
     local registry_check_exit_code
     
     # Check registry accessibility with timeout
+    log "   Executing: timeout 10 multipass exec '$VM_NAME' -- curl -s --connect-timeout 5 http://localhost:32000/v2/_catalog"
     registry_check_output=$(timeout 10 multipass exec "$VM_NAME" -- curl -s --connect-timeout 5 http://localhost:32000/v2/_catalog 2>&1)
     registry_check_exit_code=$?
     
     if [ $registry_check_exit_code -eq 0 ]; then
         log "✅ Registry is accessible at localhost:32000"
+        log "   Registry connection test: PASSED"
+        log "   Response time: < 5 seconds (within timeout)"
         
         # Log registry response for verification
         if [ -n "$registry_check_output" ]; then
             log "Registry response:"
             echo "$registry_check_output" | tee -a "$LOG_FILE"
+        else
+            log "Registry response: No content received (empty response)"
         fi
     else
         log "⚠️  WARNING: Registry accessibility check failed (exit code: $registry_check_exit_code)"
+        log "   Registry connection test: FAILED"
+        log "   Possible causes: Registry not running, network issues, or timeout"
         log "Registry check output:"
         echo "$registry_check_output" | tee -a "$LOG_FILE"
         
@@ -1586,6 +1596,8 @@ verify_microk8s_registry() {
     log "✅ Registry verification completed successfully"
     log "   Registry is accessible at: localhost:32000"
     log "   Registry can be used for local image distribution"
+    log "   Registry endpoint: http://localhost:32000/v2/_catalog"
+    log "   Status: VERIFIED and READY"
     
     return 0
 }
@@ -1605,24 +1617,34 @@ enable_microk8s_registry() {
     
     # Enable microk8s registry with error handling
     log "Enabling microk8s registry..."
+    log "   Command: microk8s enable registry"
+    log "   Timeout: 30 seconds"
+    log "   This enables the built-in microk8s registry for local image distribution"
     local registry_enable_output
     local registry_enable_exit_code
     
     # Execute registry enablement with timeout and error capture
+    log "   Executing: timeout 30 multipass exec '$VM_NAME' -- microk8s enable registry"
     registry_enable_output=$(timeout 30 multipass exec "$VM_NAME" -- microk8s enable registry 2>&1)
     registry_enable_exit_code=$?
     
     if [ $registry_enable_exit_code -eq 0 ]; then
         log "✅ microk8s registry enable command completed successfully"
+        log "   Registry enablement process: COMPLETED"
+        log "   Execution time: < 30 seconds (within timeout)"
         
         # Log the output for debugging
         if [ -n "$registry_enable_output" ]; then
             log "Registry enablement output:"
             echo "$registry_enable_output" | tee -a "$LOG_FILE"
+        else
+            log "Registry enablement output: No output (silent success)"
         fi
     else
         log "❌ ERROR: Failed to enable microk8s registry (exit code: $registry_enable_exit_code)"
-        log "Error output:"
+        log "   Registry enablement process: FAILED"
+        log "   Execution time: >= 30 seconds or command failed"
+        log "   Error output:"
         echo "$registry_enable_output" | tee -a "$LOG_FILE"
         
         # Provide specific error handling based on common failure scenarios
@@ -1691,6 +1713,9 @@ enable_microk8s_registry() {
     fi
     
     log "✅ microk8s registry setup completed successfully"
+    log "   Registry status: ENABLED and VERIFIED"
+    log "   Registry endpoint: localhost:32000"
+    log "   Ready for: Local image tagging and pushing"
     
     return 0
 }
