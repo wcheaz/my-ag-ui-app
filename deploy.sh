@@ -3307,6 +3307,38 @@ diagnose_docker_image_load_issues() {
     log "INVESTIGATION STEP 4: Saving Docker image to file with comprehensive diagnostics..."
     IMAGE_FILE="$TEMP_DIR/my-ag-ui-app-latest.tar"
     
+    # TASK 8.10: Fix file path issue - validate file path construction
+    log "   Validating file path construction..."
+    if [ -z "$TEMP_DIR" ] || [ ! -d "$TEMP_DIR" ]; then
+        log "❌ INVESTIGATION FINDING: Temporary directory is invalid or does not exist"
+        log "   EXPECTED: $TEMP_DIR"
+        log "   ACTUAL: Directory not found or variable not set"
+        log "   RECOVERY: Ensure temporary directory creation succeeds"
+        return 1
+    fi
+    
+    # Validate that IMAGE_FILE is properly constructed and uses specific path (not wildcard)
+    if echo "$IMAGE_FILE" | grep -q '/tmp/docker-image-load-\*'; then
+        log "❌ INVESTIGATION FINDING: File path contains wildcard pattern"
+        log "   CURRENT: $IMAGE_FILE"
+        log "   ISSUE: Wildcard patterns can cause file not found errors"
+        log "   RECOVERY: Use specific directory path with process ID"
+        return 1
+    fi
+    
+    # Ensure IMAGE_FILE uses the specific TEMP_DIR path
+    if [[ "$IMAGE_FILE" != "$TEMP_DIR"* ]]; then
+        log "❌ INVESTIGATION FINDING: File path does not use temporary directory"
+        log "   EXPECTED PREFIX: $TEMP_DIR"
+        log "   ACTUAL: $IMAGE_FILE"
+        log "   RECOVERY: Construct file path using TEMP_DIR variable"
+        return 1
+    fi
+    
+    log "✅ INVESTIGATION FINDING: File path validation passed"
+    log "   Temporary directory: $TEMP_DIR"
+    log "   Image file path: $IMAGE_FILE"
+    
     log "   Checking Docker daemon status on host..."
     HOST_DOCKER_STATUS=$(docker info 2>/dev/null > /dev/null && echo "running" || echo "not running")
     log "   Host Docker daemon status: $HOST_DOCKER_STATUS"
