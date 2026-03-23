@@ -55,7 +55,7 @@
 - [x] 7.4 Test deployment with registry image reference
 - [x] 7.5 Test error handling when registry is not enabled
 - [x] 7.6 Test error handling with Docker daemon not running
-- [ ] 7.7 Test error handling with invalid image tags
+- [x] 7.7 Test error handling with invalid image tags
 - [ ] 7.8 Test error handling with registry port conflicts
 - [ ] 7.9 Verify pods reach Running state after successful registry push
 - [ ] 7.10 Verify application is accessible via ingress after deployment
