@@ -79,9 +79,39 @@ This will start both the UI and agent servers concurrently.
 
 ## Kubernetes Deployment
 
+### Microk8s Registry Approach
+
+This project uses a **microk8s registry approach** for Kubernetes deployments, which provides a more reliable and efficient deployment workflow compared to the traditional Docker daemon method.
+
+#### Why Microk8s Registry?
+
+- **Eliminates Docker Daemon Complexity**: No need to manage Docker daemon in the VM
+- **Faster Deployments**: Standard Docker registry operations are optimized
+- **Better Reliability**: Built-in Kubernetes registry integration
+- **Standard Workflow**: Uses industry-standard Docker registry patterns
+- **Improved Debugging**: Standard Docker debugging tools and error messages
+
+#### Registry Workflow
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Build Image   │───▶│ Tag for Registry │───▶│ Push to Registry│───▶│ Deploy to K8s   │
+│   (Dockerfile)   │    │ (localhost:32000)│    │ (microk8s)      │    │ (Running Pods)   │
+└─────────────────┘    └──────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+#### Key Components
+
+1. **Local Registry**: `microk8s enable registry` (accessible at `localhost:32000`)
+2. **Docker Build**: Builds application images using standard Dockerfile
+3. **Image Tagging**: Tags images for local registry (`localhost:32000/app-name:latest`)
+4. **Registry Push**: Pushes images to local microk8s registry
+5. **Kubernetes Deployment**: Deploys pods that pull images directly from local registry
+6. **Ingress Access**: Provides external access to the application
+
 ### Automated Deployment
 
-The project includes an automated deployment script that sets up the entire Kubernetes infrastructure:
+The project includes an automated deployment script that implements the microk8s registry approach:
 
 ```bash
 ./deploy.sh
@@ -90,81 +120,83 @@ The project includes an automated deployment script that sets up the entire Kube
 The deployment script will:
 1. **Validate lock files** - Ensures package.json and package-lock.json are synchronized for reproducible builds
 2. **Provision a VM** using Multipass with 4 CPUs, 7.7GiB RAM, and 19.3GiB disk
-3. **Setup Docker in VM** - Automatically installs and configures Docker daemon in the VM
-4. **Install Microk8s** in the VM and enable required add-ons (dns, storage, ingress)
-5. **Build the Docker image** using the optimized multi-stage Dockerfile with dependency fallback
-6. **Load Docker image into VM** - Transfers the built image to the VM's Docker daemon
-7. **Deploy to Kubernetes** using the provided manifests (deployment, service, ingress)
-8. **Verify the deployment** and provide access information
+3. **Install Microk8s** in the VM and enable required add-ons (dns, storage, ingress, registry)
+4. **Enable Local Registry** - Sets up microk8s registry for local image distribution
+5. **Build Docker Image** using the optimized multi-stage Dockerfile with dependency fallback
+6. **Tag for Local Registry** - Tags image as `localhost:32000/my-ag-ui-app:latest`
+7. **Push to Registry** - Pushes tagged image to microk8s local registry
+8. **Deploy to Kubernetes** - Updates deployment to use local registry image
+9. **Verify Deployment** - Confirms pods are running and provides access information
 
 ### Prerequisites
 
 Before running the deployment script, ensure you have:
 - [Multipass](https://multipass.run/) installed
-- [Docker](https://www.docker.com/) installed
+- [Docker](https://www.docker.com/) installed (on your local machine for building images)
 - Sufficient system resources (the VM requires 4 CPUs, 7.7GiB RAM, 19.3GiB disk)
 
-### Docker Setup in VM
+> **Note**: With the microk8s registry approach, Docker is only required on your local machine for building images. The VM does not need Docker daemon setup.
 
-The deployment script automatically handles Docker installation and configuration in the multipass VM. This process ensures Docker is available for loading and running container images within the Kubernetes cluster.
+### Microk8s Registry Setup
 
-#### Automatic Docker Setup Process
+The deployment script automatically sets up the microk8s registry in the VM, eliminating the need for complex Docker daemon configuration.
 
-The script performs these Docker setup steps automatically:
+#### Automatic Registry Setup Process
 
-1. **Docker Availability Check** - Verifies if Docker is already installed in the VM
-2. **Docker Installation** - If not present, installs Docker using the official Ubuntu installation script
-3. **User Configuration** - Adds the default user (`ubuntu`) to the docker group for sudo-less operation
-4. **Daemon Startup** - Ensures the Docker daemon is running and ready to accept commands
-5. **Readiness Verification** - Confirms Docker is operational before proceeding with image loading
+The script performs these registry setup steps automatically:
 
-#### Docker Setup Requirements
+1. **Microk8s Installation** - Installs microk8s in the VM with required add-ons
+2. **Registry Enablement** - Enables the built-in microk8s registry (`microk8s enable registry`)
+3. **Registry Verification** - Confirms the registry is accessible at `localhost:32000`
+4. **Image Preparation** - Builds and tags images for the local registry
+5. **Registry Integration** - Configures Kubernetes to use the local registry
 
-- **Network Connectivity**: The VM must have internet access to download Docker packages during installation
-- **Disk Space**: Approximately 500MB additional space is required for Docker packages and dependencies
+#### Registry Setup Requirements
+
+- **Network Connectivity**: The VM must have internet access to download microk8s packages during installation
+- **Disk Space**: Approximately 200MB additional space is required for microk8s registry storage
 - **VM Access**: The deployment script must be able to execute commands in the VM via `multipass exec`
 
-#### Docker Setup Troubleshooting
+#### Registry Setup Troubleshooting
 
-If Docker setup fails during deployment:
+If registry setup fails during deployment:
 
 1. **Network Issues**: Ensure the VM has internet connectivity
-   ```bash
-   multipass exec my-ag-ui-app-k8s -- ping -c 3 google.com
-   ```
+    ```bash
+    multipass exec my-ag-ui-app-k8s -- ping -c 3 google.com
+    ```
 
-2. **Manual Docker Installation**: If automatic setup fails, you can install Docker manually:
-   ```bash
-   multipass shell my-ag-ui-app-k8s
-   curl -fsSL https://get.docker.com | sh
-   sudo usermod -aG docker ubuntu
-   # Log out and back in, or run: newgrp docker
-   ```
+2. **Microk8s Status**: Check if microk8s is running properly
+    ```bash
+    multipass exec my-ag-ui-app-k8s -- microk8s status
+    ```
 
-3. **Docker Daemon Status**: Check if Docker daemon is running:
-   ```bash
-   multipass exec my-ag-ui-app-k8s -- docker info
-   ```
+3. **Registry Status**: Verify the microk8s registry is enabled and accessible
+    ```bash
+    multipass exec my-ag-ui-app-k8s -- curl -s http://localhost:32000/v2/_catalog
+    ```
 
-4. **Permission Issues**: If you encounter permission errors, ensure the user is in the docker group:
-   ```bash
-   multipass exec my-ag-ui-app-k8s -- groups ubuntu
-   ```
+4. **Manual Registry Setup**: If automatic setup fails, you can enable the registry manually
+    ```bash
+    multipass shell my-ag-ui-app-k8s
+    microk8s enable registry
+    ```
 
-#### Docker Setup Idempotency
+#### Registry Setup Idempotency
 
-The Docker setup process is designed to be idempotent - you can run the deployment script multiple times without causing issues. The script will:
-- Skip installation if Docker is already present and running
-- Only perform necessary setup steps
+The registry setup process is designed to be idempotent - you can run the deployment script multiple times without causing issues. The script will:
+- Skip microk8s installation if already present and running
+- Only enable registry if not already enabled
 - Continue with the deployment process without duplication
 
-#### Advanced Docker Configuration
+#### Advanced Registry Configuration
 
-For advanced use cases, you can customize Docker behavior in the VM:
+For advanced use cases, you can customize the microk8s registry behavior:
 
-1. **Docker Version**: The script installs the latest stable Docker version. For specific version requirements, manual installation may be needed
-2. **Docker Daemon Settings**: Default Docker settings are used. Custom daemon configurations can be applied after deployment
-3. **Docker Registry**: The script uses Docker Hub by default. Private registry configuration can be added manually if needed
+1. **Registry Size**: The default registry size is 20GB. This can be increased if needed
+2. **Registry Persistence**: Images are persisted in the registry across VM restarts
+3. **Registry Access**: The registry is only accessible within the Kubernetes cluster by default
+4. **External Registry**: You can configure external registry access if needed
 
 ### Accessing the Application
 

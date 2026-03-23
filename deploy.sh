@@ -128,6 +128,74 @@
 # END PERFORMANCE OPTIMIZATION DOCUMENTATION
 # ===========================
 
+# ===========================
+# MICROK8S REGISTRY APPROACH
+# ===========================
+#
+# OVERVIEW:
+# This deployment script uses a microk8s registry approach for local image distribution,
+# replacing the previous Docker daemon loading method. This approach provides better
+# reliability, performance, and compatibility with Kubernetes deployments.
+#
+# WHY MICROK8S REGISTRY:
+# - ELIMINATES DOCKER DAEMON COMPLEXITY: No need to manage Docker daemon in VM
+# - SIMPLIFIES DEPLOYMENTS: Direct image pushing to local registry
+# - IMPROVES RELIABILITY: Built-in Kubernetes registry integration
+# - ENHANCES PERFORMANCE: Faster image pulls and caching
+# - STANDARDIZES WORKFLOW: Uses standard Docker registry patterns
+#
+# ARCHITECTURE:
+# 1. LOCAL REGISTRY: microk8s enable registry (localhost:32000)
+# 2. IMAGE FLOW: Build → Tag → Push → Deploy
+# 3. KUBERNETES INTEGRATION: Direct registry access for pods
+# 4. INGRESS ACCESS: External application access via nginx ingress
+#
+# WORKFLOW:
+# STEP 1: BUILD DOCKER IMAGE
+#   - Build application image using standard Dockerfile
+#   - Image contains all application dependencies and code
+#
+# STEP 2: TAG FOR LOCAL REGISTRY
+#   - Tag image as: localhost:32000/my-ag-ui-app:latest
+#   - Makes image addressable by local microk8s registry
+#
+# STEP 3: PUSH TO LOCAL REGISTRY
+#   - Push image to microk8s registry: docker push localhost:32000/my-ag-ui-app:latest
+#   - Stores image in local registry for Kubernetes access
+#
+# STEP 4: DEPLOY TO KUBERNETES
+#   - Update deployment manifest to use local registry image
+#   - Kubernetes pulls image directly from local registry
+#   - No external registry access required
+#
+# STEP 5: VERIFY AND ACCESS
+#   - Verify pods reach Running state
+#   - Configure ingress for external access
+#   - Test application accessibility
+#
+# BENEFITS OVER PREVIOUS APPROACH:
+# - NO DOCKER DAEMON ISSUES: Eliminates Docker daemon setup problems
+# - FASTER DEPLOYMENTS: Standard registry operations are optimized
+# - BETTER ERROR HANDLING: Clear error messages and recovery steps
+# - IMPROVED DEBUGGING: Standard Docker registry debugging tools
+# - KUBERNETES NATIVE: Works seamlessly with Kubernetes patterns
+#
+# KEY COMPONENTS:
+# - microk8s registry: Local image storage (localhost:32000)
+# - Docker: Image building and pushing
+# - Kubernetes: Deployment and pod management
+# - Ingress: External access routing
+#
+# TROUBLESHOOTING:
+# - Registry issues: Check microk8s registry status
+# - Image pull issues: Verify image exists in local registry
+# - Deployment issues: Check deployment image reference
+# - Access issues: Verify ingress configuration
+#
+# ===========================
+# END MICROK8S REGISTRY APPROACH
+# ===========================
+
 # 1. DOCKER CLI NOT AVAILABLE ERRORS
 # =================================
 # Symptoms:
