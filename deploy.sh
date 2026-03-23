@@ -1795,18 +1795,55 @@ push_image_to_registry() {
     log "✅ microk8s registry is accessible and ready for push"
     
     # Push the image to microk8s registry with enhanced error handling and retry logic
-    log "Pushing image to microk8s registry with retry logic..."
+    log "Pushing image to microk8s registry with enhanced retry logic..."
     log "   Command: docker push $target_image"
     log "   This distributes the image to the local microk8s registry for Kubernetes deployment"
+    log "   Using exponential backoff with jitter for transient network issues"
     
-    # Configure retry parameters for transient network issues
+    # Enhanced retry parameters for transient network issues with exponential backoff and jitter
     local MAX_PUSH_ATTEMPTS=3
-    local PUSH_RETRY_DELAY=5
+    local INITIAL_PUSH_RETRY_DELAY=2
+    local MAX_PUSH_RETRY_DELAY=30
+    local PUSH_RETRY_JITTER_MAX=2  # Maximum jitter in seconds to prevent thundering herd
+    local PUSH_BACKOFF_FACTOR=2  # Exponential backoff multiplier
     local PUSH_ATTEMPT=1
     local push_success=false
     
+    # Function to calculate exponential backoff with jitter for retry delays
+    calculate_push_retry_delay() {
+        local attempt=$1
+        local base_delay=$2
+        local max_delay=$3
+        local backoff_factor=$4
+        local jitter_max=$5
+        
+        # Calculate exponential backoff: base_delay * (backoff_factor ^ (attempt-1))
+        local exponential_delay=$((base_delay * $((backoff_factor ** (attempt-1)))))
+        
+        # Cap at maximum delay
+        if [ $exponential_delay -gt $max_delay ]; then
+            exponential_delay=$max_delay
+        fi
+        
+        # Add random jitter to prevent thundering herd effect
+        local jitter=0
+        if [ $jitter_max -gt 0 ]; then
+            jitter=$((RANDOM % jitter_max))
+        fi
+        
+        local total_delay=$((exponential_delay + jitter))
+        echo $total_delay
+    }
+    
     while [ $PUSH_ATTEMPT -le $MAX_PUSH_ATTEMPTS ]; do
-        log "Push attempt $PUSH_ATTEMPT/$MAX_PUSH_ATTEMPTS..."
+        # Calculate retry delay for exponential backoff (only for retries, not initial attempt)
+        local retry_delay=0
+        if [ $PUSH_ATTEMPT -gt 1 ]; then
+            retry_delay=$(calculate_push_retry_delay $PUSH_ATTEMPT $INITIAL_PUSH_RETRY_DELAY $MAX_PUSH_RETRY_DELAY $PUSH_BACKOFF_FACTOR $PUSH_RETRY_JITTER_MAX)
+            log "Push attempt $PUSH_ATTEMPT/$MAX_PUSH_ATTEMPTS (retry delay: ${retry_delay}s - exponential backoff with jitter)..."
+        else
+            log "Push attempt $PUSH_ATTEMPT/$MAX_PUSH_ATTEMPTS (initial attempt)..."
+        fi
         
         local push_output
         local push_exit_code
@@ -1830,10 +1867,10 @@ push_image_to_registry() {
             if [ $PUSH_ATTEMPT -lt $MAX_PUSH_ATTEMPTS ]; then
                 log "ANALYZING PUSH FAILURE (attempt $PUSH_ATTEMPT)..."
                 
-                if echo "$push_output" | grep -q -E "(connection refused|Connection refused|timeout|timed out|network unreachable|resolve host)"; then
-                    log "ERROR TYPE: NETWORK CONNECTIVITY FAILURE"
-                    log "DIAGNOSTIC: Network connectivity issues preventing registry communication"
-                    log "RECOVERY: Will retry in $PUSH_RETRY_DELAY seconds (transient network issue)"
+                if echo "$push_output" | grep -q -E "(connection refused|Connection refused|timeout|timed out|network unreachable|resolve host|temporary failure|Temporary failure in name resolution|read: connection reset|write: connection reset)"; then
+                    log "ERROR TYPE: TRANSIENT NETWORK CONNECTIVITY FAILURE"
+                    log "DIAGNOSTIC: Transient network connectivity issues preventing registry communication"
+                    log "RECOVERY: Will retry with exponential backoff (transient network issue - attempt $PUSH_ATTEMPT/$MAX_PUSH_ATTEMPTS)"
                     
                 elif echo "$push_output" | grep -q -E "(permission denied|Permission denied|access denied|unauthorized|authentication failed)"; then
                     log "ERROR TYPE: REGISTRY AUTHENTICATION FAILURE"
@@ -1866,15 +1903,16 @@ push_image_to_registry() {
                     
                 else
                     log "ERROR TYPE: UNKNOWN PUSH FAILURE"
-                    log "DIAGNOSTIC: Push failed with unknown error pattern"
-                    log "RECOVERY: Will retry in $PUSH_RETRY_DELAY seconds (attempting to resolve transient issue)"
+                    log "DIAGNOSTIC: Push failed with unknown error pattern - may be transient"
+                    log "RECOVERY: Will retry with exponential backoff (attempting to resolve potential transient issue - attempt $PUSH_ATTEMPT/$MAX_PUSH_ATTEMPTS)"
                 fi
                 
-                # Wait before retry (only for transient issues)
-                log "Waiting ${PUSH_RETRY_DELAY}s before retry attempt..."
-                sleep $PUSH_RETRY_DELAY
+                # Use the already calculated exponential backoff delay with jitter
+                log "Waiting ${retry_delay}s before retry attempt $((PUSH_ATTEMPT+1)) (exponential backoff with jitter)..."
+                sleep $retry_delay
             else
                 log "ERROR: Final push attempt failed - no more retries available"
+        log "NOTE: All $MAX_PUSH_ATTEMPTS attempts used exponential backoff with jitter for transient issues"
             fi
         fi
         
