@@ -3285,39 +3285,163 @@ diagnose_docker_image_load_issues() {
         fi
     fi
     
-    # Investigation Step 3: Create temporary directory and verify file system
+    # Investigation Step 3: Test alternative file locations for Docker image save
     log ""
-    log "INVESTIGATION STEP 3: Creating temporary directory and verifying file system..."
-    TEMP_DIR="/tmp/docker-image-load-$$"
-    log "   Creating temporary directory: $TEMP_DIR"
+    log "INVESTIGATION STEP 3: Testing alternative file locations for Docker image save..."
     
-    if ! mkdir -p "$TEMP_DIR"; then
-        log "❌ INVESTIGATION FINDING: Failed to create temporary directory"
-        log "   POSSIBLE CAUSES:"
-        log "   - Permission denied on host"
-        log "   - File system read-only"
-        log "   - Disk full on host"
-        log "   RECOVERY: Check host permissions and disk space"
-        return 1
+    # TASK 8.15: Test alternative file locations (e.g., `/tmp/` without subdirectory, current working directory)
+    # Define alternative file locations to test
+    local -a FILE_LOCATIONS=(
+        "/tmp/my-ag-ui-app-latest-$$-alternative1.tar"  # /tmp/ without subdirectory
+        "./my-ag-ui-app-latest-$$-alternative2.tar"      # Current working directory
+        "/tmp/docker-image-load-$$/my-ag-ui-app-latest.tar"  # Original: /tmp/ with subdirectory
+    )
+    
+    # Track which location works
+    local SUCCESSFUL_LOCATION=""
+    local SUCCESSFUL_LOCATION_INDEX=""
+    
+    # Test each file location
+    for i in "${!FILE_LOCATIONS[@]}"; do
+        local CURRENT_LOCATION="${FILE_LOCATIONS[$i]}"
+        local LOCATION_NAME=""
+        
+        # Determine location name for logging
+        case $i in
+            0) LOCATION_NAME="/tmp/ without subdirectory" ;;
+            1) LOCATION_NAME="Current working directory" ;;
+            2) LOCATION_NAME="/tmp/ with subdirectory (original)" ;;
+        esac
+        
+        log ""
+        log "Testing file location $((i+1))/${#FILE_LOCATIONS[@]}: $LOCATION_NAME"
+        log "   File path: $CURRENT_LOCATION"
+        
+        # Create directory if needed (for subdirectory case)
+        if [[ "$CURRENT_LOCATION" == */* ]] && [ "${CURRENT_LOCATION%/*}" != "." ] && [ "${CURRENT_LOCATION%/*}" != "/tmp" ]; then
+            local TEMP_DIR="${CURRENT_LOCATION%/*}"
+            log "   Creating directory: $TEMP_DIR"
+            if ! mkdir -p "$TEMP_DIR"; then
+                log "❌ Location $((i+1)): Failed to create directory $TEMP_DIR"
+                continue
+            fi
+            log "✅ Location $((i+1)): Directory created successfully"
+        fi
+        
+        # Test docker save to this location
+        log "   Testing docker save to: $CURRENT_LOCATION"
+        
+        # Clean up any existing file first
+        if [ -f "$CURRENT_LOCATION" ]; then
+            rm -f "$CURRENT_LOCATION"
+        fi
+        
+        # Execute docker save with error handling
+        if docker save my-ag-ui-app:latest -o "$CURRENT_LOCATION" 2>/dev/null; then
+            # Verify file was created and is not empty
+            if [ -f "$CURRENT_LOCATION" ] && [ -s "$CURRENT_LOCATION" ]; then
+                local FILE_SIZE=$(du -h "$CURRENT_LOCATION" | cut -f1 2>/dev/null || echo "unknown")
+                log "✅ Location $((i+1)): Docker save successful"
+                log "   File size: $FILE_SIZE"
+                
+                # Test multipass transfer with this file
+                log "   Testing multipass transfer with this file..."
+                if multipass transfer "$CURRENT_LOCATION" "$VM_NAME:/home/ubuntu/test-image-$$-$i.tar" 2>/dev/null; then
+                    log "✅ Location $((i+1)): Multipass transfer successful"
+                    
+                    # Verify file exists in VM
+                    if multipass exec "$VM_NAME" -- test -f "/home/ubuntu/test-image-$$-$i.tar"; then
+                        log "✅ Location $((i+1)): File exists in VM"
+                        
+                        # Test docker load in VM
+                        if multipass exec "$VM_NAME" -- docker load -i "/home/ubuntu/test-image-$$-$i.tar" 2>/dev/null; then
+                            log "✅ Location $((i+1)): Docker load successful in VM"
+                            log "✅ Location $((i+1)): FULL SUCCESS - All operations completed"
+                            
+                            # Mark this location as successful
+                            SUCCESSFUL_LOCATION="$CURRENT_LOCATION"
+                            SUCCESSFUL_LOCATION_INDEX="$i"
+                            break
+                        else
+                            log "❌ Location $((i+1)): Docker load failed in VM"
+                        fi
+                    else
+                        log "❌ Location $((i+1)): File does not exist in VM after transfer"
+                    fi
+                else
+                    log "❌ Location $((i+1)): Multipass transfer failed"
+                fi
+            else
+                log "❌ Location $((i+1)): File not created or is empty"
+            fi
+        else
+            log "❌ Location $((i+1)): Docker save failed"
+        fi
+        
+        # Clean up test file
+        if [ -f "$CURRENT_LOCATION" ]; then
+            rm -f "$CURRENT_LOCATION"
+        fi
+        
+        # Clean up VM test file
+        multipass exec "$VM_NAME" -- rm -f "/home/ubuntu/test-image-$$-$i.tar" 2>/dev/null || true
+    done
+    
+    # Report test results
+    log ""
+    log "=================================================="
+    log "      ALTERNATIVE FILE LOCATION TEST RESULTS"
+    log "=================================================="
+    
+    if [ -n "$SUCCESSFUL_LOCATION" ]; then
+        log "✅ SUCCESS: Found working file location"
+        log "   Working location: $SUCCESSFUL_LOCATION"
+        
+        # Set the working location for the rest of the function
+        IMAGE_FILE="$SUCCESSFUL_LOCATION"
+        TEMP_DIR="${IMAGE_FILE%/*}"  # Extract directory from file path
+        if [ "$TEMP_DIR" = "$IMAGE_FILE" ]; then
+            TEMP_DIR="."  # File is in current directory
+        fi
+        
+        log "   Using this location for detailed diagnostics..."
+    else
+        log "❌ FAILURE: No file location worked"
+        log "   All tested locations failed at various stages"
+        log "   This indicates a fundamental issue with the environment"
+        
+        # Fall back to original location for detailed diagnostics
+        TEMP_DIR="/tmp/docker-image-load-$$"
+        IMAGE_FILE="$TEMP_DIR/my-ag-ui-app-latest.tar"
+        
+        log "   Falling back to original location for detailed diagnostics: $IMAGE_FILE"
     fi
-    log "✅ INVESTIGATION FINDING: Temporary directory created successfully"
     
-    # Investigation Step 4: Save Docker image to file with comprehensive diagnostics
+    # Create the directory if it doesn't exist (for the selected location)
+    if [ "$TEMP_DIR" != "." ] && [ ! -d "$TEMP_DIR" ]; then
+        log "Creating directory for selected location: $TEMP_DIR"
+        mkdir -p "$TEMP_DIR" || true
+    fi
+    
+    # Investigation Step 4: Save Docker image to file with comprehensive diagnostics (using selected location)
     log ""
     log "INVESTIGATION STEP 4: Saving Docker image to file with comprehensive diagnostics..."
-    IMAGE_FILE="$TEMP_DIR/my-ag-ui-app-latest.tar"
     
-    # TASK 8.10: Fix file path issue - validate file path construction
-    log "   Validating file path construction..."
-    if [ -z "$TEMP_DIR" ] || [ ! -d "$TEMP_DIR" ]; then
-        log "❌ INVESTIGATION FINDING: Temporary directory is invalid or does not exist"
-        log "   EXPECTED: $TEMP_DIR"
-        log "   ACTUAL: Directory not found or variable not set"
-        log "   RECOVERY: Ensure temporary directory creation succeeds"
-        return 1
+    # TASK 8.10 & 8.15: Validate file path construction for selected location
+    log "   Validating file path construction for selected location..."
+    
+    # For current directory (.), we don't need directory validation
+    if [ "$TEMP_DIR" != "." ] && [ "$TEMP_DIR" != "/tmp" ] && [ -n "$TEMP_DIR" ]; then
+        if [ ! -d "$TEMP_DIR" ]; then
+            log "❌ INVESTIGATION FINDING: Directory is invalid or does not exist"
+            log "   EXPECTED: $TEMP_DIR"
+            log "   ACTUAL: Directory not found"
+            log "   RECOVERY: Create directory: mkdir -p $TEMP_DIR"
+            return 1
+        fi
     fi
     
-    # Validate that IMAGE_FILE is properly constructed and uses specific path (not wildcard)
+    # Validate that IMAGE_FILE is properly constructed (no wildcard patterns)
     if echo "$IMAGE_FILE" | grep -q '/tmp/docker-image-load-\*'; then
         log "❌ INVESTIGATION FINDING: File path contains wildcard pattern"
         log "   CURRENT: $IMAGE_FILE"
@@ -3326,18 +3450,29 @@ diagnose_docker_image_load_issues() {
         return 1
     fi
     
-    # Ensure IMAGE_FILE uses the specific TEMP_DIR path
-    if [[ "$IMAGE_FILE" != "$TEMP_DIR"* ]]; then
-        log "❌ INVESTIGATION FINDING: File path does not use temporary directory"
-        log "   EXPECTED PREFIX: $TEMP_DIR"
-        log "   ACTUAL: $IMAGE_FILE"
-        log "   RECOVERY: Construct file path using TEMP_DIR variable"
+    # Validate IMAGE_FILE path structure
+    if [ -z "$IMAGE_FILE" ]; then
+        log "❌ INVESTIGATION FINDING: Image file path is empty"
+        log "   RECOVERY: Set IMAGE_FILE variable to a valid path"
         return 1
     fi
     
+    # For current directory files, ensure the filename is valid
+    if [ "$TEMP_DIR" = "." ]; then
+        if [[ "$IMAGE_FILE" != ./* ]] && [[ "$IMAGE_FILE" != */* ]]; then
+            log "⚠️  INVESTIGATION WARNING: File in current directory should start with './'"
+            log "   CURRENT: $IMAGE_FILE"
+            log "   This may cause path resolution issues"
+        fi
+    fi
+    
     log "✅ INVESTIGATION FINDING: File path validation passed"
-    log "   Temporary directory: $TEMP_DIR"
-    log "   Image file path: $IMAGE_FILE"
+    log "   Selected location: $IMAGE_FILE"
+    if [ "$TEMP_DIR" != "." ]; then
+        log "   Directory: $TEMP_DIR"
+    else
+        log "   Directory: Current working directory"
+    fi
     
     log "   Checking Docker daemon status on host..."
     HOST_DOCKER_STATUS=$(docker info 2>/dev/null > /dev/null && echo "running" || echo "not running")
