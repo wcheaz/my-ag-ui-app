@@ -1,6 +1,6 @@
 {
   "active": true,
-  "iteration": 11,
+  "iteration": 12,
   "minIterations": 1,
   "maxIterations": 50,
   "completionPromise": "COMPLETE",
@@ -11,6 +11,6 @@
   "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-kubernetes-deployment-issues/.ralph/prompt-template.md",
   "noCommit": false,
   "model": "",
-  "startedAt": "2026-03-23T15:56:46.783Z",
-  "resumedAt": null
+  "startedAt": "2026-03-23T19:46:54.803Z",
+  "resumedAt": "2026-03-23T19:46:54.804Z"
 }
