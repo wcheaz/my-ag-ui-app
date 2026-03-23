@@ -1,5 +1,7 @@
+#!/bin/bash
 
 
+#!/bin/bash
 
 # Common Docker Setup Issues and Troubleshooting Steps
 # 
