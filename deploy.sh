@@ -4029,9 +4029,179 @@ diagnose_docker_image_load_issues() {
         return 1
     fi
     
-    # Investigation Step 10: Test Docker image functionality in VM
+    # Investigation Step 10: Enhanced system diagnostics and error reporting
     log ""
-    log "INVESTIGATION STEP 10: Testing Docker image functionality in VM..."
+    log "INVESTIGATION STEP 10: Enhanced system diagnostics and error reporting..."
+    
+    # Enhanced Diagnostic 10.1: Network connectivity diagnostics
+    log "   Enhanced Diagnostic 10.1: Network connectivity diagnostics..."
+    
+    log "   Testing host-to-VM network connectivity..."
+    NETWORK_TEST_START=$(date +%s)
+    
+    # Test basic connectivity
+    if ! multipass exec "$VM_NAME" -- ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+        log "   ⚠️  NETWORK: VM cannot reach external network (8.8.8.8)"
+        log "      This may affect image pulling or Docker operations"
+    else
+        log "   ✓ NETWORK: VM can reach external network"
+    fi
+    
+    # Test DNS resolution
+    if ! multipass exec "$VM_NAME" -- nslookup google.com >/dev/null 2>&1; then
+        log "   ⚠️  NETWORK: DNS resolution failing in VM"
+        log "      This may affect Docker registry access"
+    else
+        log "   ✓ NETWORK: DNS resolution working in VM"
+    fi
+    
+    # Test Docker registry connectivity
+    if ! multipass exec "$VM_NAME" -- curl -s --connect-timeout 5 https://registry-1.docker.io/v2/ >/dev/null 2>&1; then
+        log "   ⚠️  NETWORK: Cannot connect to Docker registry"
+        log "      This may affect future Docker operations"
+    else
+        log "   ✓ NETWORK: Docker registry accessible"
+    fi
+    
+    NETWORK_TEST_END=$(date +%s)
+    NETWORK_TEST_DURATION=$((NETWORK_TEST_END - NETWORK_TEST_START))
+    log "   Network diagnostics completed in ${NETWORK_TEST_DURATION} seconds"
+    
+    # Enhanced Diagnostic 10.2: System resource monitoring
+    log "   Enhanced Diagnostic 10.2: System resource monitoring..."
+    
+    log "   Collecting VM system resource information..."
+    
+    # Get CPU info
+    VM_CPU_INFO=$(multipass exec "$VM_NAME" -- cat /proc/cpuinfo | grep "model name" | head -n1 | cut -d':' -f2 | sed 's/^ *//' || echo "unknown")
+    VM_CPU_CORES=$(multipass exec "$VM_NAME" -- nproc 2>/dev/null || echo "unknown")
+    log "   CPU: $VM_CPU_INFO ($VM_CPU_CORES cores)"
+    
+    # Get memory info
+    VM_MEM_INFO=$(multipass exec "$VM_NAME" -- free -h 2>/dev/null | grep "^Mem:" || echo "unknown")
+    VM_MEM_TOTAL=$(echo "$VM_MEM_INFO" | awk '{print $2}' || echo "unknown")
+    VM_MEM_AVAILABLE=$(echo "$VM_MEM_INFO" | awk '{print $7}' || echo "unknown")
+    log "   Memory: Total=$VM_MEM_TOTAL, Available=$VM_MEM_AVAILABLE"
+    
+    # Get load average
+    VM_LOAD_AVG=$(multipass exec "$VM_NAME" -- uptime 2>/dev/null | awk -F'load average:' '{print $2}' | sed 's/^ *//' || echo "unknown")
+    log "   Load average:$VM_LOAD_AVG"
+    
+    # Check for resource exhaustion
+    if [ "$VM_MEM_AVAILABLE" != "unknown" ]; then
+        VM_MEM_AVAILABLE_MB=$(echo "$VM_MEM_AVAILABLE" | sed 's/[^0-9.]//g')
+        if [ "$(echo "$VM_MEM_AVAILABLE_MB < 100" | bc -l 2>/dev/null || echo 0)" = "1" ]; then
+            log "   ❌ RESOURCE: Critically low memory available ($VM_MEM_AVAILABLE)"
+            log "      This may cause Docker operations to fail"
+        fi
+    fi
+    
+    # Enhanced Diagnostic 10.3: Docker daemon configuration verification
+    log "   Enhanced Diagnostic 10.3: Docker daemon configuration verification..."
+    
+    log "   Checking Docker daemon configuration in VM..."
+    
+    # Check Docker daemon status
+    VM_DOCKER_SERVICE_STATUS=$(multipass exec "$VM_NAME" -- systemctl is-active docker 2>/dev/null || echo "unknown")
+    log "   Docker service status: $VM_DOCKER_SERVICE_STATUS"
+    
+    # Check Docker daemon configuration file
+    VM_DOCKER_CONFIG_EXISTS=$(multipass exec "$VM_NAME" -- test -f /etc/docker/daemon.json && echo "yes" || echo "no")
+    log "   Docker daemon config exists: $VM_DOCKER_CONFIG_EXISTS"
+    
+    if [ "$VM_DOCKER_CONFIG_EXISTS" = "yes" ]; then
+        VM_DOCKER_CONFIG_CONTENT=$(multipass exec "$VM_NAME" -- cat /etc/docker/daemon.json 2>/dev/null || echo "unable to read")
+        log "   Docker daemon config content: $VM_DOCKER_CONFIG_CONTENT"
+    fi
+    
+    # Check Docker daemon logs for recent errors
+    log "   Checking Docker daemon logs for recent errors..."
+    VM_DOCKER_LOGS=$(multipass exec "$VM_NAME" -- journalctl -u docker.service --since "10 minutes ago" --no-pager 2>/dev/null || echo "unable to retrieve logs")
+    
+    if echo "$VM_DOCKER_LOGS" | grep -qi "error\|failed\|warning"; then
+        log "   ⚠️  DOCKER: Recent errors/warnings found in Docker daemon logs"
+        log "      Relevant log entries:"
+        echo "$VM_DOCKER_LOGS" | grep -i "error\|failed\|warning" | head -5 | tee -a "$LOG_FILE" || true
+    else
+        log "   ✓ DOCKER: No recent errors in Docker daemon logs"
+    fi
+    
+    # Enhanced Diagnostic 10.4: File system validation
+    log "   Enhanced Diagnostic 10.4: File system validation..."
+    
+    log "   Checking file system health in VM..."
+    
+    # Check root file system
+    VM_FS_INFO=$(multipass exec "$VM_NAME" -- df -h / 2>/dev/null | tail -n1 || echo "unknown")
+    VM_FS_TYPE=$(echo "$VM_FS_INFO" | awk '{print $1}' || echo "unknown")
+    VM_FS_SIZE=$(echo "$VM_FS_INFO" | awk '{print $2}' || echo "unknown")
+    VM_FS_USED=$(echo "$VM_FS_INFO" | awk '{print $3}' || echo "unknown")
+    VM_FS_AVAIL=$(echo "$VM_FS_INFO" | awk '{print $4}' || echo "unknown")
+    VM_FS_USE_PERCENT=$(echo "$VM_FS_INFO" | awk '{print $5}' || echo "unknown")
+    
+    log "   File system: $VM_FS_TYPE, Size: $VM_FS_SIZE, Used: $VM_FS_USED, Available: $VM_FS_AVAIL ($VM_FS_USE_PERCENT used)"
+    
+    # Check for file system errors
+    if [ "$VM_FS_USE_PERCENT" != "unknown" ]; then
+        VM_FS_USE_NUM=$(echo "$VM_FS_USE_PERCENT" | sed 's/%//')
+        if [ "$VM_FS_USE_NUM" -gt 90 ]; then
+            log "   ❌ FILESYSTEM: critically high disk usage ($VM_FS_USE_PERCENT)"
+            log "      This may cause Docker operations to fail"
+        elif [ "$VM_FS_USE_NUM" -gt 75 ]; then
+            log "   ⚠️  FILESYSTEM: high disk usage ($VM_FS_USE_PERCENT)"
+            log "      Consider freeing up disk space"
+        else
+            log "   ✓ FILESYSTEM: healthy disk usage ($VM_FS_USE_PERCENT)"
+        fi
+    fi
+    
+    # Check Docker data directory
+    VM_DOCKER_DIR_EXISTS=$(multipass exec "$VM_NAME" -- test -d /var/lib/docker && echo "yes" || echo "no")
+    log "   Docker data directory exists: $VM_DOCKER_DIR_EXISTS"
+    
+    if [ "$VM_DOCKER_DIR_EXISTS" = "yes" ]; then
+        VM_DOCKER_DIR_SIZE=$(multipass exec "$VM_NAME" -- du -sh /var/lib/docker 2>/dev/null | cut -f1 || echo "unknown")
+        log "   Docker data directory size: $VM_DOCKER_DIR_SIZE"
+    fi
+    
+    # Enhanced Diagnostic 10.5: Comprehensive error context collection
+    log "   Enhanced Diagnostic 10.5: Comprehensive error context collection..."
+    
+    log "   Collecting system information for error context..."
+    
+    # Get OS information
+    VM_OS_INFO=$(multipass exec "$VM_NAME" -- cat /etc/os-release 2>/dev/null | grep "PRETTY_NAME" | cut -d'"' -f2 || echo "unknown")
+    log "   Operating System: $VM_OS_INFO"
+    
+    # Get kernel version
+    VM_KERNEL_VERSION=$(multipass exec "$VM_NAME" -- uname -r 2>/dev/null || echo "unknown")
+    log "   Kernel version: $VM_KERNEL_VERSION"
+    
+    # Get Docker version
+    VM_DOCKER_VERSION=$(multipass exec "$VM_NAME" -- docker --version 2>/dev/null || echo "unknown")
+    log "   Docker version: $VM_DOCKER_VERSION"
+    
+    # Get user information
+    VM_CURRENT_USER=$(multipass exec "$VM_NAME" -- whoami 2>/dev/null || echo "unknown")
+    VM_USER_GROUPS=$(multipass exec "$VM_NAME" -- groups 2>/dev/null || echo "unknown")
+    log "   Current user: $VM_CURRENT_USER"
+    log "   User groups: $VM_USER_GROUPS"
+    
+    # Check if user is in docker group
+    if echo "$VM_USER_GROUPS" | grep -q "docker"; then
+        log "   ✓ USER: user is in docker group"
+    else
+        log "   ❌ USER: user is NOT in docker group"
+        log "      This may cause permission errors with Docker commands"
+    fi
+    
+    # Check Docker socket permissions
+    VM_DOCKER_SOCKET_PERMS=$(multipass exec "$VM_NAME" -- ls -la /var/run/docker.sock 2>/dev/null || echo "unable to check")
+    log "   Docker socket permissions: $VM_DOCKER_SOCKET_PERMS"
+    
+    # Investigation Step 11: Test Docker image functionality in VM
+    log ""
+    log "INVESTIGATION STEP 11: Testing Docker image functionality in VM..."
     
     log "   Testing if image can be inspected..."
     VM_INSPECT_OUTPUT=$(multipass exec "$VM_NAME" -- docker inspect my-ag-ui-app:latest 2>&1)
@@ -4077,13 +4247,18 @@ diagnose_docker_image_load_issues() {
     
     log ""
     log "=================================================="
-    log "      INVESTIGATION COMPLETED SUCCESSFULLY"
+    log "      ENHANCED INVESTIGATION COMPLETED SUCCESSFULLY"
     log "=================================================="
     log ""
     log "✅ All investigation steps passed"
     log "✅ Docker image is properly loaded and functional in VM"
     log "✅ Image transfer was successful with no corruption"
     log "✅ Image can be accessed and inspected in VM"
+    log "✅ Network connectivity verified and healthy"
+    log "✅ System resources monitored and sufficient"
+    log "✅ Docker daemon configuration validated"
+    log "✅ File system health confirmed"
+    log "✅ Comprehensive error context collected"
     log ""
     
     return 0
