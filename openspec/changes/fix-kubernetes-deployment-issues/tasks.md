@@ -15,7 +15,7 @@
 ## 3. Image Push to Local Registry
 
 - [x] 3.1 Add function to push tagged image to microk8s registry using `docker push` command
-- [ ] 3.2 Add validation to ensure registry is accessible before push
+- [x] 3.2 Add validation to ensure registry is accessible before push
 - [ ] 3.3 Add error handling for push failures with retry logic for transient issues
 - [ ] 3.4 Add verification that image is successfully pushed to registry
 - [ ] 3.5 Add logging for push operations and success/failure status
