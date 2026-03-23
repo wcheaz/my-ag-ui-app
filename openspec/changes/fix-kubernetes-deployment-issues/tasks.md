@@ -50,7 +50,7 @@
 ## 7. Testing and Validation
 
 - [x] 7.1 Test registry enablement with microk8s
-- [ ] 7.2 Test image tagging for local registry
+- [x] 7.2 Test image tagging for local registry
 - [ ] 7.3 Test image push to local registry
 - [ ] 7.4 Test deployment with registry image reference
 - [ ] 7.5 Test error handling when registry is not enabled
