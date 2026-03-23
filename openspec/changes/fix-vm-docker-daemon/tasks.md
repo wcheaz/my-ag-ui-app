@@ -87,6 +87,6 @@
 - [x] 8.14 Log exact file path and permissions after `docker save` completes
 - [x] 8.15 Test alternative file locations (e.g., `/tmp/` without subdirectory, current working directory)
 - [x] 8.16 Verify multipass transfer can access the file from the host system
-- [ ] 8.17 Test image loading with different methods (pipe vs file transfer)
+- [x] 8.17 Test image loading with different methods (pipe vs file transfer)
 - [ ] 8.18 Document the working image load method and update deployment script accordingly
 - [ ] 8.19 Add comprehensive error messages for image load failures with specific recovery steps
