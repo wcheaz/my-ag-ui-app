@@ -1034,6 +1034,209 @@ test_manual_multipass_transfer() {
 }
 
 # ===========================
+# MULTIPASS TRANSFER ACCESSIBILITY VERIFICATION
+# ===========================
+
+# Verify multipass transfer can access the file from the host system
+verify_multipass_transfer_accessibility() {
+    log "=== TASK 8.16: VERIFYING MULTIPASS TRANSFER ACCESSIBILITY FROM HOST SYSTEM ==="
+    log "Testing multipass transfer accessibility with various file locations and permissions..."
+    
+    # Check if VM is running and accessible
+    log "Checking VM accessibility before transfer accessibility test..."
+    if ! multipass exec "$VM_NAME" -- whoami >/dev/null 2>&1; then
+        log "❌ VERIFICATION FAILED: VM is not accessible"
+        log "   Please ensure VM is running: multipass start $VM_NAME"
+        return 1
+    fi
+    log "✅ VM is accessible"
+    
+    # Create temporary directory for accessibility tests
+    local TEST_DIR="/tmp/multipass-access-test-$$"
+    log "Creating temporary accessibility test directory: $TEST_DIR"
+    mkdir -p "$TEST_DIR"
+    
+    # Test cases array: (description, file_path, content, expected_result)
+    local test_cases=(
+        "Standard file in /tmp" "$TEST_DIR/standard-file.txt" "Standard test content" "SUCCESS"
+        "File in /tmp/docker-image-load-* directory" "$TEST_DIR/docker-image-load-12345/test-image.tar" "Docker image test content" "SUCCESS"
+        "File in /tmp without subdirectory" "/tmp/direct-access-test-$$-$$/file.txt" "Direct access test content" "SUCCESS"
+        "File in current working directory" "./current-dir-test-$$-$$/file.txt" "Current directory test content" "SUCCESS"
+        "Hidden file" "$TEST_DIR/.hidden-file" "Hidden test content" "SUCCESS"
+        "File with spaces in name" "$TEST_DIR/file with spaces.txt" "File with spaces content" "SUCCESS"
+        "File with special characters" "$TEST_DIR/special-chars-@#$%^&.txt" "Special chars test content" "SUCCESS"
+    )
+    
+    local PASSED_TESTS=0
+    local TOTAL_TESTS=${#test_cases[@]}
+    
+    for test_case in "${test_cases[@]}"; do
+        # Parse test case
+        local description=$(echo "$test_case" | cut -d'|' -f1)
+        local file_path=$(echo "$test_case" | cut -d'|' -f2)
+        local content=$(echo "$test_case" | cut -d'|' -f3)
+        local expected=$(echo "$test_case" | cut -d'|' -f4)
+        
+        log "Testing: $description"
+        log "  File path: $file_path"
+        
+        # Create directory structure if needed
+        local dir_path=$(dirname "$file_path")
+        mkdir -p "$dir_path" 2>/dev/null || {
+            log "❌ Could not create directory: $dir_path"
+            continue
+        }
+        
+        # Create test file with content
+        echo "$content" > "$file_path" 2>/dev/null || {
+            log "❌ Could not create test file: $file_path"
+            continue
+        }
+        
+        # Verify file exists locally
+        if [ ! -f "$file_path" ]; then
+            log "❌ Test file not found locally: $file_path"
+            continue
+        fi
+        
+        # Get file details
+        local file_size=$(du -h "$file_path" | cut -f1)
+        local file_perms=$(ls -la "$file_path" | awk '{print $1}')
+        log "  File details: size=$file_size, permissions=$file_perms"
+        
+        # Test multipass transfer accessibility
+        local VM_DEST_PATH="/home/ubuntu/access-test-$(basename "$file_path")"
+        log "  Testing multipass transfer to: $VM_DEST_PATH"
+        
+        local TRANSFER_START_TIME=$(date +%s)
+        local transfer_result
+        
+        # Capture both stdout and stderr for detailed analysis
+        if transfer_result=$(multipass transfer "$file_path" "$VM_NAME:$VM_DEST_PATH" 2>&1); then
+            local TRANSFER_END_TIME=$(date +%s)
+            local TRANSFER_DURATION=$((TRANSFER_END_TIME - TRANSFER_START_TIME))
+            log "  ✅ TRANSFER SUCCESS: $description (${TRANSFER_DURATION}s)"
+            
+            # Verify file exists in VM after transfer
+            if multipass exec "$VM_NAME" -- test -f "$VM_DEST_PATH" 2>/dev/null; then
+                local vm_file_size=$(multipass exec "$VM_NAME" -- du -h "$VM_DEST_PATH" 2>/dev/null | cut -f1 || echo "unknown")
+                local vm_file_content=$(multipass exec "$VM_NAME" -- cat "$VM_DEST_PATH" 2>/dev/null || echo "unreadable")
+                
+                if [ "$vm_file_content" = "$content" ]; then
+                    log "  ✅ VERIFICATION PASSED: File content matches in VM"
+                    log "  ✅ Host file size: $file_size, VM file size: $vm_file_size"
+                    ((PASSED_TESTS++))
+                else
+                    log "  ⚠️  CONTENT MISMATCH: File transferred but content does not match"
+                    log "     Host content: '$content'"
+                    log "     VM content:   '$vm_file_content'"
+                fi
+                
+                # Clean up file in VM
+                multipass exec "$VM_NAME" -- rm -f "$VM_DEST_PATH" 2>/dev/null || true
+            else
+                log "  ❌ VERIFICATION FAILED: Transfer reported success but file not found in VM"
+            fi
+        else
+            local TRANSFER_END_TIME=$(date +%s)
+            local TRANSFER_DURATION=$((TRANSFER_END_TIME - TRANSFER_START_TIME))
+            log "  ❌ TRANSFER FAILED: $description (${TRANSFER_DURATION}s)"
+            log "     Error details: $transfer_result"
+            
+            # Analyze specific error patterns
+            if echo "$transfer_result" | grep -q -E "(No such file|cannot access|Permission denied|not found)"; then
+                log "     ERROR TYPE: File accessibility issue"
+                log "     DIAGNOSTIC: multipass transfer cannot access the file from host system"
+                log "     POSSIBLE CAUSES:"
+                log "       - File path does not exist"
+                log "       - File permissions prevent reading"
+                log "       - Parent directory permissions prevent access"
+                log "       - System-level file access restrictions"
+            elif echo "$transfer_result" | grep -q -E "(connection|refused|timeout|unreachable)"; then
+                log "     ERROR TYPE: VM connectivity issue"
+                log "     DIAGNOSTIC: Cannot connect to VM for file transfer"
+            else
+                log "     ERROR TYPE: Unknown transfer error"
+                log "     DIAGNOSTIC: See error details above"
+            fi
+        fi
+        
+        # Clean up local test file
+        rm -f "$file_path" 2>/dev/null || true
+    done
+    
+    # Test permission scenarios
+    log ""
+    log "Testing permission scenarios..."
+    
+    # Test 1: Read-only file
+    local readonly_file="$TEST_DIR/readonly-file.txt"
+    echo "Readonly test content" > "$readonly_file"
+    chmod 444 "$readonly_file"
+    
+    log "Testing read-only file: $readonly_file"
+    if multipass transfer "$readonly_file" "$VM_NAME:/home/ubuntu/readonly-test.txt" 2>/dev/null; then
+        log "  ✅ Read-only file transfer: SUCCESS"
+        ((PASSED_TESTS++))
+        multipass exec "$VM_NAME" -- rm -f "/home/ubuntu/readonly-test.txt" 2>/dev/null || true
+    else
+        log "  ❌ Read-only file transfer: FAILED"
+    fi
+    rm -f "$readonly_file" 2>/dev/null || true
+    
+    # Test 2: File with restricted parent directory
+    local restricted_dir="$TEST_DIR/restricted-dir"
+    mkdir -p "$restricted_dir"
+    chmod 700 "$restricted_dir"
+    local restricted_file="$restricted_dir/restricted-file.txt"
+    echo "Restricted directory test content" > "$restricted_file"
+    
+    log "Testing file in restricted directory: $restricted_file"
+    if multipass transfer "$restricted_file" "$VM_NAME:/home/ubuntu/restricted-test.txt" 2>/dev/null; then
+        log "  ✅ Restricted directory file transfer: SUCCESS"
+        ((PASSED_TESTS++))
+        multipass exec "$VM_NAME" -- rm -f "/home/ubuntu/restricted-test.txt" 2>/dev/null || true
+    else
+        log "  ❌ Restricted directory file transfer: FAILED"
+    fi
+    rm -rf "$restricted_dir" 2>/dev/null || true
+    
+    # Clean up test directory
+    rm -rf "$TEST_DIR" 2>/dev/null || true
+    
+    # Final verification report
+    log ""
+    log "=== MULTIPASS TRANSFER ACCESSIBILITY VERIFICATION RESULTS ==="
+    log "Total tests performed: $TOTAL_TESTS"
+    log "Successful transfers:  $PASSED_TESTS"
+    log "Failed transfers:      $((TOTAL_TESTS - PASSED_TESTS))"
+    
+    if [ $PASSED_TESTS -eq $TOTAL_TESTS ]; then
+        log "🎉 SUCCESS: All multipass transfer accessibility tests passed"
+        log "✅ multipass transfer can access files from the host system"
+        log "✅ No file accessibility issues detected"
+        return 0
+    else
+        log "⚠️  WARNING: Some multipass transfer accessibility tests failed"
+        log "❌ multipass transfer has accessibility issues with certain files"
+        log ""
+        log "RECOMMENDATIONS:"
+        log "1. Use /tmp/ directory for temporary files (avoid complex subdirectories)"
+        log "2. Ensure files have read permissions before transfer"
+        log "3. Avoid special characters and spaces in file names when possible"
+        log "4. Use absolute paths for files to be transferred"
+        
+        if [ $PASSED_TESTS -eq 0 ]; then
+            log "❌ CRITICAL: No transfers succeeded - multipass transfer is not functional"
+            return 1
+        else
+            log "⚠️  PARTIAL: Some transfers work - use compatible file paths"
+            return 0
+        fi
+    fi
+}
+
+# ===========================
 # VM DOCKER SETUP FUNCTION
 # ===========================
 
@@ -4430,6 +4633,17 @@ diagnose_docker_image_load_issues() {
     
     return 0
 }
+
+# Run multipass transfer accessibility verification before image loading
+log ""
+log "Starting multipass transfer accessibility verification..."
+if verify_multipass_transfer_accessibility; then
+    log "✅ Multipass transfer accessibility verification completed successfully"
+else
+    log "❌ Multipass transfer accessibility verification failed"
+    log "This may indicate fundamental issues with file transfer from host to VM"
+    log "Continuing with image load investigation, but transfer failures may occur"
+fi
 
 # Run the comprehensive investigation
 log ""
