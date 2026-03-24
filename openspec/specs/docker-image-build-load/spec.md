@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Capability for building Docker images and loading them into the multipass VM's Docker daemon. This enables the deployment process to build application images locally and transfer them to the VM for Kubernetes deployment.
+Capability for building Docker images and distributing them to multipass VM's container runtime. This enables deployment process to build application images locally and make them available to Kubernetes via microk8s local registry, using standard Docker push/pull workflow.
 
 ## Requirements
 
@@ -41,49 +41,58 @@ The deployment process SHALL build a Docker image from the project's Dockerfile 
 - **AND** the script SHALL exit with a non-zero status code
 - **AND** the script SHALL NOT proceed with deployment
 
-### Requirement: Docker image load into VM
-The deployment process SHALL verify Docker is available in the multipass VM before loading the built Docker image into the VM's Docker daemon. Docker availability includes both Docker CLI installation and daemon operational status.
+### Requirement: Docker image distribution via local registry
+The deployment process SHALL verify microk8s local registry is available and push the built Docker image to it for Kubernetes deployment, executing tag and push operations within the VM.
 
-#### Scenario: Successful image load with Docker available
-- **WHEN** the deployment script executes the image load command
-- **AND** Docker is installed in the VM
-- **AND** Docker daemon is running in the VM
-- **THEN** the script SHALL save the image using docker save
-- **THEN** the script SHALL pipe the image to multipass exec with docker load
-- **AND** the script SHALL verify the image is available in the VM
-- **AND** the script SHALL log the successful load
+#### Scenario: Successful image push to microk8s local registry
+- **WHEN** deployment script executes image distribution commands
+- **AND** microk8s registry is enabled and accessible
+- **AND** Docker image is built and tagged for registry within the VM
+- **THEN** script SHALL tag image as `localhost:32000/my-ag-ui-app:latest` within the VM
+- **THEN** script SHALL push image to microk8s registry from within the VM
+- **AND** script SHALL verify image is available in registry
+- **AND** script SHALL log successful distribution with registry details
 
-#### Scenario: Image load failure due to Docker not installed in VM
-- **WHEN** the deployment script attempts to execute the image load command
-- **AND** Docker is not installed in the VM
-- **THEN** the script SHALL log a clear error that Docker is not available in the VM
-- **AND** the script SHALL provide instructions to install Docker in the VM
-- **AND** the script SHALL exit with a non-zero status code
-- **AND** the script SHALL NOT attempt to restart the deployment
+#### Scenario: Image distribution failure due to registry not enabled
+- **WHEN** deployment script attempts to push image
+- **AND** microk8s registry is not enabled
+- **THEN** script SHALL log clear error that registry is not available
+- **AND** script SHALL provide instructions to enable registry
+- **AND** script SHALL exit with a non-zero status code
+- **AND** script SHALL NOT attempt to restart deployment
 
-#### Scenario: Image load failure due to Docker daemon not running in VM
-- **WHEN** the deployment script attempts to execute the image load command
-- **AND** Docker is installed in the VM
+#### Scenario: Image distribution failure due to Docker daemon not running in VM
+- **WHEN** deployment script attempts to tag or push image
 - **AND** Docker daemon is not running in the VM
-- **THEN** the script SHALL log a clear error that Docker daemon is not running
-- **AND** the script SHALL provide instructions to start the Docker daemon
-- **AND** the script SHALL exit with a non-zero status code
-- **AND** the script SHALL NOT attempt to restart the deployment
+- **THEN** script SHALL log clear error that Docker daemon is not available in VM
+- **AND** script SHALL provide instructions to start Docker daemon in VM
+- **AND** script SHALL exit with a non-zero status code
+- **AND** script SHALL NOT attempt to restart deployment
 
-#### Scenario: Image load failure
-- **WHEN** the image load command fails
-- **AND** Docker is available in the VM
-- **AND** the failure is not related to Docker availability
-- **THEN** the script SHALL log the load error with context
-- **AND** the script SHALL exit with a non-zero status code
-- **AND** the script SHALL NOT attempt to restart the deployment
+#### Scenario: Image distribution failure due to registry not accessible
+- **WHEN** deployment script attempts to push image
+- **AND** microk8s registry is enabled but not accessible
+- **THEN** script SHALL log error that registry is not accessible
+- **AND** script SHALL provide troubleshooting steps
+- **AND** script SHALL exit with a non-zero status code
+- **AND** script SHALL NOT attempt to restart deployment
 
-#### Scenario: Docker availability verification before image load
-- **WHEN** the deployment script is about to load the image
-- **THEN** the script SHALL verify Docker CLI is available in the VM
-- **AND** the script SHALL verify Docker daemon is running in the VM
-- **AND** the script SHALL log the Docker availability status
-- **AND** the script SHALL proceed with image load only if Docker is available
+#### Scenario: Image distribution failure
+- **WHEN** the image push command fails
+- **AND** registry and Docker daemon are available
+- **AND** failure is not related to availability
+- **THEN** script SHALL log distribution error with context
+- **AND** script SHALL implement retry logic for transient failures
+- **AND** script SHALL exit with a non-zero status code after retries exhausted
+- **AND** script SHALL NOT attempt to restart deployment
+
+#### Scenario: Registry availability verification before image distribution
+- **WHEN** deployment script is about to distribute image
+- **THEN** script SHALL verify microk8s registry is enabled
+- **AND** script SHALL verify registry is accessible at localhost:32000 within the VM
+- **AND** script SHALL verify Docker daemon is running in the VM
+- **AND** script SHALL log registry and Docker status
+- **AND** script SHALL proceed with distribution only if both are available
 
 ### Requirement: Pod restart with new image
 The deployment process SHALL restart the Kubernetes deployment to trigger pod recreation with the newly loaded image.
