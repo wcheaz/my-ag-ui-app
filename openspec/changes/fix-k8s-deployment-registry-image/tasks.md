@@ -18,7 +18,7 @@
 - [x] 3.1 Verify microk8s registry is enabled and running
 - [x] 3.2 Test registry accessibility at http://localhost:32000/v2/_catalog
 - [x] 3.3 Confirm that my-ag-ui-app repository exists in registry catalog (catalog is empty - repository will be created during deployment testing)
-- [ ] 3.4 Verify registry pod status is Running
+- [x] 3.4 Verify registry pod status is Running
 - [ ] 3.5 Document registry configuration for future reference
 
 ## 4. Deployment Testing
