@@ -8,7 +8,7 @@
 ## 2. Update Kubernetes Deployment Manifest
 
 - [x] 2.1 Modify k8s/deployment.yaml to change image reference from `my-ag-ui-app:latest` to `localhost:32000/my-ag-ui-app:latest`
-- [ ] 2.2 Verify that all other deployment settings remain unchanged (replicas, resources, probes, environment variables)
+- [x] 2.2 Verify that all other deployment settings remain unchanged (replicas, resources, probes, environment variables)
 - [ ] 2.3 Ensure deployment manifest maintains compatibility with existing secrets and config maps
 - [ ] 2.4 Add comments to deployment.yaml explaining the local registry image reference
 - [ ] 2.5 Validate deployment.yaml syntax and structure
