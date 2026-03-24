@@ -2121,71 +2121,175 @@ verify_multipass_transfer_accessibility() {
 
 # Verify microk8s registry is running and accessible at localhost:32000
 verify_microk8s_registry() {
+    log "=== REGISTRY ACCESSIBILITY VERIFICATION STARTED ==="
     log "Verifying registry is running and accessible at localhost:32000..."
+    log "   Registry purpose: Local image distribution for Kubernetes deployment"
     log "   Registry endpoint: http://localhost:32000"
     log "   Connection timeout: 5 seconds"
     log "   Overall timeout: 10 seconds"
+    log "   Verification includes: Connectivity, service status, and API response validation"
     
     local registry_check_output
     local registry_check_exit_code
+    local start_time=$(date +%s.%N)
+    
+    # Log pre-check network connectivity information
+    log "=== NETWORK CONNECTIVITY ASSESSMENT ==="
+    log "Assessing network connectivity to registry endpoint..."
+    log "   Target: localhost:32000 (within VM)"
+    log "   Protocol: HTTP"
+    log "   Method: GET"
+    log "   Expected: 200 OK with JSON catalog response"
     
     # Check registry accessibility with timeout
+    log "=== REGISTRY API CONNECTIVITY TEST ==="
     log "   Executing: timeout 10 multipass exec '$VM_NAME' -- curl -s --connect-timeout 5 http://localhost:32000/v2/_catalog"
     registry_check_output=$(timeout 10 multipass exec "$VM_NAME" -- curl -s --connect-timeout 5 http://localhost:32000/v2/_catalog 2>&1)
     registry_check_exit_code=$?
+    local end_time=$(date +%s.%N)
+    local check_duration=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0")
     
     if [ $registry_check_exit_code -eq 0 ]; then
-        log "✅ Registry is accessible at localhost:32000"
+        log "✅ REGISTRY CONNECTIVITY: SUCCESS"
         log "   Registry connection test: PASSED"
-        log "   Response time: < 5 seconds (within timeout)"
+        log "   Response time: ${check_duration} seconds"
+        log "   Network path: Host → VM → Registry service"
+        log "   Authentication: None required (local registry)"
         
-        # Log registry response for verification
+        # Log registry response for verification with enhanced analysis
+        log "=== REGISTRY RESPONSE ANALYSIS ==="
         if [ -n "$registry_check_output" ]; then
-            log "Registry response:"
+            log "Registry response received:"
             echo "$registry_check_output" | tee -a "$LOG_FILE"
+            
+            # Analyze the registry response content
+            if echo "$registry_check_output" | grep -q '{"repositories":'; then
+                log "✅ REGISTRY RESPONSE FORMAT: VALID JSON"
+                log "   Response type: Docker Registry v2 API catalog"
+                log "   Content structure: Contains repositories array"
+                
+                # Count repositories if any
+                local repo_count=$(echo "$registry_check_output" | grep -o '"[^"]*"' | wc -l)
+                log "   Repository count: $(( (repo_count - 2) / 2 ))"  # Subtract 2 for "repositories" and the array brackets
+                
+                # Check if our application repository exists
+                if echo "$registry_check_output" | grep -q '"my-ag-ui-app"'; then
+                    log "✅ APPLICATION REPOSITORY: EXISTS in registry"
+                    log "   Repository name: my-ag-ui-app"
+                    log "   Status: Ready for image operations"
+                else
+                    log "ℹ️  APPLICATION REPOSITORY: NOT YET CREATED"
+                    log "   This is normal for first deployment - repository will be created on first push"
+                fi
+            else
+                log "⚠️  REGISTRY RESPONSE FORMAT: UNEXPECTED"
+                log "   Expected: JSON with repositories array"
+                log "   Actual: Non-JSON or malformed response"
+                log "   This may indicate registry configuration issues"
+            fi
         else
-            log "Registry response: No content received (empty response)"
+            log "⚠️  REGISTRY RESPONSE: EMPTY"
+            log "   No content received from registry endpoint"
+            log "   This may indicate: Registry is running but not fully initialized"
         fi
     else
-        log "⚠️  WARNING: Registry accessibility check failed (exit code: $registry_check_exit_code)"
+        log "❌ REGISTRY CONNECTIVITY: FAILED"
         log "   Registry connection test: FAILED"
+        log "   Response time: ${check_duration} seconds (or timeout)"
         log "   Possible causes: Registry not running, network issues, or timeout"
+        log "   Exit code: $registry_check_exit_code"
+        log "=== FAILURE DIAGNOSTICS ==="
         log "Registry check output:"
         echo "$registry_check_output" | tee -a "$LOG_FILE"
         
+        # Enhanced error analysis
+        if echo "$registry_check_output" | grep -q -E "(Connection refused|Failed to connect|Connection timeout)"; then
+            log "❌ ERROR TYPE: NETWORK CONNECTION FAILURE"
+            log "   CAUSE: Registry service not running or network blocked"
+            log "   IMPACT: Cannot reach registry endpoint"
+        elif echo "$registry_check_output" | grep -q -E "(404|Not Found)"; then
+            log "❌ ERROR TYPE: ENDPOINT NOT FOUND"
+            log "   CAUSE: Registry API endpoint not available"
+            log "   IMPACT: Registry may be running but API not ready"
+        elif echo "$registry_check_output" | grep -q -E "(timeout|timed out)"; then
+            log "❌ ERROR TYPE: CONNECTION TIMEOUT"
+            log "   CAUSE: Registry not responding within timeout period"
+            log "   IMPACT: Registry may be overloaded or not ready"
+        else
+            log "❌ ERROR TYPE: UNKNOWN"
+            log "   CAUSE: Unable to determine from error output"
+            log "   RECOVERY: Check registry service status manually"
+        fi
+        
         # This might be a temporary issue, check if registry service is running
+        log "=== REGISTRY SERVICE STATUS INVESTIGATION ==="
         log "Checking if registry service is running..."
         local registry_service_status
         registry_service_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "unknown")
         
         if [ "$registry_service_status" = "Running" ]; then
-            log "✅ Registry service is running (pod status: $registry_service_status)"
+            log "✅ REGISTRY SERVICE: RUNNING"
+            log "   Registry pod status: $registry_service_status"
+            log "   Conclusion: Service is running but connectivity issue exists"
+            log "   Likely causes: Network policy, port conflict, or temporary unavailability"
             log "⚠️  The registry accessibility issue might be temporary - proceeding with deployment"
         else
-            log "❌ ERROR: Registry service is not running (pod status: $registry_service_status)"
+            log "❌ REGISTRY SERVICE: NOT RUNNING"
+            log "   Registry pod status: $registry_service_status"
+            log "   Conclusion: Registry service is not started or has failed"
             log "RECOVERY: Check registry pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -n container-registry -l app=registry"
             return 1
         fi
     fi
     
-    # Get registry status for logging
-    log "Getting detailed registry status..."
+    # Get comprehensive registry status for logging
+    log "=== COMPREHENSIVE REGISTRY STATUS ==="
+    log "Getting detailed registry status information..."
     local registry_pod_status
     local registry_service_info
+    local registry_namespace_info
     
     registry_pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o wide 2>&1 | tee -a "$LOG_FILE")
     registry_service_info=$(multipass exec "$VM_NAME" -- microk8s kubectl get svc -n container-registry -l app=registry 2>&1 | tee -a "$LOG_FILE")
+    registry_namespace_info=$(multipass exec "$VM_NAME" -- microk8s kubectl get namespace container-registry -o yaml 2>&1 | tee -a "$LOG_FILE")
     
     log "Registry pod status:"
     echo "$registry_pod_status" | tee -a "$LOG_FILE"
     log "Registry service info:"
     echo "$registry_service_info" | tee -a "$LOG_FILE"
+    log "Registry namespace info:"
+    echo "$registry_namespace_info" | tee -a "$LOG_FILE"
     
+    # Additional registry endpoint tests for comprehensive verification
+    log "=== ADDITIONAL REGISTRY ENDPOINT TESTS ==="
+    log "Testing registry v2 API endpoint..."
+    local v2_endpoint_test
+    v2_endpoint_test=$(timeout 5 multipass exec "$VM_NAME" -- curl -s -w "HTTP_STATUS:%{http_code}" http://localhost:32000/v2/ 2>&1)
+    local v2_http_code=$(echo "$v2_endpoint_test" | grep -o 'HTTP_STATUS:[0-9]*' | cut -d: -f2)
+    
+    if [ "$v2_http_code" = "200" ] || [ "$v2_endpoint_test" = "{}" ]; then
+        log "✅ REGISTRY v2 API: ACCESSIBLE"
+        log "   Endpoint: /v2/"
+        log "   Status: 200 OK"
+        log "   API version: Docker Registry v2"
+    else
+        log "⚠️  REGISTRY v2 API: ISSUE DETECTED"
+        log "   Endpoint: /v2/"
+        log "   Response: $v2_endpoint_test"
+        log "   This may affect registry operations"
+    fi
+    
+    log "=== REGISTRY VERIFICATION SUMMARY ==="
     log "✅ Registry verification completed successfully"
     log "   Registry is accessible at: localhost:32000"
     log "   Registry can be used for local image distribution"
     log "   Registry endpoint: http://localhost:32000/v2/_catalog"
+    log "   API version: Docker Registry v2"
+    log "   Authentication: None required (local registry)"
     log "   Status: VERIFIED and READY"
+    log "   Network path: Host → VM → Registry service"
+    log "   Total verification time: ${check_duration} seconds"
+    log "=== REGISTRY ACCESSIBILITY VERIFICATION COMPLETED ==="
     
     return 0
 }

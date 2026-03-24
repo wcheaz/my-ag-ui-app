@@ -44,7 +44,7 @@
 ## 6. Error Handling and Logging
 
 - [x] 6.1 Add logging for deployment manifest application
-- [ ] 6.2 Add logging for registry accessibility checks
+- [x] 6.2 Add logging for registry accessibility checks
 - [ ] 6.3 Add error handling for registry not accessible scenarios
 - [ ] 6.4 Add error handling for image pull failures
 - [ ] 6.5 Ensure all error messages include recovery suggestions
