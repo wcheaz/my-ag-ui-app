@@ -2314,7 +2314,7 @@ enable_microk8s_registry() {
 
 # Push tagged Docker image to microk8s registry using docker push command
 push_image_to_registry() {
-    log "Starting Docker image push to microk8s registry..."
+    log "Starting Docker image push to microk8s registry (executing within VM)..."
     
     # Track push operation start time for performance measurement
     local PUSH_START_TIME
@@ -2324,46 +2324,61 @@ push_image_to_registry() {
     # Define the target registry image
     local target_image="localhost:32000/my-ag-ui-app:latest"
     log "Target registry image: $target_image"
+    log "   Note: This references the VM's microk8s registry at localhost:32000"
     
-    # Pre-flight check: Verify Docker daemon is accessible
-    log "Performing pre-flight check: Docker daemon accessibility..."
-    if ! docker info >/dev/null 2>&1; then
-        log "❌ ERROR: Docker daemon is not accessible"
-        log "   Cannot perform image push without Docker daemon access"
+    # Pre-flight check: Verify VM accessibility before proceeding
+    log "Performing pre-flight check: VM accessibility..."
+    if ! multipass list | grep -q "$VM_NAME"; then
+        log "❌ ERROR: VM '$VM_NAME' is not accessible or does not exist"
+        log "   Cannot perform image push without VM access"
         log "RECOVERY STEPS:"
-        log "1. Start Docker daemon: sudo systemctl start docker"
-        log "2. Check Docker daemon status: sudo systemctl status docker"
-        log "3. Verify Docker is running: docker info"
-        log "4. Restart Docker if needed: sudo systemctl restart docker"
+        log "1. Check VM status: multipass list"
+        log "2. Start VM if needed: multipass start $VM_NAME"
+        log "3. Verify VM is running: multipass info $VM_NAME"
         return 1
     fi
-    log "✅ Docker daemon is accessible for image push"
+    log "✅ VM is accessible for image push"
     
-    # Pre-flight check: Verify tagged image exists locally
-    log "Performing pre-flight check: Verifying tagged image exists locally..."
-    if ! docker images "$target_image" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "$target_image"; then
-        log "❌ ERROR: Target image $target_image not found locally"
-        log "   Cannot push image that does not exist in local Docker daemon"
+    # Pre-flight check: Verify Docker daemon is accessible within VM
+    log "Performing pre-flight check: Docker daemon accessibility within VM..."
+    if ! multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
+        log "❌ ERROR: Docker daemon is not accessible within VM"
+        log "   Cannot perform image push without Docker daemon access in VM"
+        log "RECOVERY STEPS:"
+        log "1. Start Docker daemon in VM: multipass exec $VM_NAME -- sudo systemctl start docker"
+        log "2. Check Docker daemon status in VM: multipass exec $VM_NAME -- sudo systemctl status docker"
+        log "3. Verify Docker is running in VM: multipass exec $VM_NAME -- docker info"
+        log "4. Restart Docker in VM if needed: multipass exec $VM_NAME -- sudo systemctl restart docker"
+        return 1
+    fi
+    log "✅ Docker daemon is accessible for image push within VM"
+    
+    # Pre-flight check: Verify tagged image exists within VM
+    log "Performing pre-flight check: Verifying tagged image exists within VM..."
+    if ! multipass exec "$VM_NAME" -- docker images "$target_image" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "$target_image"; then
+        log "❌ ERROR: Target image $target_image not found within VM"
+        log "   Cannot push image that does not exist in VM's Docker daemon"
         log ""
         log "REQUIRED ACTION:"
-        log "1. Build and tag the image first: docker build -t my-ag-ui-app:latest ."
-        log "2. Tag the image for registry: docker tag my-ag-ui-app:latest $target_image"
-        log "3. Then retry the push operation"
+        log "1. Ensure image was built on host: docker build -t my-ag-ui-app:latest ."
+        log "2. Tag image within VM: multipass exec $VM_NAME -- docker tag my-ag-ui-app:latest $target_image"
+        log "3. Or load image from host to VM: docker save my-ag-ui-app:latest | multipass exec $VM_NAME -- docker load"
+        log "4. Then retry the push operation"
         log ""
         log "TROUBLESHOOTING:"
-        log "- Check available images: docker images | head -20"
-        log "- Look for similar images: docker images | grep my-ag-ui-app"
-        log "- Verify image was tagged correctly: docker images | grep localhost:32000"
+        log "- Check available images within VM: multipass exec $VM_NAME -- docker images | head -20"
+        log "- Look for similar images within VM: multipass exec $VM_NAME -- docker images | grep my-ag-ui-app"
+        log "- Verify image was tagged correctly within VM: multipass exec $VM_NAME -- docker images | grep localhost:32000"
         
         return 1
     fi
     
-    # Get local image details for logging
+    # Get local image details for logging from within VM
     local local_image_details
-    local_image_details=$(docker images "$target_image" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
-    log "Local image to be pushed:"
+    local_image_details=$(multipass exec "$VM_NAME" -- docker images "$target_image" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
+    log "Local image to be pushed (from within VM):"
     echo "$local_image_details" | tee -a "$LOG_FILE"
-    log "✅ Tagged image exists locally and is ready for push"
+    log "✅ Tagged image exists within VM and is ready for push"
     
     # Pre-flight check: Verify registry is accessible before attempting push
     log "Performing pre-flight check: Verifying microk8s registry is accessible..."
@@ -2396,11 +2411,12 @@ push_image_to_registry() {
     fi
     log "✅ Sufficient disk space available for push operation"
     
-    # Push the image to microk8s registry with enhanced error handling and retry logic
-    log "Pushing image to microk8s registry with enhanced retry logic..."
-    log "   Command: docker push $target_image"
+    # Push the image to microk8s registry with enhanced error handling and retry logic (within VM)
+    log "Pushing image to microk8s registry with enhanced retry logic (within VM)..."
+    log "   Command: multipass exec $VM_NAME -- timeout 60 docker push $target_image"
     log "   This distributes the image to the local microk8s registry for Kubernetes deployment"
     log "   Using exponential backoff with jitter for transient network issues"
+    log "   Note: localhost:32000 resolves to VM's microk8s registry (not host's)"
     
     # Enhanced retry parameters for transient network issues with exponential backoff and jitter
     local MAX_PUSH_ATTEMPTS=3
@@ -2450,16 +2466,16 @@ push_image_to_registry() {
         local push_output
         local push_exit_code
         
-        # Execute docker push with error capture and timeout
-        log "   Executing: timeout 60 docker push $target_image"
-        if push_output=$(timeout 60 docker push "$target_image" 2>&1); then
+        # Execute docker push with error capture and timeout within VM
+        log "   Executing: multipass exec $VM_NAME -- timeout 60 docker push $target_image"
+        if push_output=$(multipass exec "$VM_NAME" -- timeout 60 docker push "$target_image" 2>&1); then
             push_exit_code=0
-            log "✅ Docker push command completed successfully (attempt $PUSH_ATTEMPT)"
+            log "✅ Docker push command completed successfully within VM (attempt $PUSH_ATTEMPT)"
             push_success=true
             break
         else
             push_exit_code=$?
-            log "❌ Docker push command failed (exit code: $push_exit_code, attempt $PUSH_ATTEMPT)"
+            log "❌ Docker push command failed within VM (exit code: $push_exit_code, attempt $PUSH_ATTEMPT)"
             
             # Log the error output for analysis
             log "Push error output (attempt $PUSH_ATTEMPT):"
@@ -2467,45 +2483,45 @@ push_image_to_registry() {
             
             # Analyze specific error patterns and provide targeted guidance
             if [ $PUSH_ATTEMPT -lt $MAX_PUSH_ATTEMPTS ]; then
-                log "ANALYZING PUSH FAILURE (attempt $PUSH_ATTEMPT)..."
+                log "ANALYZING PUSH FAILURE (attempt $PUSH_ATTEMPT - within VM)..."
                 
                 if echo "$push_output" | grep -q -E "(connection refused|Connection refused|timeout|timed out|network unreachable|resolve host|temporary failure|Temporary failure in name resolution|read: connection reset|write: connection reset)"; then
-                    log "ERROR TYPE: TRANSIENT NETWORK CONNECTIVITY FAILURE"
-                    log "DIAGNOSTIC: Transient network connectivity issues preventing registry communication"
+                    log "ERROR TYPE: TRANSIENT NETWORK CONNECTIVITY FAILURE WITHIN VM"
+                    log "DIAGNOSTIC: Transient network connectivity issues preventing registry communication within VM"
                     log "RECOVERY: Will retry with exponential backoff (transient network issue - attempt $PUSH_ATTEMPT/$MAX_PUSH_ATTEMPTS)"
                     
                 elif echo "$push_output" | grep -q -E "(permission denied|Permission denied|access denied|unauthorized|authentication failed)"; then
-                    log "ERROR TYPE: REGISTRY AUTHENTICATION FAILURE"
-                    log "DIAGNOSTIC: Registry authentication or permission issues"
-                    log "RECOVERY: This should not occur with local microk8s registry - check registry configuration"
+                    log "ERROR TYPE: REGISTRY AUTHENTICATION FAILURE WITHIN VM"
+                    log "DIAGNOSTIC: Registry authentication or permission issues within VM"
+                    log "RECOVERY: This should not occur with local microk8s registry - check registry configuration within VM"
                     
                 elif echo "$push_output" | grep -q -E "(no such image|image not found|manifest unknown|blob unknown)"; then
-                    log "ERROR TYPE: IMAGE NOT FOUND IN LOCAL DAEMON"
-                    log "DIAGNOSTIC: The specified image does not exist in local Docker daemon"
-                    log "RECOVERY: Verify image was tagged correctly: docker images | grep localhost:32000"
+                    log "ERROR TYPE: IMAGE NOT FOUND IN VM'S DOCKER DAEMON"
+                    log "DIAGNOSTIC: The specified image does not exist in VM's Docker daemon"
+                    log "RECOVERY: Verify image was tagged correctly within VM: multipass exec $VM_NAME -- docker images | grep localhost:32000"
                     break  # No point retrying if image doesn't exist
                     
                 elif echo "$push_output" | grep -q -E "(registry.*not found|registry.*unavailable|registry.*down|name does not resolve)"; then
                     log "ERROR TYPE: REGISTRY UNAVAILABLE"
-                    log "DIAGNOSTIC: microk8s registry is not running or accessible"
+                    log "DIAGNOSTIC: microk8s registry is not running or accessible within VM"
                     log "RECOVERY: Check registry status: verify_microk8s_registry"
                     break  # No point retrying if registry is down
                     
                 elif echo "$push_output" | grep -q -E "(disk full|no space|out of space|insufficient space)"; then
-                    log "ERROR TYPE: DISK SPACE FAILURE"
-                    log "DIAGNOSTIC: Insufficient disk space for image push operation"
-                    log "RECOVERY: Check disk space: df -h"
+                    log "ERROR TYPE: DISK SPACE FAILURE WITHIN VM"
+                    log "DIAGNOSTIC: Insufficient disk space for image push operation within VM"
+                    log "RECOVERY: Check disk space within VM: multipass exec $VM_NAME -- df -h"
                     break  # No point retrying if disk is full
                     
                 elif echo "$push_output" | grep -q -E "(daemon.*not running|Cannot connect to Docker daemon|docker.*daemon)"; then
-                    log "ERROR TYPE: DOCKER DAEMON FAILURE"
-                    log "DIAGNOSTIC: Docker daemon is not running or accessible"
-                    log "RECOVERY: Check Docker daemon: docker info"
+                    log "ERROR TYPE: DOCKER DAEMON FAILURE WITHIN VM"
+                    log "DIAGNOSTIC: Docker daemon is not running or accessible within VM"
+                    log "RECOVERY: Check Docker daemon within VM: multipass exec $VM_NAME -- docker info"
                     break  # No point retrying if Docker daemon is down
                     
                 else
-                    log "ERROR TYPE: UNKNOWN PUSH FAILURE"
-                    log "DIAGNOSTIC: Push failed with unknown error pattern - may be transient"
+                    log "ERROR TYPE: UNKNOWN PUSH FAILURE WITHIN VM"
+                    log "DIAGNOSTIC: Push failed with unknown error pattern within VM - may be transient"
                     log "RECOVERY: Will retry with exponential backoff (attempting to resolve potential transient issue - attempt $PUSH_ATTEMPT/$MAX_PUSH_ATTEMPTS)"
                 fi
                 
@@ -2513,8 +2529,8 @@ push_image_to_registry() {
                 log "Waiting ${retry_delay}s before retry attempt $((PUSH_ATTEMPT+1)) (exponential backoff with jitter)..."
                 sleep $retry_delay
             else
-                log "ERROR: Final push attempt failed - no more retries available"
-        log "NOTE: All $MAX_PUSH_ATTEMPTS attempts used exponential backoff with jitter for transient issues"
+                log "ERROR: Final push attempt failed within VM - no more retries available"
+        log "NOTE: All $MAX_PUSH_ATTEMPTS attempts used exponential backoff with jitter for transient issues within VM"
             fi
         fi
         
@@ -2523,24 +2539,24 @@ push_image_to_registry() {
     
     # Check if push was ultimately successful
     if [ "$push_success" = false ]; then
-        log "❌ ERROR: All push attempts failed ($MAX_PUSH_ATTEMPTS attempts)"
-        log "   Image could not be pushed to microk8s registry"
+        log "❌ ERROR: All push attempts failed within VM ($MAX_PUSH_ATTEMPTS attempts)"
+        log "   Image could not be pushed to microk8s registry from within VM"
         log ""
         log "COMPREHENSIVE RECOVERY STEPS:"
-        log "1. Verify Docker daemon is running: docker info"
-        log "2. Check image exists locally: docker images $target_image"
+        log "1. Verify Docker daemon is running within VM: multipass exec $VM_NAME -- docker info"
+        log "2. Check image exists within VM: multipass exec $VM_NAME -- docker images $target_image"
         log "3. Verify registry is accessible: curl -s http://localhost:32000/v2/_catalog"
-        log "4. Enable registry if needed: microk8s enable registry"
-        log "5. Check network connectivity: ping -c 2 localhost"
-        log "6. Check disk space: df -h"
-        log "7. Manual push attempt: docker push $target_image"
-        log "8. Check registry logs: microk8s kubectl logs -n container-registry -l app=registry"
+        log "4. Enable registry if needed: multipass exec $VM_NAME -- microk8s enable registry"
+        log "5. Check network connectivity within VM: multipass exec $VM_NAME -- ping -c 2 localhost"
+        log "6. Check disk space within VM: multipass exec $VM_NAME -- df -h"
+        log "7. Manual push attempt within VM: multipass exec $VM_NAME -- docker push $target_image"
+        log "8. Check registry logs: multipass exec $VM_NAME -- microk8s kubectl logs -n container-registry -l app=registry"
         
         return 1
     fi
     
     # Log successful push output
-    log "✅ Image push completed successfully"
+    log "✅ Image push completed successfully within VM"
     log "   Push command output summary:"
     echo "$push_output" | head -20 | tee -a "$LOG_FILE"  # Log first 20 lines
     if [ $(echo "$push_output" | wc -l) -gt 20 ]; then
@@ -2605,10 +2621,10 @@ push_image_to_registry() {
     log "⏱️  Push operation completed at: $(date -d "@$PUSH_END_TIME" '+%Y-%m-%d %H:%M:%S')"
     log "⏱️  Total push operation duration: $PUSH_DURATION seconds"
     
-    log "✅ Docker image push to microk8s registry completed successfully"
+    log "✅ Docker image push to microk8s registry completed successfully within VM"
     log "   Image: $target_image"
     log "   Status: PUSHED and VERIFIED (or verification pending)"
-    log "   Registry: http://localhost:32000"
+    log "   Registry: http://localhost:32000 (within VM)"
     log "   Ready for: Kubernetes deployment using registry image reference"
     
     return 0
@@ -2620,182 +2636,198 @@ push_image_to_registry() {
 
 # Tag Docker image with local registry endpoint (localhost:32000/my-ag-ui-app:latest)
 tag_image_for_local_registry() {
-    log "Starting Docker image tagging for local registry..."
+    log "Starting Docker image tagging for local registry (executing within VM)..."
     
     # Track tagging operation start time for performance measurement
     local TAGGING_START_TIME
     TAGGING_START_TIME=$(date +%s)
     log "⏱️  Tagging operation started at: $(date -d "@$TAGGING_START_TIME" '+%Y-%m-%d %H:%M:%S')"
     
-    # Validate Docker daemon availability before checking images
-    log "Validating Docker daemon availability before image existence check..."
-    if ! docker info >/dev/null 2>&1; then
-        log "❌ ERROR: Docker daemon is not accessible"
-        log "   Cannot validate image existence without Docker daemon access"
+    # Validate VM accessibility before proceeding
+    log "Validating VM accessibility before Docker operations..."
+    if ! multipass list | grep -q "$VM_NAME"; then
+        log "❌ ERROR: VM '$VM_NAME' is not accessible or does not exist"
+        log "   Cannot perform Docker tagging without VM access"
         log "RECOVERY STEPS:"
-        log "1. Start Docker daemon: sudo systemctl start docker"
-        log "2. Check Docker daemon status: sudo systemctl status docker"
-        log "3. Verify Docker is running: docker info"
-        log "4. Restart Docker if needed: sudo systemctl restart docker"
+        log "1. Check VM status: multipass list"
+        log "2. Start VM if needed: multipass start $VM_NAME"
+        log "3. Verify VM is running: multipass info $VM_NAME"
         return 1
     fi
-    log "✅ Docker daemon is accessible for image validation"
+    log "✅ VM is accessible for Docker operations"
     
-    # Comprehensive validation to ensure source image exists before tagging
-    log "Performing comprehensive validation of source image my-ag-ui-app:latest..."
+    # Validate Docker daemon availability within VM before checking images
+    log "Validating Docker daemon availability within VM before image existence check..."
+    if ! multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
+        log "❌ ERROR: Docker daemon is not accessible within VM"
+        log "   Cannot validate image existence without Docker daemon access in VM"
+        log "RECOVERY STEPS:"
+        log "1. Start Docker daemon in VM: multipass exec $VM_NAME -- sudo systemctl start docker"
+        log "2. Check Docker daemon status in VM: multipass exec $VM_NAME -- sudo systemctl status docker"
+        log "3. Verify Docker is running in VM: multipass exec $VM_NAME -- docker info"
+        log "4. Restart Docker in VM if needed: multipass exec $VM_NAME -- sudo systemctl restart docker"
+        return 1
+    fi
+    log "✅ Docker daemon is accessible for image validation within VM"
     
-    # Method 1: Check exact tag match (primary method)
-    log "Method 1: Checking exact tag match for my-ag-ui-app:latest..."
+    # Comprehensive validation to ensure source image exists within VM before tagging
+    log "Performing comprehensive validation of source image my-ag-ui-app:latest within VM..."
+    
+    # Method 1: Check exact tag match within VM (primary method)
+    log "Method 1: Checking exact tag match for my-ag-ui-app:latest within VM..."
     local exact_match_result
-    exact_match_result=$(docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || echo "")
+    exact_match_result=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || echo "")
     if echo "$exact_match_result" | grep -q "my-ag-ui-app:latest"; then
-        log "✅ Source image found with exact tag match: my-ag-ui-app:latest"
+        log "✅ Source image found with exact tag match within VM: my-ag-ui-app:latest"
     else
-        log "⚠️  Exact tag match not found - checking for alternatives..."
+        log "⚠️  Exact tag match not found within VM - checking for alternatives..."
         
-        # Method 2: Check for any my-ag-ui-app image with any tag
-        log "Method 2: Checking for any my-ag-ui-app image with any tag..."
+        # Method 2: Check for any my-ag-ui-app image with any tag within VM
+        log "Method 2: Checking for any my-ag-ui-app image with any tag within VM..."
         local any_tag_result
-        any_tag_result=$(docker images my-ag-ui-app --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || echo "")
+        any_tag_result=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || echo "")
         if [ -n "$any_tag_result" ]; then
-            log "⚠️  Found my-ag-ui-app images with different tags:"
+            log "⚠️  Found my-ag-ui-app images with different tags within VM:"
             echo "$any_tag_result" | tee -a "$LOG_FILE"
-            log "   But my-ag-ui-app:latest specifically is missing"
-            log "   This may indicate the image was built with a different tag"
+            log "   But my-ag-ui-app:latest specifically is missing within VM"
+            log "   This may indicate the image was built with a different tag or not loaded into VM"
         else
-            log "⚠️  No my-ag-ui-app images found with any tag"
+            log "⚠️  No my-ag-ui-app images found with any tag within VM"
         fi
         
-        # Method 3: Check for images containing "my-ag-ui-app" in repository name
-        log "Method 3: Checking for images containing 'my-ag-ui-app' in repository name..."
+        # Method 3: Check for images containing "my-ag-ui-app" in repository name within VM
+        log "Method 3: Checking for images containing 'my-ag-ui-app' in repository name within VM..."
         local similar_images
-        similar_images=$(docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -i "my-ag-ui-app" || echo "")
+        similar_images=$(multipass exec "$VM_NAME" -- docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -i "my-ag-ui-app" || echo "")
         if [ -n "$similar_images" ]; then
-            log "⚠️  Found similar images that might be related:"
+            log "⚠️  Found similar images that might be related within VM:"
             echo "$similar_images" | tee -a "$LOG_FILE"
         else
-            log "⚠️  No images found containing 'my-ag-ui-app' in repository name"
+            log "⚠️  No images found containing 'my-ag-ui-app' in repository name within VM"
         fi
         
-        # Method 4: List all available images for debugging
-        log "Method 4: Listing all available Docker images for debugging..."
+        # Method 4: List all available images within VM for debugging
+        log "Method 4: Listing all available Docker images within VM for debugging..."
         local all_images
-        all_images=$(docker images --format "{{.Repository}}:{{.Tag}} {{.Size}} {{.CreatedAt}}" 2>/dev/null | head -20 || echo "")
+        all_images=$(multipass exec "$VM_NAME" -- docker images --format "{{.Repository}}:{{.Tag}} {{.Size}} {{.CreatedAt}}" 2>/dev/null | head -20 || echo "")
         if [ -n "$all_images" ]; then
-            log "Available Docker images (first 20):"
+            log "Available Docker images within VM (first 20):"
             echo "$all_images" | tee -a "$LOG_FILE"
         else
-            log "⚠️  No Docker images found in local daemon"
+            log "⚠️  No Docker images found in VM's Docker daemon"
         fi
         
-        # Final determination: image does not exist
-        log "❌ ERROR: Source image my-ag-ui-app:latest not found locally after comprehensive validation"
-        log "   Image existence validation failed using multiple methods"
+        # Final determination: image does not exist within VM
+        log "❌ ERROR: Source image my-ag-ui-app:latest not found within VM after comprehensive validation"
+        log "   Image existence validation failed using multiple methods within VM"
         log ""
         log "REQUIRED ACTION:"
-        log "1. Build the image first: docker build -t my-ag-ui-app:latest ."
-        log "2. Or tag an existing image: docker tag <source-image> my-ag-ui-app:latest"
-        log "3. Or pull the image if it exists in a registry: docker pull my-ag-ui-app:latest"
+        log "1. Ensure image was built on host: docker build -t my-ag-ui-app:latest ."
+        log "2. Load image into VM if not present: docker save my-ag-ui-app:latest | multipass exec $VM_NAME -- docker load"
+        log "3. Or rebuild image within VM: multipass exec $VM_NAME -- docker build -t my-ag-ui-app:latest ."
         log ""
         log "TROUBLESHOOTING:"
-        log "- Check if image was built with different name/tag: docker images | grep my-ag"
-        log "- Check Docker daemon status: docker info"
-        log "- Verify you're in the correct directory with Dockerfile present"
-        log "- Ensure Docker build process completed successfully"
+        log "- Check if image was built on host: docker images | grep my-ag"
+        log "- Check Docker daemon status within VM: multipass exec $VM_NAME -- docker info"
+        log "- Verify image exists within VM: multipass exec $VM_NAME -- docker images | grep my-ag"
+        log "- Ensure Docker build process completed successfully on host"
         
         return 1
     fi
-    log "✅ Comprehensive validation passed: Source image my-ag-ui-app:latest exists locally"
+    log "✅ Comprehensive validation passed: Source image my-ag-ui-app:latest exists within VM"
     
-    # Get source image details for logging
+    # Get source image details for logging from within VM
     local source_image_details
-    source_image_details=$(docker images my-ag-ui-app:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
-    log "Source image details:"
+    source_image_details=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
+    log "Source image details within VM:"
     echo "$source_image_details" | tee -a "$LOG_FILE"
     
     # Define the target registry image tag
     local target_image_tag="localhost:32000/my-ag-ui-app:latest"
     log "Target registry image tag: $target_image_tag"
+    log "   This tag will be created within VM where localhost:32000 resolves to microk8s registry"
     
-    # Check if target tag already exists to avoid conflicts
-    log "Checking if target tag already exists..."
-    if docker images "$target_image_tag" --format "{{.Repository}}:{{.Tag}}" | grep -q "$target_image_tag"; then
-        log "⚠️  WARNING: Target tag $target_image_tag already exists"
+    # Check if target tag already exists within VM to avoid conflicts
+    log "Checking if target tag already exists within VM..."
+    if multipass exec "$VM_NAME" -- docker images "$target_image_tag" --format "{{.Repository}}:{{.Tag}}" | grep -q "$target_image_tag"; then
+        log "⚠️  WARNING: Target tag $target_image_tag already exists within VM"
         log "   Removing existing tag to avoid conflicts..."
-        if ! docker rmi "$target_image_tag" 2>&1 | tee -a "$LOG_FILE"; then
-            log "⚠️  WARNING: Could not remove existing tag $target_image_tag"
+        if ! multipass exec "$VM_NAME" -- docker rmi "$target_image_tag" 2>&1 | tee -a "$LOG_FILE"; then
+            log "⚠️  WARNING: Could not remove existing tag $target_image_tag within VM"
             log "   This may cause the tagging operation to fail"
-            log "   You can manually remove it: docker rmi $target_image_tag"
+            log "   You can manually remove it: multipass exec $VM_NAME -- docker rmi $target_image_tag"
         else
-            log "✅ Existing tag $target_image_tag removed successfully"
+            log "✅ Existing tag $target_image_tag removed successfully within VM"
         fi
     else
-        log "✅ Target tag $target_image_tag does not exist (safe to proceed)"
+        log "✅ Target tag $target_image_tag does not exist within VM (safe to proceed)"
     fi
     
-# Tag the image with local registry endpoint
-log "Tagging image with local registry endpoint..."
-log "   Command: docker tag my-ag-ui-app:latest $target_image_tag"
-log "   This makes the image addressable by the microk8s local registry"
+# Tag the image with local registry endpoint within VM
+log "Tagging image with local registry endpoint within VM..."
+log "   Command: multipass exec $VM_NAME -- docker tag my-ag-ui-app:latest $target_image_tag"
+log "   This makes the image addressable by the microk8s local registry within VM"
+log "   Note: localhost:32000 will resolve to VM's microk8s registry (not host's)"
 
-# Pre-flight check: Verify Docker daemon is accessible before tagging operation
-log "Performing pre-flight check: Docker daemon accessibility before tagging..."
-if ! docker info >/dev/null 2>&1; then
-    log "❌ ERROR: Docker daemon is not accessible"
-    log "   Cannot perform Docker tagging without Docker daemon access"
+# Pre-flight check: Verify Docker daemon is accessible within VM before tagging operation
+log "Performing pre-flight check: Docker daemon accessibility within VM before tagging..."
+if ! multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
+    log "❌ ERROR: Docker daemon is not accessible within VM"
+    log "   Cannot perform Docker tagging without Docker daemon access in VM"
     log "RECOVERY STEPS:"
-    log "1. Start Docker daemon: sudo systemctl start docker"
-    log "2. Check Docker daemon status: sudo systemctl status docker"
-    log "3. Verify Docker is running: docker info"
-    log "4. Restart Docker if needed: sudo systemctl restart docker"
-    log "5. Check user permissions: groups | grep docker"
+    log "1. Start Docker daemon in VM: multipass exec $VM_NAME -- sudo systemctl start docker"
+    log "2. Check Docker daemon status in VM: multipass exec $VM_NAME -- sudo systemctl status docker"
+    log "3. Verify Docker is running in VM: multipass exec $VM_NAME -- docker info"
+    log "4. Restart Docker in VM if needed: multipass exec $VM_NAME -- sudo systemctl restart docker"
+    log "5. Check user permissions in VM: multipass exec $VM_NAME -- groups | grep docker"
     return 1
 fi
-log "✅ Docker daemon is accessible for tagging operation"
+log "✅ Docker daemon is accessible for tagging operation within VM"
     
 local tag_output
 local tag_exit_code
     
-# Execute the tagging command with error capture
-if tag_output=$(docker tag my-ag-ui-app:latest "$target_image_tag" 2>&1); then
+# Execute the tagging command with error capture within VM
+if tag_output=$(multipass exec "$VM_NAME" -- docker tag my-ag-ui-app:latest "$target_image_tag" 2>&1); then
         tag_exit_code=0
-        log "✅ Docker image tagging command completed successfully"
-        log "   Tagging operation: COMPLETED"
+        log "✅ Docker image tagging command completed successfully within VM"
+        log "   Tagging operation: COMPLETED (within VM)"
     else
         tag_exit_code=$?
-        log "❌ ERROR: Failed to tag Docker image (exit code: $tag_exit_code)"
-        log "   Tagging operation: FAILED"
+        log "❌ ERROR: Failed to tag Docker image within VM (exit code: $tag_exit_code)"
+        log "   Tagging operation: FAILED (within VM)"
         log "Error output:"
         echo "$tag_output" | tee -a "$LOG_FILE"
         
         # Analyze specific error patterns and provide targeted guidance
-        log "ANALYZING IMAGE TAGGING FAILURE..."
+        log "ANALYZING IMAGE TAGGING FAILURE (within VM)..."
         
         if echo "$tag_output" | grep -q -E "(No such image|image not found|not found|does not exist)"; then
-            log "ERROR TYPE: SOURCE IMAGE NOT FOUND"
-            log "DIAGNOSTIC: The source image my-ag-ui-app:latest does not exist or is not accessible"
+            log "ERROR TYPE: SOURCE IMAGE NOT FOUND IN VM"
+            log "DIAGNOSTIC: The source image my-ag-ui-app:latest does not exist or is not accessible within VM"
             log "RECOVERY STEPS:"
-            log "1. Verify image exists: docker images my-ag-ui-app:latest"
-            log "2. Build image if missing: docker build -t my-ag-ui-app:latest ."
-            log "3. Check image name and tag: docker images | head -20"
+            log "1. Verify image exists within VM: multipass exec $VM_NAME -- docker images my-ag-ui-app:latest"
+            log "2. Build image if missing within VM: multipass exec $VM_NAME -- docker build -t my-ag-ui-app:latest ."
+            log "3. Load image from host to VM: docker save my-ag-ui-app:latest | multipass exec $VM_NAME -- docker load"
+            log "4. Check image name and tag within VM: multipass exec $VM_NAME -- docker images | head -20"
             
         elif echo "$tag_output" | grep -q -E "(permission denied|Permission denied|access denied|Operation not permitted)"; then
-            log "ERROR TYPE: PERMISSION FAILURE"
-            log "DIAGNOSTIC: Insufficient permissions to tag Docker images"
+            log "ERROR TYPE: PERMISSION FAILURE WITHIN VM"
+            log "DIAGNOSTIC: Insufficient permissions to tag Docker images within VM"
             log "RECOVERY STEPS:"
-            log "1. Check Docker daemon access: docker info"
-            log "2. Check user permissions: groups | grep docker"
-            log "3. Run with proper Docker group permissions: usermod -aG docker \$USER"
-            log "4. Or use sudo: sudo docker tag my-ag-ui-app:latest $target_image_tag"
+            log "1. Check Docker daemon access within VM: multipass exec $VM_NAME -- docker info"
+            log "2. Check user permissions within VM: multipass exec $VM_NAME -- groups | grep docker"
+            log "3. Run with proper Docker group permissions in VM: multipass exec $VM_NAME -- sudo usermod -aG docker \$USER"
+            log "4. Or use sudo within VM: multipass exec $VM_NAME -- sudo docker tag my-ag-ui-app:latest $target_image_tag"
             
         elif echo "$tag_output" | grep -q -E "daemon|Docker daemon|Cannot connect to Docker daemon|connection refused"; then
-            log "ERROR TYPE: DOCKER DAEMON ACCESS FAILURE"
-            log "DIAGNOSTIC: Cannot connect to Docker daemon service"
+            log "ERROR TYPE: DOCKER DAEMON ACCESS FAILURE WITHIN VM"
+            log "DIAGNOSTIC: Cannot connect to Docker daemon service within VM"
             log "RECOVERY STEPS:"
-            log "1. Start Docker daemon: sudo systemctl start docker"
-            log "2. Check Docker daemon status: sudo systemctl status docker"
-            log "3. Verify Docker is running: docker info"
-            log "4. Restart Docker if needed: sudo systemctl restart docker"
+            log "1. Start Docker daemon in VM: multipass exec $VM_NAME -- sudo systemctl start docker"
+            log "2. Check Docker daemon status in VM: multipass exec $VM_NAME -- sudo systemctl status docker"
+            log "3. Verify Docker is running in VM: multipass exec $VM_NAME -- docker info"
+            log "4. Restart Docker in VM if needed: multipass exec $VM_NAME -- sudo systemctl restart docker"
             
         elif echo "$tag_output" | grep -q -E "(repository|repository name|invalid repository|malformed repository)"; then
             log "ERROR TYPE: INVALID REPOSITORY NAME"
@@ -2807,35 +2839,35 @@ if tag_output=$(docker tag my-ag-ui-app:latest "$target_image_tag" 2>&1); then
             log "4. Valid format: [registry_host:port/][namespace/]repository[:tag]"
             
         elif echo "$tag_output" | grep -q -E "(tag|tag name|invalid tag|tag already exists|conflict)"; then
-            log "ERROR TYPE: TAG CONFLICT OR INVALID TAG"
-            log "DIAGNOSTIC: Tag already exists, conflicts with existing tag, or tag format is invalid"
+            log "ERROR TYPE: TAG CONFLICT OR INVALID TAG WITHIN VM"
+            log "DIAGNOSTIC: Tag already exists within VM, conflicts with existing tag, or tag format is invalid"
             log "RECOVERY STEPS:"
-            log "1. Remove existing tag: docker rmi $target_image_tag"
+            log "1. Remove existing tag within VM: multipass exec $VM_NAME -- docker rmi $target_image_tag"
             log "2. Verify tag format: localhost:32000/my-ag-ui-app:latest"
-            log "3. Use force flag if needed: docker tag -f my-ag-ui-app:latest $target_image_tag"
-            log "4. Check existing tags: docker images | grep localhost:32000"
+            log "3. Use force flag if needed: multipass exec $VM_NAME -- docker tag -f my-ag-ui-app:latest $target_image_tag"
+            log "4. Check existing tags within VM: multipass exec $VM_NAME -- docker images | grep localhost:32000"
             
         elif echo "$tag_output" | grep -q -E "(filesystem|storage|disk space|no space|out of space|layer|overlay)"; then
-            log "ERROR TYPE: FILESYSTEM OR STORAGE FAILURE"
-            log "DIAGNOSTIC: Docker storage or filesystem issues preventing image tagging"
+            log "ERROR TYPE: FILESYSTEM OR STORAGE FAILURE WITHIN VM"
+            log "DIAGNOSTIC: Docker storage or filesystem issues within VM preventing image tagging"
             log "RECOVERY STEPS:"
-            log "1. Check disk space: df -h"
-            log "2. Check Docker storage: docker info | grep -A 10 'Storage Driver'"
-            log "3. Clean up Docker resources: docker system prune -f"
-            log "4. Check filesystem permissions: ls -la /var/lib/docker"
+            log "1. Check disk space within VM: multipass exec $VM_NAME -- df -h"
+            log "2. Check Docker storage within VM: multipass exec $VM_NAME -- docker info | grep -A 10 'Storage Driver'"
+            log "3. Clean up Docker resources within VM: multipass exec $VM_NAME -- docker system prune -f"
+            log "4. Check filesystem permissions within VM: multipass exec $VM_NAME -- ls -la /var/lib/docker"
             
         elif echo "$tag_output" | grep -q -E "(memory|OOM|out of memory|resource|allocation|cannot allocate)"; then
-            log "ERROR TYPE: MEMORY OR RESOURCE CONSTRAINT FAILURE"
-            log "DIAGNOSTIC: System lacks sufficient memory or resources for Docker operations"
+            log "ERROR TYPE: MEMORY OR RESOURCE CONSTRAINT FAILURE WITHIN VM"
+            log "DIAGNOSTIC: VM lacks sufficient memory or resources for Docker operations"
             log "RECOVERY STEPS:"
-            log "1. Check memory usage: free -h"
-            log "2. Check system resources: top -bn1 | head -20"
-            log "3. Free up memory: sudo apt autoremove -y && sudo apt clean"
-            log "4. Close unnecessary applications or increase system memory"
+            log "1. Check memory usage within VM: multipass exec $VM_NAME -- free -h"
+            log "2. Check system resources within VM: multipass exec $VM_NAME -- top -bn1 | head -20"
+            log "3. Free up memory within VM: multipass exec $VM_NAME -- sudo apt autoremove -y && sudo apt clean"
+            log "4. Close unnecessary applications or increase VM memory"
             
         else
-            log "ERROR TYPE: UNKNOWN IMAGE TAGGING FAILURE"
-            log "DIAGNOSTIC: Image tagging failed with unknown error pattern"
+            log "ERROR TYPE: UNKNOWN IMAGE TAGGING FAILURE WITHIN VM"
+            log "DIAGNOSTIC: Image tagging failed with unknown error pattern within VM"
             log "ERROR DETAILS:"
             log "Tag command exit code: $tag_exit_code"
             log "Source image: my-ag-ui-app:latest"
@@ -2843,66 +2875,66 @@ if tag_output=$(docker tag my-ag-ui-app:latest "$target_image_tag" 2>&1); then
             log "Tag command output:"
             echo "$tag_output" | tee -a "$LOG_FILE"
             log "RECOVERY STEPS:"
-            log "1. Verify Docker is working: docker --version && docker info"
-            log "2. Check source image: docker images my-ag-ui-app:latest"
-            log "3. Try manual tagging: docker tag my-ag-ui-app:latest $target_image_tag"
-            log "4. Check Docker daemon logs: sudo journalctl -u docker.service -n 20"
+            log "1. Verify Docker is working within VM: multipass exec $VM_NAME -- docker --version && multipass exec $VM_NAME -- docker info"
+            log "2. Check source image within VM: multipass exec $VM_NAME -- docker images my-ag-ui-app:latest"
+            log "3. Try manual tagging within VM: multipass exec $VM_NAME -- docker tag my-ag-ui-app:latest $target_image_tag"
+            log "4. Check Docker daemon logs within VM: multipass exec $VM_NAME -- sudo journalctl -u docker.service -n 20"
         fi
         
         return 1
     fi
     
-    # Verify the tagging was successful
-    log "Verifying image tagging was successful..."
-    if docker images "$target_image_tag" --format "{{.Repository}}:{{.Tag}}" | grep -q "$target_image_tag"; then
-        log "✅ Image tagging verification successful"
-        log "   Target tag $target_image_tag exists and is accessible"
+    # Verify the tagging was successful within VM
+    log "Verifying image tagging was successful within VM..."
+    if multipass exec "$VM_NAME" -- docker images "$target_image_tag" --format "{{.Repository}}:{{.Tag}}" | grep -q "$target_image_tag"; then
+        log "✅ Image tagging verification successful within VM"
+        log "   Target tag $target_image_tag exists and is accessible within VM"
         
-        # Get tagged image details for logging
+        # Get tagged image details for logging from within VM
         local tagged_image_details
-        tagged_image_details=$(docker images "$target_image_tag" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
-        log "Tagged image details:"
+        tagged_image_details=$(multipass exec "$VM_NAME" -- docker images "$target_image_tag" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
+        log "Tagged image details within VM:"
         echo "$tagged_image_details" | tee -a "$LOG_FILE"
         
-        # Verify that both images (source and tagged) exist and have the same image ID
+        # Verify that both images (source and tagged) exist and have the same image ID within VM
         local source_image_id
         local tagged_image_id
         
-        source_image_id=$(docker images my-ag-ui-app:latest --format "{{.ID}}" 2>/dev/null || echo "unknown")
-        tagged_image_id=$(docker images "$target_image_tag" --format "{{.ID}}" 2>/dev/null || echo "unknown")
+        source_image_id=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "{{.ID}}" 2>/dev/null || echo "unknown")
+        tagged_image_id=$(multipass exec "$VM_NAME" -- docker images "$target_image_tag" --format "{{.ID}}" 2>/dev/null || echo "unknown")
         
         if [ "$source_image_id" = "$tagged_image_id" ] && [ "$source_image_id" != "unknown" ]; then
-            log "✅ Image ID verification successful - both images reference the same underlying image"
+            log "✅ Image ID verification successful - both images reference the same underlying image within VM"
             log "   Source image ID: $source_image_id"
             log "   Tagged image ID: $tagged_image_id"
         else
-            log "⚠️  WARNING: Image ID verification failed or IDs are different"
+            log "⚠️  WARNING: Image ID verification failed or IDs are different within VM"
             log "   Source image ID: $source_image_id"
             log "   Tagged image ID: $tagged_image_id"
-            log "   This may indicate the tagging operation didn't work as expected"
+            log "   This may indicate the tagging operation didn't work as expected within VM"
         fi
         
     else
-        log "❌ ERROR: Image tagging verification failed"
-        log "   Target tag $target_image_tag does not exist after tagging operation"
-        log "   This indicates the tagging command may have silently failed"
+        log "❌ ERROR: Image tagging verification failed within VM"
+        log "   Target tag $target_image_tag does not exist after tagging operation within VM"
+        log "   This indicates the tagging command may have silently failed within VM"
         
-        # Check if the source image still exists
-        if docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" | grep -q "my-ag-ui-app:latest"; then
-            log "✅ Source image still exists: my-ag-ui-app:latest"
+        # Check if the source image still exists within VM
+        if multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" | grep -q "my-ag-ui-app:latest"; then
+            log "✅ Source image still exists within VM: my-ag-ui-app:latest"
         else
-            log "❌ CRITICAL: Source image my-ag-ui-app:latest is missing after failed tagging"
-            log "   This may indicate a serious issue with the Docker daemon"
-            log "   RECOVERY: You may need to rebuild the image: docker build -t my-ag-ui-app:latest ."
+            log "❌ CRITICAL: Source image my-ag-ui-app:latest is missing after failed tagging within VM"
+            log "   This may indicate a serious issue with the Docker daemon within VM"
+            log "   RECOVERY: You may need to rebuild the image within VM: multipass exec $VM_NAME -- docker build -t my-ag-ui-app:latest ."
         fi
         
         return 1
     fi
     
-    log "✅ Docker image tagging for local registry completed successfully"
+    log "✅ Docker image tagging for local registry completed successfully within VM"
     log "   Image tagged as: $target_image_tag"
-    log "   Ready for: Push to microk8s local registry at localhost:32000"
-    log "   Next step: Use the registry push function to push this tagged image"
+    log "   Ready for: Push to microk8s local registry at localhost:32000 (within VM)"
+    log "   Next step: Use the registry push function to push this tagged image from within VM"
     
     # Calculate and log tagging operation duration
     local TAGGING_END_TIME
