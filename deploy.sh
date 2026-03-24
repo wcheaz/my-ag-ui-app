@@ -5506,13 +5506,233 @@ log "   • Strategy: Rolling update with pod restart"
 log "   • Registry: microk8s local registry"
 log ""
 log "🔄 STEP 1: Applying deployment manifest..."
-if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/deployment.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 106 "Failed to apply deployment manifest" \
-        "Check the deployment file: k8s/deployment.yaml. Ensure it references secrets and config maps correctly."
+log "   • Manifest: k8s/deployment.yaml"
+log "   • Image: localhost:32000/my-ag-ui-app:latest (from local registry)"
+log "   • Strategy: Rolling update with pod restart"
+log "   • Registry: microk8s local registry"
+log ""
+
+# Enhanced logging: Pre-apply deployment state verification
+log "📊 PRE-APPLOY VERIFICATION: Checking current deployment state..."
+local current_deployment_state
+current_deployment_state=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.status}' 2>/dev/null || echo "NOT_FOUND")
+if [ "$current_deployment_state" != "NOT_FOUND" ]; then
+    local current_replicas
+    local current_ready_replicas
+    local current_updated_replicas
+    current_replicas=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "unknown")
+    current_ready_replicas=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+    current_updated_replicas=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.status.updatedReplicas}' 2>/dev/null || echo "0")
+    
+    log "   • Current deployment state: EXISTS"
+    log "   • Current replicas: $current_replicas"
+    log "   • Ready replicas: $current_ready_replicas"
+    log "   • Updated replicas: $current_updated_replicas"
+    log "   • Action: UPDATE existing deployment"
+else
+    log "   • Current deployment state: NOT FOUND"
+    log "   • Action: CREATE new deployment"
 fi
-log "✅ Deployment manifest applied successfully"
-log "   • Kubernetes deployment resource created/updated"
-log "   • Deployment configured to use local registry image"
+
+# Enhanced logging: Manifest file validation
+log "📋 MANIFEST VALIDATION: Checking deployment.yaml file..."
+if [ ! -f "k8s/deployment.yaml" ]; then
+    log "❌ ERROR: Deployment manifest file not found: k8s/deployment.yaml"
+    handle_secrets_error 140 "Deployment manifest file missing" \
+        "Ensure k8s/deployment.yaml exists in the current directory."
+fi
+
+local manifest_size
+manifest_size=$(wc -l < "k8s/deployment.yaml" 2>/dev/null || echo "0")
+if [ "$manifest_size" -eq 0 ]; then
+    log "❌ ERROR: Deployment manifest file is empty: k8s/deployment.yaml"
+    handle_secrets_error 141 "Deployment manifest file empty" \
+        "Ensure k8s/deployment.yaml contains valid YAML content."
+fi
+
+log "   • Manifest file size: $manifest_size lines"
+log "   • Manifest validation: PASSED"
+
+# Enhanced logging: Kubernetes connection check
+log "🔌 KUBERNETES CONNECTION: Verifying cluster access..."
+if ! multipass exec "$VM_NAME" -- microk8s kubectl cluster-info 2>&1 | grep -q "is running"; then
+    log "❌ ERROR: Kubernetes cluster is not accessible"
+    handle_secrets_error 142 "Kubernetes cluster inaccessible" \
+        "Verify microk8s is running and accessible: multipass exec '$VM_NAME' -- microk8s status"
+fi
+log "   • Kubernetes cluster: ACCESSIBLE"
+
+# Enhanced logging: Namespace verification
+log "🏷️  NAMESPACE VERIFICATION: Checking target namespace..."
+local target_namespace
+target_namespace=$(grep -A 10 "namespace:" k8s/deployment.yaml | grep "namespace:" | head -n1 | awk '{print $2}' || echo "default")
+log "   • Target namespace: $target_namespace"
+
+if ! multipass exec "$VM_NAME" -- microk8s kubectl get namespace "$target_namespace" 2>&1 | grep -q "Active"; then
+    log "   • Namespace status: DOES NOT EXIST (will be created by deployment)"
+else
+    log "   • Namespace status: EXISTS and ACTIVE"
+fi
+
+# Enhanced logging: Apply manifest with detailed output capture and analysis
+log "🚀 APPLYING DEPLOYMENT MANIFEST with detailed logging..."
+log "   • Command: multipass exec '$VM_NAME' -- microk8s kubectl apply -f k8s/deployment.yaml"
+log "   • Expected: Deployment resource creation/update"
+log "   • Output will be captured and analyzed below..."
+
+# Capture kubectl apply output for detailed analysis
+local kubectl_apply_output
+local kubectl_apply_exit_code
+
+# Execute kubectl apply with output capture
+kubectl_apply_output=$(multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/deployment.yaml 2>&1)
+kubectl_apply_exit_code=$?
+
+# Log the full kubectl apply output for debugging
+log "📤 KUBECTL APPLY OUTPUT (first 1000 chars):"
+echo "$kubectl_apply_output" | head -c 1000 | tee -a "$LOG_FILE"
+if [ ${#kubectl_apply_output} -gt 1000 ]; then
+    log "... (output truncated, full output logged to file)"
+    echo "$kubectl_apply_output" >> "$LOG_FILE"
+fi
+
+# Analyze the kubectl apply result
+if [ $kubectl_apply_exit_code -eq 0 ]; then
+    log "✅ KUBECTL APPLY: Command completed successfully (exit code: 0)"
+    
+    # Analyze the output for deployment creation/update details
+    if echo "$kubectl_apply_output" | grep -q "deployment.apps/my-ag-ui-app created"; then
+        log "   • Result: NEW deployment created"
+        log "   • Action: Fresh deployment of my-ag-ui-app"
+    elif echo "$kubectl_apply_output" | grep -q "deployment.apps/my-ag-ui-app configured"; then
+        log "   • Result: EXISTING deployment configured"
+        log "   • Action: Rolling update initiated for my-ag-ui-app"
+    elif echo "$kubectl_apply_output" | grep -q "unchanged"; then
+        log "   • Result: Deployment unchanged (no changes detected)"
+        log "   • Action: No update needed - configuration identical"
+    else
+        log "   • Result: Deployment applied (unknown status)"
+        log "   • Note: Output did not match expected patterns, but command succeeded"
+    fi
+    
+    # Enhanced logging: Post-apply verification
+    log "🔍 POST-APPLY VERIFICATION: Checking deployment status after apply..."
+    
+    # Verify deployment was created/updated successfully
+    local post_apply_deployment
+    post_apply_deployment=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o name 2>/dev/null || echo "NOT_FOUND")
+    
+    if [ "$post_apply_deployment" = "deployment.apps/my-ag-ui-app" ]; then
+        log "   ✅ Deployment verification: PASSED"
+        log "      • Deployment resource exists: my-ag-ui-app"
+        
+        # Get detailed deployment information
+        local deployment_spec
+        deployment_spec=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec}' 2>/dev/null || echo "unavailable")
+        local deployment_status
+        deployment_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.status}' 2>/dev/null || echo "unavailable")
+        
+        log "      • Deployment spec: $deployment_spec"
+        log "      • Deployment status: $deployment_status"
+        
+        # Verify image reference is correct
+        local deployment_image
+        deployment_image=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "unavailable")
+        
+        if [ "$deployment_image" = "localhost:32000/my-ag-ui-app:latest" ]; then
+            log "      ✅ Image reference verification: PASSED"
+            log "         • Expected: localhost:32000/my-ag-ui-app:latest"
+            log "         • Actual: $deployment_image"
+        else
+            log "      ⚠️  Image reference verification: WARNING"
+            log "         • Expected: localhost:32000/my-ag-ui-app:latest"
+            log "         • Actual: $deployment_image"
+            log "         • Note: This may indicate a manifest synchronization issue"
+        fi
+        
+    else
+        log "   ❌ Deployment verification: FAILED"
+        log "      • Expected: deployment.apps/my-ag-ui-app"
+        log "      • Actual: $post_apply_deployment"
+        log "      • This indicates the kubectl apply may not have worked despite success exit code"
+        
+        # Additional diagnostic information
+        log "🔧 DIAGNOSTIC: Checking all deployments in namespace..."
+        local all_deployments
+        all_deployments=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployments -A 2>&1 | tee -a "$LOG_FILE")
+        log "All deployments in cluster:"
+        echo "$all_deployments" | tee -a "$LOG_FILE"
+    fi
+    
+else
+    log "❌ KUBECTL APPLY: Command failed (exit code: $kubectl_apply_exit_code)"
+    log "   • Full error output logged above"
+    
+    # Enhanced error analysis with specific recovery guidance
+    log "🔍 ERROR ANALYSIS: Examining kubectl apply failure..."
+    
+    if echo "$kubectl_apply_output" | grep -q "the server could not find the requested resource"; then
+        log "   ERROR TYPE: RESOURCE NOT FOUND"
+        log "   DIAGNOSTIC: Referenced resource in deployment.yaml does not exist"
+        log "   COMMON CAUSES:"
+        log "     - Missing secrets or configmaps"
+        log "     - Incorrect resource names"
+        log "   RECOVERY:"
+        log "     1. Check all referenced resources: multipass exec '$VM_NAME' -- microk8s kubectl get secrets,configmaps"
+        log "     2. Verify manifest references: grep -E '(secretKeyRef|configMapKeyRef)' k8s/deployment.yaml"
+        log "     3. Create missing resources if needed"
+        
+    elif echo "$kubectl_apply_output" | grep -q "error validating"; then
+        log "   ERROR TYPE: YAML VALIDATION ERROR"
+        log "   DIAGNOSTIC: deployment.yaml contains invalid YAML or Kubernetes specification"
+        log "   COMMON CAUSES:"
+        log "     - Syntax errors in YAML"
+        log "     - Invalid Kubernetes API version"
+        log "     - Missing required fields"
+        log "   RECOVERY:"
+        log "     1. Validate YAML syntax: python3 -c 'import yaml; yaml.safe_load(open(\"k8s/deployment.yaml\"))'"
+        log "     2. Check Kubernetes API version: multipass exec '$VM_NAME' -- microk8s kubectl api-versions"
+        log "     3. Validate deployment manifest: multipass exec '$VM_NAME' -- microk8s kubectl apply --dry-run=client -f k8s/deployment.yaml"
+        
+    elif echo "$kubectl_apply_output" | grep -q "connection refused"; then
+        log "   ERROR TYPE: KUBERNETES API CONNECTION FAILED"
+        log "   DIAGNOSTIC: Cannot connect to Kubernetes API server"
+        log "   COMMON CAUSES:"
+        log "     - microk8s service not running"
+        log "     - Network connectivity issues"
+        log "   RECOVERY:"
+        log "     1. Check microk8s status: multipass exec '$VM_NAME' -- microk8s status"
+        log "     2. Restart microk8s if needed: multipass exec '$VM_NAME' -- microk8s start"
+        log "     3. Verify cluster connectivity: multipass exec '$VM_NAME' -- microk8s kubectl cluster-info"
+        
+    elif echo "$kubectl_apply_output" | grep -q "permission denied"; then
+        log "   ERROR TYPE: KUBERNETES PERMISSION ERROR"
+        log "   DIAGNOSTIC: Insufficient permissions to apply deployment"
+        log "   COMMON CAUSES:"
+        log "     - RBAC configuration issues"
+        log "     - User permissions in cluster"
+        log "   RECOVERY:"
+        log "     1. Check user permissions: multipass exec '$VM_NAME' -- microk8s kubectl auth can-i create deployments"
+        log "     2. Check cluster admin status: multipass exec '$VM_NAME' -- microk8s kubectl get clusterrolebindings"
+        log "     3. If needed, configure admin access: multipass exec '$VM_NAME' -- microk8s kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=\$(whoami)"
+        
+    else
+        log "   ERROR TYPE: UNKNOWN KUBECTL APPLY ERROR"
+        log "   DIAGNOSTIC: Unrecognized error pattern in kubectl apply output"
+        log "   RECOVERY:"
+        log "     1. Check kubectl apply help: multipass exec '$VM_NAME' -- microk8s kubectl apply --help"
+        log "     2. Validate cluster health: multipass exec '$VM_NAME' -- microk8s kubectl cluster-info dump"
+        log "     3. Try dry-run validation: multipass exec '$VM_NAME' -- microk8s kubectl apply --dry-run=client -f k8s/deployment.yaml"
+        log "     4. Check system logs: multipass exec '$VM_NAME' -- journalctl -u snap.microk8s.daemon -n 50"
+    fi
+    
+    handle_secrets_error 106 "Failed to apply deployment manifest" \
+        "Check the deployment file: k8s/deployment.yaml. Ensure it references secrets and config maps correctly. Error details logged above."
+fi
+
+log "✅ Deployment manifest application process completed"
+log "   • Kubernetes deployment resource processed"
+log "   • Next step: Deployment restart to trigger pod creation"
 log ""
 log "🔄 STEP 2: Restarting deployment to trigger pod recreation..."
 log "   • This will create new pods using the updated registry image"
