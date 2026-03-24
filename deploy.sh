@@ -1075,7 +1075,7 @@ test_docker_daemon_error_handling() {
     
     local docker_build_result
     local docker_build_exit_code
-    docker_build_result=$(docker build -t test-daemon-error "$(dirname "$temp_dockerfile)" 2>&1)
+    docker_build_result=$(docker build -t test-daemon-error "$(dirname "$temp_dockerfile")" 2>&1)
     docker_build_exit_code=$?
     
     # Clean up temporary file
@@ -1155,7 +1155,7 @@ test_docker_daemon_error_handling() {
     # Step 7: Test VM Docker setup error handling
     log ""
     log "=================================================="
-    log="TESTING VM DOCKER SETUP ERROR HANDLING"
+    log "TESTING VM DOCKER SETUP ERROR HANDLING"
     log "=================================================="
     log "Step 7: Testing VM Docker setup error handling..."
     
@@ -1177,7 +1177,7 @@ test_docker_daemon_error_handling() {
     # Step 8: Comprehensive error handling validation
     log ""
     log "=================================================="
-    log="COMPREHENSIVE ERROR HANDLING VALIDATION"
+    log "COMPREHENSIVE ERROR HANDLING VALIDATION"
     log "=================================================="
     log "Step 8: Comprehensive error handling validation..."
     
@@ -1249,7 +1249,7 @@ test_docker_daemon_error_handling() {
     # Step 10: Final validation and reporting
     log ""
     log "=================================================="
-    log="DOCKER DAEMON ERROR HANDLING TEST RESULTS"
+    log "DOCKER DAEMON ERROR HANDLING TEST RESULTS"
     log "=================================================="
     log "Step 10: Final validation and reporting..."
     
@@ -5372,9 +5372,9 @@ if ! check_disk_space "Docker image build" 5 "."; then
         "Docker build requires at least 5GB of available disk space. Clean up disk space or set ALLOW_LOW_DISK=true to bypass."
 fi
 
-if ! docker build -t localhost:32000/my-ag-ui-app:latest . 2>&1 | tee -a "$LOG_FILE"; then
+if ! docker build -t my-ag-ui-app:latest . 2>&1 | tee -a "$LOG_FILE"; then
     # Check if the build failed due to permission issues
-    BUILD_LOG=$(docker build -t localhost:32000/my-ag-ui-app:latest . 2>&1 || true)
+    BUILD_LOG=$(docker build -t my-ag-ui-app:latest . 2>&1 || true)
     if echo "$BUILD_LOG" | grep -q "permission denied"; then
         log "ERROR: Docker build failed due to permission issues"
         log "RECOVERY INSTRUCTIONS:"
@@ -5392,16 +5392,30 @@ if ! docker build -t localhost:32000/my-ag-ui-app:latest . 2>&1 | tee -a "$LOG_F
             "Check Docker build output above for errors. Ensure Docker is running and accessible. Check Dockerfile for syntax errors."
     fi
 fi
-log "Docker image 'localhost:32000/my-ag-ui-app:latest' built successfully"
+log "Docker image 'my-ag-ui-app:latest' built successfully"
 end_phase_timing "DOCKER_IMAGE_BUILD"
 
 # 6.2 Verify Docker image was built successfully
 log "Verifying Docker image was built successfully..."
-if ! docker images localhost:32000/my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "localhost:32000/my-ag-ui-app:latest"; then
+if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "my-ag-ui-app:latest"; then
     handle_secrets_error 122 "Docker image verification failed" \
-        "Docker image 'localhost:32000/my-ag-ui-app:latest' was not found in local Docker images. Build may have failed silently."
+        "Docker image 'my-ag-ui-app:latest' was not found in local Docker images. Build may have failed silently."
 fi
-log "Docker image 'localhost:32000/my-ag-ui-app:latest' verified successfully"
+log "Docker image 'my-ag-ui-app:latest' verified successfully"
+
+# 6.2.1 Tag Docker image for local registry
+start_phase_timing "DOCKER_IMAGE_TAGGING"
+log "Starting Docker image tagging for local registry..."
+log "Using comprehensive tagging function with validation and error handling..."
+
+# Use the comprehensive image tagging function with full validation and error handling
+if ! tag_image_for_local_registry; then
+    handle_secrets_error 133 "Failed to tag Docker image for local registry" \
+        "Comprehensive image tagging failed. Check logs above for detailed error analysis and recovery steps."
+fi
+
+log "Docker image tagging for registry completed with comprehensive validation"
+end_phase_timing "DOCKER_IMAGE_TAGGING"
 
  # NOTE: VM Docker setup removed - no longer needed with registry approach
 # With microk8s registry approach, images are pushed to local registry and 
