@@ -26,11 +26,11 @@
 - [x] 4.1 Run deployment script to build Docker image
 - [x] 4.2 Verify image is tagged as localhost:32000/my-ag-ui-app:latest within VM
 - [x] 4.3 Verify image is pushed to local microk8s registry
-- [ ] 4.4 Apply updated k8s/deployment.yaml to Kubernetes
-- [ ] 4.5 Trigger deployment restart to use new image reference
-- [ ] 4.6 Monitor pod creation and verify pods are pulling from localhost:32000/my-ag-ui-app:latest
-- [ ] 4.7 Wait for pods to reach Running state (no ImagePullBackOff errors)
-- [ ] 4.8 Verify pod logs show successful application startup
+- [x] 4.4 Apply updated k8s/deployment.yaml to Kubernetes
+- [x] 4.5 Trigger deployment restart to use new image reference
+- [x] 4.6 Monitor pod creation and verify pods are pulling from localhost:32000/my-ag-ui-app:latest
+- [x] 4.7 Wait for pods to reach Running state (no ImagePullBackOff errors)
+- [x] 4.8 Verify pod logs show successful application startup
 
 ## 5. Health and Accessibility Verification
 
