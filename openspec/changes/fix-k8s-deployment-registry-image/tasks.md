@@ -38,7 +38,7 @@
 - [x] 5.2 Confirm readiness probe passes
 - [x] 5.3 Confirm liveness probe passes
 - [x] 5.4 Test application accessibility via ingress endpoint
-- [ ] 5.5 Verify application responds to HTTP requests
+- [x] 5.5 Verify application responds to HTTP requests
 - [ ] 5.6 Confirm successful deployment end-to-end
 
 ## 6. Error Handling and Logging
