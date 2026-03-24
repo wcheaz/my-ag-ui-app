@@ -23,7 +23,7 @@
 
 ## 4. Deployment Testing
 
-- [ ] 4.1 Run deployment script to build Docker image
+- [x] 4.1 Run deployment script to build Docker image
 - [ ] 4.2 Verify image is tagged as localhost:32000/my-ag-ui-app:latest within VM
 - [ ] 4.3 Verify image is pushed to local microk8s registry
 - [ ] 4.4 Apply updated k8s/deployment.yaml to Kubernetes
