@@ -1,6 +1,6 @@
 ## 1. Analysis and Preparation
 
-- [ ] 1.1 Review current k8s/deployment.yaml to identify image reference
+- [x] 1.1 Review current k8s/deployment.yaml to identify image reference
 - [ ] 1.2 Verify deployment script workflow to understand image build, tag, and push sequence
 - [ ] 1.3 Confirm microk8s registry is running and accessible at localhost:32000
 - [ ] 1.4 Document current deployment state and error patterns from deploy_log.md
