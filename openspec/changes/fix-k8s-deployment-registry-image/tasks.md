@@ -34,7 +34,7 @@
 
 ## 5. Health and Accessibility Verification
 
-- [ ] 5.1 Verify pod status is Running with 1/1 ready
+- [x] 5.1 Verify pod status is Running with 1/1 ready
 - [ ] 5.2 Confirm readiness probe passes
 - [ ] 5.3 Confirm liveness probe passes
 - [ ] 5.4 Test application accessibility via ingress endpoint
