@@ -1,0 +1,48 @@
+
+> pydantic-ai-starter@0.1.0 dev
+> concurrently "npm run dev:ui" "npm run dev:agent" --names ui,agent --prefix-colors blue,green --kill-others
+
+[agent] 
+[agent] > pydantic-ai-starter@0.1.0 dev:agent
+[agent] > ./scripts/run-agent.sh || scripts/run-agent.bat
+[agent] 
+[ui] 
+[ui] > pydantic-ai-starter@0.1.0 dev:ui
+[ui] > next dev --turbopack
+[ui] 
+[agent] Running agent using uv...
+[agent] INFO:     Will watch for changes in these directories: ['/home/ncheaz/git/my-ag-ui-app/agent']
+[agent] INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+[agent] INFO:     Started reloader process [90373] using StatReload
+[ui] ▲ Next.js 16.1.0 (Turbopack)
+[ui] - Local:         http://localhost:3000
+[ui] - Network:       http://192.168.2.53:3000
+[ui] - Environments: .env
+[ui] 
+[ui] ✓ Starting...
+[ui] ✓ Ready in 381ms
+[agent] INFO:sentence_transformers.SentenceTransformer:Load pretrained SentenceTransformer: BAAI/bge-large-en-v1.5
+[agent] INFO:sentence_transformers.SentenceTransformer:1 prompt is loaded, with the key: query
+[agent] INFO:     Loading index from /home/ncheaz/git/my-ag-ui-app/agent/data/storage...
+[agent] INFO:llama_index.core.indices.loading:Loading all indices.
+[agent] INFO:     Finished loading index from /home/ncheaz/git/my-ag-ui-app/agent/data/storage
+[agent] INFO:     Started server process [90380]
+[agent] INFO:     Waiting for application startup.
+[agent] INFO:     Application startup complete.
+[agent] Logfire project URL: https://logfire-us.pydantic.dev/wcheazspam/starter-project
+[agent] DEBUG: initializing LoggingOpenAIModel with env vars
+[agent] INFO:     127.0.0.1:56426 - "GET / HTTP/1.1" 405 Method Not Allowed
+[agent] INFO:     127.0.0.1:56430 - "GET / HTTP/1.1" 405 Method Not Allowed
+[agent] INFO:     127.0.0.1:59350 - "GET / HTTP/1.1" 405 Method Not Allowed
+[agent] INFO:     127.0.0.1:59354 - "GET / HTTP/1.1" 405 Method Not Allowed
+[agent] INFO:     127.0.0.1:59362 - "GET / HTTP/1.1" 405 Method Not Allowed
+[agent] INFO:     127.0.0.1:54956 - "GET / HTTP/1.1" 405 Method Not Allowed
+[agent] INFO:     127.0.0.1:54964 - "GET / HTTP/1.1" 405 Method Not Allowed
+[agent] INFO:     127.0.0.1:54966 - "GET / HTTP/1.1" 405 Method Not Allowed
+[agent] INFO:     127.0.0.1:34248 - "GET / HTTP/1.1" 405 Method Not Allowed
+[agent] INFO:     127.0.0.1:34260 - "GET / HTTP/1.1" 405 Method Not Allowed
+[agent] sh: 1: scripts/run-agent.bat: Permission denied
+[agent] npm run dev:agent exited with code 126
+--> Sending SIGTERM to other processes..
+[ui] [?25h
+[ui] npm run dev:ui exited with code SIGTERM
