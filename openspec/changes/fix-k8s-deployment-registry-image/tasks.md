@@ -37,7 +37,7 @@
 - [x] 5.1 Verify pod status is Running with 1/1 ready
 - [x] 5.2 Confirm readiness probe passes
 - [x] 5.3 Confirm liveness probe passes
-- [ ] 5.4 Test application accessibility via ingress endpoint
+- [x] 5.4 Test application accessibility via ingress endpoint
 - [ ] 5.5 Verify application responds to HTTP requests
 - [ ] 5.6 Confirm successful deployment end-to-end
 
