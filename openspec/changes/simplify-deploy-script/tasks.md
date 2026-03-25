@@ -33,12 +33,12 @@
 - [x] 2.3.6 Test script independently: `./deploy_scripts/tag-docker-image.sh`
 
 ### 2.4 Setup Microk8s Registry Script
-- [ ] 2.4.1 Extract Microk8s registry setup phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/setup-microk8s-registry.sh`
-- [ ] 2.4.2 Add shebang and error handling (`set -e`) to script
-- [ ] 2.4.3 Remove verbose debug output, keep only essential status messages (SUCCESS phase)
-- [ ] 2.4.4 Add debug level documentation comment: `# DEBUG LEVEL: MINIMAL (successful phase)`
-- [ ] 2.4.5 Implement `DEBUG=all` flag support to enable/disable verbose output
-- [ ] 2.4.6 Test script independently: `./deploy_scripts/setup-microk8s-registry.sh`
+- [x] 2.4.1 Extract Microk8s registry setup phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/setup-microk8s-registry.sh`
+- [x] 2.4.2 Add shebang and error handling (`set -e`) to script
+- [x] 2.4.3 Remove verbose debug output, keep only essential status messages (SUCCESS phase)
+- [x] 2.4.4 Add debug level documentation comment: `# DEBUG LEVEL: MINIMAL (successful phase)`
+- [x] 2.4.5 Implement `DEBUG=all` flag support to enable/disable verbose output
+- [x] 2.4.6 Test script independently: `./deploy_scripts/setup-microk8s-registry.sh`
 
 ### 2.5 Push Docker Image Script
 - [ ] 2.5.1 Extract Docker registry push phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/push-docker-image.sh`
