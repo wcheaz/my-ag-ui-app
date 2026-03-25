@@ -338,3 +338,97 @@ Each script should define its own copy of essential variables:
 - Consider using temporary files for complex data sharing between scripts
 
 This analysis provides the foundation for extracting modular scripts while maintaining the necessary shared functionality and state management.
+
+## Current Debug Output Levels by Phase
+
+Based on the analysis in `deploy_log_explanation.md`, the current debug output levels for each phase are as follows:
+
+### Phase 1: Kubernetes Secrets Setup (Lines 1-32)
+**Status: ⚠️ PROBLEMATIC**
+**Debug Level: FULL**
+- **Current Debug Output**: Extensive verbose logging including validation errors and success/failure reporting
+- **Reason for Full Debug**: The phase shows inconsistent behavior (reports both failure and success), making detailed debugging essential
+- **Key Issues**: 
+  - "ERROR: Generated YAML file is invalid" reported but step marked as "completed successfully"
+  - Validation inconsistency suggests potential secrets configuration problems
+- **Debug Retention Strategy**: Retain full verbose debug output due to problematic nature
+
+### Phase 2: Docker Image Build (Lines 49-151)
+**Status: ✅ SUCCESS**
+**Debug Level: MINIMAL**
+- **Current Debug Output**: Successful build completion messages, Next.js build status, image size information
+- **Reason for Minimal Debug**: Phase completes successfully without errors, reducing need for verbose logging
+- **Key Information Retained**:
+  - Built image name: `my-ag-ui-app:latest`
+  - Build success confirmation
+  - Image size: 546MB
+- **Debug Optimization Strategy**: Remove verbose debug output, keep only essential status messages
+
+### Phase 3: Docker Image Tagging (Lines 154-201)
+**Status: ✅ SUCCESS**
+**Debug Level: MINIMAL**
+- **Current Debug Output**: Tagging success confirmation, image ID verification
+- **Reason for Minimal Debug**: Phase works reliably with consistent success
+- **Key Information Retained**:
+  - Tagged image name: `localhost:32000/my-ag-ui-app:latest`
+  - Image ID verification: `9bb7f1915756`
+  - Success confirmation
+- **Debug Optimization Strategy**: Remove verbose debug output, keep only success confirmation
+
+### Phase 4: Microk8s Registry Setup (Lines 202-297)
+**Status: ✅ SUCCESS**
+**Debug Level: MINIMAL**
+- **Current Debug Output**: Registry status verification, pod information, API connectivity tests
+- **Reason for Minimal Debug**: Registry setup works reliably and consistently
+- **Key Information Retained**:
+  - Registry pod name: `registry-6cf7b9fcc-4kfg7`
+  - Service endpoint: `localhost:32000`
+  - API connectivity status
+- **Debug Optimization Strategy**: Remove verbose debug output, keep only essential status messages
+
+### Phase 5: Docker Registry Push (Lines 298-448)
+**Status: ⚠️ PARTIAL SUCCESS**
+**Debug Level: MINIMAL**
+- **Current Debug Output**: Push progress, verification attempts, timing issue warnings
+- **Reason for Minimal Debug**: Push succeeds but verification fails due to timing issues
+- **Key Issues**:
+  - Image push completes successfully (line 402)
+  - Image verification fails - image not found in registry catalog after 5 attempts
+  - Timing issue rather than critical failure
+- **Debug Retention Strategy**: Minimize debug output but keep critical status and error messages for the verification issue
+
+### Phase 6: Kubernetes Deployment (Lines 523-885)
+**Status: ❌ CRITICAL FAILURE**
+**Debug Level: FULL**
+- **Current Debug Output**: Extensive pod status information, health check failure details, restart counts, event logs
+- **Reason for Full Debug**: Critical failure with health checks causing pods to enter CrashLoopBackOff state
+- **Key Issues**:
+  - Pod 1: `my-ag-ui-app-78d9b4f9d9-97chw` - Running but NOT Ready, HTTP 404 on health checks
+  - Pod 2: `my-ag-ui-app-d84bd959b-fpnlv` - CrashLoopBackOff with 7 restarts
+  - Health check endpoint `/api/health` returning 404 instead of 200
+- **Debug Retention Strategy**: Retain full verbose debug output due to critical failure nature
+
+## Debug Output Optimization Strategy
+
+### For SUCCESS Phases (2, 3, 4):
+- **Action**: Remove verbose debug output
+- **Retention**: Keep only essential status messages and success confirmations
+- **Rationale**: These phases work reliably, reducing context token consumption
+
+### For PROBLEMATIC Phase (1):
+- **Action**: Retain full verbose debug output
+- **Retention**: Keep all current debug information including validation errors
+- **Rationale**: Inconsistent success/failure reporting requires detailed debugging
+
+### For PARTIAL SUCCESS Phase (5):
+- **Action**: Minimize debug output but retain critical error messages
+- **Retention**: Keep push status and verification failure details
+- **Rationale**: Timing issue needs visibility but not full verbose logging
+
+### For CRITICAL FAILURE Phase (6):
+- **Action**: Retain full verbose debug output
+- **Retention**: Keep all pod status, health check, and event information
+- **Rationale**: Critical failure requires maximum debugging visibility
+
+### DEBUG=all Flag Implementation:
+All modular scripts should support a `DEBUG=all` flag that temporarily enables full verbose output for any phase, allowing comprehensive debugging when needed regardless of the phase's normal debug level.
