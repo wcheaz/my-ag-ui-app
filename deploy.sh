@@ -468,7 +468,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             log "ERROR: Unknown option: $1"
-            log "Use --help to see available options"
+            log "RECOVERY STEPS:"
+            log "1. Use --help to see available options"
+            log "2. Check option spelling and format"
+            log "3. Verify all options start with -- or -"
+            log "4. Review deployment script documentation"
             exit 1
             ;;
     esac
@@ -984,6 +988,11 @@ test_docker_daemon_error_handling() {
     else
         log "❌ ERROR: Docker daemon is still running - test cannot proceed"
         log "DIAGNOSTIC: Docker daemon status: $(sudo systemctl is-active docker 2>/dev/null || echo 'unknown')"
+        log "RECOVERY STEPS:"
+        log "1. Manually stop Docker daemon: sudo systemctl stop docker"
+        log "2. Verify daemon stopped: sudo systemctl status docker"
+        log "3. Check for Docker processes: ps aux | grep docker"
+        log "4. Kill any remaining Docker processes if needed"
         test_failed=true
         return 1
     fi
