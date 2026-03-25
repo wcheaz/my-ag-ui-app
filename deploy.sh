@@ -2116,6 +2116,84 @@ verify_multipass_transfer_accessibility() {
 }
 
 # ===========================
+# REGISTRY ERROR HANDLING FUNCTION
+# ===========================
+
+# Handle registry inaccessible scenarios with comprehensive error analysis and recovery suggestions
+handle_registry_inaccessible_error() {
+    local error_code=$1
+    local error_context=$2
+    local registry_endpoint=${3:-"localhost:32000"}
+    
+    log "❌ REGISTRY ACCESSIBILITY ERROR [Code: $error_code]: $error_context"
+    log "   Registry endpoint: $registry_endpoint"
+    log "   Impact: Kubernetes deployment cannot proceed without accessible registry"
+    
+    log "=== ENHANCED ERROR ANALYSIS ==="
+    log "ERROR TYPE: REGISTRY INACCESSIBILITY"
+    log "DIAGNOSTIC: The microk8s registry at $registry_endpoint is not accessible"
+    log "POTENTIAL CAUSES:"
+    log "  1. Registry service not running or failed to start"
+    log "  2. Network connectivity issues within VM"
+    log "  3. Port 32000 blocked or in use by another service"
+    log "  4. Microk8s registry not enabled"
+    log "  5. Registry pod in CrashLoopBackOff or pending state"
+    
+    log "=== COMPREHENSIVE RECOVERY STEPS ==="
+    log "IMMEDIATE ACTIONS:"
+    log "  1. Verify microk8s registry status:"
+    log "     multipass exec '$VM_NAME' -- microk8s status"
+    log "  2. Check if registry is enabled:"
+    log "     multipass exec '$VM_NAME' -- microk8s status --enable-registry"
+    log "  3. Enable registry if not enabled:"
+    log "     multipass exec '$VM_NAME' -- microk8s enable registry"
+    log "  4. Wait for registry to start (30 seconds):"
+    log "     sleep 30"
+    
+    log "REGISTRY SERVICE VERIFICATION:"
+    log "  5. Check registry pod status:"
+    log "     multipass exec '$VM_NAME' -- microk8s kubectl get pods -n container-registry"
+    log "  6. Check registry service status:"
+    log "     multipass exec '$VM_NAME' -- microk8s kubectl get svc -n container-registry"
+    log "  7. Check registry pod logs if存在问题:"
+    log "     multipass exec '$VM_NAME' -- microk8s kubectl logs -n container-registry -l app=registry"
+    
+    log "NETWORK CONNECTIVITY VERIFICATION:"
+    log "  8. Test registry endpoint connectivity:"
+    log "     timeout 5 multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog"
+    log "  9. Check port availability:"
+    log "     multipass exec '$VM_NAME' -- sudo netstat -tlnp | grep 32000"
+    log " 10. Check for port conflicts:"
+    log "     multipass exec '$VM_NAME' -- sudo lsof -i :32000"
+    
+    log "REGISTRY RECOVERY PROCEDURES:"
+    log " 11. Restart registry service:"
+    log "     multipass exec '$VM_NAME' -- microk8s stop && multipass exec '$VM_NAME' -- microk8s start"
+    log " 12. Recreate registry (if needed):"
+    log "     multipass exec '$VM_NAME' -- microk8s disable registry && multipass exec '$VM_NAME' -- microk8s enable registry"
+    log " 13. Verify registry accessibility after recovery:"
+    log "     timeout 10 multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog"
+    
+    log "ALTERNATIVE SOLUTIONS:"
+    log " 14. Check if VM needs restart:"
+    log "     multipass restart '$VM_NAME' && sleep 30"
+    log " 15. Reinstall microk8s registry (last resort):"
+    log "     multipass exec '$VM_NAME' -- sudo snap remove microk8s && sudo snap install microk8s --classic"
+    log "     multipass exec '$VM_NAME' -- microk8s enable registry"
+    
+    log "DEPLOYMENT IMPACT:"
+    log "  - Image push operations will fail until registry is accessible"
+    log "  - Kubernetes deployment will fail with ImagePullBackOff errors"
+    log "  - Local development workflow will be disrupted"
+    
+    log "VERIFICATION AFTER RECOVERY:"
+    log "  After performing recovery steps, verify registry accessibility:"
+    log "  timeout 10 multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog"
+    
+    return $error_code
+}
+
+# ===========================
 # MICROK8S REGISTRY SETUP FUNCTION
 # ===========================
 
@@ -2221,6 +2299,9 @@ verify_microk8s_registry() {
             log "   RECOVERY: Check registry service status manually"
         fi
         
+        # Call comprehensive error handler for registry inaccessibility
+        handle_registry_inaccessible_error 301 "Registry connectivity check failed - unable to reach localhost:32000" "localhost:32000"
+        
         # This might be a temporary issue, check if registry service is running
         log "=== REGISTRY SERVICE STATUS INVESTIGATION ==="
         log "Checking if registry service is running..."
@@ -2238,6 +2319,9 @@ verify_microk8s_registry() {
             log "   Registry pod status: $registry_service_status"
             log "   Conclusion: Registry service is not started or has failed"
             log "RECOVERY: Check registry pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -n container-registry -l app=registry"
+            
+            # Call comprehensive error handler for registry service not running
+            handle_registry_inaccessible_error 302 "Registry service not running - pod status: $registry_service_status" "localhost:32000"
             return 1
         fi
     fi
@@ -2277,6 +2361,9 @@ verify_microk8s_registry() {
         log "   Endpoint: /v2/"
         log "   Response: $v2_endpoint_test"
         log "   This may affect registry operations"
+        
+        # Call comprehensive error handler for registry v2 API issues
+        handle_registry_inaccessible_error 303 "Registry v2 API not accessible - HTTP status: $v2_http_code" "localhost:32000"
     fi
     
     log "=== REGISTRY VERIFICATION SUMMARY ==="
@@ -2400,8 +2487,8 @@ enable_microk8s_registry() {
     
     # Verify registry is running and accessible
     if ! verify_microk8s_registry; then
-        log "❌ ERROR: Registry verification failed after enablement"
-        return 1
+        handle_registry_inaccessible_error 201 "Registry verification failed after enablement" "localhost:32000"
+        return 201
     fi
     
     log "✅ microk8s registry setup completed successfully"
@@ -2487,17 +2574,8 @@ push_image_to_registry() {
     # Pre-flight check: Verify registry is accessible before attempting push
     log "Performing pre-flight check: Verifying microk8s registry is accessible..."
     if ! verify_microk8s_registry; then
-        log "❌ ERROR: microk8s registry is not accessible at localhost:32000"
-        log "   Cannot push image to inaccessible registry"
-        log ""
-        log "RECOVERY STEPS:"
-        log "1. Enable microk8s registry: microk8s enable registry"
-        log "2. Wait for registry to start: sleep 10"
-        log "3. Verify registry is accessible: curl -s http://localhost:32000/v2/_catalog"
-        log "4. Check registry pod status: microk8s kubectl get pods -n container-registry"
-        log "5. Retry the push operation after registry is ready"
-        
-        return 1
+        handle_registry_inaccessible_error 202 "Registry not accessible before image push operation" "localhost:32000"
+        return 202
     fi
     log "✅ microk8s registry is accessible and ready for push"
     
@@ -5571,6 +5649,7 @@ end_phase_timing "DOCKER_IMAGE_TAGGING"
  if ! enable_microk8s_registry; then
      log "ERROR: microk8s registry setup failed"
      log "   This is required for local image distribution"
+     handle_registry_inaccessible_error 204 "Registry setup failed during initial microk8s registry enablement" "localhost:32000"
      exit 1
  fi
  log "microk8s registry setup completed successfully"
@@ -5596,8 +5675,9 @@ end_phase_timing "DOCKER_IMAGE_TAGGING"
 # 6.4 Verify registry is ready before deployment
 log "Verifying microk8s registry is ready for deployment..."
 if ! verify_microk8s_registry; then
-    handle_secrets_error 132 "microk8s registry verification failed" \
-        "Registry is not accessible. Check if microk8s registry is enabled and running."
+    handle_registry_inaccessible_error 203 "Registry not ready for Kubernetes deployment" "localhost:32000"
+    # Note: We don't return here to allow the deployment to attempt and fail with clear error messages
+    # This helps users understand the full impact of registry inaccessibility
 fi
 
 start_phase_timing "KUBERNETES_DEPLOYMENT"
