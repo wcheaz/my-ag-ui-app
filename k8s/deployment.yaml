@@ -1,13 +1,18 @@
 # my-ag-ui-app Kubernetes Deployment Manifest
 # ============================================
 # 
-# NOTE: ROLLED BACK to Original Image Reference
-# This deployment has been rolled back to use the original image reference
-# as part of testing the rollback procedure for the local registry changes.
-# This reverts the temporary local registry configuration.
+# NOTE: Updated for Local Microk8s Registry
+# This deployment has been updated to use the local microk8s registry
+# for reliable local deployments without external dependencies.
 #
-# Image: my-ag-ui-app:latest
-# Registry: External registry (Docker Hub or configured registry)
+# Benefits:
+# - Eliminates external network dependencies
+# - Provides faster deployment times  
+# - Works with microk8s built-in local registry
+# - Ensures consistent local development environment
+#
+# Image: localhost:32000/my-ag-ui-app:latest
+# Registry: microk8s built-in local registry at localhost:32000
 #
 apiVersion: apps/v1
 kind: Deployment
@@ -28,7 +33,7 @@ spec:
     spec:
       containers:
       - name: my-ag-ui-app
-        image: my-ag-ui-app:latest
+        image: localhost:32000/my-ag-ui-app:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
