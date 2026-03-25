@@ -11,9 +11,9 @@
 ### 2.1 Setup Kubernetes Secrets Script
 - [x] 2.1.1 Extract Kubernetes secrets setup phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/setup-k8s-secrets.sh`
 - [x] 2.1.2 Add shebang and error handling (`set -e`) to script
-- [ ] 2.1.3 Retain full verbose debug output (PROBLEMATIC phase)
-- [ ] 2.1.4 Add debug level documentation comment: `# DEBUG LEVEL: FULL (problematic phase)`
-- [ ] 2.1.5 Implement `DEBUG=all` flag support to enable/disable verbose output
+- [x] 2.1.3 Retain full verbose debug output (PROBLEMATIC phase)
+- [x] 2.1.4 Add debug level documentation comment: `# DEBUG LEVEL: FULL (problematic phase)`
+- [x] 2.1.5 Implement `DEBUG=all` flag support to enable/disable verbose output
 - [ ] 2.1.6 Test script independently: `./deploy_scripts/setup-k8s-secrets.sh`
 
 ### 2.2 Build Docker Image Script
