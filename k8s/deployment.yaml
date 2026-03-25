@@ -1,16 +1,13 @@
 # my-ag-ui-app Kubernetes Deployment Manifest
 # ============================================
 # 
-# NOTE: Image Reference Updated for Local Registry
-# This deployment has been updated to use the local microk8s registry
-# instead of external registry pulls. This approach:
-# - Eliminates external network dependencies
-# - Provides faster deployment times
-# - Works with microk8s local registry at localhost:32000
-# - Removes need for Docker daemon loading in the deployment process
+# NOTE: ROLLED BACK to Original Image Reference
+# This deployment has been rolled back to use the original image reference
+# as part of testing the rollback procedure for the local registry changes.
+# This reverts the temporary local registry configuration.
 #
-# Image: localhost:32000/my-ag-ui-app:latest
-# Registry: microk8s built-in local registry
+# Image: my-ag-ui-app:latest
+# Registry: External registry (Docker Hub or configured registry)
 #
 apiVersion: apps/v1
 kind: Deployment
@@ -31,7 +28,8 @@ spec:
     spec:
       containers:
       - name: my-ag-ui-app
-        image: localhost:32000/my-ag-ui-app:latest
+        image: my-ag-ui-app:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
           name: http
@@ -82,18 +80,16 @@ spec:
             memory: "512Mi"
         livenessProbe:
           httpGet:
-            path: /api/health
+            path: /health
             port: 3000
-            scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /api/health
+            path: /health
             port: 3000
-            scheme: HTTP
           initialDelaySeconds: 5
           periodSeconds: 5
           timeoutSeconds: 3
