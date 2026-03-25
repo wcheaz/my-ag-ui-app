@@ -14,7 +14,7 @@
 - [x] 2.1.3 Retain full verbose debug output (PROBLEMATIC phase)
 - [x] 2.1.4 Add debug level documentation comment: `# DEBUG LEVEL: FULL (problematic phase)`
 - [x] 2.1.5 Implement `DEBUG=all` flag support to enable/disable verbose output
-- [ ] 2.1.6 Test script independently: `./deploy_scripts/setup-k8s-secrets.sh`
+- [x] 2.1.6 Test script independently: `./deploy_scripts/setup-k8s-secrets.sh`
 
 ### 2.2 Build Docker Image Script
 - [ ] 2.2.1 Extract Docker build phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/build-docker-image.sh`
