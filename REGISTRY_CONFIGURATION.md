@@ -122,6 +122,122 @@ spec:
 3. **Registry Access**: Pods can only access the registry from within the cluster
 4. **External Access**: The registry is not accessible from outside the VM
 
+## Local-Only Deployment Limitations
+
+### Deployment Environment Restrictions
+The current microk8s registry configuration is designed specifically for **local development only** and has the following important limitations:
+
+#### 1. VM-Only Deployment
+- **Restriction**: Deployments can only run within the `my-ag-ui-app-k8s` multipass VM
+- **Impact**: Cannot be used for production deployments or external cloud environments
+- **Reason**: The `localhost:32000` registry endpoint is only accessible within the VM
+
+#### 2. No External Registry Access
+- **Restriction**: No support for external registry connections (Docker Hub, GCR, ECR, etc.)
+- **Impact**: All images must be built, tagged, and pushed to the local registry
+- **Workaround**: For production, a separate deployment configuration with external registry references would be needed
+
+#### 3. Single Environment Limitation
+- **Restriction**: Only supports one deployment environment (local development)
+- **Impact**: Cannot easily deploy to staging, QA, or production environments
+- **Consideration**: Environment-specific deployments would require separate registry configurations
+
+#### 4. Storage Persistence Limitations
+- **Restriction**: Registry storage is tied to the VM's persistent volume
+- **Impact**: If the VM is deleted or recreated, all registry images are lost
+- **Mitigation**: Export important images before VM maintenance or recreation
+
+#### 5. Network Isolation
+- **Restriction**: Registry is completely isolated within the VM
+- **Impact**: Cannot share images between different VMs or development machines
+- **Workaround**: Each developer needs their own local registry setup
+
+#### 6. Scaling Limitations
+- **Restriction**: Not designed for high-availability or multi-node deployments
+- **Impact**: Limited to single-node development scenarios
+- **Production Alternative**: Consider external registry services for production needs
+
+### Migration to External Environments
+When moving from local development to production environments, the following changes would be required:
+
+#### 1. Registry Configuration Changes
+```yaml
+# Current (Local Development)
+image: localhost:32000/my-ag-ui-app:latest
+
+# Production (External Registry)
+image: registry.example.com/my-ag-ui-app:latest
+# OR
+image: gcr.io/project/my-ag-ui-app:latest
+# OR
+image: your-dockerhub-username/my-ag-ui-app:latest
+```
+
+#### 2. Authentication Setup
+```yaml
+# External registries typically require authentication
+spec:
+  template:
+    spec:
+      imagePullSecrets:
+      - name: registry-credentials
+      containers:
+      - name: my-ag-ui-app
+        image: registry.example.com/my-ag-ui-app:latest
+```
+
+#### 3. Network and Security Configuration
+- **External Access**: Configure registry endpoints accessible from production environment
+- **Security**: Implement proper authentication and authorization
+- **Network Policies**: Configure appropriate network access controls
+- **HTTPS**: Enable secure registry communication
+
+### Development Workflow Implications
+These limitations affect the development workflow in the following ways:
+
+#### 1. Developer Onboarding
+- **Requirement**: Each developer must set up their own local registry
+- **Process**: Follow VM setup and registry enablement procedures
+- **Documentation**: Provide clear setup instructions for new team members
+
+#### 2. Image Management
+- **Process**: Images must be built and pushed locally before deployment
+- **Versioning**: Use consistent tagging strategies within the local environment
+- **Cleanup**: Regular cleanup of unused local images to manage storage
+
+#### 3. Testing Strategy
+- **Limitation**: Testing is restricted to the local VM environment
+- **Consideration**: Additional testing stages needed for production-like environments
+- **Recommendation**: Implement CI/CD pipeline with separate registry configurations for different environments
+
+### Future Considerations
+For teams planning to scale beyond local development, consider these enhancements:
+
+#### 1. Hybrid Registry Approach
+- **Local Registry**: Continue using for local development speed
+- **External Registry**: Implement for staging and production deployments
+- **Automation**: Create scripts to sync images between local and external registries
+
+#### 2. Environment-Specific Configurations
+- **Development**: Maintain `localhost:32000/my-ag-ui-app:latest`
+- **Staging**: Use `staging-registry.example.com/my-ag-ui-app:latest`
+- **Production**: Use `registry.example.com/my-ag-ui-app:latest`
+
+#### 3. Registry Proxy Configuration
+- **Local Cache**: Configure local registry as a cache for external registries
+- **Fallback**: Enable pulling from external registries when images don't exist locally
+- **Bandwidth Optimization**: Reduce external registry access for frequently used images
+
+### Summary
+The local-only deployment limitation is a **design choice** that prioritizes development simplicity and self-contained deployments over production scalability. This approach is ideal for:
+
+- Individual developers working on the application
+- Rapid development and testing cycles
+- Environments with limited or no external network access
+- Situations where deployment consistency is more important than scalability
+
+For production deployments, a separate configuration with external registry support should be implemented, following the migration guidelines outlined above.
+
 ## Network Configuration
 
 ### Internal Network Access
