@@ -105,16 +105,21 @@ multipass exec my-ag-ui-app-k8s -- curl -s http://localhost:32000/v2/my-ag-ui-ap
 - Pods pull from wrong registry (e.g., Docker Hub instead of local registry)
 - Image pull errors for external registories
 - Unexpected application versions running
+- Persistent ImagePullBackOff errors despite images being in local registry
 
 **Causes:**
 - Deployment manifest not updated to use local registry
-- Image reference still points to old registry
+- Image reference still points to old registry (e.g., `my-ag-ui-app:latest` instead of `localhost:32000/my-ag-ui-app:latest`)
 - Incorrect image tag format
+- Manual deployment without proper image reference updates
 
 **Solutions:**
 ```bash
 # Check current deployment image
 multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+# Expected output: localhost:32000/my-ag-ui-app:latest
+# If output shows: my-ag-ui-app:latest (without localhost:32000/), this is the issue
 
 # Update deployment to use local registry image
 multipass exec my-ag-ui-app-k8s -- microk8s kubectl set image deployment/my-ag-ui-app my-ag-ui-app=localhost:32000/my-ag-ui-app:latest
@@ -122,6 +127,28 @@ multipass exec my-ag-ui-app-k8s -- microk8s kubectl set image deployment/my-ag-u
 # Verify the update
 multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.template.spec.containers[0].image}'
 ```
+
+**Manual Deployment Manifest Fix:**
+If you're deploying from YAML files, ensure your deployment.yaml contains:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-ag-ui-app
+spec:
+  template:
+    spec:
+      containers:
+      - name: my-ag-ui-app
+        image: localhost:32000/my-ag-ui-app:latest  # CRITICAL: Must include localhost:32000/
+        # ... other container configuration
+```
+
+**Common Pitfalls:**
+- Forgetting to include `localhost:32000/` prefix in image reference
+- Using external registry references when local registry is intended
+- Mixed image references in multi-container deployments
+- Not updating all relevant deployment environments (dev, staging, prod)
 
 ### 4. Pod Stuck in ImagePullBackOff
 
@@ -183,6 +210,69 @@ multipass exec my-ag-ui-app-k8s -- docker system prune -f
 multipass stop my-ag-ui-app-k8s
 multipass delete my-ag-ui-app-k8s
 multipass launch --name my-ag-ui-app-k8s --cpus 4 --memory 7.7G --disk 30G  # Increased disk
+```
+
+### 6. Local Registry Deployment Integration Issues
+
+**Symptoms:**
+- Deployment successfully builds and pushes images, but pods still fail with ImagePullBackOff
+- Registry contains correct images, but deployment references wrong registry
+- Inconsistent deployment behavior between manual and automated deployments
+- Deployment script succeeds but application pods don't start
+
+**Causes:**
+- Deployment manifest not updated to use local registry image reference
+- Mismatch between image push location and deployment pull location
+- Deployment automation not using updated image references
+- Manual deployment using outdated YAML files
+
+**Solutions:**
+```bash
+# Verify image exists in local registry
+multipass exec my-ag-ui-app-k8s -- curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list
+
+# Check deployment image reference
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+# Compare with registry content - they must match!
+# If deployment shows: my-ag-ui-app:latest
+# But registry contains: localhost:32000/my-ag-ui-app:latest
+# This is the mismatch causing ImagePullBackOff
+
+# Fix deployment manifest to match registry
+# Method 1: Using kubectl set image
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl set image deployment/my-ag-ui-app my-ag-ui-app=localhost:32000/my-ag-ui-app:latest
+
+# Method 2: Edit deployment directly
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl edit deployment my-ag-ui-app
+# Change image: my-ag-ui-app:latest to image: localhost:32000/my-ag-ui-app:latest
+
+# Method 3: Apply updated YAML file
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f k8s/deployment.yaml
+
+# Verify the fix
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.template.spec.containers[0].image}'
+```
+
+**Deployment Automation Integration:**
+If you're using a deployment script, ensure it:
+1. Builds the image: `docker build -t my-ag-ui-app:latest .`
+2. Tags for local registry: `docker tag my-ag-ui-app:latest localhost:32000/my-ag-ui-app:latest`
+3. Pushes to local registry: `docker push localhost:32000/my-ag-ui-app:latest`
+4. Updates deployment manifest: Uses `localhost:32000/my-ag-ui-app:latest` in deployment.yaml
+5. Applies the deployment: `microk8s kubectl apply -f k8s/deployment.yaml`
+
+**Verification Steps:**
+```bash
+# 1. Confirm image in registry
+multipass exec my-ag-ui-app-k8s -- curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list
+
+# 2. Confirm deployment image reference
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+# 3. Check if they match (both should show localhost:32000/my-ag-ui-app:latest)
+# 4. Monitor pod status
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods -l app=my-ag-ui-app -w
 ```
 
 ---
@@ -326,9 +416,63 @@ multipass exec my-ag-ui-app-k8s -- microk8s enable registry
 2. Delete the existing pods to force new ones to pull the image
 3. Use `imagePullPolicy: Always` in your deployment
 
+### Q: Why do I get ImagePullBackOff errors even after successfully pushing to the local registry?
+**A:** This is a classic mismatch issue. Your deployment manifest is likely still referencing `my-ag-ui-app:latest` instead of `localhost:32000/my-ag-ui-app:latest`. The registry contains the correct image, but Kubernetes is trying to pull from Docker Hub instead of your local registry.
+
+### Q: What's the difference between `my-ag-ui-app:latest` and `localhost:32000/my-ag-ui-app:latest`?
+**A:** `my-ag-ui-app:latest` tells Kubernetes to pull from Docker Hub (or the default Docker registry), while `localhost:32000/my-ag-ui-app:latest` explicitly tells Kubernetes to pull from your local microk8s registry. For local deployments to work reliably, you must use the `localhost:32000/` prefix.
+
+### Q: I updated my deployment manifest but still get ImagePullBackOff. What else could be wrong?
+**A:** Check these common issues:
+1. **Image not actually in registry**: Verify with `curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list`
+2. **Registry not running**: Check with `microk8s kubectl get pods -n container-registry`
+3. **Wrong image reference**: Ensure deployment uses exactly `localhost:32000/my-ag-ui-app:latest`
+4. **Network connectivity**: Test registry access with `curl -s http://localhost:32000/v2/_catalog`
+
+### Q: How do I transition from external registry to local registry?
+**A:** To migrate from external registry references to local registry:
+1. Build and tag image for local registry: `docker tag my-ag-ui-app:latest localhost:32000/my-ag-ui-app:latest`
+2. Push to local registry: `docker push localhost:32000/my-ag-ui-app:latest`
+3. Update deployment.yaml: Change `image: my-ag-ui-app:latest` to `image: localhost:32000/my-ag-ui-app:latest`
+4. Apply updated deployment: `microk8s kubectl apply -f k8s/deployment.yaml`
+5. Verify pods pull from local registry and reach Running state
+
 ---
 
 ## Advanced Troubleshooting
+
+### Debugging ImagePullBackOff with Local Registry
+
+When using the local registry, ImagePullBackOff errors can be particularly frustrating because the images are often right there in the registry. Use this systematic approach:
+
+```bash
+# Step 1: Verify the problem is ImagePullBackOff
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods -l app=my-ag-ui-app
+# Look for STATUS: ImagePullBackOff
+
+# Step 2: Get detailed error information
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl describe pod <pod-name> | grep -A 10 "Events:"
+# Look for "Failed to pull image" or "ImagePullBackOff" messages
+
+# Step 3: Check what image the deployment is trying to pull
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+# Step 4: Check what images are actually in the registry
+multipass exec my-ag-ui-app-k8s -- curl -s http://localhost:32000/v2/_catalog
+multipass exec my-ag-ui-app-k8s -- curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list
+
+# Step 5: Compare - if Step 3 shows "my-ag-ui-app:latest" but Step 4 shows
+# repositories containing "localhost:32000/my-ag-ui-app:latest", you've found the mismatch
+
+# Step 6: Fix the deployment image reference
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl set image deployment/my-ag-ui-app my-ag-ui-app=localhost:32000/my-ag-ui-app:latest
+
+# Step 7: Delete the failing pod to trigger recreation with correct image
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl delete pod <pod-name>
+
+# Step 8: Monitor the new pod
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods -l app=my-ag-ui-app -w
+```
 
 ### Registry Pod Issues
 
@@ -394,9 +538,37 @@ If you're still having issues after following this troubleshooting guide:
    - Exact error messages you're seeing
    - Steps you've already tried
    - Your environment details (OS, multipass version, etc.)
+   - For ImagePullBackOff issues: include both the deployment image reference AND the registry contents
 
 4. **Create a minimal reproduction**: If possible, create a simple test case that demonstrates the issue
 
+### Common Issues to Check Before Asking for Help
+
+**For ImagePullBackOff Issues:**
+Before reporting ImagePullBackOff problems, run these checks:
+
+```bash
+# 1. Check deployment image reference
+DEPLOYMENT_IMAGE=$(multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.template.spec.containers[0].image}')
+echo "Deployment image: $DEPLOYMENT_IMAGE"
+
+# 2. Check registry contents
+REGISTRY_CONTENTS=$(multipass exec my-ag-ui-app-k8s -- curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list 2>/dev/null)
+echo "Registry contents: $REGISTRY_CONTENTS"
+
+# 3. If you see "my-ag-ui-app:latest" vs "localhost:32000/my-ag-ui-app:latest" mismatch,
+#    this is your issue - fix the deployment image reference
+```
+
+**For Registry Access Issues:**
+```bash
+# 1. Check registry pod status
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods -n container-registry
+
+# 2. Test registry accessibility
+multipass exec my-ag-ui-app-k8s -- curl -s -o /dev/null -w "%{http_code}" http://localhost:32000/v2/
+```
+
 ---
 
-**Remember**: Most registry issues are related to either the registry not being enabled, images not being pushed correctly, or deployments using the wrong image reference. Start with the Quick Diagnosis section and work your way through the troubleshooting steps systematically.
+**Remember**: Most registry issues are related to either the registry not being enabled, images not being pushed correctly, or deployments using the wrong image reference. The most common issue with local registry deployments is ImagePullBackOff caused by using `my-ag-ui-app:latest` instead of `localhost:32000/my-ag-ui-app:latest` in the deployment manifest. Start with the Quick Diagnosis section and work your way through the troubleshooting steps systematically.
