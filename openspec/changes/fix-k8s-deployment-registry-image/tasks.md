@@ -52,7 +52,7 @@
 ## 7. Documentation Updates
 
 - [x] 7.1 Update deployment documentation to reflect local registry configuration
-- [ ] 7.2 Document the localhost:32000 registry endpoint usage
+- [x] 7.2 Document the localhost:32000 registry endpoint usage
 - [ ] 7.3 Update troubleshooting guides for registry-related issues
 - [ ] 7.4 Add notes about local-only deployment limitations
 - [ ] 7.5 Update README with registry configuration details
