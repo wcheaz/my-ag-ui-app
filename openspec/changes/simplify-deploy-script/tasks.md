@@ -17,12 +17,12 @@
 - [x] 2.1.6 Test script independently: `./deploy_scripts/setup-k8s-secrets.sh`
 
 ### 2.2 Build Docker Image Script
-- [ ] 2.2.1 Extract Docker build phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/build-docker-image.sh`
-- [ ] 2.2.2 Add shebang and error handling (`set -e`) to script
-- [ ] 2.2.3 Remove verbose debug output, keep only essential status messages (SUCCESS phase)
-- [ ] 2.2.4 Add debug level documentation comment: `# DEBUG LEVEL: MINIMAL (successful phase)`
-- [ ] 2.2.5 Implement `DEBUG=all` flag support to enable/disable verbose output
-- [ ] 2.2.6 Test script independently: `./deploy_scripts/build-docker-image.sh`
+- [x] 2.2.1 Extract Docker build phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/build-docker-image.sh`
+- [x] 2.2.2 Add shebang and error handling (`set -e`) to script
+- [x] 2.2.3 Remove verbose debug output, keep only essential status messages (SUCCESS phase)
+- [x] 2.2.4 Add debug level documentation comment: `# DEBUG LEVEL: MINIMAL (successful phase)`
+- [x] 2.2.5 Implement `DEBUG=all` flag support to enable/disable verbose output
+- [x] 2.2.6 Test script independently: `./deploy_scripts/build-docker-image.sh`
 
 ### 2.3 Tag Docker Image Script
 - [ ] 2.3.1 Extract Docker image tagging phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/tag-docker-image.sh`
