@@ -1,6 +1,6 @@
 {
   "active": true,
-  "iteration": 64,
+  "iteration": 68,
   "minIterations": 1,
   "maxIterations": 100,
   "completionPromise": "COMPLETE",
@@ -11,6 +11,6 @@
   "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-deployment-registry-image/.ralph/prompt-template.md",
   "noCommit": false,
   "model": "",
-  "startedAt": "2026-03-24T23:51:15.716Z",
-  "resumedAt": "2026-03-24T23:51:15.716Z"
+  "startedAt": "2026-03-25T20:51:10.578Z",
+  "resumedAt": "2026-03-25T20:51:10.578Z"
 }
