@@ -2194,6 +2194,121 @@ handle_registry_inaccessible_error() {
 }
 
 # ===========================
+# IMAGE PULL FAILURE ERROR HANDLING FUNCTION
+# ===========================
+
+# Handle image pull failures with comprehensive diagnostics and recovery suggestions
+handle_image_pull_failure_error() {
+    local error_code=$1
+    local error_context=$2
+    local pod_name=${3:-"unknown"}
+    
+    log "❌ IMAGE PULL FAILURE ERROR [Code: $error_code]: $error_context"
+    log "   Pod affected: $pod_name"
+    log "   Impact: Pod cannot start due to image pull issues"
+    
+    log "=== ENHANCED IMAGE PULL FAILURE ANALYSIS ==="
+    log "ERROR TYPE: IMAGE PULL FAILURE"
+    log "DIAGNOSTIC: Kubernetes cannot pull the container image from the registry"
+    log "POTENTIAL CAUSES:"
+    log "  1. Image reference in deployment is incorrect"
+    log "  2. Image not available in local registry"
+    log "  3. Registry accessibility issues"
+    log "  4. Image tag does not exist"
+    log "  5. Network connectivity to registry blocked"
+    log "  6. Registry authentication issues (unexpected for local registry)"
+    log "  7. Image format or corruption issues"
+    
+    log "=== COMPREHENSIVE RECOVERY STEPS ==="
+    log "IMMEDIATE ACTIONS:"
+    log "  1. Verify deployment image reference:"
+    log "     multipass exec '$VM_NAME' -- microk8s kubectl get deployment my-ag-ui-app -o yaml | grep 'image:'"
+    log "  2. Check if correct image is in local registry:"
+    log "     multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list"
+    log "  3. Verify registry accessibility:"
+    log "     multipass exec '$VM_NAME' -- microk8s kubectl get pods -n container-registry"
+    log "  4. Check pod events for detailed error information:"
+    log "     multipass exec '$VM_NAME' -- microk8s kubectl describe pod $pod_name"
+    
+    log "IMAGE VERIFICATION PROCEDURES:"
+    log "  5. Verify image was built and tagged correctly:"
+    log "     multipass exec '$VM_NAME' -- docker images localhost:32000/my-ag-ui-app:latest"
+    log "  6. Check if image was pushed to registry:"
+    log "     multipass exec '$VM_NAME' -- docker push localhost:32000/my-ag-ui-app:latest"
+    log "  7. Verify registry catalog contains expected image:"
+    log "     multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog"
+    
+    log "REGISTRY TROUBLESHOOTING:"
+    log "  8. Restart registry service if needed:"
+    log "     multipass exec '$VM_NAME' -- microk8s stop && multipass exec '$VM_NAME' -- microk8s start"
+    log "  9. Re-enable registry if necessary:"
+    log "     multipass exec '$VM_NAME' -- microk8s enable registry"
+    log " 10. Check registry pod logs:"
+    log "     multipass exec '$VM_NAME' -- microk8s kubectl logs -n container-registry -l app=registry"
+    
+    log "DEPLOYMENT RECOVERY:"
+    log " 11. Delete the failing pod to trigger recreation:"
+    log "     multipass exec '$VM_NAME' -- microk8s kubectl delete pod $pod_name"
+    log " 12. Restart deployment to use new image:"
+    log "     multipass exec '$VM_NAME' -- microk8s kubectl rollout restart deployment my-ag-ui-app"
+    log " 13. Update deployment with correct image reference if needed:"
+    log "     multipass exec '$VM_NAME' -- microk8s kubectl set image deployment/my-ag-ui-app my-ag-ui-app=localhost:32000/my-ag-ui-app:latest"
+    
+    log "NETWORK CONNECTIVITY VERIFICATION:"
+    log " 14. Test registry endpoint connectivity:"
+    log "     multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog"
+    log " 15. Check port availability:"
+    log "     multipass exec '$VM_NAME' -- sudo netstat -tlnp | grep 32000"
+    log " 16. Verify no port conflicts:"
+    log "     multipass exec '$VM_NAME' -- sudo lsof -i :32000"
+    
+    log "ALTERNATIVE SOLUTIONS:"
+    log " 17. Rebuild and push image if missing:"
+    log "     docker build -t my-ag-ui-app:latest ."
+    log "     multipass exec '$VM_NAME' -- docker tag my-ag-ui-app:latest localhost:32000/my-ag-ui-app:latest"
+    log "     multipass exec '$VM_NAME' -- docker push localhost:32000/my-ag-ui-app:latest"
+    log " 18. Check for corrupted image layers:"
+    log "     multipass exec '$VM_NAME' -- docker system prune -f"
+    log "     multipass exec '$VM_NAME' -- docker build -t my-ag-ui-app:latest . && multipass exec '$VM_NAME' -- docker push localhost:32000/my-ag-ui-app:latest"
+    log " 19. Verify VM network configuration:"
+    log "     multipass exec '$VM_NAME' -- ip a && multipass exec '$VM_NAME' -- ping -c 2 localhost"
+    
+    log "DEPLOYMENT IMPACT:"
+    log "  - Pod startup is blocked until image pull issues are resolved"
+    log "  - Application deployment cannot complete"
+    log "  - Registry-based deployment workflow is disrupted"
+    
+    log "VERIFICATION AFTER RECOVERY:"
+    log "  After performing recovery steps, verify image pull is working:"
+    log "  1. Check pod status: multipass exec '$VM_NAME' -- microk8s kubectl get pods"
+    log "  2. Verify pod events: multipass exec '$VM_NAME' -- microk8s kubectl describe pod $pod_name"
+    log "  3. Confirm image pull: multipass exec '$VM_NAME' -- microk8s kubectl logs $pod_name | head -20"
+    
+    log "=== COMMON IMAGE PULL FAILURE SCENARIOS ==="
+    log "SCENARIO 1: Image not in local registry"
+    log "  - Symptoms: 404 errors when pulling from localhost:32000"
+    log "  - Fix: Build and push image to local registry"
+    log "  - Command: docker build -t my-ag-ui-app:latest . && multipass exec '$VM_NAME' -- docker tag my-ag-ui-app:latest localhost:32000/my-ag-ui-app:latest && multipass exec '$VM_NAME' -- docker push localhost:32000/my-ag-ui-app:latest"
+    
+    log "SCENARIO 2: Registry not accessible"
+    log "  - Symptoms: Connection refused to localhost:32000"
+    log "  - Fix: Start microk8s registry service"
+    log "  - Command: multipass exec '$VM_NAME' -- microk8s enable registry"
+    
+    log "SCENARIO 3: Incorrect image reference"
+    log "  - Symptoms: Pod trying to pull from external registry"
+    log "  - Fix: Update deployment to use local registry image"
+    log "  - Command: multipass exec '$VM_NAME' -- microk8s kubectl set image deployment/my-ag-ui-app my-ag-ui-app=localhost:32000/my-ag-ui-app:latest"
+    
+    log "SCENARIO 4: Registry service issues"
+    log "  - Symptoms: Registry pod not running or in error state"
+    log "  - Fix: Check and fix registry service"
+    log "  - Command: multipass exec '$VM_NAME' -- microk8s kubectl get pods -n container-registry"
+    
+    return $error_code
+}
+
+# ===========================
 # MICROK8S REGISTRY SETUP FUNCTION
 # ===========================
 
@@ -6010,8 +6125,19 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
         log "Pod details for debugging:"
         multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
         
-        handle_secrets_error 126 "Pod did not reach Running status after deployment restart" \
-            "Check pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app. Verify registry is accessible: microk8s kubectl get pods -n container-registry."
+        # Extract pod name for error handling
+        local POD_NAME
+        POD_NAME=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "unknown")
+        
+        # Use specialized error handler for image pull failures, generic handler for other issues
+        if [ "$SAW_IMAGE_PULL_BACK_OFF" = true ]; then
+            log "ERROR TYPE: ImagePullBackOff detected - using specialized image pull error handling"
+            handle_image_pull_failure_error 126 "Pod stuck in ImagePullBackOff state - image pull failure" "$POD_NAME"
+        else
+            log "ERROR TYPE: General pod startup failure - using generic error handling"
+            handle_secrets_error 126 "Pod did not reach Running status after deployment restart" \
+                "Check pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app. Verify registry is accessible: microk8s kubectl get pods -n container-registry."
+        fi
     fi
     
     # OPTIMIZED: Progressive delay - start with 3s, increase to 5s for later attempts
