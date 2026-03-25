@@ -1,13 +1,12 @@
 # my-ag-ui-app Kubernetes Deployment Manifest
-# ============================================
-# 
+# ============================================ 
 # NOTE: Updated for Local Microk8s Registry
 # This deployment has been updated to use the local microk8s registry
 # for reliable local deployments without external dependencies.
 #
 # Benefits:
 # - Eliminates external network dependencies
-# - Provides faster deployment times  
+# - Provides faster deployment times
 # - Works with microk8s built-in local registry
 # - Ensures consistent local development environment
 #
