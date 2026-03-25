@@ -513,5 +513,22 @@
       "4.7 Verify project root contains only `deploy-all.sh` (no other deployment scripts) - VERIFICATION FAILED: deploy.sh still present in project root",
       "4.8 Verify `deploy_scripts/` directory contains all 6 modular scripts - VERIFICATION PASSED: all 6 scripts present in deploy_scripts/"
     ]
+  },
+  {
+    "timestamp": "2026-03-25T23:55:33.172Z",
+    "iteration": 32,
+    "duration": 93874,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [],
+    "exitCode": 0,
+    "completedTasks": [
+      "5.1 Update [`README.md`](README.md) to document new deployment scripts structure",
+      "5.2 Document how to use individual scripts for isolated testing",
+      "5.3 Document how to use `deploy-all.sh` for full deployment",
+      "5.4 Document `DEBUG=all` flag usage for temporary full debugging",
+      "5.5 Document debug level for each script (full, minimal)"
+    ]
   }
 ]

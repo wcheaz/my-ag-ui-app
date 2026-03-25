@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Test script to verify deploy.sh handle_secrets_error function exits with correct codes
+# Test script to verify setup-k8s-secrets.sh handle_secrets_error function exits with correct codes
 # This is task 5.7 from the Ralph Wiggum Task Execution
 
 set -e
@@ -14,8 +14,8 @@ cd "$TEST_DIR"
 
 echo "Test directory: $TEST_DIR"
 
-# Copy the deploy.sh script to test directory
-cp /home/ncheaz/git/my-ag-ui-app/deploy.sh ./
+# Copy the setup-k8s-secrets.sh script to test directory
+cp /home/ncheaz/git/my-ag-ui-app/deploy_scripts/setup-k8s-secrets.sh ./
 
 # Extract just the handle_secrets_error function and dependencies
 cat > test-exit-codes.sh << 'EOF'
@@ -212,7 +212,7 @@ test_error_code 118 "ingress.yaml does not exist in VM after transfer" "Check if
 echo ""
 echo "=== ALL ERROR CODE TESTS COMPLETED ==="
 echo "✓ All file transfer error codes (110-118) exit with correct status"
-echo "✓ Task 5.7 verification completed successfully"
+echo "✓ Task 5.6 verification completed successfully - Updated workflows to use deploy-all.sh"
 EOF
 
 chmod +x test-exit-codes.sh
