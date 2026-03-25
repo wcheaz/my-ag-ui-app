@@ -72,6 +72,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Application environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV HOST=0.0.0.0
 
 # OpenAI Configuration (build-time args with runtime env defaults)
 ARG OPENAI_API_KEY=""
@@ -108,5 +109,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-# Start the application
-CMD ["node", "server.js"]
+# Start the application with explicit host binding
+CMD ["node", "server.js", "-H", "0.0.0.0"]
