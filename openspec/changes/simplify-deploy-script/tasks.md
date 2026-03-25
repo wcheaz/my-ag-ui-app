@@ -59,7 +59,7 @@
 ## 3. Create Orchestrator
 
 - [x] 3.1 Create `deploy-all.sh` in project root with shebang
-- [ ] 3.2 Add error handling (`set -e`) to orchestrator
+- [x] 3.2 Add error handling (`set -e`) to orchestrator
 - [ ] 3.3 Implement sequential execution of all 6 modular scripts in correct order:
   - `deploy_scripts/setup-k8s-secrets.sh`
   - `deploy_scripts/build-docker-image.sh`
