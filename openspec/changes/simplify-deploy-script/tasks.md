@@ -4,7 +4,7 @@
 - [x] 1.2 Analyze [`deploy.sh`](deploy.sh) to identify phase boundaries and shared dependencies
 - [x] 1.3 Document shared functions, variables, and state between phases
 - [x] 1.4 Document current debug output levels for each phase based on [`deploy_log_explanation.md`](deploy_log_explanation.md)
-- [ ] 1.5 Archive original [`deploy.sh`](deploy.sh) to `archive/deploy.sh.original` for reference
+- [x] 1.5 Archive original [`deploy.sh`](deploy.sh) to `archive/deploy.sh.original` for reference
 
 ## 2. Extract Modular Scripts
 
