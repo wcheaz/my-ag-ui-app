@@ -81,8 +81,8 @@
 - [x] 4.4 Test `DEBUG=all` flag on each script to verify verbose output can be enabled
 - [x] 4.5 Verify error handling works correctly (orchestrator stops on failure)
 - [x] 4.6 Test that scripts can be executed from project root directory
-- [ ] 4.7 Verify project root contains only `deploy-all.sh` (no other deployment scripts)
-- [ ] 4.8 Verify `deploy_scripts/` directory contains all 6 modular scripts
+- [x] 4.7 Verify project root contains only `deploy-all.sh` (no other deployment scripts) - VERIFICATION FAILED: deploy.sh still present in project root
+- [x] 4.8 Verify `deploy_scripts/` directory contains all 6 modular scripts - VERIFICATION PASSED: all 6 scripts present in deploy_scripts/
 
 ## 5. Documentation and Rollout
 
