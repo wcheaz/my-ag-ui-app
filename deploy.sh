@@ -2206,6 +2206,44 @@ handle_registry_inaccessible_error() {
 # IMAGE PULL FAILURE ERROR HANDLING FUNCTION
 # ===========================
 
+# Handle registry port mismatch error with clear, actionable error message
+handle_registry_port_mismatch_error() {
+    local error_code=$1
+    local expected_port=$2
+    local actual_port=${3:-"unknown"}
+    local file_path=${4:-"k8s/deployment.yaml"}
+    
+    log "❌ CRITICAL CONFIGURATION ERROR [Code: $error_code]: REGISTRY PORT MISMATCH DETECTED"
+    log "   Expected registry port: $expected_port"
+    log "   Actual registry port in deployment: $actual_port"
+    log "   Configuration file: $file_path"
+    log "   Impact: Pod will fail with ImagePullBackOff error"
+    
+    log "=== QUICK FIX REQUIRED ==="
+    log "ERROR TYPE: CONFIGURATION MISMATCH"
+    log "DIAGNOSTIC: Deployment manifest references wrong registry port"
+    log "CAUSE: Registry port was not updated correctly during deployment configuration"
+    
+    log "=== IMMEDIATE RECOVERY STEPS ==="
+    log "1. Edit the deployment file: nano $file_path"
+    log "2. Find the image: line (around line 55)"
+    log "3. Change FROM: image: localhost:$actual_port/my-ag-ui-app:latest"
+    log "4. Change TO:   image: localhost:$expected_port/my-ag-ui-app:latest"
+    log "5. Save file and retry deployment: bash deploy.sh"
+    
+    log "=== VERIFICATION ==="
+    log "After fixing, verify the change:"
+    log "grep -n 'image: localhost:$expected_port' $file_path"
+    
+    log "=== PREVENTION ==="
+    log "To prevent this error in the future:"
+    log "- Always verify registry port before deployment"
+    log "- Use consistent port (32000 for microk8s registry)"
+    log "- Double-check deployment configuration"
+    
+    return $error_code
+}
+
 # Handle image pull failures with comprehensive diagnostics and recovery suggestions
 handle_image_pull_failure_error() {
     local error_code=$1
@@ -2220,7 +2258,7 @@ handle_image_pull_failure_error() {
     log "ERROR TYPE: IMAGE PULL FAILURE"
     log "DIAGNOSTIC: Kubernetes cannot pull the container image from the registry"
     log "POTENTIAL CAUSES:"
-    log "  1. Image reference in deployment is incorrect"
+    log "  1. Image reference in deployment is incorrect (CHECK THIS FIRST)"
     log "  2. Image not available in local registry"
     log "  3. Registry accessibility issues"
     log "  4. Image tag does not exist"
@@ -5218,14 +5256,21 @@ validate_lock_files() {
 # KUBERNETES SECRETS SETUP SECTION
 # ===========================
 
-# Kubernetes secrets setup error handler
+# Kubernetes secrets setup error handler with enhanced error messages
 handle_secrets_error() {
     local error_code=$1
     local error_message=$2
     local recovery_suggestion=$3
     
-    log "DEPLOYMENT ERROR [Code: $error_code]: $error_message"
-    log "RECOVERY SUGGESTION: $recovery_suggestion"
+    # Enhanced error message formatting for better visibility
+    log "═══════════════════════════════════════════════════════════════════════════════"
+    log "                          DEPLOYMENT ERROR DETECTED"
+    log "═══════════════════════════════════════════════════════════════════════════════"
+    log "ERROR CODE: $error_code"
+    log "ERROR SUMMARY: $error_message"
+    log "═══════════════════════════════════════════════════════════════════════════════"
+    log "QUICK FIX: $recovery_suggestion"
+    log "═══════════════════════════════════════════════════════════════════════════════"
     
     # Enhanced recovery suggestions for file transfer errors (110-119)
     if [ "$error_code" -ge 110 ] && [ "$error_code" -le 119 ]; then
@@ -5858,6 +5903,32 @@ if [ "$manifest_size" -eq 0 ]; then
         "Ensure k8s/deployment.yaml contains valid YAML content."
 fi
 
+# Enhanced logging: Registry port validation (CRITICAL for microk8s registry approach)
+log "🔍 REGISTRY PORT VALIDATION: Checking for registry port mismatches..."
+local expected_registry_port="32000"
+local actual_registry_port
+actual_registry_port=$(grep -E "^\s*image:.*localhost:" k8s/deployment.yaml | sed -E 's/.*localhost:([0-9]+)\/.*/\1/' | head -n1 || echo "NOT_FOUND")
+
+if [ "$actual_registry_port" = "NOT_FOUND" ]; then
+    log "   • Registry port check: No localhost registry reference found in deployment.yaml"
+    log "   • This might indicate image references Docker Hub instead of local registry"
+    log "   • Expected: image: localhost:32000/my-ag-ui-app:latest"
+elif [ "$actual_registry_port" != "$expected_registry_port" ]; then
+    log "   ❌ CRITICAL ERROR: Registry port mismatch detected!"
+    log "   • Expected registry port: $expected_registry_port (microk8s standard)"
+    log "   • Actual registry port: $actual_registry_port (in deployment.yaml)"
+    log "   • This will cause ImagePullBackOff errors during deployment"
+    
+    # Use our enhanced error handler for port mismatch
+    handle_registry_port_mismatch_error 900 "$expected_registry_port" "$actual_registry_port" "k8s/deployment.yaml"
+    
+    log "   ⚠️  DEPLOYMENT PAUSED: Please fix the registry port mismatch above and retry"
+    log "   ⚠️  After fixing, run: bash deploy.sh"
+    exit 900
+else
+    log "   ✓ Registry port validation: PASSED (using port $actual_registry_port)"
+fi
+
 log "   • Manifest file size: $manifest_size lines"
 log "   • Manifest validation: PASSED"
 
@@ -6024,6 +6095,19 @@ else
         log "     2. Check cluster admin status: multipass exec '$VM_NAME' -- microk8s kubectl get clusterrolebindings"
         log "     3. If needed, configure admin access: multipass exec '$VM_NAME' -- microk8s kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=\$(whoami)"
         
+    elif echo "$kubectl_apply_output" | grep -q -E "(image.*pull|registry.*access|localhost.*5000)"; then
+        log "   ERROR TYPE: REGISTRY CONFIGURATION ERROR"
+        log "   DIAGNOSTIC: Deployment manifest likely references wrong registry port"
+        log "   COMMON CAUSES:"
+        log "     - Registry port mismatch (5000 instead of 32000)"
+        log "     - Image reference pointing to wrong registry endpoint"
+        log "   RECOVERY:"
+        log "     1. Check registry port in deployment.yaml: grep 'localhost:' k8s/deployment.yaml"
+        log "     2. Verify it should be 'localhost:32000' (not 'localhost:5000')"
+        log "     3. Fix port mismatch if found: sed -i 's/localhost:5000/localhost:32000/g' k8s/deployment.yaml"
+        log "     4. Retry deployment: bash deploy.sh"
+        log "     5. For detailed help: See handle_registry_port_mismatch_error in deploy.sh"
+        
     else
         log "   ERROR TYPE: UNKNOWN KUBECTL APPLY ERROR"
         log "   DIAGNOSTIC: Unrecognized error pattern in kubectl apply output"
@@ -6032,6 +6116,7 @@ else
         log "     2. Validate cluster health: multipass exec '$VM_NAME' -- microk8s kubectl cluster-info dump"
         log "     3. Try dry-run validation: multipass exec '$VM_NAME' -- microk8s kubectl apply --dry-run=client -f k8s/deployment.yaml"
         log "     4. Check system logs: multipass exec '$VM_NAME' -- journalctl -u snap.microk8s.daemon -n 50"
+        log "     5. Check for registry port issues: grep -E '(localhost:5000|localhost:32000)' k8s/deployment.yaml"
     fi
     
     handle_secrets_error 106 "Failed to apply deployment manifest" \
@@ -6142,6 +6227,24 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
         if [ "$SAW_IMAGE_PULL_BACK_OFF" = true ]; then
             log "ERROR TYPE: ImagePullBackOff detected - using specialized image pull error handling"
             handle_image_pull_failure_error 126 "Pod stuck in ImagePullBackOff state - image pull failure" "$POD_NAME"
+            
+            # Additional specific guidance for common ImagePullBackOff causes
+            log "=== ADDITIONAL IMAGE PULL BACKOFF TROUBLESHOOTING ==="
+            log "MOST COMMON CAUSES:"
+            log "1. REGISTRY PORT MISMATCH (most likely):"
+            log "   • Check if deployment.yaml uses wrong registry port"
+            log "   • Expected: localhost:32000/my-ag-ui-app:latest"
+            log "   • Wrong:    localhost:5000/my-ag-ui-app:latest"
+            log "   • Fix: grep -n 'localhost:5000' k8s/deployment.yaml && sed -i 's/localhost:5000/localhost:32000/g' k8s/deployment.yaml"
+            log ""
+            log "2. IMAGE NOT PUSHED TO REGISTRY:"
+            log "   • Check image exists in registry: multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog"
+            log "   • If missing, rebuild and push: docker build -t localhost:32000/my-ag-ui-app:latest . && docker push localhost:32000/my-ag-ui-app:latest"
+            log ""
+            log "3. REGISTRY NOT ACCESSIBLE:"
+            log "   • Check registry status: multipass exec '$VM_NAME' -- microk8s kubectl get pods -n container-registry"
+            log "   • Restart registry if needed: multipass exec '$VM_NAME' -- microk8s stop && multipass exec '$VM_NAME' -- microk8s start"
+            
         else
             log "ERROR TYPE: General pod startup failure - using generic error handling"
             handle_secrets_error 126 "Pod did not reach Running status after deployment restart" \

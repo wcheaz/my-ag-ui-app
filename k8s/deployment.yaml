@@ -52,7 +52,7 @@ spec:
         # Decision: localhost:32000 ensures Kubernetes pulls from local registry
         # Rationale: Eliminates external network access, works with microk8s built-in registry
         # Alternative: Cluster IP would work but is less portable
-        image: localhost:5000/my-ag-ui-app:latest
+        image: localhost:32000/my-ag-ui-app:latest
         # IfNotPresent policy: Use local image if available, pull from registry if not found
         # Decision: Optimizes local development by avoiding unnecessary pulls
         # Rationale: Speeds up deployment when image is already present on node
