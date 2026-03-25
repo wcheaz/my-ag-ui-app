@@ -78,7 +78,7 @@
 - [x] 4.1 Test each modular script independently and verify it works in isolation
 - [x] 4.2 Test orchestrator with full deployment pipeline
 - [x] 4.3 Verify deployment functionality matches original [`deploy.sh`](deploy.sh) behavior
-- [ ] 4.4 Test `DEBUG=all` flag on each script to verify verbose output can be enabled
+- [x] 4.4 Test `DEBUG=all` flag on each script to verify verbose output can be enabled
 - [ ] 4.5 Verify error handling works correctly (orchestrator stops on failure)
 - [ ] 4.6 Test that scripts can be executed from project root directory
 - [ ] 4.7 Verify project root contains only `deploy-all.sh` (no other deployment scripts)
