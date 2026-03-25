@@ -3,24 +3,10 @@
 
 set -e
 
-# Debug flag support - when DEBUG=all is set, retain full verbose output
-# When not set, still retain full output since this is a critical failure phase
-if [ "${DEBUG:-}" != "all" ]; then
-    # This is a critical failure phase, so we always keep full debug output
-    # but we note that DEBUG=all can be used for explicit debugging
-    log "DEBUG: Running with full verbose output (critical failure phase)"
-    log "DEBUG: Set DEBUG=all for explicit debugging if needed"
-fi
-
 # Change to project root directory to ensure consistent paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
-
-# Source common functions if they exist
-if [ -f "deploy_scripts/common.sh" ]; then
-    source "deploy_scripts/common.sh"
-fi
 
 # Default values
 VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
@@ -31,6 +17,32 @@ PERFORMANCE_LOG_FILE="${PERFORMANCE_LOG_FILE:-performance.log}"
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
 }
+
+# Debug flag support - when DEBUG=all is set, retain full verbose output
+# When not set, still retain full output since this is a critical failure phase
+if [ "${DEBUG:-}" != "all" ]; then
+    # This is a critical failure phase, so we always keep full debug output
+    # but we note that DEBUG=all can be used for explicit debugging
+    log "DEBUG: Running with full verbose output (critical failure phase)"
+    log "DEBUG: Set DEBUG=all for explicit debugging if needed"
+fi
+
+
+
+# Default values
+VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
+LOG_FILE="${LOG_FILE:-deploy.log}"
+PERFORMANCE_LOG_FILE="${PERFORMANCE_LOG_FILE:-performance.log}"
+
+# Logging function (fallback if not sourced from common.sh)
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+}
+
+# Source common functions if they exist (this will override the fallback functions if common.sh exists)
+if [ -f "deploy_scripts/common.sh" ]; then
+    source "deploy_scripts/common.sh"
+fi
 
 # Performance timing function (fallback if not sourced from common.sh)
 start_phase_timing() {

@@ -49,12 +49,12 @@
 - [x] 2.5.6 Test script independently: `./deploy_scripts/push-docker-image.sh`
 
 ### 2.6 Deploy to Kubernetes Script
-- [ ] 2.6.1 Extract Kubernetes deployment phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/deploy-to-k8s.sh`
-- [ ] 2.6.2 Add shebang and error handling (`set -e`) to script
-- [ ] 2.6.3 Retain full verbose debug output (CRITICAL FAILURE phase)
-- [ ] 2.6.4 Add debug level documentation comment: `# DEBUG LEVEL: FULL (critical failure phase)`
-- [ ] 2.6.5 Implement `DEBUG=all` flag support to enable/disable verbose output
-- [ ] 2.6.6 Test script independently: `./deploy_scripts/deploy-to-k8s.sh`
+- [x] 2.6.1 Extract Kubernetes deployment phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/deploy-to-k8s.sh`
+- [x] 2.6.2 Add shebang and error handling (`set -e`) to script
+- [x] 2.6.3 Retain full verbose debug output (CRITICAL FAILURE phase)
+- [x] 2.6.4 Add debug level documentation comment: `# DEBUG LEVEL: FULL (critical failure phase)`
+- [x] 2.6.5 Implement `DEBUG=all` flag support to enable/disable verbose output
+- [x] 2.6.6 Test script independently: `./deploy_scripts/deploy-to-k8s.sh`
 
 ## 3. Create Orchestrator
 
