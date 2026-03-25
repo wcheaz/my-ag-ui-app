@@ -5867,12 +5867,8 @@ log ""
 
 # Enhanced logging: Pre-apply deployment state verification
 log "📊 PRE-APPLOY VERIFICATION: Checking current deployment state..."
-local current_deployment_state
 current_deployment_state=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.status}' 2>/dev/null || echo "NOT_FOUND")
 if [ "$current_deployment_state" != "NOT_FOUND" ]; then
-    local current_replicas
-    local current_ready_replicas
-    local current_updated_replicas
     current_replicas=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "unknown")
     current_ready_replicas=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
     current_updated_replicas=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.status.updatedReplicas}' 2>/dev/null || echo "0")
@@ -5895,7 +5891,6 @@ if [ ! -f "k8s/deployment.yaml" ]; then
         "Ensure k8s/deployment.yaml exists in the current directory."
 fi
 
-local manifest_size
 manifest_size=$(wc -l < "k8s/deployment.yaml" 2>/dev/null || echo "0")
 if [ "$manifest_size" -eq 0 ]; then
     log "❌ ERROR: Deployment manifest file is empty: k8s/deployment.yaml"
@@ -5905,8 +5900,7 @@ fi
 
 # Enhanced logging: Registry port validation (CRITICAL for microk8s registry approach)
 log "🔍 REGISTRY PORT VALIDATION: Checking for registry port mismatches..."
-local expected_registry_port="32000"
-local actual_registry_port
+expected_registry_port="32000"
 actual_registry_port=$(grep -E "^\s*image:.*localhost:" k8s/deployment.yaml | sed -E 's/.*localhost:([0-9]+)\/.*/\1/' | head -n1 || echo "NOT_FOUND")
 
 if [ "$actual_registry_port" = "NOT_FOUND" ]; then
@@ -5943,7 +5937,6 @@ log "   • Kubernetes cluster: ACCESSIBLE"
 
 # Enhanced logging: Namespace verification
 log "🏷️  NAMESPACE VERIFICATION: Checking target namespace..."
-local target_namespace
 target_namespace=$(grep -A 10 "namespace:" k8s/deployment.yaml | grep "namespace:" | head -n1 | awk '{print $2}' || echo "default")
 log "   • Target namespace: $target_namespace"
 
@@ -5960,8 +5953,8 @@ log "   • Expected: Deployment resource creation/update"
 log "   • Output will be captured and analyzed below..."
 
 # Capture kubectl apply output for detailed analysis
-local kubectl_apply_output
-local kubectl_apply_exit_code
+kubectl_apply_output=""
+kubectl_apply_exit_code=0
 
 # Execute kubectl apply with output capture
 kubectl_apply_output=$(multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/deployment.yaml 2>&1)
@@ -5998,7 +5991,6 @@ if [ $kubectl_apply_exit_code -eq 0 ]; then
     log "🔍 POST-APPLY VERIFICATION: Checking deployment status after apply..."
     
     # Verify deployment was created/updated successfully
-    local post_apply_deployment
     post_apply_deployment=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o name 2>/dev/null || echo "NOT_FOUND")
     
     if [ "$post_apply_deployment" = "deployment.apps/my-ag-ui-app" ]; then
@@ -6006,16 +5998,13 @@ if [ $kubectl_apply_exit_code -eq 0 ]; then
         log "      • Deployment resource exists: my-ag-ui-app"
         
         # Get detailed deployment information
-        local deployment_spec
         deployment_spec=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec}' 2>/dev/null || echo "unavailable")
-        local deployment_status
         deployment_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.status}' 2>/dev/null || echo "unavailable")
         
         log "      • Deployment spec: $deployment_spec"
         log "      • Deployment status: $deployment_status"
         
         # Verify image reference is correct
-        local deployment_image
         deployment_image=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "unavailable")
         
         if [ "$deployment_image" = "localhost:32000/my-ag-ui-app:latest" ]; then
@@ -6037,7 +6026,6 @@ if [ $kubectl_apply_exit_code -eq 0 ]; then
         
         # Additional diagnostic information
         log "🔧 DIAGNOSTIC: Checking all deployments in namespace..."
-        local all_deployments
         all_deployments=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployments -A 2>&1 | tee -a "$LOG_FILE")
         log "All deployments in cluster:"
         echo "$all_deployments" | tee -a "$LOG_FILE"
@@ -6220,7 +6208,6 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
         multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
         
         # Extract pod name for error handling
-        local POD_NAME
         POD_NAME=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "unknown")
         
         # Use specialized error handler for image pull failures, generic handler for other issues
