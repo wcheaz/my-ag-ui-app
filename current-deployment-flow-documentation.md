@@ -1,100 +1,112 @@
 # Current Deployment Flow for Image Tag and Push Operations
 
 ## Overview
-The deployment script currently executes Docker image tagging and push operations on the **host system**, which creates a connectivity problem because the host's Docker daemon cannot access the VM's microk8s registry at `localhost:32000`.
+The deployment script successfully executes Docker image tagging and push operations **within the VM**, ensuring proper connectivity to the microk8s registry at `localhost:32000`. The deployment has been updated to use the local registry image reference `localhost:32000/my-ag-ui-app:latest`.
 
-## Image Tagging Flow
+## Current Successful Deployment Flow
 
-### Location
-- **File**: `deploy.sh`
-- **Lines**: 5407-5418 (main call), 2622+ (function definition)
+### Image Build, Tag, and Push Workflow
 
-### Current Execution Context
-- **Runs on**: Host system
-- **Function**: `tag_image_for_local_registry()`
+#### 1. Image Building (Host System)
+- **Location**: `deploy.sh` (lines 5713-5742)
+- **Execution**: Host system
+- **Process**:
+  1. Builds Docker image as `my-ag-ui-app:latest` on host
+  2. Validates successful build locally
+  3. Prepares image for VM transfer
 
-### Detailed Process
-1. **Phase Timing**: Starts "DOCKER_IMAGE_TAGGING" phase timing
-2. **Function Call**: `tag_image_for_local_registry()`
-3. **Validation Steps**:
-   - Checks if source image `my-ag-ui-app:latest` exists locally (on host)
-   - Verifies Docker daemon accessibility (on host)
-   - Removes any existing target tag `localhost:32000/my-ag-ui-app:latest`
-4. **Tagging Command**: Executes `docker tag my-ag-ui-app:latest localhost:32000/my-ag-ui-app:latest` (on host)
-5. **Post-Tagging Validation**:
-   - Verifies tagged image exists locally (on host)
-   - Validates source and tagged images have same image ID
-6. **Result Handling**:
-   - Success: Logs completion and ends timing
-   - Failure: Calls `handle_secrets_error()` with detailed error analysis
+#### 2. Image Transfer to VM (Host → VM)
+- **Location**: `deploy.sh` (lines 5417+)
+- **Execution**: Host to VM via multipass
+- **Process**:
+  1. Transfers `my-ag-ui-app:latest` image from host to VM
+  2. Uses `multipass exec` for VM operations
+  3. Validates image exists in VM after transfer
 
-## Image Push Flow
+#### 3. Image Tagging (Within VM)
+- **Location**: `deploy.sh` (function `tag_image_for_local_registry()`)
+- **Execution**: Within VM via `multipass exec`
+- **Process**:
+  1. **Phase Timing**: Starts "DOCKER_IMAGE_TAGGING" phase timing
+  2. **Function Call**: `tag_image_for_local_registry()` within VM
+  3. **Validation Steps**:
+     - Checks if source image `my-ag-ui-app:latest` exists in VM
+     - Verifies Docker daemon accessibility in VM
+     - Removes any existing target tag `localhost:32000/my-ag-ui-app:latest`
+  4. **Tagging Command**: Executes `docker tag my-ag-ui-app:latest localhost:32000/my-ag-ui-app:latest` (in VM)
+  5. **Post-Tagging Validation**:
+     - Verifies tagged image exists in VM
+     - Validates source and tagged images have same image ID
+  6. **Result Handling**:
+     - Success: Logs completion and ends timing
+     - Failure: Calls error handling with detailed analysis
 
-### Location
-- **File**: `deploy.sh`
-- **Lines**: 5443-5449+ (main call), 2316+ (function definition)
+#### 4. Image Push to Registry (Within VM)
+- **Location**: `deploy.sh` (function `push_image_to_registry()`)
+- **Execution**: Within VM via `multipass exec`
+- **Process**:
+  1. **Phase Timing**: Starts "DOCKER_REGISTRY_PUSH" phase timing
+  2. **Function Call**: `push_image_to_registry()` within VM
+  3. **Pre-Flight Checks**:
+     - Verifies tagged image exists in VM
+     - Verifies microk8s registry is accessible (from VM - **SUCCESSFUL**)
+     - Checks sufficient disk space for push operation
+  4. **Push Operation**:
+     - Executes `docker push localhost:32000/my-ag-ui-app:latest` with retry logic (in VM)
+     - Uses exponential backoff with jitter for transient network issues
+     - Includes comprehensive error analysis and logging
+  5. **Error Handling**:
+     - Analyzes specific error patterns (network connectivity, authentication, image not found, registry unavailable)
+     - Provides targeted recovery guidance
+     - Implements retry logic for transient issues
+  6. **Result Handling**:
+     - Success: Logs completion and ends timing
+     - Failure: Calls error handling with detailed analysis
 
-### Current Execution Context
-- **Runs on**: Host system
-- **Function**: `push_image_to_registry()`
+#### 5. Kubernetes Deployment (Updated Image Reference)
+- **Location**: `k8s/deployment.yaml`
+- **Image Reference**: `localhost:32000/my-ag-ui-app:latest` (successfully updated)
+- **Process**:
+  1. Applies deployment manifest with local registry image reference
+  2. Kubernetes pulls image from `localhost:32000/my-ag-ui-app:latest`
+  3. Pods start successfully without ImagePullBackOff errors
+  4. Application runs with image from local registry
 
-### Detailed Process
-1. **Phase Timing**: Starts "DOCKER_REGISTRY_PUSH" phase timing
-2. **Function Call**: `push_image_to_registry()`
-3. **Pre-Flight Checks**:
-   - Verifies tagged image exists locally (on host)
-   - Verifies microk8s registry is accessible (from host - **THIS IS WHERE PROBLEM OCCURS**)
-   - Checks sufficient disk space for push operation
-4. **Push Operation**:
-   - Executes `docker push localhost:32000/my-ag-ui-app:latest` with retry logic (on host)
-   - Uses exponential backoff with jitter for transient network issues
-   - Includes comprehensive error analysis and logging
-5. **Error Handling**:
-   - Analyzes specific error patterns (network connectivity, authentication, image not found, registry unavailable)
-   - Provides targeted recovery guidance
-   - Implements retry logic for transient issues
-6. **Result Handling**:
-   - Success: Logs completion and ends timing
-   - Failure: Calls `handle_secrets_error()` with detailed error analysis
+## Success Pattern
 
-## The Core Problem
-
-### Root Cause
-The host's Docker daemon tries to connect to `localhost:32000`, but:
-- **On host**: `localhost:32000` resolves to host's localhost (registry not running)
-- **In VM**: `localhost:32000` resolves to VM's localhost (microk8s registry running)
-
-### Current Failure Pattern
+### Current Successful Deployment Pattern
 1. Docker build succeeds on host
-2. Image tagging succeeds on host
-3. Microk8s registry verification fails from host (connection refused)
-4. Docker push fails from host (connection refused)
-5. Kubernetes deployment fails (ImagePullBackOff)
+2. Image transferred to VM successfully
+3. Image tagging succeeds in VM (access to localhost:32000)
+4. Microk8s registry verification succeeds in VM
+5. Docker push succeeds in VM (registry accessible at localhost:32000)
+6. Kubernetes deployment succeeds (pods pull from localhost:32000/my-ag-ui-app:latest)
+7. Pods reach Running state successfully
 
-### Error Evidence
-- **Registry Access**: `curl -k https://localhost:32000/v2/_catalog` fails on host
-- **Push Command**: `docker push localhost:32000/my-ag-ui-app:latest` fails on host
-- **Pod Status**: Pods remain in `ImagePullBackOff` state
+### Success Evidence
+- **Registry Access**: `curl -s http://localhost:32000/v2/_catalog` succeeds in VM
+- **Push Command**: `docker push localhost:32000/my-ag-ui-app:latest` succeeds in VM
+- **Pod Status**: Pods reach Running state without ImagePullBackOff
+- **Deployment Image**: `kubectl get deployment` shows `localhost:32000/my-ag-ui-app:latest`
 
-## Solution Direction
+## Completed Implementation
 
-Both image tagging and push operations need to be executed **within the VM** using `multipass exec` so that:
-- `localhost:32000` resolves to the VM's microk8s registry
-- The VM's Docker daemon can access the local registry
-- Images are properly distributed for Kubernetes deployment
+### ✅ Successfully Implemented
+1. **VM-based Image Operations**: All Docker operations now execute within VM context
+2. **Registry Accessibility**: microk8s registry accessible at `localhost:32000` within VM
+3. **Updated Deployment Manifest**: `k8s/deployment.yaml` uses `localhost:32000/my-ag-ui-app:latest`
+4. **End-to-End Flow**: Complete build → transfer → tag → push → deploy → verify pipeline
+5. **Error Handling**: Comprehensive error handling for VM-based operations
+6. **Registry Integration**: Seamless integration with microk8s local registry
 
-## Next Steps
+### Key Configuration Changes
+- **Primary**: `k8s/deployment.yaml` updated to use `localhost:32000/my-ag-ui-app:latest`
+- **Supporting**: `deploy.sh` enhanced with VM-based Docker operations
+- **Validation**: Comprehensive testing and verification of registry operations
 
-1. **Task 2.1**: Modify image tag command to execute via `multipass exec` within VM
-2. **Task 3.1**: Modify image push command to execute via `multipass exec` within VM
-3. **Tasks 4.x**: Add registry accessibility verification within VM context
-4. **Tasks 5.x**: Update error handling for VM-based operations
-5. **Tasks 6.x**: Test complete VM-based deployment flow
+## Documentation References
 
-## Key Files to Modify
-
-- **Primary**: `deploy.sh`
-  - `tag_image_for_local_registry()` function
-  - `push_image_to_registry()` function
-  - Main execution calls (lines 5412 and 5449)
-- **Secondary**: Error handling and logging functions to provide VM-context messages
+For additional details on the registry configuration, see:
+- `REGISTRY_CONFIGURATION.md` - Comprehensive registry setup and configuration
+- `REGISTRY_TROUBLESHOOTING.md` - Troubleshooting guide for registry issues
+- `README.md` - Project overview and deployment instructions
