@@ -64,6 +64,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Verified project root directory is clean and organized
 
 ### Migration Notes
+- **Deployment Scripts Refactoring**: Monolithic `deploy.sh` (338KB) has been replaced with modular deployment scripts
+- **Breaking Changes**: 
+  - `deploy.sh` has been replaced with `deploy-all.sh` as the main deployment orchestrator
+  - Existing workflows that reference `deploy.sh` must be updated to use `deploy-all.sh`
+- **New Modular Structure**:
+  - `deploy-all.sh` - Main orchestrator in project root
+  - `deploy_scripts/` directory containing 6 focused scripts:
+    - `setup-k8s-secrets.sh` - Kubernetes secrets setup (retains full debug)
+    - `build-docker-image.sh` - Docker image build (minimal debug)
+    - `tag-docker-image.sh` - Docker image tagging (minimal debug)
+    - `setup-microk8s-registry.sh` - Microk8s registry setup (minimal debug)
+    - `push-docker-image.sh` - Docker registry push (minimal debug)
+    - `deploy-to-k8s.sh` - Kubernetes deployment (retains full debug)
+- **Debug Output Optimization**:
+  - Verbose debug output retained only for problematic phases (secrets setup, K8s deployment)
+  - Minimal debug output for successful phases (build, tag, registry setup)
+  - Use `DEBUG=all` flag to temporarily enable full verbose output for any script
+  - Each script has debug level documentation comments
+- **Enhanced Development Experience**:
+  - Individual scripts can be executed independently for isolated testing
+  - Context token consumption significantly reduced during development
+  - Better error handling with clear failure messages
+  - Maintains all existing deployment functionality
+- **Rollback Capability**: Original `deploy.sh` archived as `archive/deploy.sh.original` for reference
 - **No Breaking Changes**: Existing `.env` files will continue to work without modification
 - **Enhanced Compatibility**: The new parser supports additional `.env` file features:
   - Multiline values using double quotes
