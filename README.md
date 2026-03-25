@@ -111,22 +111,92 @@ This project uses a **microk8s registry approach** for Kubernetes deployments, w
 
 ### Automated Deployment
 
-The project includes an automated deployment script that implements the microk8s registry approach:
+The project includes a modular deployment system that implements the microk8s registry approach:
+
+#### Full Deployment (Recommended)
+
+To run the complete deployment pipeline with all phases:
 
 ```bash
-./deploy.sh
+./deploy-all.sh
 ```
 
-The deployment script will:
-1. **Validate lock files** - Ensures package.json and package-lock.json are synchronized for reproducible builds
-2. **Provision a VM** using Multipass with 4 CPUs, 7.7GiB RAM, and 19.3GiB disk
-3. **Install Microk8s** in the VM and enable required add-ons (dns, storage, ingress, registry)
-4. **Enable Local Registry** - Sets up microk8s registry for local image distribution
-5. **Build Docker Image** using the optimized multi-stage Dockerfile with dependency fallback
-6. **Tag for Local Registry** - Tags image as `localhost:32000/my-ag-ui-app:latest`
-7. **Push to Registry** - Pushes tagged image to microk8s local registry
-8. **Deploy to Kubernetes** - Updates deployment to use local registry image
-9. **Verify Deployment** - Confirms pods are running and provides access information
+This orchestrator script executes all deployment phases in sequence:
+1. **Setup Kubernetes Secrets** - Configures secrets for the application
+2. **Build Docker Image** - Builds the application container image
+3. **Tag Docker Image** - Tags image for local registry
+4. **Setup Microk8s Registry** - Configures microk8s registry for image distribution
+5. **Push Docker Image** - Pushes tagged image to microk8s registry
+6. **Deploy to Kubernetes** - Deploys application to Kubernetes cluster
+
+#### Individual Phase Scripts
+
+Each deployment phase can be executed independently for testing and debugging:
+
+```bash
+# Setup Kubernetes secrets (FULL debug output)
+./deploy_scripts/setup-k8s-secrets.sh
+
+# Build Docker image (MINIMAL debug output)
+./deploy_scripts/build-docker-image.sh
+
+# Tag Docker image (MINIMAL debug output)
+./deploy_scripts/tag-docker-image.sh
+
+# Setup Microk8s registry (MINIMAL debug output)
+./deploy_scripts/setup-microk8s-registry.sh
+
+# Push Docker image (MINIMAL debug output)
+./deploy_scripts/push-docker-image.sh
+
+# Deploy to Kubernetes (FULL debug output)
+./deploy_scripts/deploy-to-k8s.sh
+```
+
+#### Debug Output Control
+
+Each script has optimized debug output levels based on phase status:
+
+- **FULL debug output** (problematic phases): `setup-k8s-secrets.sh`, `deploy-to-k8s.sh`
+- **MINIMAL debug output** (successful phases): `build-docker-image.sh`, `tag-docker-image.sh`, `setup-microk8s-registry.sh`, `push-docker-image.sh`
+
+To temporarily enable full debug output for all phases:
+
+```bash
+DEBUG=all ./deploy-all.sh
+# Or for individual scripts:
+DEBUG=all ./deploy_scripts/build-docker-image.sh
+```
+
+#### Phase Details
+
+1. **Setup Kubernetes Secrets** (`setup-k8s-secrets.sh`)
+   - Configures Kubernetes secrets for the application
+   - **Debug Level**: FULL (problematic phase - retains all debug output)
+   - Validates and configures environment variables and secrets
+
+2. **Build Docker Image** (`build-docker-image.sh`)
+   - Builds application Docker image using optimized multi-stage Dockerfile
+   - **Debug Level**: MINIMAL (successful phase - essential status only)
+   - Validates lock files for reproducible builds
+
+3. **Tag Docker Image** (`tag-docker-image.sh`)
+   - Tags Docker image for local registry (`localhost:32000/my-ag-ui-app:latest`)
+   - **Debug Level**: MINIMAL (successful phase - success confirmation only)
+
+4. **Setup Microk8s Registry** (`setup-microk8s-registry.sh`)
+   - Provisions VM using Multipass with 4 CPUs, 7.7GiB RAM, 19.3GiB disk
+   - Installs Microk8s and enables required add-ons (dns, storage, ingress, registry)
+   - **Debug Level**: MINIMAL (successful phase - essential status only)
+
+5. **Push Docker Image** (`push-docker-image.sh`)
+   - Pushes tagged image to microk8s local registry
+   - **Debug Level**: MINIMAL (partial success phase - critical status only)
+
+6. **Deploy to Kubernetes** (`deploy-to-k8s.sh`)
+   - Deploys application to Kubernetes cluster using local registry image
+   - Verifies deployment and provides access information
+   - **Debug Level**: FULL (critical failure phase - retains all debug output)
 
 ### Prerequisites
 
@@ -186,6 +256,35 @@ This ensures that:
 - Pods pull images from the local registry instead of Docker Hub
 - No external network access is required for image pulls
 - Deployment works reliably in the local development environment
+
+### Benefits of Modular Deployment
+
+The modular deployment system provides several advantages over the previous monolithic approach:
+
+#### 1. **Isolated Testing and Debugging**
+- Each deployment phase can be tested independently
+- Run specific phases to isolate and fix issues quickly
+- Debug output is optimized for each phase's status (successful vs problematic)
+
+#### 2. **Reduced Context Token Consumption**
+- Smaller, focused scripts consume fewer context tokens during development
+- Only load the specific phase you're working on
+- Improved ralph-loop development experience
+
+#### 3. **Flexible Deployment Workflow**
+- Run full deployment with `./deploy-all.sh` for standard deployments
+- Execute individual phases for targeted testing and debugging
+- Easy to integrate with CI/CD pipelines
+
+#### 4. **Better Maintainability**
+- Each script has a single responsibility
+- Clear separation of concerns makes code easier to understand
+- Consistent error handling across all scripts
+
+#### 5. **Progressive Debugging**
+- Successful phases have minimal debug output (less noise)
+- Problematic phases retain full debug output (more details)
+- Temporary full debugging available with `DEBUG=all` flag
 
 #### Registry Setup Requirements
 
@@ -357,11 +456,11 @@ The deployment script validates that package.json and package-lock.json are sync
 
 1. **Update lock file**: Run `npm install` to synchronize package-lock.json with package.json
 2. **Commit both files**: Commit the updated package-lock.json along with package.json
-3. **Retry deployment**: Run `./deploy.sh` again
+3. **Retry deployment**: Run `./deploy-all.sh` again
 
 **Emergency bypass** (not recommended for regular use):
 ```bash
-./deploy.sh --skip-deps-check
+SKIP_DEPS_CHECK=true ./deploy-all.sh
 ```
 > **Warning**: Skipping dependency validation may result in non-reproducible builds and deployment inconsistencies. Only use this for emergency deployments when immediate fixes are needed.
 

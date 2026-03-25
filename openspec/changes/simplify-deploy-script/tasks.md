@@ -86,11 +86,11 @@
 
 ## 5. Documentation and Rollout
 
-- [ ] 5.1 Update [`README.md`](README.md) to document new deployment scripts structure
-- [ ] 5.2 Document how to use individual scripts for isolated testing
-- [ ] 5.3 Document how to use `deploy-all.sh` for full deployment
-- [ ] 5.4 Document `DEBUG=all` flag usage for temporary full debugging
-- [ ] 5.5 Document debug level for each script (full, minimal)
+- [x] 5.1 Update [`README.md`](README.md) to document new deployment scripts structure
+- [x] 5.2 Document how to use individual scripts for isolated testing
+- [x] 5.3 Document how to use `deploy-all.sh` for full deployment
+- [x] 5.4 Document `DEBUG=all` flag usage for temporary full debugging
+- [x] 5.5 Document debug level for each script (full, minimal)
 - [ ] 5.6 Update any existing workflows that reference [`deploy.sh`](deploy.sh) to use `deploy-all.sh`
 - [ ] 5.7 Add migration notes to [`CHANGELOG.md`](CHANGELOG.md)
 - [ ] 5.8 Create rollback procedure documentation in case issues arise
