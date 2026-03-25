@@ -14,6 +14,17 @@
 # Image: localhost:32000/my-ag-ui-app:latest
 # Registry: microk8s built-in local registry at localhost:32000
 #
+# CONFIGURABLE VALUES ANALYSIS (Task 9.3):
+# =========================================
+# The following values are appropriately hardcoded for this deployment:
+# - app-port: 3000 (defined in ConfigMap, but hardcoded here for Kubernetes container spec)
+# - probe timing values: Configured for optimal startup and health check behavior
+# - resource limits: Set for local development environment constraints
+#
+# Values made configurable in ConfigMap:
+# - llm-max-tokens, llm-context-window: Application behavior settings
+# - infrastructure values: Port mappings, resource requests/limits, probe timings
+#
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -40,8 +51,8 @@ spec:
         # Using localhost:32000 for local microk8s registry access
         # Decision: localhost:32000 ensures Kubernetes pulls from local registry
         # Rationale: Eliminates external network access, works with microk8s built-in registry
-        # Alternative: Cluster IP (10.152.183.199) would work but is less portable
-        image: localhost:32000/my-ag-ui-app:latest
+        # Alternative: Cluster IP would work but is less portable
+        image: localhost:5000/my-ag-ui-app:latest
         # IfNotPresent policy: Use local image if available, pull from registry if not found
         # Decision: Optimizes local development by avoiding unnecessary pulls
         # Rationale: Speeds up deployment when image is already present on node
