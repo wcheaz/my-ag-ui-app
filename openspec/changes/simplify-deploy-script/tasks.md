@@ -60,17 +60,17 @@
 
 - [x] 3.1 Create `deploy-all.sh` in project root with shebang
 - [x] 3.2 Add error handling (`set -e`) to orchestrator
-- [ ] 3.3 Implement sequential execution of all 6 modular scripts in correct order:
+- [x] 3.3 Implement sequential execution of all 6 modular scripts in correct order:
   - `deploy_scripts/setup-k8s-secrets.sh`
   - `deploy_scripts/build-docker-image.sh`
   - `deploy_scripts/tag-docker-image.sh`
   - `deploy_scripts/setup-microk8s-registry.sh`
   - `deploy_scripts/push-docker-image.sh`
   - `deploy_scripts/deploy-to-k8s.sh`
-- [ ] 3.4 Add error checking after each script execution
-- [ ] 3.5 Implement clear error messages indicating which script failed
-- [ ] 3.6 Add success message when all scripts complete successfully
-- [ ] 3.7 Add usage comment or help text at top of script
+- [x] 3.4 Add error checking after each script execution
+- [x] 3.5 Implement clear error messages indicating which script failed
+- [x] 3.6 Add success message when all scripts complete successfully
+- [x] 3.7 Add usage comment or help text at top of script
 - [ ] 3.8 Test orchestrator: `./deploy-all.sh`
 
 ## 4. Validation and Testing

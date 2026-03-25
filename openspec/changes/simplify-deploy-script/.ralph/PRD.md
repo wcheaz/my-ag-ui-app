@@ -391,4 +391,46 @@ The refactoring will split the monolithic script into modular components while m
 ## Current Task Context
 
 ## Current Task
-- 1.1 Create `deploy_scripts/` directory in project root
+- 3.1 Create `deploy-all.sh` in project root with shebang
+## Completed Tasks for Git Commit
+- [x] 1.1 Create `deploy_scripts/` directory in project root
+- [x] 1.2 Analyze [`deploy.sh`](deploy.sh) to identify phase boundaries and shared dependencies
+- [x] 1.3 Document shared functions, variables, and state between phases
+- [x] 1.4 Document current debug output levels for each phase based on [`deploy_log_explanation.md`](deploy_log_explanation.md)
+- [x] 1.5 Archive original [`deploy.sh`](deploy.sh) to `archive/deploy.sh.original` for reference
+- [x] 2.1.1 Extract Kubernetes secrets setup phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/setup-k8s-secrets.sh`
+- [x] 2.1.2 Add shebang and error handling (`set -e`) to script
+- [x] 2.1.3 Retain full verbose debug output (PROBLEMATIC phase)
+- [x] 2.1.4 Add debug level documentation comment: `# DEBUG LEVEL: FULL (problematic phase)`
+- [x] 2.1.5 Implement `DEBUG=all` flag support to enable/disable verbose output
+- [x] 2.1.6 Test script independently: `./deploy_scripts/setup-k8s-secrets.sh`
+- [x] 2.2.1 Extract Docker build phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/build-docker-image.sh`
+- [x] 2.2.2 Add shebang and error handling (`set -e`) to script
+- [x] 2.2.3 Remove verbose debug output, keep only essential status messages (SUCCESS phase)
+- [x] 2.2.4 Add debug level documentation comment: `# DEBUG LEVEL: MINIMAL (successful phase)`
+- [x] 2.2.5 Implement `DEBUG=all` flag support to enable/disable verbose output
+- [x] 2.2.6 Test script independently: `./deploy_scripts/build-docker-image.sh`
+- [x] 2.3.1 Extract Docker image tagging phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/tag-docker-image.sh`
+- [x] 2.3.2 Add shebang and error handling (`set -e`) to script
+- [x] 2.3.3 Remove verbose debug output, keep only success confirmation (SUCCESS phase)
+- [x] 2.3.4 Add debug level documentation comment: `# DEBUG LEVEL: MINIMAL (successful phase)`
+- [x] 2.3.5 Implement `DEBUG=all` flag support to enable/disable verbose output
+- [x] 2.3.6 Test script independently: `./deploy_scripts/tag-docker-image.sh`
+- [x] 2.4.1 Extract Microk8s registry setup phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/setup-microk8s-registry.sh`
+- [x] 2.4.2 Add shebang and error handling (`set -e`) to script
+- [x] 2.4.3 Remove verbose debug output, keep only essential status messages (SUCCESS phase)
+- [x] 2.4.4 Add debug level documentation comment: `# DEBUG LEVEL: MINIMAL (successful phase)`
+- [x] 2.4.5 Implement `DEBUG=all` flag support to enable/disable verbose output
+- [x] 2.4.6 Test script independently: `./deploy_scripts/setup-microk8s-registry.sh`
+- [x] 2.5.1 Extract Docker registry push phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/push-docker-image.sh`
+- [x] 2.5.2 Add shebang and error handling (`set -e`) to script
+- [x] 2.5.3 Minimize debug output, keep only critical status and error messages (PARTIAL SUCCESS phase)
+- [x] 2.5.4 Add debug level documentation comment: `# DEBUG LEVEL: MINIMAL (partial success phase)`
+- [x] 2.5.5 Implement `DEBUG=all` flag support to enable/disable verbose output
+- [x] 2.5.6 Test script independently: `./deploy_scripts/push-docker-image.sh`
+- [x] 2.6.1 Extract Kubernetes deployment phase from [`deploy.sh`](deploy.sh) to `deploy_scripts/deploy-to-k8s.sh`
+- [x] 2.6.2 Add shebang and error handling (`set -e`) to script
+- [x] 2.6.3 Retain full verbose debug output (CRITICAL FAILURE phase)
+- [x] 2.6.4 Add debug level documentation comment: `# DEBUG LEVEL: FULL (critical failure phase)`
+- [x] 2.6.5 Implement `DEBUG=all` flag support to enable/disable verbose output
+- [x] 2.6.6 Test script independently: `./deploy_scripts/deploy-to-k8s.sh`
