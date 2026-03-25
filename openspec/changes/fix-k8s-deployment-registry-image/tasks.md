@@ -55,7 +55,7 @@
 - [x] 7.2 Document the localhost:32000 registry endpoint usage
 - [x] 7.3 Update troubleshooting guides for registry-related issues
 - [x] 7.4 Add notes about local-only deployment limitations
-- [ ] 7.5 Update README with registry configuration details
+- [x] 7.5 Update README with registry configuration details
 
 ## 8. Integration and Validation
 

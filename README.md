@@ -151,6 +151,42 @@ The script performs these registry setup steps automatically:
 4. **Image Preparation** - Builds and tags images for the local registry
 5. **Registry Integration** - Configures Kubernetes to use the local registry
 
+#### Registry Configuration Details
+
+The deployment uses the following registry configuration:
+
+- **Registry URL**: `localhost:32000`
+- **Image Reference**: `localhost:32000/my-ag-ui-app:latest`
+- **Registry Access**: The registry is accessible within the Kubernetes cluster at `http://localhost:32000`
+- **Registry API**: Docker Registry API v2 at `http://localhost:32000/v2/`
+- **Registry Catalog**: Available at `http://localhost:32000/v2/_catalog`
+
+#### Key Registry Features
+
+- **Local Only**: The registry runs entirely within the VM, no external network access required
+- **No Authentication**: The local microk8s registry does not require authentication
+- **Persistent Storage**: Images persist across VM restarts
+- **Kubernetes Integration**: Native integration with microk8s without additional configuration
+- **Standard Docker API**: Compatible with standard Docker client commands
+
+#### Deployment Manifest Configuration
+
+The Kubernetes deployment manifest (`k8s/deployment.yaml`) has been updated to use the local registry:
+
+```yaml
+spec:
+  template:
+    spec:
+      containers:
+      - name: my-ag-ui-app
+        image: localhost:32000/my-ag-ui-app:latest
+```
+
+This ensures that:
+- Pods pull images from the local registry instead of Docker Hub
+- No external network access is required for image pulls
+- Deployment works reliably in the local development environment
+
 #### Registry Setup Requirements
 
 - **Network Connectivity**: The VM must have internet access to download microk8s packages during installation
