@@ -1,164 +1,406 @@
-# Deployment Failure Analysis
+# Deploy Log Issues and Solutions
 
-## Executive Summary
+This document analyzes the issues found in [`deploy_log.md`](deploy_log.md:1) and maps them to specific tasks in the task plan at [`openspec/changes/fix-deploy-all-script-issues/tasks.md`](openspec/changes/fix-deploy-all-script-issues/tasks.md:1).
 
-The deployment failed due to a critical application health check issue. While the infrastructure setup (Docker build, registry, Kubernetes deployment) completed successfully, the application pods are unable to pass their health and readiness checks, causing them to enter a CrashLoopBackOff state.
+---
 
-## Timeline of Events
+## Issue 1: Kubernetes Secrets Setup Failure
 
-### Phase 1: Kubernetes Secrets Setup (Lines 1-32)
-**Status: ⚠️ PROBLEMATIC**
+### Location in Deploy Log
+**Lines 22-32:** The generated YAML file is invalid, but the script continues execution and reports success on line 33.
 
-- **Error**: Generated YAML file validation failed (line 21-31)
-- **Issue**: The setup script reported "ERROR: Generated YAML file is invalid" but then immediately marked the step as "completed successfully"
-- **Impact**: This inconsistency suggests the secrets may not have been properly configured, which could affect the application's ability to start correctly
+```
+❌ ERROR: Generated YAML file is invalid
+ERROR TYPE: KUBERNETES SECRETS SETUP FAILURE
+DIAGNOSTIC: Generated YAML file is invalid
+```
 
-### Phase 2: Docker Image Build (Lines 49-151)
-**Status: ✅ SUCCESS**
+**Problem:** The setup-k8s-secrets.sh script detects invalid YAML but doesn't halt the deployment pipeline, leading to deployment with invalid configuration.
 
-- Docker image `my-ag-ui-app:latest` built successfully
-- Next.js build completed without errors
-- Image size: 546MB
-- No issues detected in this phase
+### Root Cause
+- Validation detects the error but doesn't exit with non-zero code
+- No proper error propagation to parent script
+- Deployment continues despite critical failure
 
-### Phase 3: Docker Image Tagging (Lines 154-201)
-**Status: ✅ SUCCESS**
+### Solution Tasks
 
-- Image successfully tagged as `localhost:32000/my-ag-ui-app:latest`
-- Tagging completed within VM where registry is accessible
-- Image ID verified: `9bb7f1915756`
+#### Common Infrastructure
+- **Task 2.1:** Add `set -euo pipefail` to `deploy_scripts/common.sh` for strict error handling
+  - Ensures any command failure causes immediate exit
+  - Prevents silent continuation after errors
 
-### Phase 4: Microk8s Registry Setup (Lines 202-297)
-**Status: ✅ SUCCESS**
+- **Task 2.8:** Implement `verify_command()` function in `deploy_scripts/common.sh`
+  - Checks command exit codes and logs errors
+  - Provides consistent error handling across all scripts
 
-- Registry enabled and verified accessible
-- Registry pod running: `registry-6cf7b9fcc-4kfg7`
-- Service endpoint: `localhost:32000`
-- API connectivity verified with successful v2 API response
+#### Secrets Setup Script
+- **Task 3.1:** Add error handling functions import to `deploy_scripts/setup-k8s-secrets.sh`
+  - Imports logging and error handling functions
 
-### Phase 5: Docker Registry Push (Lines 298-448)
-**Status: ⚠️ PARTIAL SUCCESS**
+- **Task 3.2:** Implement secrets YAML validation using `kubectl apply --dry-run=server`
+  - Validates against actual Kubernetes API server
+  - Catches syntax errors, missing fields, and invalid configurations
 
-- Image push completed successfully (line 402)
-- **Warning**: Image verification failed - image not found in registry catalog after 5 attempts (lines 418-433)
-- **Impact**: The push may have succeeded but the registry catalog wasn't updated in time for verification. This is likely a timing issue rather than a critical failure.
+- **Task 3.3:** Add exit code 1 on validation failure with structured error message
+  - Halts deployment pipeline on validation failure
+  - Prevents deployment with invalid configuration
 
-### Phase 6: Kubernetes Deployment (Lines 523-885)
-**Status: ❌ CRITICAL FAILURE**
+- **Task 3.5:** Add detailed error message with recovery steps when validation fails
+  - Provides actionable guidance for fixing the issue
+  - Includes ERROR TYPE, DIAGNOSTIC, COMMON CAUSES, and RECOVERY fields
 
-## Root Cause Analysis
+- **Task 3.6:** Test secrets validation with invalid YAML to verify error handling
+  - Ensures error handling works as expected
 
-### Primary Issue: Health Check Failures
+#### Main Deployment Script
+- **Task 11.1:** Add `set -euo pipefail` to `deploy-all.sh`
+  - Ensures any step failure stops the entire pipeline
 
-The deployment failed because the application pods are unable to respond to health check requests:
+- **Task 11.5:** Implement rollback function that reapplies `k8s/deployment.yaml.backup` on failure
+  - Provides recovery mechanism if deployment fails after making changes
 
-#### Pod 1: `my-ag-ui-app-78d9b4f9d9-97chw`
-- **Status**: Running but NOT Ready (0/1)
-- **Problem**: Container starts but immediately exits with exit code 0 (Completed state)
-- **Restart Count**: 1
-- **Critical Events**:
-  - Line 787: `Liveness probe failed: HTTP probe failed with statuscode: 404`
-  - Line 788: `Readiness probe failed: HTTP probe failed with statuscode: 404`
+---
 
-#### Pod 2: `my-ag-ui-app-d84bd959b-fpnlv`
-- **Status**: CrashLoopBackOff
-- **Problem**: Container repeatedly starts and exits
-- **Restart Count**: 7 (high restart count indicates persistent issue)
-- **Critical Events**:
-  - Line 864: `Readiness probe failed: HTTP probe failed with statuscode: 404`
+## Issue 2: Pod Health Check Failures
 
-### Health Check Configuration
+### Location in Deploy Log
+**Lines 437-440:** Both liveness and readiness probes fail with HTTP 404 errors.
 
-From the deployment specification (lines 747-748, 830-831):
-- **Readiness Probe**: HTTP GET to `http://:3000/api/health` after 5s delay
-- **Liveness Probe**: HTTP GET to `http://:3000/api/health` after 30s delay
-- **Expected Behavior**: Application should respond with HTTP 200 on `/api/health`
-- **Actual Behavior**: Application returns HTTP 404 (Not Found)
+```
+Warning  Unhealthy  28s (x3 over 48s)  kubelet  Readiness probe failed: HTTP probe failed with statuscode: 404
+Warning  Unhealthy  28s (x3 over 48s)  kubelet  Liveness probe failed: HTTP probe failed with statuscode: 404
+```
 
-### Why This Causes Failure
+**Problem:** The application is not responding to health checks at `/api/health` endpoint, causing pods to be marked as unhealthy and restarted.
 
-1. **Readiness Probe Fails**: Kubernetes marks the pod as "Not Ready" because the health endpoint returns 404
-2. **Liveness Probe Fails**: Kubernetes kills the container because it appears unhealthy
-3. **Container Restarts**: Kubernetes restarts the container to attempt recovery
-4. **CrashLoopBackOff**: After multiple restart failures, Kubernetes enters CrashLoopBackOff state
-5. **Deployment Unavailable**: With no ready pods, the deployment cannot serve traffic
+### Root Cause
+- Application may not expose `/api/health` endpoint
+- Health check endpoint path may be incorrect
+- Application may not be ready when probes start checking
 
-## Secondary Issues
+### Solution Tasks
 
-### 1. Secrets Configuration Inconsistency
-- The secrets setup reported both failure and success
-- This may indicate missing or misconfigured environment variables
-- Missing secrets could prevent the application from starting properly
+#### Health Check Configuration
+- **Task 9.1:** Verify application exposes `/api/health` endpoint that returns HTTP 200
+  - Ensures the endpoint exists and responds correctly
 
-### 2. Image Verification Timing Issue
-- The image push succeeded but verification failed
-- Registry catalog may have a delay in updating
-- This is likely not the root cause but worth investigating
+- **Task 9.2:** Review `k8s/deployment.yaml` health check configuration
+  - Validates current probe configuration
 
-## Possible Root Causes
+- **Task 9.3:** Update liveness probe configuration: 10s interval, 30s initial delay, 3 failure threshold
+  - Gives application time to start before checking
+  - Reduces false positives from slow startups
 
-### 1. Missing or Incorrect Health Endpoint
-**Most Likely**: The application may not have a `/api/health` endpoint configured, or it's configured at a different path.
+- **Task 9.4:** Update readiness probe configuration: 5s interval, 5s initial delay, 3 failure threshold
+  - Allows faster detection of readiness
+  - Prevents traffic to unready containers
 
-### 2. Application Startup Failure
-The application may be failing to start due to:
-- Missing environment variables (from the secrets issue)
-- Configuration errors
-- Dependency issues
-- Database connection failures
+- **Task 9.5:** Add `HEALTH_CHECK_PATH` environment variable support to deployment manifest
+  - Makes health check path configurable
+  - Supports different application configurations
 
-### 3. Port Mismatch
-The application might be running on a different port than 3000.
+- **Task 9.6:** Test health checks with application running to verify HTTP 200 response
+  - Confirms probes work correctly
 
-### 4. Network Configuration Issues
-The application might not be binding to the correct interface or port.
+- **Task 9.7:** Test health check failure scenario to verify pod restart behavior
+  - Ensures pods restart on health check failure
 
-## Recommended Actions
+#### Container Startup Verification
+- **Task 10.3:** Verify container runs continuously and responds to health checks
+  - Ensures application is running and healthy
 
-### Immediate Actions
+#### Testing and Validation
+- **Task 12.5:** Verify health checks pass with running application
+  - Validates end-to-end health check functionality
 
-1. **Check Pod Logs**
-   ```bash
-   multipass exec 'my-ag-ui-app-k8s' -- microk8s kubectl logs -l app=my-ag-ui-app
-   ```
-   This will show the actual application error messages.
+---
 
-2. **Verify Health Endpoint**
-   Check if the application actually has a `/api/health` endpoint in the source code.
+## Issue 3: Container Completing Instead of Running
 
-3. **Check Secrets Configuration**
-   ```bash
-   multipass exec 'my-ag-ui-app-k8s' -- microk8s kubectl get secrets my-ag-ui-app-secrets -o yaml
-   ```
-   Verify all required secrets are present.
+### Location in Deploy Log
+**Lines 311-314, 387-390:** Containers terminate with exit code 0 instead of staying running.
 
-4. **Test Application Locally**
-   Run the application locally to verify it starts correctly and responds to health checks.
+```
+Last State:     Terminated
+  Reason:       Completed
+  Exit Code:    0
+  Started:      Thu, 26 Mar 2026 14:13:04 -0400
+  Finished:     Thu, 26 Mar 2026 14:14:03 -0400
+```
 
-### Long-term Fixes
+**Problem:** Containers are completing immediately after startup instead of running as a long-running service, causing repeated restarts.
 
-1. **Fix Health Endpoint**
-   - Ensure the application has a `/api/health` endpoint
-   - Verify it returns HTTP 200 with appropriate response
-   - Consider adding startup logs to confirm the endpoint is listening
+### Root Cause
+- Application may be designed to run once and exit
+- Application may not be configured as a daemon/service
+- Container command may be incorrect
 
-2. **Improve Secrets Setup**
-   - Fix the secrets validation logic to provide accurate success/failure reporting
-   - Add verification that all required secrets are present before deployment
+### Solution Tasks
 
-3. **Add Startup Probes**
-   Consider adding a startup probe to give the application more time to initialize before liveness checks begin.
+#### Container Startup Verification
+- **Task 10.1:** Add container startup verification to check container doesn't exit with code 0
+  - Detects when containers terminate instead of running
+  - Triggers error handling for this condition
 
-4. **Better Error Handling**
-   - Add more detailed logging in the application startup process
-   - Include error messages that explain why the health endpoint is unavailable
+- **Task 10.2:** Add logging for container state changes (Creating, Running, Terminated)
+  - Provides visibility into container lifecycle
+  - Helps diagnose startup issues
 
-## Conclusion
+- **Task 10.3:** Verify container runs continuously and responds to health checks
+  - Ensures application runs as a service
+  - Confirms continuous operation
 
-The deployment infrastructure is working correctly (Docker, registry, Kubernetes). The failure is at the application level - the pods cannot pass health checks because the `/api/health` endpoint returns 404. This is likely caused by either:
+- **Task 10.4:** Test container termination scenario to verify error detection
+  - Validates error handling for terminated containers
 
-1. The application not having the health endpoint configured
-2. The application failing to start properly due to missing configuration (secrets)
-3. The application running on a different port or path than expected
+- **Task 10.5:** Test container startup scenario to verify successful verification
+  - Confirms verification works for healthy containers
 
-The next step should be to examine the pod logs to determine the actual application error and verify the health endpoint configuration.
+#### Kubernetes Deployment Script
+- **Task 8.3:** Add pod status polling every 5 seconds with 5-minute timeout for Running state
+  - Monitors pod status to detect termination
+  - Provides early detection of container issues
+
+- **Task 8.4:** Verify readiness probe passes before marking deployment successful
+  - Ensures container is ready and running
+  - Prevents marking deployment successful when containers terminate
+
+- **Task 8.5:** Capture and log Kubernetes pod events (pull errors, crash loops, probe failures)
+  - Logs container termination events
+  - Provides debugging information
+
+#### Testing and Validation
+- **Task 12.10:** Monitor deployment logs and adjust parameters as needed
+  - Identifies patterns in container termination
+  - Enables parameter tuning
+
+---
+
+## Issue 4: Image Verification Failure
+
+### Location in Deploy Log
+**Lines 81-89:** Image verification fails - image not found in registry catalog, though push appeared successful.
+
+```
+⚠️  WARNING: Image verification failed - image not found in registry catalog
+This may be a temporary issue - the registry may need additional time to update
+```
+
+**Problem:** Registry catalog has delays in updating, causing verification to fail even though the image was successfully pushed.
+
+### Root Cause
+- Registry catalog updates are asynchronous
+- Verification happens before catalog updates complete
+- No retry logic to handle catalog delays
+
+### Solution Tasks
+
+#### Docker Push Script
+- **Task 7.2:** Implement image verification with exponential backoff retry logic (1s, 2s, 4s, 8s, 16s, 32s, 64s)
+  - Retries verification with increasing delays
+  - Accounts for registry catalog update delays
+
+- **Task 7.3:** Add maximum retry limit of 7 attempts for image verification
+  - Prevents indefinite waiting
+  - Balances reliability with deployment speed
+
+- **Task 7.5:** Add exit code 1 on push failure or verification timeout with error details
+  - Halts deployment if verification ultimately fails
+  - Provides clear error message
+
+- **Task 7.6:** Provide manual verification steps in error message when verification fails
+  - Gives users actionable recovery steps
+  - Includes curl commands to check registry
+
+- **Task 7.7:** Test image verification with registry catalog delays to verify retry logic
+  - Confirms retry logic works correctly
+  - Validates exponential backoff behavior
+
+#### Common Infrastructure
+- **Task 2.4:** Implement `log_error()` function
+  - Provides structured error logging
+  - Includes timestamps and error details
+
+- **Task 2.5:** Implement `log_structured_error()` function
+  - Provides detailed error messages with recovery steps
+  - Includes ERROR TYPE, DIAGNOSTIC, COMMON CAUSES, and RECOVERY fields
+
+#### Testing and Validation
+- **Task 12.6:** Verify logs contain structured error messages with recovery steps
+  - Confirms error messages are helpful
+  - Validates recovery guidance is accurate
+
+---
+
+## Issue 5: Insufficient Error Handling and Logging
+
+### Location in Deploy Log
+**Throughout the log:** Errors are logged but lack structure, and deployment continues despite failures.
+
+**Problem:** Error messages are not structured, don't provide recovery guidance, and deployment doesn't halt on critical failures.
+
+### Root Cause
+- No consistent error handling across scripts
+- No structured error logging format
+- No proper exit codes for failures
+- Insufficient logging for debugging
+
+### Solution Tasks
+
+#### Common Infrastructure
+- **Task 2.1:** Add `set -euo pipefail` to `deploy_scripts/common.sh`
+  - Implements strict error handling
+  - Ensures failures halt execution
+
+- **Task 2.2:** Implement `log_info()` function with timestamp and INFO level
+  - Provides structured logging for informational messages
+
+- **Task 2.3:** Implement `log_warning()` function with timestamp and WARNING level
+  - Provides structured logging for warnings
+
+- **Task 2.4:** Implement `log_error()` function with timestamp and ERROR level
+  - Provides structured logging for errors
+
+- **Task 2.5:** Implement `log_structured_error()` function with ERROR TYPE, DIAGNOSTIC, COMMON CAUSES, and RECOVERY fields
+  - Provides detailed, actionable error messages
+
+- **Task 2.6:** Implement `setup_log_file()` function to create timestamped log file
+  - Creates persistent log files for debugging
+  - Includes timestamps in filenames
+
+- **Task 2.7:** Implement `cleanup_old_logs()` function to rotate logs older than 100MB
+  - Prevents disk exhaustion
+  - Implements log rotation
+
+#### All Deployment Scripts
+- **Task 3.4, 4.2, 5.2, 6.3, 7.4, 8.6:** Add logging for step start and completion with timestamps
+  - Provides deployment progress tracking
+  - Enables timeline reconstruction
+
+- **Task 3.5, 4.3, 5.3, 6.4, 7.5, 8.7:** Add exit code 1 on failure with error details
+  - Ensures proper error propagation
+  - Halts deployment on failures
+
+#### Main Deployment Script
+- **Task 11.7:** Add environment context logging (Kubernetes status, registry status, deployment state)
+  - Provides context for debugging
+  - Includes system state information
+
+- **Task 11.8:** Add VERBOSE mode support with `VERBOSE=true` environment variable
+  - Enables detailed debugging output
+  - Provides command outputs and intermediate states
+
+- **Task 11.9:** Test deployment with VERBOSE mode enabled
+  - Validates verbose logging functionality
+
+#### Testing and Validation
+- **Task 12.7:** Verify log file rotation prevents disk exhaustion
+  - Confirms log cleanup works correctly
+
+- **Task 12.8:** Verify deployment summary shows accurate step status and duration
+  - Validates summary logging
+
+---
+
+## Issue 6: No Rollback Capability
+
+### Location in Deploy Log
+**Throughout the log:** When deployment fails, there's no automatic rollback to previous state.
+
+**Problem:** Failed deployments leave the system in an inconsistent state with no automatic recovery mechanism.
+
+### Root Cause
+- No rollback function implemented
+- No previous state tracking
+- No backup of working deployment
+
+### Solution Tasks
+
+#### Preparation and Rollback Setup
+- **Task 1.1:** Archive current deployment manifest as `k8s/deployment.yaml.backup`
+  - Creates backup of working deployment
+  - Enables rollback to known good state
+
+- **Task 1.2:** Document current image tag and deployment state
+  - Records current state for reference
+  - Enables accurate rollback
+
+- **Task 1.3:** Test manual rollback procedure by reapplying backup manifest
+  - Validates rollback procedure
+  - Ensures backup is usable
+
+- **Task 1.4:** Verify rollback procedure restores pods to Running state
+  - Confirms rollback restores functionality
+
+#### Main Deployment Script
+- **Task 11.5:** Implement rollback function that reapplies `k8s/deployment.yaml.backup` on failure
+  - Provides automatic rollback on failure
+  - Restores previous working state
+
+- **Task 11.6:** Add rollback call after any deployment step failure
+  - Ensures rollback is triggered on failures
+  - Minimizes downtime
+
+#### Testing and Validation
+- **Task 12.3:** Verify rollback procedure restores previous deployment state
+  - Validates rollback functionality
+  - Confirms system recovery
+
+---
+
+## Issue 7: Pod Status Not Properly Verified
+
+### Location in Deploy Log
+**Lines 173-282:** Pod status is checked but doesn't wait for Running state or verify readiness.
+
+**Problem:** Deployment is marked successful even though pods are not ready or healthy.
+
+### Root Cause
+- No waiting for Running state
+- No verification of readiness probe
+- No timeout for pod startup
+- Insufficient polling of pod status
+
+### Solution Tasks
+
+#### Kubernetes Deployment Script
+- **Task 8.3:** Add pod status polling every 5 seconds with 5-minute timeout for Running state
+  - Waits for pods to reach Running state
+  - Implements timeout to prevent indefinite waiting
+
+- **Task 8.4:** Verify readiness probe passes before marking deployment successful
+  - Ensures pods are ready to serve traffic
+  - Prevents marking deployment successful prematurely
+
+- **Task 8.5:** Capture and log Kubernetes pod events (pull errors, crash loops, probe failures)
+  - Provides visibility into pod issues
+  - Helps diagnose startup problems
+
+- **Task 8.8:** Test manifest validation with invalid YAML to verify error handling
+  - Validates error handling for invalid manifests
+
+- **Task 8.9:** Test pod startup verification with successful deployment
+  - Confirms verification works for successful deployments
+
+- **Task 8.10:** Test pod startup failure scenario to verify error handling and logging
+  - Validates error handling for failed deployments
+
+#### Testing and Validation
+- **Task 12.2:** Verify error handling with intentional failures at each step
+  - Confirms error handling works across all steps
+
+---
+
+## Summary
+
+The task plan addresses all 7 critical issues identified in the deploy log through 78 organized tasks across 13 sections:
+
+1. **Secrets validation failure** → Tasks 2.1, 2.8, 3.1-3.6, 11.1, 11.5
+2. **Health check failures** → Tasks 9.1-9.7, 10.3, 12.5
+3. **Container termination** → Tasks 10.1-10.5, 8.3-8.5, 12.10
+4. **Image verification failure** → Tasks 7.2-7.7, 2.4-2.5, 12.6
+5. **Insufficient error handling** → Tasks 2.1-2.7, 3.4-3.5, 4.2-4.3, 5.2-5.3, 6.3-6.4, 7.4-7.5, 8.6-8.7, 11.7-11.9, 12.7-12.8
+6. **No rollback capability** → Tasks 1.1-1.4, 11.5-11.6, 12.3
+7. **Pod status not verified** → Tasks 8.3-8.5, 8.8-8.10, 12.2
+
+All tasks are organized by dependency and are designed to be completed in sequence, enabling reliable automated deployments through ralph-loops with proper error handling, verification, and rollback capabilities.
