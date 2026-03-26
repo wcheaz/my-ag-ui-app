@@ -426,6 +426,7 @@ POD_WAIT_ATTEMPT=1
 INITIAL_STATUS_CHECK=true
 SAW_IMAGE_PULL_BACK_OFF=false
 POD_WAIT_DELAY=5                  # Fixed 5-second polling interval as required
+PREVIOUS_CONTAINER_STATE=""       # Initialize container state tracking
 
 while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
     log "Checking pod status after deployment restart... (attempt $POD_WAIT_ATTEMPT/$MAX_POD_WAIT_ATTEMPTS)"
@@ -434,6 +435,37 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
     POD_STATUS_JSON=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json 2>/dev/null || echo "")
     
     if [ -n "$POD_STATUS_JSON" ]; then
+        # Container state change logging (Creating, Running, Terminated)
+        CURRENT_CONTAINER_STATE=$(echo "$POD_STATUS_JSON" | grep -o '"phase":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "Unknown")
+        
+        # Log container state changes
+        if [ "$CURRENT_CONTAINER_STATE" != "$PREVIOUS_CONTAINER_STATE" ] && [ -n "$PREVIOUS_CONTAINER_STATE" ]; then
+            log_info "📊 CONTAINER STATE CHANGE: $PREVIOUS_CONTAINER_STATE → $CURRENT_CONTAINER_STATE (attempt $POD_WAIT_ATTEMPT/$MAX_POD_WAIT_ATTEMPTS)"
+        fi
+        
+        # Detailed container state logging
+        case "$CURRENT_CONTAINER_STATE" in
+            "Pending")
+                log_info "🔄 Container state: Pending (being scheduled/created)"
+                ;;
+            "Running")
+                if [ "$PREVIOUS_CONTAINER_STATE" != "Running" ]; then
+                    log_info "✅ Container state: Running (pod is operational)"
+                fi
+                ;;
+            "Succeeded")
+                log_error "⚠️  Container state: Succeeded (completed successfully - should not happen for a service)"
+                ;;
+            "Failed")
+                log_error "❌ Container state: Failed (container terminated with error)"
+                ;;
+            "Unknown")
+                log_warning "❓ Container state: Unknown (status cannot be determined)"
+                ;;
+        esac
+        
+        # Store current state for next comparison
+        PREVIOUS_CONTAINER_STATE="$CURRENT_CONTAINER_STATE"
         # Check for ImagePullBackOff status
         IMAGE_PULL_BACK_OFF=$(echo "$POD_STATUS_JSON" | grep -o '"ImagePullBackOff"' || echo "")
         if [ -n "$IMAGE_PULL_BACK_OFF" ] && [ "$SAW_IMAGE_PULL_BACK_OFF" = false ]; then
@@ -444,6 +476,18 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
         # Check for Running status
         POD_PHASE=$(echo "$POD_STATUS_JSON" | grep -o '"phase":"Running"' || echo "")
         POD_READY=$(echo "$POD_STATUS_JSON" | grep -o '"ready":true' || echo "")
+        
+        # Container startup verification - check for exit code 0 (service should not terminate)
+        CONTAINER_EXIT_CODE=$(echo "$POD_STATUS_JSON" | grep -o '"exitCode":[0-9]*' | head -1 | cut -d':' -f2 || echo "")
+        CONTAINER_STATE=$(echo "$POD_STATUS_JSON" | grep -o '"lastState":{"terminated"' || echo "")
+        
+        if [ -n "$CONTAINER_STATE" ] && [ "$CONTAINER_EXIT_CODE" = "0" ]; then
+            log_error "❌ CONTAINER STARTUP FAILURE: Container terminated with exit code 0"
+            log_error "   This indicates the application is not running as a service - it completed execution instead"
+            log_error "   A service should run continuously, not exit with code 0"
+            log_error "   Check application startup configuration and ensure it runs as a daemon/service"
+            log_structured_error "CONTAINER_EXIT_CODE_0" "Container terminated with exit code 0 instead of running continuously" "Application configured to complete execution instead of running as service, missing daemon/service mode, main function returning instead of running indefinitely" "1. Check application startup code, 2. Ensure main process runs indefinitely, 3. Add daemon/service mode if missing, 4. Verify process doesn't exit with return code"
+        fi
         
         if [ -n "$POD_PHASE" ] && [ -n "$POD_READY" ]; then
             log "✓ Pod status changed to Running - verification successful"
