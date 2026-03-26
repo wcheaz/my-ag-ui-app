@@ -50,7 +50,7 @@
 - [x] 6.3 Add logging for registry setup start and completion with timestamps
 - [x] 6.4 Add exit code 1 on registry setup failure with error details
 - [x] 6.5 Verify registry returns valid JSON response on connectivity check
-- [ ] 6.6 Test registry connectivity failure scenario to verify error handling
+- [x] 6.6 Test registry connectivity failure scenario to verify error handling
 
 ## 7. Docker Push Script Updates
 
