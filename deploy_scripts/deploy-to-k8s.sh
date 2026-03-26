@@ -454,6 +454,121 @@ if ! poll_pod_status; then
     handle_kubernetes_error 128 "Pod status polling failed - pod did not reach Running state within timeout" \
         "Check pod logs and events: multipass exec '$VM_NAME' -- microk8s kubectl describe pods -l app=my-ag-ui-app"
 fi
+
+# Verify readiness probe passes before marking deployment successful
+log_info "Starting readiness probe verification..."
+verify_readiness_probe() {
+    local max_attempts=60          # 60 attempts × 5 seconds = 5 minutes (300 seconds total)
+    local attempt=1
+    local polling_delay=5          # Fixed 5-second polling interval
+    local readiness_passed=false
+    
+    log_info "Verifying readiness probe passes before marking deployment successful..."
+    
+    while [ $attempt -le $max_attempts ]; do
+        log "Checking readiness probe status... (attempt $attempt/$max_attempts)"
+        
+        # Get pod details including readiness status
+        local pod_details=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json 2>/dev/null || echo "")
+        
+        if [ -n "$pod_details" ]; then
+            # Check if pod is ready (readiness probe passed)
+            local ready_status=$(echo "$pod_details" | grep -o '"ready":true' || echo "")
+            
+            if [ -n "$ready_status" ]; then
+                log_info "✅ Readiness probe verification: PASSED"
+                readiness_passed=true
+                break
+            else
+                # Log detailed readiness status for debugging
+                local container_statuses=$(echo "$pod_details" | grep -o '"containerStatuses":\[[^]]*\]' || echo "")
+                log_info "Readiness probe not yet ready. Container status: $container_statuses"
+                
+                # Check for specific readiness issues
+                if echo "$pod_details" | grep -q '"lastState":{"terminated"'; then
+                    log_warning "Container terminated unexpectedly - checking container logs..."
+                    multipass exec "$VM_NAME" -- microk8s kubectl logs -l app=my-ag-ui-app --tail=20 2>&1 | tee -a "$LOG_FILE" || true
+                fi
+                
+                # Check readiness probe details if available
+                local readiness_details=$(echo "$pod_details" | grep -o '"lastProbeTime":"[^"]*"' | head -1 || echo "")
+                if [ -n "$readiness_details" ]; then
+                    log_info "Last readiness probe time: $readiness_details"
+                fi
+            fi
+        else
+            log_warning "Unable to get pod details for readiness verification"
+            multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            log_error "❌ Readiness probe verification: FAILED - timeout after $max_attempts attempts"
+            
+            # Log final pod status for debugging
+            log "Final pod status:"
+            multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
+            
+            # Log pod events for debugging
+            log "Pod events for debugging:"
+            multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>&1 | grep -A 20 -B 5 "Events:" | tee -a "$LOG_FILE" || true
+            
+            # Log container status details
+            log "Container status details:"
+            multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.containerStatuses}' 2>/dev/null | tee -a "$LOG_FILE" || true
+            
+            # Check if health check endpoint is accessible
+            log "Testing health check endpoint accessibility..."
+            local pod_ip=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.podIP}' 2>/dev/null || echo "")
+            if [ -n "$pod_ip" ]; then
+                log "Testing HTTP health check endpoint from within cluster..."
+                multipass exec "$VM_NAME" -- microk8s kubectl run temp-health-test --image=curlimages/curl --rm -it --restart=Never -- \
+                    curl -s --connect-timeout 5 "http://${pod_ip}:3000${HEALTH_CHECK_PATH:-/api/health}" 2>&1 | tee -a "$LOG_FILE" || true
+            fi
+            
+            log_structured_error "READINESS_PROBE_TIMEOUT" "Readiness probe did not pass within 5-minute timeout" "Application not ready to serve traffic, health check endpoint not responding, or application startup issues" "1. Check application logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app, 2. Verify health check endpoint: curl http://<pod-ip>:3000${HEALTH_CHECK_PATH:-/api/health}, 3. Check deployment manifest for correct probe configuration, 4. Verify application is properly starting and not crashing"
+            
+            return 1
+        fi
+        
+        sleep $polling_delay
+        attempt=$((attempt + 1))
+    done
+    
+    if [ "$readiness_passed" = true ]; then
+        log_info "✅ Readiness probe verification completed successfully"
+        
+        # Log final readiness status
+        local pod_details=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json 2>/dev/null || echo "")
+        if [ -n "$pod_details" ]; then
+            local ready_true_count=$(echo "$pod_details" | grep -o '"ready":true' | wc -l || echo "0")
+            local total_containers=$(echo "$pod_details" | grep -o '"name":"my-ag-ui-app"' | wc -l || echo "0")
+            
+            log_info "Final readiness status: $ready_true_count/$total_containers containers ready"
+            
+            # Verify the deployment can be marked successful
+            if [ "$ready_true_count" = "$total_containers" ] && [ "$total_containers" -gt "0" ]; then
+                log_info "✅ All containers are ready - deployment can be marked successful"
+                return 0
+            else
+                log_error "❌ Not all containers are ready - deployment cannot be marked successful"
+                return 1
+            fi
+        else
+            log_error "❌ Unable to verify final readiness status"
+            return 1
+        fi
+    else
+        log_error "❌ Readiness probe verification failed"
+        return 1
+    fi
+}
+
+# Execute readiness probe verification
+if ! verify_readiness_probe; then
+    handle_kubernetes_error 129 "Readiness probe verification failed" \
+        "Application not ready to serve traffic. Check health check endpoint and application logs."
+fi
+log_info "✅ Readiness probe verification passed - deployment can be marked successful"
 log "═══════════════════════════════════════════════════════════════════════════════"
 log "🎯 KUBERNETES DEPLOYMENT PHASE COMPLETED"
 
