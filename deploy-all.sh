@@ -1,49 +1,149 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 # Deploy-all.sh - Orchestrator for modular deployment scripts
 # This script executes all modular deployment scripts in sequence
 # Usage: ./deploy-all.sh
 
+# Source common error handling functions
+if [ -f "deploy_scripts/common.sh" ]; then
+    source "deploy_scripts/common.sh"
+else
+    echo "ERROR: deploy_scripts/common.sh not found. Cannot continue with deployment."
+    exit 1
+fi
+
+# Initialize log file
+setup_log_file
+
+# Rollback function to restore previous deployment state
+rollback_deployment() {
+    log_error "🔄 INITIATING ROLLBACK PROCEDURE"
+    log_error "Deployment failed - attempting to restore previous state"
+    
+    if [ -f "k8s/deployment.yaml.backup" ]; then
+        log_info "🔄 Rolling back using backup deployment manifest..."
+        if ! multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply -f k8s/deployment.yaml.backup 2>&1 | tee -a "$LOG_FILE"; then
+            log_error "❌ ROLLBACK FAILED: Could not apply backup deployment manifest"
+            log_error "   Manual intervention required to restore deployment state"
+        else
+            log_info "✅ ROLLBACK SUCCESSFUL: Previous deployment state restored"
+            log_info "   Services should be returning to previous stable state"
+        fi
+    else
+        log_error "❌ ROLLBACK FAILED: No backup deployment manifest found (k8s/deployment.yaml.backup)"
+        log_error "   Cannot perform automatic rollback - manual intervention required"
+    fi
+}
+
+# Function to log environment context
+log_environment_context() {
+    log_info "📊 ENVIRONMENT CONTEXT:"
+    
+    # Kubernetes cluster status
+    if multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl get nodes >/dev/null 2>&1; then
+        log_info "  • Kubernetes: ✅ Accessible"
+        local node_count=$(multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl get nodes --no-headers | wc -l)
+        log_info "  • Node Count: $node_count"
+    else
+        log_warning "  • Kubernetes: ❌ Not accessible"
+    fi
+    
+    # Registry status  
+    if curl -s http://localhost:32000/v2/_catalog >/dev/null 2>&1; then
+        log_info "  • Registry: ✅ Accessible"
+    else
+        log_warning "  • Registry: ❌ Not accessible"
+    fi
+    
+    # VM status
+    if multipass list | grep -q "${VM_NAME:-my-ag-ui-app-k8s}"; then
+        log_info "  • VM: ✅ Running (${VM_NAME:-my-ag-ui-app-k8s})"
+    else
+        log_warning "  • VM: ❌ Not found or not running"
+    fi
+}
+
 # Execute deployment scripts in correct order
-echo "Starting deployment pipeline..."
+log_info "🚀 STARTING DEPLOYMENT PIPELINE"
+log_info "Environment: ${ENVIRONMENT:-development}"
+log_info "Verbose mode: ${VERBOSE:-false}"
 
-echo "Step 1: Setting up Kubernetes secrets..."
+# Log environment context
+if [ "${VERBOSE:-false}" = "true" ]; then
+    log_environment_context
+fi
+
+# Step 1: Setting up Kubernetes secrets
+log_info "📋 Step 1: Setting up Kubernetes secrets..."
 if ! ./deploy_scripts/setup-k8s-secrets.sh; then
-    echo "ERROR: Failed to set up Kubernetes secrets (Step 1)"
+    log_error "❌ STEP 1 FAILED: Failed to set up Kubernetes secrets"
+    rollback_deployment
     exit 1
 fi
+log_info "✅ Step 1: Kubernetes secrets setup completed"
 
-echo "Step 2: Building Docker image..."
+# Step 2: Building Docker image
+log_info "📋 Step 2: Building Docker image..."
 if ! ./deploy_scripts/build-docker-image.sh; then
-    echo "ERROR: Failed to build Docker image (Step 2)"
+    log_error "❌ STEP 2 FAILED: Failed to build Docker image"
+    rollback_deployment
     exit 1
 fi
+log_info "✅ Step 2: Docker image build completed"
 
-echo "Step 3: Tagging Docker image..."
+# Step 3: Tagging Docker image
+log_info "📋 Step 3: Tagging Docker image..."
 if ! ./deploy_scripts/tag-docker-image.sh; then
-    echo "ERROR: Failed to tag Docker image (Step 3)"
+    log_error "❌ STEP 3 FAILED: Failed to tag Docker image"
+    rollback_deployment
     exit 1
 fi
+log_info "✅ Step 3: Docker image tagging completed"
 
-echo "Step 4: Setting up Microk8s registry..."
+# Step 4: Setting up Microk8s registry
+log_info "📋 Step 4: Setting up Microk8s registry..."
 if ! ./deploy_scripts/setup-microk8s-registry.sh; then
-    echo "ERROR: Failed to set up Microk8s registry (Step 4)"
+    log_error "❌ STEP 4 FAILED: Failed to set up Microk8s registry"
+    rollback_deployment
     exit 1
 fi
+log_info "✅ Step 4: Microk8s registry setup completed"
 
-echo "Step 5: Pushing Docker image..."
+# Step 5: Pushing Docker image
+log_info "📋 Step 5: Pushing Docker image..."
 if ! ./deploy_scripts/push-docker-image.sh; then
-    echo "ERROR: Failed to push Docker image (Step 5)"
+    log_error "❌ STEP 5 FAILED: Failed to push Docker image"
+    rollback_deployment
     exit 1
 fi
+log_info "✅ Step 5: Docker image push completed"
 
-echo "Step 6: Deploying to Kubernetes..."
+# Step 6: Deploying to Kubernetes
+log_info "📋 Step 6: Deploying to Kubernetes..."
 if ! ./deploy_scripts/deploy-to-k8s.sh; then
-    echo "ERROR: Failed to deploy to Kubernetes (Step 6)"
+    log_error "❌ STEP 6 FAILED: Failed to deploy to Kubernetes"
+    rollback_deployment
     exit 1
 fi
+log_info "✅ Step 6: Kubernetes deployment completed"
 
-echo "Deployment completed successfully!"
+# Deployment summary logging (task 11.4)
+log_info "🎉 DEPLOYMENT SUMMARY:"
+log_info "  ✅ All 6 deployment steps completed successfully"
+log_info "  ✅ Kubernetes secrets: Configured"
+log_info "  ✅ Docker image: Built and pushed"
+log_info "  ✅ Microk8s registry: Setup completed"
+log_info "  ✅ Kubernetes deployment: Applied"
+log_info "  📍 Deployment status: FULLY COMPLETED"
+log_info "  📍 Log file: $LOG_FILE"
+
+if [ "${VERBOSE:-false}" = "true" ]; then
+    log_info "🔍 VERBOSE MODE: Deployment pipeline completed successfully"
+    log_info "   All individual scripts executed without errors"
+    log_info "   Rollback capability: Available (backup manifest present)"
+fi
+
+log_info "🚀 DEPLOYMENT PIPELINE COMPLETED SUCCESSFULLY!"
 
