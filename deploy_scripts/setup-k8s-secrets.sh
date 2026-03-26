@@ -78,10 +78,39 @@ if [ ${#MISSING_VARS[@]} -gt 0 ]; then
 fi
 log_info "All required environment variables are set"
 
-# Run the secrets setup script
-log_info "Running secrets setup script..."
+# Run the secrets setup script to generate the YAML file
+log_info "Running secrets setup script to generate YAML file..."
 if ! bash k8s/setup-secrets.sh 2>&1 | tee -a "$LOG_FILE"; then
-    handle_kubernetes_error "Failed to set up Kubernetes secrets" \
+    handle_kubernetes_error "Failed to generate Kubernetes secrets YAML file" \
         "Check the secrets setup script output above for errors. Ensure environment variables are correctly set."
+fi
+log_info "Kubernetes secrets YAML file generated successfully: k8s/secrets.yaml"
+
+# Validate the generated secrets file using Kubernetes API server
+log_info "Validating secrets YAML against Kubernetes API server..."
+if ! kubectl apply --dry-run=server -f "k8s/secrets.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+    log_error "Secrets YAML validation failed against Kubernetes API server"
+    log_error "ERROR TYPE: KUBERNETES SECRETS VALIDATION FAILURE"
+    log_error "DIAGNOSTIC: Generated secrets YAML file is invalid or incompatible with Kubernetes API server"
+    log_error "COMMON CAUSES:"
+    log_error "  - YAML syntax errors in generated secrets file"
+    log_error "  - Invalid base64 encoding of secret values"
+    log_error "  - Missing required fields or incorrect Kubernetes API version"
+    log_error "  - Kubernetes cluster connectivity issues"
+    log_error "RECOVERY:"
+    log_error "  1. Check the generated file for errors: cat k8s/secrets.yaml"
+    log_error "  2. Verify Kubernetes cluster connectivity: kubectl cluster-info"
+    log_error "  3. Ensure you have necessary permissions: kubectl auth can-i create secret"
+    log_error "  4. Fix any environment variable issues and regenerate the file"
+    handle_kubernetes_error "Secrets YAML validation failed" \
+        "Check the validation output above for specific errors. Fix the issues and retry."
+fi
+log_info "Secrets YAML validation passed"
+
+# Apply the validated secrets to Kubernetes
+log_info "Applying secrets to Kubernetes cluster..."
+if ! kubectl apply -f "k8s/secrets.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_kubernetes_error "Failed to apply secrets to Kubernetes cluster" \
+        "Check the kubectl output above for errors. Ensure the secrets file is valid and you have necessary permissions."
 fi
 log_info "Kubernetes secrets setup completed successfully"

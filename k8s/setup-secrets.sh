@@ -230,18 +230,16 @@ then
         "4. Check if file is locked by another process"
 fi
 
-# Validate generated YAML file
-if ! command -v python3 >/dev/null 2>&1; then
-    log "WARNING: python3 not found, skipping YAML validation"
-else
-    log "Validating generated YAML file..."
-    if ! python3 -c "import yaml; yaml.safe_load(open('$OUTPUT_FILE'))" 2>/dev/null; then
-        handle_error 12 "Generated YAML file is invalid" \
-            "1. Check the generated file for syntax errors: cat $OUTPUT_FILE\n" \
-            "2. Verify all base64 values are properly encoded\n" \
-            "3. Ensure no special characters broke the YAML format\n" \
-            "4. Try regenerating the file after fixing environment variables"
-    fi
+# Validate generated YAML file with Kubernetes API server
+log "Validating generated secrets file against Kubernetes API server..."
+if ! kubectl apply --dry-run=server -f "$OUTPUT_FILE" 2>/dev/null; then
+    handle_error 12 "Secrets YAML validation failed against Kubernetes API server" \
+        "1. Check the generated file for syntax errors: cat $OUTPUT_FILE\n" \
+        "2. Verify all base64 values are properly encoded\n" \
+        "3. Ensure no special characters broke the YAML format\n" \
+        "4. Check Kubernetes cluster connectivity: kubectl cluster-info\n" \
+        "5. Verify you have necessary permissions: kubectl auth can-i create secret\n" \
+        "6. Try regenerating the file after fixing environment variables"
 fi
 
 log "✅ Kubernetes secrets file generated successfully: $OUTPUT_FILE"
@@ -254,7 +252,8 @@ if [ "$1" = "--apply" ]; then
             "1. Check Kubernetes cluster connectivity: kubectl cluster-info\n" \
             "2. Verify kubectl configuration: kubectl config current-context\n" \
             "3. Ensure you have necessary permissions: kubectl auth can-i create secret\n" \
-            "4. Check for existing secrets: kubectl get secret my-ag-ui-app-secrets"
+            "4. Check for existing secrets: kubectl get secret my-ag-ui-app-secrets\n" \
+            "5. Ensure secrets file passes validation: kubectl apply --dry-run=server -f $OUTPUT_FILE"
     fi
     log "✅ Secrets applied to Kubernetes cluster successfully"
 fi
