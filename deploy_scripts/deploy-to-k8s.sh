@@ -394,6 +394,134 @@ log "   • New pods will be created using registry image"
 log "   • Expected: Direct pod startup (no ImagePullBackOff with registry approach)"
 log ""
 
+# Pod events logging function - captures and logs Kubernetes pod events (pull errors, crash loops, probe failures)
+log_pod_events() {
+    log_info "Capturing Kubernetes pod events for analysis..."
+    
+    # Get pod name for event filtering
+    local pod_name=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+    
+    if [ -z "$pod_name" ]; then
+        log_warning "Unable to determine pod name for event logging"
+        return 1
+    fi
+    
+    log_info "Analyzing events for pod: $pod_name"
+    
+    # Get events related to the pod
+    local pod_events=$(multipass exec "$VM_NAME" -- microk8s kubectl get events --field-selector involvedObject.name="$pod_name" -o json 2>/dev/null || echo "")
+    
+    if [ -z "$pod_events" ]; then
+        log_info "No events found for pod: $pod_name"
+        return 0
+    fi
+    
+    # Initialize event counters
+    local pull_error_count=0
+    local crash_loop_count=0
+    local probe_failure_count=0
+    
+    # Log all events first for complete context
+    log "=== POD EVENTS ==="
+    multipass exec "$VM_NAME" -- microk8s kubectl get events --field-selector involvedObject.name="$pod_name" --sort-by='.lastTimestamp' 2>&1 | tee -a "$LOG_FILE" || true
+    log "=== END POD EVENTS ==="
+    
+    # Extract and analyze specific event types
+    log_info "Analyzing specific event types..."
+    
+    # Check for pull errors (ImagePullBackOff, ErrImagePull, etc.)
+    local pull_errors=$(multipass exec "$VM_NAME" -- microk8s kubectl get events --field-selector involvedObject.name="$pod_name" --field-selector reason=ImagePullBackOff 2>/dev/null || echo "")
+    if [ -n "$pull_errors" ]; then
+        pull_error_count=$(echo "$pull_errors" | wc -l | awk '{print $1}')
+        log_error "❌ PULL ERRORS DETECTED ($pull_error_count events):"
+        log_error "   ImagePullBackOff events indicate the pod cannot pull the container image"
+        log_error "   This typically means: image not in registry, wrong registry path, or registry inaccessible"
+        echo "$pull_errors" | tee -a "$LOG_FILE" || true
+    fi
+    
+    # Check for pull errors with ErrImagePull reason
+    local err_image_pull=$(multipass exec "$VM_NAME" -- microk8s kubectl get events --field-selector involvedObject.name="$pod_name" --field-selector reason=ErrImagePull 2>/dev/null || echo "")
+    if [ -n "$err_image_pull" ]; then
+        local err_count=$(echo "$err_image_pull" | wc -l | awk '{print $1}')
+        pull_error_count=$((pull_error_count + err_count))
+        log_error "❌ IMAGE PULL ERRORS DETECTED ($err_count events):"
+        log_error "   ErrImagePull events indicate image pull failures"
+        echo "$err_image_pull" | tee -a "$LOG_FILE" || true
+    fi
+    
+    # Check for crash loops (CrashLoopBackOff)
+    local crash_loops=$(multipass exec "$VM_NAME" -- microk8s kubectl get events --field-selector involvedObject.name="$pod_name" --field-selector reason=CrashLoopBackOff 2>/dev/null || echo "")
+    if [ -n "$crash_loops" ]; then
+        crash_loop_count=$(echo "$crash_loops" | wc -l | awk '{print $1}')
+        log_error "❌ CRASH LOOP DETECTED ($crash_loop_count events):"
+        log_error "   CrashLoopBackOff events indicate the container keeps crashing and restarting"
+        log_error "   This typically means: application startup errors, missing dependencies, or resource issues"
+        echo "$crash_loops" | tee -a "$LOG_FILE" || true
+    fi
+    
+    # Check for probe failures (Unhealthy, Readiness probe failed, Liveness probe failed)
+    local probe_failures=$(multipass exec "$VM_NAME" -- microk8s kubectl get events --field-selector involvedObject.name="$pod_name" --field-selector reason=Unhealthy 2>/dev/null || echo "")
+    if [ -n "$probe_failures" ]; then
+        probe_failure_count=$(echo "$probe_failures" | wc -l | awk '{print $1}')
+        log_error "❌ PROBE FAILURES DETECTED ($probe_failure_count events):"
+        log_error "   Unhealthy events indicate readiness or liveness probe failures"
+        echo "$probe_failures" | tee -a "$LOG_FILE" || true
+    fi
+    
+    # Check for killed containers (often related to probe failures)
+    local killed_events=$(multipass exec "$VM_NAME" -- microk8s kubectl get events --field-selector involvedObject.name="$pod_name" --field-selector reason=Killed 2>/dev/null || echo "")
+    if [ -n "$killed_events" ]; then
+        local killed_count=$(echo "$killed_events" | wc -l | awk '{print $1}')
+        log_warning "⚠️  CONTAINER KILLED EVENTS ($killed_count events):"
+        log_warning "   Killed events may indicate probe failures or resource constraints"
+        echo "$killed_events" | tee -a "$LOG_FILE" || true
+    fi
+    
+    # Check for OOMKilled events (Out of Memory)
+    local oom_events=$(multipass exec "$VM_NAME" -- microk8s kubectl get events --field-selector involvedObject.name="$pod_name" --field-selector reason=OOMKilled 2>/dev/null || echo "")
+    if [ -n "$oom_events" ]; then
+        local oom_count=$(echo "$oom_events" | wc -l | awk '{print $1}')
+        log_error "❌ OUT OF MEMORY EVENTS ($oom_count events):"
+        log_error "   OOMKilled events indicate the container exceeded memory limits"
+        log_error "   Consider increasing memory limits in deployment.yaml"
+        echo "$oom_events" | tee -a "$LOG_FILE" || true
+    fi
+    
+    # Check for failed containers
+    local failed_events=$(multipass exec "$VM_NAME" -- microk8s kubectl get events --field-selector involvedObject.name="$pod_name" --field-selector reason=Failed 2>/dev/null || echo "")
+    if [ -n "$failed_events" ]; then
+        local failed_count=$(echo "$failed_events" | wc -l | awk '{print $1}')
+        log_error "❌ FAILED CONTAINER EVENTS ($failed_count events):"
+        log_error "   Failed events indicate container startup failures"
+        echo "$failed_events" | tee -a "$LOG_FILE" || true
+    fi
+    
+    # Summary of events
+    log_info "=== POD EVENTS SUMMARY ==="
+    log_info "Pull Errors: $pull_error_count"
+    log_info "Crash Loops: $crash_loop_count"
+    log_info "Probe Failures: $probe_failure_count"
+    log_info "=== END POD EVENTS SUMMARY ==="
+    
+    # Log detailed pod description for comprehensive debugging
+    log_info "Detailed pod description for comprehensive debugging:"
+    multipass exec "$VM_NAME" -- microk8s kubectl describe pod "$pod_name" 2>&1 | tee -a "$LOG_FILE" || true
+    
+    # Log container logs if there were errors
+    if [ $pull_error_count -gt 0 ] || [ $crash_loop_count -gt 0 ] || [ $probe_failure_count -gt 0 ]; then
+        log_error "=== CONTAINER LOGS (for debugging) ==="
+        multipass exec "$VM_NAME" -- microk8s kubectl logs "$pod_name" --tail=50 2>&1 | tee -a "$LOG_FILE" || true
+        log_error "=== END CONTAINER LOGS ==="
+        
+        # Log previous container logs if available (useful for crash loops)
+        log_error "=== PREVIOUS CONTAINER LOGS (if available) ==="
+        multipass exec "$VM_NAME" -- microk8s kubectl logs "$pod_name" --previous --tail=50 2>&1 | tee -a "$LOG_FILE" || true
+        log_error "=== END PREVIOUS CONTAINER LOGS ==="
+    fi
+    
+    return 0
+}
+
 # Pod status polling function - checks for Running state every 5 seconds with 5-minute timeout
 poll_pod_status() {
     log_info "Starting pod status polling for Running state (5-second intervals, 5-minute timeout)..."
@@ -428,8 +556,8 @@ poll_pod_status() {
             log "Final pod status:"
             multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
             
-            log "Pod events for debugging:"
-            multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>&1 | grep -A 20 -B 5 "Events:" | tee -a "$LOG_FILE" || true
+            # Capture and log pod events for detailed debugging
+            log_pod_events
             
             log_structured_error "POD_RUNNING_TIMEOUT" "Pod did not reach Running state within 5-minute timeout" "Pod stuck in non-Running state, possible image pull issues, application startup failures, or resource constraints" "1. Check pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app, 2. Verify image availability: multipass exec '$VM_NAME' -- microk8s kubectl describe pods -l app=my-ag-ui-app, 3. Check resource usage: multipass exec '$VM_NAME' -- microk8s kubectl top pods, 4. Verify registry accessibility: multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog"
             
@@ -442,6 +570,10 @@ poll_pod_status() {
     
     if [ "$pod_running" = true ]; then
         log_info "✅ Pod status polling completed successfully - pod is Running"
+        
+        # Capture and log pod events for comprehensive status report
+        log_pod_events
+        
         return 0
     else
         log_error "❌ Pod status polling failed - pod did not reach Running state"
@@ -508,9 +640,8 @@ verify_readiness_probe() {
             log "Final pod status:"
             multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
             
-            # Log pod events for debugging
-            log "Pod events for debugging:"
-            multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>&1 | grep -A 20 -B 5 "Events:" | tee -a "$LOG_FILE" || true
+            # Capture and log pod events for detailed debugging
+            log_pod_events
             
             # Log container status details
             log "Container status details:"
@@ -689,8 +820,8 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
         log "Final pod status:"
         multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
         
-        log "Pod details for debugging:"
-        multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
+        # Capture and log pod events for detailed debugging
+        log_pod_events
         
         # Extract pod name for error handling
         POD_NAME=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "unknown")
@@ -796,8 +927,8 @@ while [ $PROBE_WAIT_ATTEMPT -le $MAX_PROBE_WAIT_ATTEMPTS ]; do
         log "Final pod status:"
         multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
         
-        log "Pod events for probe debugging:"
-        multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>/dev/null | grep -A 20 -B 5 "Events:" | tee -a "$LOG_FILE" || true
+        # Capture and log pod events for detailed debugging
+        log_pod_events
         
         log "Probe status details:"
         multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.containerStatuses[0].lastState}' 2>/dev/null | tee -a "$LOG_FILE" || true
