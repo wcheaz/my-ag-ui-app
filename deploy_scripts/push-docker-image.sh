@@ -499,44 +499,69 @@ push_image_to_registry() {
         echo "$push_output" >> "$LOG_FILE"
     fi
     
-    # Verify the image was successfully pushed to registry
-    log "Verifying image was successfully pushed to registry..."
+    # Verify the image was successfully pushed to registry with exponential backoff retry logic
+    log_info "Starting image verification with exponential backoff retry logic (1s, 2s, 4s, 8s, 16s, 32s, 64s)..."
     local registry_verification_attempts=0
-    local max_registry_verification_attempts=5
-    local registry_verification_delay=2
+    local max_registry_verification_attempts=7
     local image_verified_in_registry=false
+    
+    # Function to calculate exponential backoff delay (1s, 2s, 4s, 8s, 16s, 32s, 64s)
+    calculate_verification_delay() {
+        local attempt=$1
+        # Calculate delay as 2^(attempt-1) seconds: 1, 2, 4, 8, 16, 32, 64
+        if [ $attempt -eq 1 ]; then
+            echo 1
+        else
+            echo $((2 ** (attempt-1)))
+        fi
+    }
     
     while [ $registry_verification_attempts -lt $max_registry_verification_attempts ]; do
         registry_verification_attempts=$((registry_verification_attempts + 1))
         
+        # Calculate delay for this attempt (exponential backoff)
+        local verification_delay=$(calculate_verification_delay $registry_verification_attempts)
+        
+        log_info "Image verification attempt $registry_verification_attempts/$max_registry_verification_attempts (delay: ${verification_delay}s) at $(date '+%Y-%m-%d %H:%M:%S')"
+        
         # Check if image appears in registry catalog
         if curl -s "http://localhost:32000/v2/my-ag-ui-app/tags/list" 2>/dev/null | grep -q '"latest"'; then
-            log "✅ Image 'my-ag-ui-app:latest' found in registry tags list"
+            log_info "✅ Image 'my-ag-ui-app:latest' found in registry tags list at $(date '+%Y-%m-%d %H:%M:%S')"
             image_verified_in_registry=true
             break
         else
+            log_warning "Image not found in registry catalog on attempt $registry_verification_attempts at $(date '+%Y-%m-%d %H:%M:%S')"
             if [ $registry_verification_attempts -lt $max_registry_verification_attempts ]; then
-                sleep $registry_verification_delay
+                log_info "Waiting ${verification_delay}s before next verification attempt (exponential backoff) at $(date '+%Y-%m-%d %H:%M:%S')"
+                sleep $verification_delay
             fi
         fi
     done
     
     if [ "$image_verified_in_registry" = true ]; then
-        log "✅ Image verification successful - image is available in registry"
+        log_info "✅ Image verification successful - image is available in registry at $(date '+%Y-%m-%d %H:%M:%S')"
     else
-        log "⚠️  WARNING: Image verification failed - image not found in registry catalog"
-        log "   This may be a temporary issue - the registry may need additional time to update"
-        log "   The push operation completed successfully, but verification could not confirm registry availability"
-        log ""
-        log "MANUAL VERIFICATION STEPS:"
-        log "1. Check registry catalog: curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list"
-        log "2. Check registry status: verify_microk8s_registry"
-        log "3. List images in registry: curl -s http://localhost:32000/v2/_catalog"
-        log "4. The image should be available despite verification failure"
+        log_error "❌ ERROR: Image verification failed - image not found in registry catalog after $max_registry_verification_attempts attempts at $(date '+%Y-%m-%d %H:%M:%S')"
+        log_error "   The push operation completed successfully, but verification could not confirm registry availability"
+        log_error "   This may be due to registry catalog update delays or registry issues"
+        log_error ""
+        log_error "MANUAL VERIFICATION STEPS:"
+        log_error "1. Check registry catalog: curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list"
+        log_error "2. Check registry status: verify_microk8s_registry"
+        log_error "3. List images in registry: curl -s http://localhost:32000/v2/_catalog"
+        log_error "4. The image should be available despite verification failure - registry catalog may be delayed"
+        log_error ""
+        log_error "If the image is actually in the registry but verification failed, you can:"
+        log_error "1. Proceed with deployment (the image is likely there)"
+        log_error "2. Or wait a few minutes and retry the verification"
+        return 1
     fi
     
-    log "✅ Docker image push to microk8s registry completed successfully within VM"
-    log "   Image: $target_image"
+    log_info "✅ Docker image push to microk8s registry completed successfully within VM at $(date '+%Y-%m-%d %H:%M:%S')"
+    log_info "   Image: $target_image"
+    log_info "   Status: PUSHED and VERIFIED"
+    log_info "   Registry: http://localhost:32000 (within VM)"
+    log_info "   Ready for: Kubernetes deployment using registry image reference"
     log "   Status: PUSHED and VERIFIED (or verification pending)"
     log "   Registry: http://localhost:32000 (within VM)"
     log "   Ready for: Kubernetes deployment using registry image reference"
@@ -554,7 +579,7 @@ log_info "=== DOCKER IMAGE PUSH TO MICROK8S REGISTRY ==="
 # Execute the image push function
 if ! push_image_to_registry; then
     handle_registry_error 205 "Docker image push to microk8s registry failed" \
-        "Check registry status and network connectivity: multipass exec '$VM_NAME' -- microk8s kubectl get pods -n container-registry"
+        "Check registry status and network connectivity: multipass exec $VM_NAME -- microk8s kubectl get pods -n container-registry"
     exit 1
 fi
 
