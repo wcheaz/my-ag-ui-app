@@ -4,7 +4,7 @@
 # This script tags the Docker image for the local microk8s registry.
 # Based on deployment status: SUCCESS - minimal debug output retained.
 
-set -e
+set -euo pipefail
 
 # Source common error handling functions
 if [ -f "deploy_scripts/common.sh" ]; then
@@ -20,14 +20,44 @@ else
         echo "[$timestamp] $message" | tee -a "$LOG_FILE"
     }
     
+    log_error() {
+        local message="$1"
+        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "[$timestamp] ERROR: $message" | tee -a "$LOG_FILE"
+    }
+    
     handle_error() {
         local error_code="$1"
         local error_message="$2"
         local recovery_suggestion="$3"
+        local error_type="${4:-GENERAL}"
         
-        log "ERROR: $error_message"
-        log "RECOVERY: $recovery_suggestion"
+        log "═══════════════════════════════════════════════════════════════════════════════"
+        log "                          $error_type ERROR"
+        log "═══════════════════════════════════════════════════════════════════════════════"
+        log "ERROR CODE: $error_code"
+        log "ERROR SUMMARY: $error_message"
+        log "═══════════════════════════════════════════════════════════════════════════════"
+        log "QUICK FIX: $recovery_suggestion"
+        log "═══════════════════════════════════════════════════════════════════════════════"
+        
         exit "$error_code"
+    }
+    
+    handle_docker_error() {
+        handle_error "$1" "$2" "$3" "DOCKER"
+    }
+    
+    log_info() {
+        local message="$1"
+        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "[$timestamp] INFO: $message" | tee -a "$LOG_FILE"
+    }
+    
+    log_warning() {
+        local message="$1"
+        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "[$timestamp] WARNING: $message" | tee -a "$LOG_FILE"
     }
 fi
 
@@ -383,8 +413,8 @@ tag_image_for_local_registry() {
 # MAIN TAGGING EXECUTION
 # ===========================
 
-log "Starting Docker image tagging for local registry..."
-log "Using comprehensive tagging function with validation and error handling..."
+log_info "Starting Docker image tagging for local registry..."
+log_info "Using comprehensive tagging function with validation and error handling..."
 
 # Use the comprehensive image tagging function with full validation and error handling
 if ! tag_image_for_local_registry; then
@@ -392,5 +422,5 @@ if ! tag_image_for_local_registry; then
         "Check logs above for detailed error analysis and recovery steps."
 fi
 
-log "✅ Docker image tagging for registry completed with comprehensive validation"
-log "   Image successfully tagged as: localhost:32000/my-ag-ui-app:latest"
+log_info "✅ Docker image tagging for registry completed with comprehensive validation"
+log_info "   Image successfully tagged as: localhost:32000/my-ag-ui-app:latest"

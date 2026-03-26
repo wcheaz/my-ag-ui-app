@@ -37,8 +37,8 @@
 
 ## 5. Docker Tag Script Updates
 
-- [ ] 5.1 Add error handling functions import to `deploy_scripts/tag-docker-image.sh`
-- [ ] 5.2 Add logging for tagging start and completion with timestamps
+- [x] 5.1 Add error handling functions import to `deploy_scripts/tag-docker-image.sh`
+- [x] 5.2 Add logging for tagging start and completion with timestamps
 - [ ] 5.3 Add exit code 1 on tagging failure with error details
 - [ ] 5.4 Verify tagged image exists after successful tagging
 - [ ] 5.5 Test tagging failure scenario to verify error handling
