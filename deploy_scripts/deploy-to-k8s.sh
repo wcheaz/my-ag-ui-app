@@ -201,6 +201,22 @@ fi
 
 # Enhanced logging: Apply manifest with detailed output capture and analysis
 log "🚀 APPLYING DEPLOYMENT MANIFEST with detailed logging..."
+log "   • First validating deployment manifest with dry-run..."
+log "   • Command: multipass exec '$VM_NAME' -- microk8s kubectl apply --dry-run=server -f k8s/deployment.yaml"
+log "   • Expected: Validation against Kubernetes API server"
+
+# Validate deployment manifest using dry-run=server before applying
+log_info "Starting deployment manifest validation using kubectl apply --dry-run=server..."
+if ! multipass exec "$VM_NAME" -- microk8s kubectl apply --dry-run=server -f k8s/deployment.yaml 2>&1 | tee -a "$LOG_FILE"; then
+    log_error "❌ DEPLOYMENT MANIFEST VALIDATION FAILED"
+    log_error "   The deployment manifest contains errors that would prevent successful deployment"
+    log_error "   Please fix the validation errors before proceeding"
+    log_structured_error "MANIFEST_VALIDATION" "Deployment manifest validation failed using --dry-run=server" "Invalid YAML syntax, missing required fields, or incompatible Kubernetes API version" "1. Check k8s/deployment.yaml for syntax errors, 2. Verify all required fields are present, 3. Ensure Kubernetes API compatibility, 4. Fix validation errors and retry"
+    exit 1
+fi
+log_info "✅ Deployment manifest validation successful"
+
+log "   • Validation passed, proceeding with actual deployment..."
 log "   • Command: multipass exec '$VM_NAME' -- microk8s kubectl apply -f k8s/deployment.yaml"
 log "   • Expected: Deployment resource creation/update"
 log "   • Output will be captured and analyzed below..."
@@ -402,15 +418,14 @@ log_deployment_progress_summary() {
 log_deployment_progress_summary
 
 # 6.6 Verify pod status reaches Running (registry-based deployment)
-log "Verifying pod status reaches Running state..."
+log_info "Starting pod status polling for Running state (5-second intervals, 5-minute timeout)..."
 # NOTE: With registry approach, pods may go directly to Running without ImagePullBackOff
 # since images are pre-loaded in the local registry and readily available
-# OPTIMIZED: Reduced pod wait attempts and added progressive delay
-MAX_POD_WAIT_ATTEMPTS=20          # Reduced from 30 - pods typically start faster
+MAX_POD_WAIT_ATTEMPTS=60          # 60 attempts × 5 seconds = 5 minutes (300 seconds total)
 POD_WAIT_ATTEMPT=1
 INITIAL_STATUS_CHECK=true
 SAW_IMAGE_PULL_BACK_OFF=false
-POD_WAIT_DELAY=3                  # Initial delay (will increase for later attempts)
+POD_WAIT_DELAY=5                  # Fixed 5-second polling interval as required
 
 while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
     log "Checking pod status after deployment restart... (attempt $POD_WAIT_ATTEMPT/$MAX_POD_WAIT_ATTEMPTS)"
@@ -493,12 +508,8 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
         fi
     fi
     
-    # OPTIMIZED: Progressive delay - start with 3s, increase to 5s for later attempts
-    if [ $POD_WAIT_ATTEMPT -le 10 ]; then
-        sleep $POD_WAIT_DELAY
-    else
-        sleep 5  # Slightly longer delay for later attempts
-    fi
+    # FIXED: Consistent 5-second polling interval as required (5-minute timeout total)
+    sleep $POD_WAIT_DELAY  # Fixed 5-second polling interval
     POD_WAIT_ATTEMPT=$((POD_WAIT_ATTEMPT + 1))
 done
 
