@@ -14,7 +14,7 @@
 - [x] 2.5 Implement `log_structured_error()` function in `deploy_scripts/common.sh` with ERROR TYPE, DIAGNOSTIC, COMMON CAUSES, and RECOVERY fields
 - [x] 2.6 Implement `setup_log_file()` function in `deploy_scripts/common.sh` to create timestamped log file
 - [x] 2.7 Implement `cleanup_old_logs()` function in `deploy_scripts/common.sh` to rotate logs older than 100MB
-- [ ] 2.8 Implement `verify_command()` function in `deploy_scripts/common.sh` to check command exit code and log errors
+- [x] 2.8 Implement `verify_command()` function in `deploy_scripts/common.sh` to check command exit code and log errors
 - [ ] 2.9 Add `HEALTH_CHECK_PATH` environment variable support with default `/api/health` to `deploy_scripts/common.sh`
 
 ## 3. Secrets Setup Script Updates

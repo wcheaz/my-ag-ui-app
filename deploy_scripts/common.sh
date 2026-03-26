@@ -225,3 +225,44 @@ cleanup_old_logs() {
     
     log_info "Log cleanup process completed"
 }
+
+# Verify command function - executes command and checks exit code
+# Usage: verify_command <command_description> <command_to_execute> [error_type] [recovery_suggestion]
+verify_command() {
+    local command_description="$1"
+    shift
+    local command_to_execute="$1"
+    shift
+    local error_type="${1:-GENERAL}"
+    shift
+    local recovery_suggestion="${1:-Check the command syntax and ensure all dependencies are available}"
+    
+    log_info "Executing: $command_description"
+    
+    # Execute the command and capture both output and exit code
+    local output
+    if ! output=$(${command_to_execute} 2>&1); then
+        local exit_code=$?
+        log_error "Command failed: $command_description"
+        log_error "Exit code: $exit_code"
+        log_error "Command output: $output"
+        
+        # Use structured error logging for detailed failure information
+        log_structured_error "$error_type" "Command '$command_description' failed with exit code $exit_code" "Command syntax error, missing dependencies, permission issues, or system resource constraints" "$recovery_suggestion"
+        
+        # Exit with the original command's exit code, or use error code 1 if it's 0
+        if [[ $exit_code -eq 0 ]]; then
+            exit 1
+        else
+            exit $exit_code
+        fi
+    fi
+    
+    # Log success and output if verbose mode is enabled
+    log_info "Command succeeded: $command_description"
+    if [[ "${VERBOSE:-false}" == "true" ]]; then
+        echo "Command output: $output" | tee -a "$LOG_FILE"
+    fi
+    
+    return 0
+}
