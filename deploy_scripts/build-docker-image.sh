@@ -77,20 +77,30 @@ fi
 # Build Docker image
 log_info "Starting Docker image build for 'my-ag-ui-app:latest'..."
 
-if [ "$DEBUG" = "all" ]; then
-    # Verbose output for debugging
-    if ! docker build -t my-ag-ui-app:latest . 2>&1; then
-        handle_docker_error 203 "Failed to build Docker image" \
-            "Check Dockerfile and project structure. Ensure all required files are present."
-        exit 1
-    fi
-else
-    # Minimal output for successful phase
-    if ! docker build -t my-ag-ui-app:latest . >/dev/null 2>&1; then
-        handle_docker_error 203 "Failed to build Docker image" \
-            "Check Dockerfile and project structure. Ensure all required files are present."
-        exit 1
-    fi
+# Capture Docker build output for debugging
+build_output=""
+if ! build_output=$(docker build -t my-ag-ui-app:latest . 2>&1); then
+    # Log build output on failure
+    log_error "Docker build failed"
+    log_error "Build output:"
+    echo "$build_output" | tee -a "$LOG_FILE"
+    
+    handle_docker_error 203 "Failed to build Docker image" \
+        "Check Dockerfile and project structure. Ensure all required files are present."
+    exit 1
+fi
+
+# Log build output on success (full output in log file, summary in console)
+log_info "Docker build completed successfully"
+log_info "Build output:"
+echo "$build_output" | tee -a "$LOG_FILE"
+
+# Show build summary in console if not in verbose mode
+if [ "${VERBOSE:-false}" != "true" ]; then
+    # Extract and show key information from build output
+    echo "$build_output" | grep -E "(Successfully built|Successfully tagged| => | --->)" | head -10 | while read -r line; do
+        log_info "Build: $line"
+    done
 fi
 
 log_info "Docker image 'my-ag-ui-app:latest' built successfully"
