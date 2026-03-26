@@ -341,34 +341,36 @@ tag_image_for_local_registry() {
         return 1
     fi
     
-    # Verify the tagging was successful within VM
-    if [ "$DEBUG" = "all" ]; then
-        log "Verifying image tagging was successful within VM..."
-    fi
+    # Verify the tagging was successful within VM (mandatory verification)
+    log "Verifying tagged image exists after successful tagging..."
     if multipass exec "$VM_NAME" -- docker images "$target_image_tag" --format "{{.Repository}}:{{.Tag}}" | grep -q "$target_image_tag"; then
+        log "✅ Image tagging verification successful within VM"
+        log "   Target tag $target_image_tag exists and is accessible within VM"
+        
+        # Get tagged image details for logging from within VM
+        local tagged_image_details
+        tagged_image_details=$(multipass exec "$VM_NAME" -- docker images "$target_image_tag" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
         if [ "$DEBUG" = "all" ]; then
-            log "✅ Image tagging verification successful within VM"
-            log "   Target tag $target_image_tag exists and is accessible within VM"
-            
-            # Get tagged image details for logging from within VM
-            local tagged_image_details
-            tagged_image_details=$(multipass exec "$VM_NAME" -- docker images "$target_image_tag" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
             log "Tagged image details within VM:"
             echo "$tagged_image_details" | tee -a "$LOG_FILE"
-            
-            # Verify that both images (source and tagged) exist and have the same image ID within VM
-            local source_image_id
-            local tagged_image_id
-            
-            source_image_id=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "{{.ID}}" 2>/dev/null || echo "unknown")
-            tagged_image_id=$(multipass exec "$VM_NAME" -- docker images "$target_image_tag" --format "{{.ID}}" 2>/dev/null || echo "unknown")
-            
-            if [ "$source_image_id" = "$tagged_image_id" ] && [ "$source_image_id" != "unknown" ]; then
-                log "✅ Image ID verification successful - both images reference the same underlying image within VM"
+        fi
+        
+        # Verify that both images (source and tagged) exist and have the same image ID within VM
+        local source_image_id
+        local tagged_image_id
+        
+        source_image_id=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "{{.ID}}" 2>/dev/null || echo "unknown")
+        tagged_image_id=$(multipass exec "$VM_NAME" -- docker images "$target_image_tag" --format "{{.ID}}" 2>/dev/null || echo "unknown")
+        
+        if [ "$source_image_id" = "$tagged_image_id" ] && [ "$source_image_id" != "unknown" ]; then
+            log "✅ Image ID verification successful - both images reference the same underlying image within VM"
+            if [ "$DEBUG" = "all" ]; then
                 log "   Source image ID: $source_image_id"
                 log "   Tagged image ID: $tagged_image_id"
-            else
-                log "⚠️  WARNING: Image ID verification failed or IDs are different within VM"
+            fi
+        else
+            log "⚠️  WARNING: Image ID verification failed or IDs are different within VM"
+            if [ "$DEBUG" = "all" ]; then
                 log "   Source image ID: $source_image_id"
                 log "   Tagged image ID: $tagged_image_id"
                 log "   This may indicate the tagging operation didn't work as expected within VM"
@@ -382,9 +384,7 @@ tag_image_for_local_registry() {
         
         # Check if the source image still exists within VM
         if multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" | grep -q "my-ag-ui-app:latest"; then
-            if [ "$DEBUG" = "all" ]; then
-                log "✅ Source image still exists within VM: my-ag-ui-app:latest"
-            fi
+            log "✅ Source image still exists within VM: my-ag-ui-app:latest"
         else
             log "❌ CRITICAL: Source image my-ag-ui-app:latest is missing after failed tagging within VM"
             log "   This may indicate a serious issue with the Docker daemon within VM"
