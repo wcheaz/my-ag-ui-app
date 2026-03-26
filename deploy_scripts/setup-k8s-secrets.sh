@@ -24,15 +24,23 @@ log_info "Starting Kubernetes secrets setup..."
 
 # Check if k8s directory exists
 if [ ! -d "k8s" ]; then
-    handle_validation_error "k8s directory not found" \
-        "Ensure k8s directory exists with Kubernetes manifests: $(pwd)/k8s/"
+    log_error "k8s directory not found"
+    log_structured_error "KUBERNETES MANIFESTS DIRECTORY MISSING" \
+        "The k8s directory containing Kubernetes manifests was not found in the current working directory" \
+        "Project structure incorrect, k8s directory was deleted or moved, script running from wrong directory" \
+        "1. Verify you're in the correct project directory: $(pwd)\n2. Check if k8s directory exists: ls -la\n3. If missing, recreate the k8s directory with required manifests\n4. Ensure you haven't accidentally deleted or moved the k8s directory"
+    exit 1
 fi
 log_info "k8s directory found: $(pwd)/k8s/"
 
 # Check if setup-secrets.sh script exists
 if [ ! -f "k8s/setup-secrets.sh" ]; then
-    handle_validation_error "setup-secrets.sh script not found" \
-        "Ensure setup-secrets.sh exists in k8s directory: $(pwd)/k8s/setup-secrets.sh"
+    log_error "setup-secrets.sh script not found"
+    log_structured_error "KUBERNETES SECRETS SETUP SCRIPT MISSING" \
+        "The setup-secrets.sh script required for generating Kubernetes secrets was not found in the k8s directory" \
+        "Script file was deleted or moved, incomplete project checkout, script running from wrong directory" \
+        "1. Verify setup-secrets.sh exists in k8s directory: ls -la k8s/\n2. If missing, restore the script from your project repository\n3. Ensure you're in the correct project directory: $(pwd)\n4. Check if you have the complete project source code"
+    exit 1
 fi
 log_info "setup-secrets.sh script found: $(pwd)/k8s/setup-secrets.sh"
 
@@ -73,16 +81,23 @@ if [ ${#MISSING_VARS[@]} -gt 0 ]; then
     for missing_var in "${MISSING_VARS[@]}"; do
         log_error "  - $missing_var"
     done
-    handle_validation_error "Missing required environment variables" \
-        "Set the missing environment variables in your shell or .env file before running the script"
+    log_structured_error "REQUIRED ENVIRONMENT VARIABLES MISSING" \
+        "One or more required environment variables are not set, which are needed for Kubernetes secrets configuration" \
+        "Environment variables not exported, .env file missing or incomplete, variables not properly configured in deployment environment" \
+        "1. Set missing variables in your shell: export OPENAI_API_KEY=your_key_here\n2. Or create/update .env file with required variables\n3. Variables needed: OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, EMBEDDING_MODEL\n4. Get API keys from: https://platform.openai.com/api-keys"
+    exit 1
 fi
 log_info "All required environment variables are set"
 
 # Run the secrets setup script to generate the YAML file
 log_info "Running secrets setup script to generate YAML file..."
 if ! bash k8s/setup-secrets.sh 2>&1 | tee -a "$LOG_FILE"; then
-    handle_kubernetes_error "Failed to generate Kubernetes secrets YAML file" \
-        "Check the secrets setup script output above for errors. Ensure environment variables are correctly set."
+    log_error "Failed to generate Kubernetes secrets YAML file"
+    log_structured_error "KUBERNETES SECRETS GENERATION FAILED" \
+        "The setup-secrets.sh script failed to generate a valid Kubernetes secrets YAML file" \
+        "Invalid environment variable values, base64 encoding errors, file permission issues, or script syntax errors" \
+        "1. Review the script output above for specific error messages\n2. Verify all environment variables are set correctly: echo \$OPENAI_API_KEY\n3. Check file permissions in k8s directory: ls -la k8s/\n4. Test environment variables manually: bash k8s/setup-secrets.sh\n5. Fix any reported issues and retry"
+    exit 1
 fi
 log_info "Kubernetes secrets YAML file generated successfully: k8s/secrets.yaml"
 
@@ -101,7 +116,11 @@ log_info "Secrets YAML validation passed"
 # Apply the validated secrets to Kubernetes
 log_info "Applying secrets to Kubernetes cluster..."
 if ! kubectl apply -f "k8s/secrets.yaml" 2>&1 | tee -a "$LOG_FILE"; then
-    handle_kubernetes_error "Failed to apply secrets to Kubernetes cluster" \
-        "Check the kubectl output above for errors. Ensure the secrets file is valid and you have necessary permissions."
+    log_error "Failed to apply secrets to Kubernetes cluster"
+    log_structured_error "KUBERNETES SECRETS APPLICATION FAILED" \
+        "The kubectl apply command failed to apply the validated secrets YAML to the Kubernetes cluster" \
+        "Kubernetes cluster connectivity issues, insufficient permissions, invalid cluster configuration, or conflicting existing resources" \
+        "1. Check Kubernetes cluster connectivity: kubectl cluster-info\n2. Verify your kubectl context: kubectl config current-context\n3. Check permissions: kubectl auth can-i create secret\n4. Check for existing secrets: kubectl get secret my-ag-ui-app-secrets\n5. If secrets exist, delete first: kubectl delete secret my-ag-ui-app-secrets\n6. Ensure Kubernetes cluster is running and accessible"
+    exit 1
 fi
 log_info "Kubernetes secrets setup completed successfully"
