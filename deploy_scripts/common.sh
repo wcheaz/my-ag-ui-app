@@ -26,6 +26,13 @@ log() {
     echo "[$timestamp] $message" | tee -a "$LOG_FILE"
 }
 
+# Info level logging function
+log_info() {
+    local message="$1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$timestamp] INFO: $message" | tee -a "$LOG_FILE"
+}
+
 # Common error handler
 handle_error() {
     local error_code="$1"
