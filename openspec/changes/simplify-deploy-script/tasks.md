@@ -102,7 +102,7 @@
 - [x] 6.3 Verify all scripts have consistent error handling
 - [x] 6.4 Verify all scripts have debug level documentation comments
 - [x] 6.5 Verify all scripts support `DEBUG=all` flag
-- [ ] 6.6 Perform end-to-end deployment test using `deploy-all.sh`
-- [ ] 6.7 Verify deployment succeeds and application is accessible
+- [x] 6.6 Perform end-to-end deployment test using `deploy-all.sh`
+- [x] 6.7 Verify deployment succeeds and application is accessible
 - [ ] 6.8 Archive original [`deploy.sh`](deploy.sh) permanently to `archive/deploy.sh.original`
 - [ ] 6.9 Remove original [`deploy.sh`](deploy.sh) from project root
