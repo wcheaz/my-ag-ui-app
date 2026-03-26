@@ -156,7 +156,7 @@ verify_registry_before_enable() {
 
 # Enable microk8s registry for local image distribution
 enable_microk8s_registry() {
-    log_info "Starting microk8s registry setup..."
+    log_info "🔶 REGISTRY SETUP: Starting microk8s registry setup process..."
     
     # Check if microk8s is available
     log_info "Checking microk8s availability..."
@@ -231,9 +231,10 @@ enable_microk8s_registry() {
         return 1
     fi
     
-    log_info "✅ microk8s registry setup completed successfully"
+    log_info "✅ REGISTRY SETUP: microk8s registry setup process completed successfully"
     log_info "   Registry status: ENABLED and VERIFIED"
     log_info "   Registry endpoint: localhost:32000"
+    log_info "   Setup completed at: $(date '+%Y-%m-%d %H:%M:%S')"
     
     return 0
 }
