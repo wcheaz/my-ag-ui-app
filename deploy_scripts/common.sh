@@ -138,3 +138,90 @@ setup_log_file() {
     
     log_info "Log file initialized: $LOG_FILE"
 }
+
+# Cleanup old logs function - rotates and compresses logs, keeping only last 10
+cleanup_old_logs() {
+    local log_dir="${LOG_DIR:-/tmp}"
+    local max_size_mb=100
+    local max_logs=10
+    
+    log_info "Starting log cleanup process"
+    
+    # Check if log directory exists
+    if [[ ! -d "$log_dir" ]]; then
+        log_warning "Log directory does not exist: $log_dir"
+        return 0
+    fi
+    
+    # Find all deployment log files
+    local log_files=()
+    while IFS= read -r -d '' file; do
+        log_files+=("$file")
+    done < <(find "$log_dir" -name "deploy-*.log" -type f -print0 2>/dev/null)
+    
+    if [[ ${#log_files[@]} -eq 0 ]]; then
+        log_info "No deployment log files found for cleanup"
+        return 0
+    fi
+    
+    log_info "Found ${#log_files[@]} deployment log files to check"
+    
+    # Check and rotate large log files
+    for log_file in "${log_files[@]}"; do
+        if [[ -f "$log_file" ]]; then
+            local file_size_mb
+            file_size_mb=$(du -m "$log_file" | cut -f1 2>/dev/null || echo "0")
+            
+            if [[ "$file_size_mb" -gt "$max_size_mb" ]]; then
+                log_warning "Log file exceeds ${max_size_mb}MB (${file_size_mb}MB): $log_file"
+                
+                # Rotate the log file
+                local timestamp=$(date '+%Y%m%d-%H%M%S')
+                local rotated_file="${log_file}.rotated-${timestamp}"
+                
+                if mv "$log_file" "$rotated_file" 2>/dev/null; then
+                    log_info "Log file rotated to: $rotated_file"
+                    
+                    # Compress the rotated file
+                    if gzip "$rotated_file" 2>/dev/null; then
+                        log_info "Log file compressed: ${rotated_file}.gz"
+                    else
+                        log_warning "Failed to compress rotated log file: $rotated_file"
+                    fi
+                else
+                    log_warning "Failed to rotate log file: $log_file"
+                fi
+            fi
+        fi
+    done
+    
+    # Find all log files including rotated and compressed ones
+    local all_log_files=()
+    while IFS= read -r -d '' file; do
+        all_log_files+=("$file")
+    done < <(find "$log_dir" \( -name "deploy-*.log" -o -name "deploy-*.log.rotated-*" \) -type f -print0 2>/dev/null)
+    
+    # Sort files by modification time (newest first)
+    IFS=$'\n' sorted_files=($(sort -r <<<"${all_log_files[*]}"))
+    unset IFS
+    
+    # Remove excess log files, keeping only the most recent max_logs
+    local total_files=${#sorted_files[@]}
+    if [[ "$total_files" -gt "$max_logs" ]]; then
+        local files_to_remove=$((total_files - max_logs))
+        log_info "Removing $files_to_remove old log files (keeping last $max_logs)"
+        
+        for ((i=max_logs; i<total_files; i++)); do
+            local file_to_remove="${sorted_files[$i]}"
+            if [[ -f "$file_to_remove" ]]; then
+                if rm "$file_to_remove" 2>/dev/null; then
+                    log_info "Removed old log file: $file_to_remove"
+                else
+                    log_warning "Failed to remove old log file: $file_to_remove"
+                fi
+            fi
+        done
+    fi
+    
+    log_info "Log cleanup process completed"
+}
