@@ -450,5 +450,20 @@
     "completedTasks": [
       "4.3 Add exit code 1 on build failure with error details"
     ]
+  },
+  {
+    "timestamp": "2026-03-26T19:18:15.122Z",
+    "iteration": 33,
+    "duration": 129017,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [
+      "openspec/changes/fix-deploy-all-script-issues/.ralph/ralph-loop.state.json"
+    ],
+    "exitCode": 0,
+    "completedTasks": [
+      "4.4 Log build output on success and failure for debugging"
+    ]
   }
 ]
