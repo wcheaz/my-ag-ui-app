@@ -52,18 +52,21 @@ if ! validate_lock_files; then
     log "   Fix the lock file sync issue and try again"
     handle_dependency_error 200 "Dependency validation failed" \
         "Run 'npm install' to update package-lock.json, then commit both files together."
+    exit 1
 fi
 
 # Check if Dockerfile exists
 if [ ! -f "Dockerfile" ]; then
     handle_validation_error 201 "Dockerfile not found in project root" \
         "Ensure Dockerfile exists in the project root directory."
+    exit 1
 fi
 
 # Pre-flight check: Verify Docker daemon is accessible
 if ! docker info >/dev/null 2>&1; then
     handle_docker_error 202 "Docker daemon is not accessible" \
         "Start Docker daemon: sudo systemctl start docker"
+    exit 1
 fi
 
 # Check disk space before Docker build operation
@@ -79,12 +82,14 @@ if [ "$DEBUG" = "all" ]; then
     if ! docker build -t my-ag-ui-app:latest . 2>&1; then
         handle_docker_error 203 "Failed to build Docker image" \
             "Check Dockerfile and project structure. Ensure all required files are present."
+        exit 1
     fi
 else
     # Minimal output for successful phase
     if ! docker build -t my-ag-ui-app:latest . >/dev/null 2>&1; then
         handle_docker_error 203 "Failed to build Docker image" \
             "Check Dockerfile and project structure. Ensure all required files are present."
+        exit 1
     fi
 fi
 
@@ -94,6 +99,7 @@ log_info "Docker image 'my-ag-ui-app:latest' built successfully"
 if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "my-ag-ui-app:latest"; then
     handle_docker_error 204 "Docker image verification failed" \
         "Verify the image was built correctly: docker images my-ag-ui-app:latest"
+    exit 1
 fi
 
 log_info "Docker image 'my-ag-ui-app:latest' verified successfully"
