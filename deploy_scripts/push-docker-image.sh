@@ -554,7 +554,13 @@ push_image_to_registry() {
         log_error "If the image is actually in the registry but verification failed, you can:"
         log_error "1. Proceed with deployment (the image is likely there)"
         log_error "2. Or wait a few minutes and retry the verification"
-        return 1
+        
+        # Use structured error for verification timeout
+        log_structured_error "IMAGE_VERIFICATION_TIMEOUT" \
+            "Image verification failed after $max_registry_verification_attempts attempts with exponential backoff" \
+            "Registry catalog update delays, registry connectivity issues, or registry service problems" \
+            "1. Manual verification: curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list 2. Check registry status: verify_microk8s_registry 3. Proceed with deployment if image exists 4. Or retry verification after waiting"
+        exit 1
     fi
     
     log_info "✅ Docker image push to microk8s registry completed successfully within VM at $(date '+%Y-%m-%d %H:%M:%S')"
@@ -578,8 +584,10 @@ log_info "Starting Docker image push to microk8s registry..."
 
 # Execute the image push function
 if ! push_image_to_registry; then
-    handle_registry_error 205 "Docker image push to microk8s registry failed" \
-        "Check registry status and network connectivity: multipass exec $VM_NAME -- microk8s kubectl get pods -n container-registry"
+    log_structured_error "DOCKER_PUSH_FAILURE" \
+        "Docker image push to microk8s registry failed after all retry attempts" \
+        "Registry connectivity issues, network problems, image not found in VM, Docker daemon issues, or insufficient disk space" \
+        "1. Verify Docker daemon: multipass exec $VM_NAME -- docker info 2. Check image exists: multipass exec $VM_NAME -- docker images localhost:32000/my-ag-ui-app:latest 3. Verify registry: verify_microk8s_registry 4. Check disk space: multipass exec $VM_NAME -- df -h 5. Manual push: multipass exec $VM_NAME -- docker push localhost:32000/my-ag-ui-app:latest"
     exit 1
 fi
 
