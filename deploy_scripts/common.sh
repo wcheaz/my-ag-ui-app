@@ -18,6 +18,7 @@ ERROR_VALIDATION=205
 # Global variables
 VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
 LOG_FILE="${LOG_FILE:-/tmp/deploy-$(date +%Y%m%d-%H%M%S).log}"
+HEALTH_CHECK_PATH="${HEALTH_CHECK_PATH:-/api/health}"
 
 # Common logging function
 log() {
