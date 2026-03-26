@@ -434,5 +434,21 @@
     "completedTasks": [
       "4.2 Add logging for build start and completion with timestamps"
     ]
+  },
+  {
+    "timestamp": "2026-03-26T19:16:06.092Z",
+    "iteration": 32,
+    "duration": 125187,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [
+      "openspec/changes/fix-deploy-all-script-issues/.ralph/ralph-history.json",
+      "openspec/changes/fix-deploy-all-script-issues/.ralph/ralph-loop.state.json"
+    ],
+    "exitCode": 0,
+    "completedTasks": [
+      "4.3 Add exit code 1 on build failure with error details"
+    ]
   }
 ]
