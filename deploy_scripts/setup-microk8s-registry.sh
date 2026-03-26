@@ -117,6 +117,43 @@ verify_microk8s_registry() {
     return 0
 }
 
+# Check registry connectivity before enabling (pre-verification)
+verify_registry_before_enable() {
+    log_info "Performing pre-enablement registry connectivity check..."
+    
+    local registry_check_output
+    local registry_check_exit_code
+    
+    # Try to connect to registry endpoint before enabling
+    registry_check_output=$(timeout 10 multipass exec "$VM_NAME" -- curl -s --connect-timeout 5 http://localhost:32000/v2/_catalog 2>&1)
+    registry_check_exit_code=$?
+    
+    if [ $registry_check_exit_code -eq 0 ]; then
+        log_info "✅ PRE-ENABLEMENT VERIFICATION: Registry already accessible"
+        
+        # Check if response is valid JSON
+        if echo "$registry_check_output" | grep -q '{"repositories":'; then
+            log_info "✅ PRE-ENABLEMENT VERIFICATION: Registry response format is valid JSON"
+            return 0  # Registry is already running and accessible
+        else
+            log_warning "⚠️  PRE-ENABLEMENT VERIFICATION: Registry accessible but response format unexpected"
+            log_info "   Response: $registry_check_output"
+            return 0  # Still accessible, proceed with enablement
+        fi
+    else
+        log_info "ℹ️  PRE-ENABLEMENT VERIFICATION: Registry not accessible (expected - will enable)"
+        log_info "   This is normal when registry is not yet enabled"
+        log_info "   Exit code: $registry_check_exit_code"
+        
+        if [ "${VERBOSE:-false}" = "true" ]; then
+            log_info "Pre-enablement check output:"
+            echo "$registry_check_output" | tee -a "$LOG_FILE"
+        fi
+        
+        return 0  # Continue with enablement - this is expected behavior
+    fi
+}
+
 # Enable microk8s registry for local image distribution
 enable_microk8s_registry() {
     log_info "Starting microk8s registry setup..."
@@ -130,6 +167,16 @@ enable_microk8s_registry() {
         return 1
     fi
     log_info "✅ microk8s is available in VM"
+    
+    # Perform pre-enablement registry connectivity verification
+    log_info "Performing pre-enablement registry connectivity verification..."
+    if ! verify_registry_before_enable; then
+        log_error "❌ PRE-ENABLEMENT VERIFICATION FAILED"
+        handle_registry_error "Pre-enablement registry verification failed" \
+            "Check network connectivity and VM status: multipass exec '$VM_NAME' -- curl -v http://localhost:32000/v2/_catalog"
+        return 1
+    fi
+    log_info "✅ Pre-enablement registry connectivity verification completed"
     
     # Enable microk8s registry with error handling
     log_info "Enabling microk8s registry..."
