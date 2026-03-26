@@ -93,7 +93,7 @@
 - [x] 5.5 Document debug level for each script (full, minimal)
 - [x] 5.6 Update any existing workflows that reference [`deploy.sh`](deploy.sh) to use `deploy-all.sh`
 - [x] 5.7 Add migration notes to [`CHANGELOG.md`](CHANGELOG.md)
-- [ ] 5.8 Create rollback procedure documentation in case issues arise
+- [x] 5.8 Create rollback procedure documentation in case issues arise
 
 ## 6. Final Verification
 
