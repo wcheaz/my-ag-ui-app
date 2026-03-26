@@ -30,7 +30,7 @@
 ## 4. Docker Build Script Updates
 
 - [x] 4.1 Add error handling functions import to `deploy_scripts/build-docker-image.sh`
-- [ ] 4.2 Add logging for build start and completion with timestamps
+- [x] 4.2 Add logging for build start and completion with timestamps
 - [ ] 4.3 Add exit code 1 on build failure with error details
 - [ ] 4.4 Log build output on success and failure for debugging
 - [ ] 4.5 Test build failure scenario to verify error handling

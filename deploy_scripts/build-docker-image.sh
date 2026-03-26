@@ -7,6 +7,9 @@ set -e
 # Source common error handling functions
 source "deploy_scripts/common.sh"
 
+# Log build process start
+log_info "Starting Docker build process"
+
 # Validate package.json and package-lock.json synchronization
 validate_lock_files() {
     log "Starting dependency validation..."
@@ -69,7 +72,7 @@ if ! df . | awk 'NR==2 {gsub(/%/,""); print $5}' | grep -q -E '^[0-9]+$' && [ $(
 fi
 
 # Build Docker image
-log "Building Docker image 'my-ag-ui-app:latest'..."
+log_info "Starting Docker image build for 'my-ag-ui-app:latest'..."
 
 if [ "$DEBUG" = "all" ]; then
     # Verbose output for debugging
@@ -85,7 +88,7 @@ else
     fi
 fi
 
-log "Docker image 'my-ag-ui-app:latest' built successfully"
+log_info "Docker image 'my-ag-ui-app:latest' built successfully"
 
 # Verify Docker image was built successfully
 if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "my-ag-ui-app:latest"; then
@@ -93,4 +96,5 @@ if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/de
         "Verify the image was built correctly: docker images my-ag-ui-app:latest"
 fi
 
-log "Docker image 'my-ag-ui-app:latest' verified successfully"
+log_info "Docker image 'my-ag-ui-app:latest' verified successfully"
+log_info "Docker build process completed successfully"
