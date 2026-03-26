@@ -291,5 +291,23 @@
     "completedTasks": [
       "3.3 Add exit code 1 on validation failure with structured error message"
     ]
+  },
+  {
+    "timestamp": "2026-03-26T19:01:47.476Z",
+    "iteration": 22,
+    "duration": 130748,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [
+      {
+        "tool": "Task",
+        "count": 1
+      }
+    ],
+    "filesChanged": [],
+    "exitCode": 0,
+    "completedTasks": [
+      "3.5 Add detailed error message with recovery steps when validation fails"
+    ]
   }
 ]
