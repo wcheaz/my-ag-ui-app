@@ -45,7 +45,7 @@
 
 ## 6. Microk8s Registry Setup Script Updates
 
-- [ ] 6.1 Add error handling functions import to `deploy_scripts/setup-microk8s-registry.sh`
+- [x] 6.1 Add error handling functions import to `deploy_scripts/setup-microk8s-registry.sh`
 - [ ] 6.2 Implement registry connectivity verification using `curl` before enabling registry
 - [ ] 6.3 Add logging for registry setup start and completion with timestamps
 - [ ] 6.4 Add exit code 1 on registry setup failure with error details
