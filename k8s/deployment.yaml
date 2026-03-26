@@ -98,6 +98,10 @@ spec:
             configMapKeyRef:
               name: my-ag-ui-app-config
               key: llm-context-window
+        # Health check path configuration
+        # NOTE: The livenessProbe and readinessProbe paths below should match this value
+        - name: HEALTH_CHECK_PATH
+          value: "/api/health"
         resources:
           requests:
             cpu: "100m"
@@ -107,7 +111,7 @@ spec:
             memory: "512Mi"
         livenessProbe:
           httpGet:
-            path: /health
+            path: /api/health
             port: 3000
           initialDelaySeconds: 30
           periodSeconds: 10
@@ -115,7 +119,7 @@ spec:
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /health
+            path: /api/health
             port: 3000
           initialDelaySeconds: 5
           periodSeconds: 5
