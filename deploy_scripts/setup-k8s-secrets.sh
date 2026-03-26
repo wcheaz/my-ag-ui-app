@@ -90,20 +90,11 @@ log_info "Kubernetes secrets YAML file generated successfully: k8s/secrets.yaml"
 log_info "Validating secrets YAML against Kubernetes API server..."
 if ! kubectl apply --dry-run=server -f "k8s/secrets.yaml" 2>&1 | tee -a "$LOG_FILE"; then
     log_error "Secrets YAML validation failed against Kubernetes API server"
-    log_error "ERROR TYPE: KUBERNETES SECRETS VALIDATION FAILURE"
-    log_error "DIAGNOSTIC: Generated secrets YAML file is invalid or incompatible with Kubernetes API server"
-    log_error "COMMON CAUSES:"
-    log_error "  - YAML syntax errors in generated secrets file"
-    log_error "  - Invalid base64 encoding of secret values"
-    log_error "  - Missing required fields or incorrect Kubernetes API version"
-    log_error "  - Kubernetes cluster connectivity issues"
-    log_error "RECOVERY:"
-    log_error "  1. Check the generated file for errors: cat k8s/secrets.yaml"
-    log_error "  2. Verify Kubernetes cluster connectivity: kubectl cluster-info"
-    log_error "  3. Ensure you have necessary permissions: kubectl auth can-i create secret"
-    log_error "  4. Fix any environment variable issues and regenerate the file"
-    handle_kubernetes_error "Secrets YAML validation failed" \
-        "Check the validation output above for specific errors. Fix the issues and retry."
+    log_structured_error "KUBERNETES SECRETS VALIDATION FAILURE" \
+        "Generated secrets YAML file is invalid or incompatible with Kubernetes API server" \
+        "YAML syntax errors in generated secrets file, Invalid base64 encoding of secret values, Missing required fields or incorrect Kubernetes API version, Kubernetes cluster connectivity issues" \
+        "1. Check the generated file for errors: cat k8s/secrets.yaml\n2. Verify Kubernetes cluster connectivity: kubectl cluster-info\n3. Ensure you have necessary permissions: kubectl auth can-i create secret\n4. Fix any environment variable issues and regenerate the file"
+    exit 1
 fi
 log_info "Secrets YAML validation passed"
 
