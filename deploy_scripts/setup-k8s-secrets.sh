@@ -14,7 +14,7 @@ setup_log_file
 
 
 # Enable debug output if DEBUG=all is set
-if [ "$DEBUG" = "all" ]; then
+if [ "${DEBUG:-}" = "all" ]; then
     log_info "DEBUG: Verbose debug output enabled for Kubernetes secrets setup"
     set -x
 fi
