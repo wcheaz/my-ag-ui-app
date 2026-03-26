@@ -58,10 +58,7 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
 }
 
-# Source common functions if they exist (this will override the fallback functions if common.sh exists)
-if [ -f "deploy_scripts/common.sh" ]; then
-    source "deploy_scripts/common.sh"
-fi
+
 
 # Performance timing function (fallback if not sourced from common.sh)
 start_phase_timing() {
