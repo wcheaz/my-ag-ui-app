@@ -217,6 +217,8 @@ enable_microk8s_registry() {
             return 0
         fi
         
+        handle_registry_error "Failed to enable microk8s registry" \
+            "Check microk8s status and try: multipass exec '$VM_NAME' -- microk8s enable registry"
         return 1
     fi
     
