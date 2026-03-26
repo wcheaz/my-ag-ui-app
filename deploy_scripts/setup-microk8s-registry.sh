@@ -6,26 +6,52 @@
 
 set -e
 
-# Global variables
-VM_NAME="my-ag-ui-app-k8s"
-LOG_FILE="/tmp/setup-microk8s-registry-$(date +%Y%m%d-%H%M%S).log"
-
-# Debug flag support
-DEBUG=${DEBUG:-""}
-
-# Enhanced log function with debug support
-log() {
-    local message="$1"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+# Source common error handling functions
+if [ -f "deploy_scripts/common.sh" ]; then
+    source "deploy_scripts/common.sh"
     
-    # Always log to file
-    echo "[$timestamp] $message" >> "$LOG_FILE"
+    # Override log function for debug support
+    log() {
+        local message="$1"
+        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+        
+        # Always log to file
+        echo "[$timestamp] $message" >> "$LOG_FILE"
+        
+        # Only output to console if DEBUG=all or message is essential
+        if [ "$DEBUG" = "all" ] || [[ "$message" =~ ^(✅|❌|⚠️|Starting|Completed|Failed|ERROR) ]]; then
+            echo "[$timestamp] $message"
+        fi
+    }
+else
+    # Fallback error handling if common.sh is not available
+    VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
+    LOG_FILE="${LOG_FILE:-/tmp/setup-microk8s-registry-$(date +%Y%m%d-%H%M%S).log}"
+    DEBUG=${DEBUG:-""}
     
-    # Only output to console if DEBUG=all or message is essential
-    if [ "$DEBUG" = "all" ] || [[ "$message" =~ ^(✅|❌|⚠️|Starting|Completed|Failed|ERROR) ]]; then
-        echo "[$timestamp] $message"
-    fi
-}
+    log() {
+        local message="$1"
+        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+        
+        # Always log to file
+        echo "[$timestamp] $message" >> "$LOG_FILE"
+        
+        # Only output to console if DEBUG=all or message is essential
+        if [ "$DEBUG" = "all" ] || [[ "$message" =~ ^(✅|❌|⚠️|Starting|Completed|Failed|ERROR) ]]; then
+            echo "[$timestamp] $message"
+        fi
+    }
+    
+    handle_registry_inaccessible_error() {
+        local error_code=$1
+        local error_context=$2
+        local registry_endpoint=${3:-"localhost:32000"}
+        
+        log "ERROR: Registry accessibility error: $error_context"
+        log "RECOVERY: Check microk8s status and enable registry if needed"
+        exit "$error_code"
+    }
+fi
 
 # Start timing a deployment phase
 start_phase_timing() {
@@ -53,24 +79,7 @@ end_phase_timing() {
 # Initialize timing array
 declare -A PHASE_START_TIMES
 
-# Handle registry inaccessible scenarios with essential error information
-handle_registry_inaccessible_error() {
-    local error_code=$1
-    local error_context=$2
-    local registry_endpoint=${3:-"localhost:32000"}
-    
-    log "❌ REGISTRY ACCESSIBILITY ERROR [Code: $error_code]: $error_context"
-    log "   Registry endpoint: $registry_endpoint"
-    log "   Impact: Kubernetes deployment cannot proceed without accessible registry"
-    
-    log "=== RECOVERY STEPS ==="
-    log "1. Verify microk8s status: multipass exec '$VM_NAME' -- microk8s status"
-    log "2. Enable registry: multipass exec '$VM_NAME' -- microk8s enable registry"
-    log "3. Check registry pod: multipass exec '$VM_NAME' -- microk8s kubectl get pods -n container-registry"
-    log "4. Test connectivity: timeout 5 multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog"
-    
-    return $error_code
-}
+
 
 # Verify microk8s registry is running and accessible at localhost:32000
 verify_microk8s_registry() {
@@ -120,7 +129,8 @@ verify_microk8s_registry() {
             log "✅ REGISTRY SERVICE: RUNNING"
         else
             log "❌ REGISTRY SERVICE: NOT RUNNING"
-            handle_registry_inaccessible_error 302 "Registry service not running - pod status: $registry_service_status" "localhost:32000"
+            handle_registry_error 302 "Registry service not running - pod status: $registry_service_status" \
+                "Verify microk8s status and enable registry: multipass exec '$VM_NAME' -- microk8s enable registry"
             return 1
         fi
     fi
@@ -207,7 +217,8 @@ enable_microk8s_registry() {
     
     # Verify registry is running and accessible
     if ! verify_microk8s_registry; then
-        handle_registry_inaccessible_error 201 "Registry verification failed after enablement" "localhost:32000"
+        handle_registry_error 201 "Registry verification failed after enablement" \
+            "Verify microk8s registry is accessible: multipass exec '$VM_NAME' -- microk8s kubectl get pods -n container-registry"
         return 201
     fi
     
@@ -225,7 +236,8 @@ log "Starting microk8s registry setup..."
 if ! enable_microk8s_registry; then
     log "ERROR: microk8s registry setup failed"
     log "   This is required for local image distribution"
-    handle_registry_inaccessible_error 204 "Registry setup failed during initial microk8s registry enablement" "localhost:32000"
+    handle_registry_error 204 "Registry setup failed during initial microk8s registry enablement" \
+        "Verify microk8s is running and try: multipass exec '$VM_NAME' -- microk8s enable registry"
     exit 1
 fi
 

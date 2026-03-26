@@ -6,38 +6,30 @@
 
 set -e
 
-# Log file location (same as original deploy.sh)
-LOG_FILE="/tmp/deploy-$(date +%Y%m%d-%H%M%S).log"
-
-# VM configuration (same as original deploy.sh)
-VM_NAME="my-ag-ui-app-k8s"
-
-# Logging function - prints to both stdout and log file
-log() {
-    local message="$1"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    echo "[$timestamp] $message"
-    echo "[$timestamp] $message" >> "$LOG_FILE"
-}
-
-# Handle registry inaccessible scenarios with essential error information
-handle_registry_inaccessible_error() {
-    local error_code=$1
-    local error_context=$2
-    local registry_endpoint=${3:-"localhost:32000"}
+# Source common error handling functions
+if [ -f "deploy_scripts/common.sh" ]; then
+    source "deploy_scripts/common.sh"
+else
+    # Fallback error handling if common.sh is not available
+    VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
+    LOG_FILE="${LOG_FILE:-/tmp/deploy-$(date +%Y%m%d-%H%M%S).log}"
     
-    log "❌ REGISTRY ACCESSIBILITY ERROR [Code: $error_code]: $error_context"
-    log "   Registry endpoint: $registry_endpoint"
-    log "   Impact: Kubernetes deployment cannot proceed without accessible registry"
+    log() {
+        local message="$1"
+        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "[$timestamp] $message" | tee -a "$LOG_FILE"
+    }
     
-    log "=== RECOVERY STEPS ==="
-    log "1. Verify microk8s status: multipass exec '$VM_NAME' -- microk8s status"
-    log "2. Enable registry: multipass exec '$VM_NAME' -- microk8s enable registry"
-    log "3. Check registry pod: multipass exec '$VM_NAME' -- microk8s kubectl get pods -n container-registry"
-    log "4. Test connectivity: timeout 5 multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog"
-    
-    return $error_code
-}
+    handle_registry_error() {
+        local error_code=$1
+        local error_message=$2
+        local recovery_suggestion=$3
+        
+        log "ERROR: $error_message"
+        log "RECOVERY: $recovery_suggestion"
+        exit "$error_code"
+    }
+fi
 
 # Verify microk8s registry is running and accessible at localhost:32000
 verify_microk8s_registry() {
@@ -91,7 +83,8 @@ verify_microk8s_registry() {
             fi
         else
             log "❌ REGISTRY SERVICE: NOT RUNNING"
-            handle_registry_inaccessible_error 302 "Registry service not running - pod status: $registry_service_status" "localhost:32000"
+            handle_registry_error 302 "Registry service not running - pod status: $registry_service_status" \
+                "Verify microk8s status and enable registry: multipass exec '$VM_NAME' -- microk8s enable registry"
             return 1
         fi
     fi
@@ -252,7 +245,8 @@ push_image_to_registry() {
     
     # Pre-flight check: Verify registry is accessible before attempting push
     if ! verify_microk8s_registry; then
-        handle_registry_inaccessible_error 202 "Registry not accessible before image push operation" "localhost:32000"
+        handle_registry_error 202 "Registry not accessible before image push operation" \
+            "Verify microk8s registry is accessible: multipass exec '$VM_NAME' -- microk8s kubectl get pods -n container-registry"
         return 202
     fi
     
@@ -459,7 +453,8 @@ log "=== DOCKER IMAGE PUSH TO MICROK8S REGISTRY ==="
 
 # Execute the image push function
 if ! push_image_to_registry; then
-    log "❌ ERROR: Docker image push to microk8s registry failed"
+    handle_registry_error 205 "Docker image push to microk8s registry failed" \
+        "Check registry status and network connectivity: multipass exec '$VM_NAME' -- microk8s kubectl get pods -n container-registry"
     exit 1
 fi
 

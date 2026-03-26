@@ -8,15 +8,34 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
-# Default values
-VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
-LOG_FILE="${LOG_FILE:-deploy.log}"
-PERFORMANCE_LOG_FILE="${PERFORMANCE_LOG_FILE:-performance.log}"
-
-# Logging function (fallback if not sourced from common.sh)
-log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
-}
+# Source common error handling functions
+if [ -f "deploy_scripts/common.sh" ]; then
+    source "deploy_scripts/common.sh"
+    
+    # Override log function for compatibility with existing log format
+    log() {
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+    }
+else
+    # Fallback error handling if common.sh is not available
+    VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
+    LOG_FILE="${LOG_FILE:-deploy.log}"
+    PERFORMANCE_LOG_FILE="${PERFORMANCE_LOG_FILE:-performance.log}"
+    
+    log() {
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+    }
+    
+    handle_secrets_error() {
+        local exit_code="$1"
+        local error_message="$2"
+        local recovery_hint="$3"
+        
+        log "ERROR: $error_message"
+        log "RECOVERY: $recovery_hint"
+        exit "$exit_code"
+    }
+fi
 
 # Debug flag support - when DEBUG=all is set, retain full verbose output
 # When not set, still retain full output since this is a critical failure phase
@@ -72,56 +91,7 @@ handle_secrets_error() {
     exit "$exit_code"
 }
 
-# Handle registry port mismatch error (fallback if not sourced from common.sh)
-handle_registry_port_mismatch_error() {
-    local exit_code="$1"
-    local expected_port="$2"
-    local actual_port="$3"
-    local manifest_file="$4"
-    
-    log "❌ CRITICAL ERROR: Registry port mismatch detected!"
-    log "   • Expected registry port: $expected_port (microk8s standard)"
-    log "   • Actual registry port: $actual_port (in $manifest_file)"
-    log "   • This will cause ImagePullBackOff errors during deployment"
-    log ""
-    log "TO FIX:"
-    log "1. Update the registry port in $manifest_file:"
-    log "   sed -i 's/localhost:$actual_port/localhost:$expected_port/g' $manifest_file"
-    log "2. Verify the fix:"
-    log "   grep 'localhost:' $manifest_file"
-    log "3. Retry deployment: ./deploy-all.sh"
-    log ""
-    log "CRITICAL: Deployment cannot proceed with registry port mismatch"
-    
-    exit "$exit_code"
-}
 
-# Handle image pull failure error (fallback if not sourced from common.sh)
-handle_image_pull_failure_error() {
-    local exit_code="$1"
-    local error_message="$2"
-    local pod_name="$3"
-    
-    log "❌ ERROR: $error_message"
-    log "   • Pod name: $pod_name"
-    log ""
-    log "MOST COMMON CAUSES:"
-    log "1. REGISTRY PORT MISMATCH (most likely):"
-    log "   • Check if deployment.yaml uses wrong registry port"
-    log "   • Expected: localhost:32000/my-ag-ui-app:latest"
-    log "   • Wrong:    localhost:5000/my-ag-ui-app:latest"
-    log "   • Fix: grep -n 'localhost:5000' k8s/deployment.yaml && sed -i 's/localhost:5000/localhost:32000/g' k8s/deployment.yaml"
-    log ""
-    log "2. IMAGE NOT PUSHED TO REGISTRY:"
-    log "   • Check image exists in registry: multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog"
-    log "   • If missing, rebuild and push: docker build -t localhost:32000/my-ag-ui-app:latest . && docker push localhost:32000/my-ag-ui-app:latest"
-    log ""
-    log "3. REGISTRY NOT ACCESSIBLE:"
-    log "   • Check registry status: multipass exec '$VM_NAME' -- microk8s kubectl get pods -n container-registry"
-    log "   • Restart registry if needed: multipass exec '$VM_NAME' -- microk8s stop && multipass exec '$VM_NAME' -- microk8s start"
-    
-    exit "$exit_code"
-}
 
 # Command existence check (fallback if not sourced from common.sh)
 command_exists() {
@@ -169,14 +139,14 @@ fi
 log "📋 MANIFEST VALIDATION: Checking deployment.yaml file..."
 if [ ! -f "k8s/deployment.yaml" ]; then
     log "❌ ERROR: Deployment manifest file not found: k8s/deployment.yaml"
-    handle_secrets_error 140 "Deployment manifest file missing" \
+    handle_validation_error 140 "Deployment manifest file missing" \
         "Ensure k8s/deployment.yaml exists in the current directory."
 fi
 
 manifest_size=$(wc -l < "k8s/deployment.yaml" 2>/dev/null || echo "0")
 if [ "$manifest_size" -eq 0 ]; then
     log "❌ ERROR: Deployment manifest file is empty: k8s/deployment.yaml"
-    handle_secrets_error 141 "Deployment manifest file empty" \
+    handle_validation_error 141 "Deployment manifest file empty" \
         "Ensure k8s/deployment.yaml contains valid YAML content."
 fi
 
@@ -196,7 +166,8 @@ elif [ "$actual_registry_port" != "$expected_registry_port" ]; then
     log "   • This will cause ImagePullBackOff errors during deployment"
     
     # Use our enhanced error handler for port mismatch
-    handle_registry_port_mismatch_error 900 "$expected_registry_port" "$actual_registry_port" "k8s/deployment.yaml"
+    handle_validation_error 900 "Registry port mismatch detected" \
+        "Expected: localhost:$expected_registry_port, Actual: localhost:$actual_registry_port. Fix in k8s/deployment.yaml"
     
     log "   ⚠️  DEPLOYMENT PAUSED: Please fix the registry port mismatch above and retry"
     log "   ⚠️  After fixing, run: bash deploy.sh"
@@ -212,7 +183,7 @@ log "   • Manifest validation: PASSED"
 log "🔌 KUBERNETES CONNECTION: Verifying cluster access..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl cluster-info 2>&1 | grep -q "is running"; then
     log "❌ ERROR: Kubernetes cluster is not accessible"
-    handle_secrets_error 142 "Kubernetes cluster inaccessible" \
+    handle_kubernetes_error 142 "Kubernetes cluster inaccessible" \
         "Verify microk8s is running and accessible: multipass exec '$VM_NAME' -- microk8s status"
 fi
 log "   • Kubernetes cluster: ACCESSIBLE"
@@ -389,7 +360,7 @@ else
         log "     5. Check for registry port issues: grep -E '(localhost:5000|localhost:32000)' k8s/deployment.yaml"
     fi
     
-    handle_secrets_error 106 "Failed to apply deployment manifest" \
+    handle_kubernetes_error 106 "Failed to apply deployment manifest" \
         "Check the deployment file: k8s/deployment.yaml. Ensure it references secrets and config maps correctly. Error details logged above."
 fi
 
@@ -401,7 +372,7 @@ log "🔄 STEP 2: Restarting deployment to trigger pod recreation..."
 log "   • This will create new pods using the updated registry image"
 log "   • Pods will pull image from localhost:32000/my-ag-ui-app:latest"
 if ! multipass exec "$VM_NAME" -- microk8s kubectl rollout restart deployment/my-ag-ui-app 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 125 "Failed to restart deployment" \
+    handle_kubernetes_error 125 "Failed to restart deployment" \
         "Check if deployment exists: microk8s kubectl get deployment my-ag-ui-app. Ensure deployment is in a state that can be restarted."
 fi
 log "✅ Deployment restarted successfully"
@@ -495,7 +466,8 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
         # Use specialized error handler for image pull failures, generic handler for other issues
         if [ "$SAW_IMAGE_PULL_BACK_OFF" = true ]; then
             log "ERROR TYPE: ImagePullBackOff detected - using specialized image pull error handling"
-            handle_image_pull_failure_error 126 "Pod stuck in ImagePullBackOff state - image pull failure" "$POD_NAME"
+            handle_kubernetes_error 126 "Pod stuck in ImagePullBackOff state - image pull failure" \
+                "Check registry access and image availability. Verify image exists in registry: multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog"
             
             # Additional specific guidance for common ImagePullBackOff causes
             log "=== ADDITIONAL IMAGE PULL BACKOFF TROUBLESHOOTING ==="
@@ -516,7 +488,7 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
             
         else
             log "ERROR TYPE: General pod startup failure - using generic error handling"
-            handle_secrets_error 126 "Pod did not reach Running status after deployment restart" \
+            handle_kubernetes_error 126 "Pod did not reach Running status after deployment restart" \
                 "Check pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app. Verify registry is accessible: microk8s kubectl get pods -n container-registry."
         fi
     fi
@@ -602,7 +574,7 @@ while [ $PROBE_WAIT_ATTEMPT -le $MAX_PROBE_WAIT_ATTEMPTS ]; do
         log "Probe status details:"
         multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.containerStatuses[0].lastState}' 2>/dev/null | tee -a "$LOG_FILE" || true
         
-        handle_secrets_error 127 "Pod probes did not pass within timeout" \
+        handle_kubernetes_error 127 "Pod probes did not pass within timeout" \
             "Check application logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app. Verify /health endpoint is working correctly."
     fi
     
@@ -620,7 +592,7 @@ log "✓ Pod readiness and liveness probes verification completed successfully"
 # Apply service manifest
 log "Applying service manifest..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 107 "Failed to apply service manifest" \
+    handle_kubernetes_error 107 "Failed to apply service manifest" \
         "Check the service file: k8s/service.yaml. Ensure it references the correct deployment."
 fi
 log "Service manifest applied successfully"
@@ -628,7 +600,7 @@ log "Service manifest applied successfully"
 # Apply ingress manifest
 log "Applying ingress manifest..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/ingress.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_secrets_error 108 "Failed to apply ingress manifest" \
+    handle_kubernetes_error 108 "Failed to apply ingress manifest" \
         "Check the ingress file: k8s/ingress.yaml. Ensure ingress controller is enabled in microk8s."
 fi
 log "Ingress manifest applied successfully"
@@ -658,7 +630,7 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     fi
     
     if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-    handle_secrets_error 109 "Deployment did not become ready within $MAX_ATTEMPTS attempts" \
+    handle_kubernetes_error 109 "Deployment did not become ready within $MAX_ATTEMPTS attempts" \
         "Check pod logs: microk8s kubectl logs -l app=my-ag-ui-app. Check pod status: microk8s kubectl get pods -l app=my-ag-ui-app"
     fi
     
