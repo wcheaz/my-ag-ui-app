@@ -70,7 +70,7 @@
 - [x] 8.3 Add pod status polling every 5 seconds with 5-minute timeout for Running state
 - [x] 8.4 Verify readiness probe passes before marking deployment successful
 - [x] 8.5 Capture and log Kubernetes pod events (pull errors, crash loops, probe failures)
-- [ ] 8.6 Add logging for deployment start and completion with timestamps
+- [x] 8.6 Add logging for deployment start and completion with timestamps
 - [ ] 8.7 Add exit code 1 on deployment failure with pod details and error reason
 - [ ] 8.8 Test manifest validation with invalid YAML to verify error handling
 - [ ] 8.9 Test pod startup verification with successful deployment

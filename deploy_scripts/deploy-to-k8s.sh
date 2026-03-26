@@ -99,20 +99,20 @@ command_exists() {
 NETWORK_CONNECTIVITY_TIMEOUT="${NETWORK_CONNECTIVITY_TIMEOUT:-5}"
 
 start_phase_timing "KUBERNETES_DEPLOYMENT"
-log "🚀 STARTING KUBERNETES DEPLOYMENT PHASE"
-log "═══════════════════════════════════════════════════════════════════════════════"
+log_info "🚀 STARTING KUBERNETES DEPLOYMENT PHASE"
+log_info "═══════════════════════════════════════════════════════════════════════════════"
 log "📋 DEPLOYMENT DETAILS:"
 log "   • Manifest: k8s/deployment.yaml"
 log "   • Image: localhost:32000/my-ag-ui-app:latest (from local registry)"
 log "   • Strategy: Rolling update with pod restart"
 log "   • Registry: microk8s local registry"
 log ""
-log "🔄 STEP 1: Applying deployment manifest..."
-log "   • Manifest: k8s/deployment.yaml"
-log "   • Image: localhost:32000/my-ag-ui-app:latest (from local registry)"
-log "   • Strategy: Rolling update with pod restart"
-log "   • Registry: microk8s local registry"
-log ""
+log_info "🔄 STEP 1: Applying deployment manifest..."
+log_info "   • Manifest: k8s/deployment.yaml"
+log_info "   • Image: localhost:32000/my-ag-ui-app:latest (from local registry)"
+log_info "   • Strategy: Rolling update with pod restart"
+log_info "   • Registry: microk8s local registry"
+log_info ""
 
 # Enhanced logging: Pre-apply deployment state verification
 log "📊 PRE-APPLOY VERIFICATION: Checking current deployment state..."
@@ -701,7 +701,7 @@ if ! verify_readiness_probe; then
 fi
 log_info "✅ Readiness probe verification passed - deployment can be marked successful"
 log "═══════════════════════════════════════════════════════════════════════════════"
-log "🎯 KUBERNETES DEPLOYMENT PHASE COMPLETED"
+log_info "🎯 KUBERNETES DEPLOYMENT PHASE COMPLETED"
 
 # Log deployment progress summary
 log_deployment_progress_summary() {
@@ -1139,8 +1139,8 @@ else
     log "To test manually: curl $ACCESS_URL"
 fi
 
-log "Kubernetes deployment phase completed successfully"
-log "Application should be accessible via ingress (may take a few minutes for ingress to be fully ready)"
+log_info "Kubernetes deployment phase completed successfully"
+log_info "Application should be accessible via ingress (may take a few minutes for ingress to be fully ready)"
 
 # Final deployment progress summary
 log ""
@@ -1154,7 +1154,7 @@ log "✅ KUBERNETES_DEPLOYMENT: Manifest applied, deployment restarted"
 log "✅ KUBERNETES_VERIFICATION: Pods verified and deployment status confirmed"
 log "✅ INGRESS_SETUP: External access configured and tested"
 log "═══════════════════════════════════════════════════════════════════════════════"
-log "🚀 DEPLOYMENT STATUS: FULLY COMPLETED"
+log_info "🚀 DEPLOYMENT STATUS: FULLY COMPLETED"
 log "📦 REGISTRY APPROACH: Successfully implemented and verified"
 log "🌐 ACCESS: Ready via ingress endpoint (details below)"
 log "═══════════════════════════════════════════════════════════════════════════════"
@@ -1181,4 +1181,4 @@ log "=== END ACCESS INFORMATION ==="
 # 6.3 Test application access via ingress (this was completed above)
 log "Ingress endpoint URL/IP retrieval and testing completed"
 
-log "Kubernetes secrets setup and deployment completed successfully"
+log_info "Kubernetes secrets setup and deployment completed successfully"
