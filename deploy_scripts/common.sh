@@ -33,6 +33,13 @@ log_info() {
     echo "[$timestamp] INFO: $message" | tee -a "$LOG_FILE"
 }
 
+# Warning level logging function
+log_warning() {
+    local message="$1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$timestamp] WARNING: $message" | tee -a "$LOG_FILE"
+}
+
 # Common error handler
 handle_error() {
     local error_code="$1"

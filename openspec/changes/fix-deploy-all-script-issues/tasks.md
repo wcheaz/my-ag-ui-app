@@ -9,7 +9,7 @@
 
 - [x] 2.1 Add `set -euo pipefail` to `deploy_scripts/common.sh` for strict error handling
 - [x] 2.2 Implement `log_info()` function in `deploy_scripts/common.sh` with timestamp and INFO level
-- [ ] 2.3 Implement `log_warning()` function in `deploy_scripts/common.sh` with timestamp and WARNING level
+- [x] 2.3 Implement `log_warning()` function in `deploy_scripts/common.sh` with timestamp and WARNING level
 - [ ] 2.4 Implement `log_error()` function in `deploy_scripts/common.sh` with timestamp and ERROR level
 - [ ] 2.5 Implement `log_structured_error()` function in `deploy_scripts/common.sh` with ERROR TYPE, DIAGNOSTIC, COMMON CAUSES, and RECOVERY fields
 - [ ] 2.6 Implement `setup_log_file()` function in `deploy_scripts/common.sh` to create timestamped log file
