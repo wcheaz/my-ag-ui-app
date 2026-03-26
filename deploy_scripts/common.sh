@@ -40,6 +40,13 @@ log_warning() {
     echo "[$timestamp] WARNING: $message" | tee -a "$LOG_FILE"
 }
 
+# Error level logging function
+log_error() {
+    local message="$1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$timestamp] ERROR: $message" | tee -a "$LOG_FILE"
+}
+
 # Common error handler
 handle_error() {
     local error_code="$1"
