@@ -42,6 +42,60 @@ declare -A PHASE_START_TIMES
 
 
 
+# Validate that registry response is valid JSON with expected structure
+validate_registry_json_response() {
+    local response="$1"
+    
+    # Check if response is empty
+    if [ -z "$response" ]; then
+        log_info "   JSON validation: Empty response"
+        return 1
+    fi
+    
+    # Try to validate JSON using jq if available (preferred method)
+    if command -v jq >/dev/null 2>&1; then
+        if echo "$response" | jq . >/dev/null 2>&1; then
+            # Valid JSON, now check if it has expected registry catalog structure
+            if echo "$response" | jq -e 'has("repositories")' >/dev/null 2>&1; then
+                log_info "   JSON validation: Valid registry catalog format with repositories field"
+                return 0
+            else
+                log_info "   JSON validation: Valid JSON but missing repositories field"
+                return 1
+            fi
+        else
+            log_info "   JSON validation: Invalid JSON (jq validation failed)"
+            return 1
+        fi
+    else
+        # Fallback: Try Python JSON parsing if jq is not available
+        if command -v python3 >/dev/null 2>&1; then
+            if python3 -c "import json, sys; json.loads(sys.stdin.read()); print('VALID JSON')" 2>/dev/null <<< "$response"; then
+                # Valid JSON, now check structure with Python
+                if python3 -c "import json, sys; data=json.loads(sys.stdin.read()); print('HAS_REPOS' if 'repositories' in data else 'NO_REPOS')" 2>/dev/null <<< "$response" | grep -q "HAS_REPOS"; then
+                    log_info "   JSON validation: Valid registry catalog format with repositories field (Python)"
+                    return 0
+                else
+                    log_info "   JSON validation: Valid JSON but missing repositories field (Python)"
+                    return 1
+                fi
+            else
+                log_info "   JSON validation: Invalid JSON (Python validation failed)"
+                return 1
+            fi
+        else
+            # Last resort: Basic validation with pattern matching
+            if echo "$response" | grep -q '{"repositories":'; then
+                log_info "   JSON validation: Basic pattern match passed (jq/python not available)"
+                return 0
+            else
+                log_info "   JSON validation: Basic pattern match failed"
+                return 1
+            fi
+        fi
+    fi
+}
+
 # Verify microk8s registry is running and accessible at localhost:32000
 verify_microk8s_registry() {
     log_info "Verifying registry is running and accessible at localhost:32000..."
@@ -67,10 +121,11 @@ verify_microk8s_registry() {
                 echo "$registry_check_output" | tee -a "$LOG_FILE"
             fi
             
-            if echo "$registry_check_output" | grep -q '{"repositories":'; then
+            if validate_registry_json_response "$registry_check_output"; then
                 log_info "✅ REGISTRY RESPONSE FORMAT: VALID JSON"
             else
-                log_warning "REGISTRY RESPONSE FORMAT: UNEXPECTED"
+                log_warning "REGISTRY RESPONSE FORMAT: INVALID JSON"
+                log_info "   Response content: $registry_check_output"
             fi
         fi
     else
@@ -132,7 +187,7 @@ verify_registry_before_enable() {
         log_info "✅ PRE-ENABLEMENT VERIFICATION: Registry already accessible"
         
         # Check if response is valid JSON
-        if echo "$registry_check_output" | grep -q '{"repositories":'; then
+        if validate_registry_json_response "$registry_check_output"; then
             log_info "✅ PRE-ENABLEMENT VERIFICATION: Registry response format is valid JSON"
             return 0  # Registry is already running and accessible
         else
