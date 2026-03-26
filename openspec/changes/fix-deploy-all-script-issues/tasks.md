@@ -3,7 +3,7 @@
 - [x] 1.1 Archive current deployment manifest as `k8s/deployment.yaml.backup`
 - [x] 1.2 Document current image tag and deployment state in `openspec/changes/fix-deploy-all-script-issues/DEPLOYMENT_STATE.md`
 - [x] 1.3 Test manual rollback procedure by reapplying backup manifest
-- [ ] 1.4 Verify rollback procedure restores pods to Running state
+- [x] 1.4 Verify rollback procedure restores pods to Running state
 
 ## 2. Common Infrastructure
 
