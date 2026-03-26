@@ -5,29 +5,7 @@
 set -e
 
 # Source common error handling functions
-if [ -f "deploy_scripts/common.sh" ]; then
-    source "deploy_scripts/common.sh"
-else
-    # Fallback error handling if common.sh is not available
-    VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
-    LOG_FILE="${LOG_FILE:-/tmp/deploy-$(date +%Y%m%d-%H%M%S).log}"
-    
-    log() {
-        local message="$1"
-        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-        echo "[$timestamp] $message" | tee -a "$LOG_FILE"
-    }
-    
-    handle_dependency_error() {
-        local error_code=$1
-        local error_message=$2
-        local recovery_suggestion=$3
-        
-        log "ERROR: $error_message"
-        log "RECOVERY: $recovery_suggestion"
-        exit "$error_code"
-    }
-fi
+source "deploy_scripts/common.sh"
 
 # Validate package.json and package-lock.json synchronization
 validate_lock_files() {
