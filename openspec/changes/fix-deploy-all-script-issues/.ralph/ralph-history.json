@@ -339,5 +339,23 @@
     ],
     "exitCode": 0,
     "completedTasks": []
+  },
+  {
+    "timestamp": "2026-03-26T19:05:33.298Z",
+    "iteration": 25,
+    "duration": 91058,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [
+      "openspec/changes/fix-deploy-all-script-issues/.ralph/ralph-history.json",
+      "openspec/changes/fix-deploy-all-script-issues/.ralph/ralph-loop.state.json",
+      "openspec/changes/fix-deploy-all-script-issues/tasks.md",
+      "test-secrets-validation-error-handling.sh"
+    ],
+    "exitCode": 0,
+    "completedTasks": [
+      "3.6 Test secrets validation with invalid YAML to verify error handling"
+    ]
   }
 ]
