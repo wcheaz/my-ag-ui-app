@@ -24,7 +24,7 @@
 - [x] 3.3 Add exit code 1 on validation failure with structured error message
 - [x] 3.4 Add logging for secrets setup start and completion with timestamps
 - [x] 3.5 Add detailed error message with recovery steps when validation fails
-- [ ] 3.6 Test secrets validation with invalid YAML to verify error handling
+- [x] 3.6 Test secrets validation with invalid YAML to verify error handling
 - [ ] 3.7 Test secrets validation with valid YAML to verify successful application
 
 ## 4. Docker Build Script Updates
