@@ -4,7 +4,7 @@
 # This script pushes the Docker image to the microk8s registry.
 # Based on deployment status: PARTIAL SUCCESS - minimal debug output retained.
 
-set -e
+set -euo pipefail
 
 # Source common error handling functions
 if [ -f "deploy_scripts/common.sh" ]; then
@@ -29,6 +29,11 @@ else
         log "RECOVERY: $recovery_suggestion"
         exit "$error_code"
     }
+fi
+
+# Initialize log file
+if command -v setup_log_file >/dev/null 2>&1; then
+    setup_log_file
 fi
 
 # Verify microk8s registry is running and accessible at localhost:32000
@@ -201,7 +206,7 @@ check_disk_space() {
 
 # Push tagged Docker image to microk8s registry using docker push command
 push_image_to_registry() {
-    log "Starting Docker image push to microk8s registry (executing within VM)..."
+    log_info "Starting Docker image push to microk8s registry (executing within VM)..."
     
     # Define the target registry image
     local target_image="localhost:32000/my-ag-ui-app:latest"
@@ -449,7 +454,7 @@ push_image_to_registry() {
 # ===========================
 
 # Main script execution
-log "=== DOCKER IMAGE PUSH TO MICROK8S REGISTRY ==="
+log_info "=== DOCKER IMAGE PUSH TO MICROK8S REGISTRY ==="
 
 # Execute the image push function
 if ! push_image_to_registry; then
@@ -458,5 +463,5 @@ if ! push_image_to_registry; then
     exit 1
 fi
 
-log "✅ Docker image push to microk8s registry completed successfully"
+log_info "✅ Docker image push to microk8s registry completed successfully"
 exit 0
