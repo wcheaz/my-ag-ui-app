@@ -105,4 +105,4 @@
 - [x] 6.6 Perform end-to-end deployment test using `deploy-all.sh`
 - [x] 6.7 Verify deployment succeeds and application is accessible
 - [x] 6.8 Archive original [`deploy.sh`](deploy.sh) permanently to `archive/deploy.sh.original`
-- [ ] 6.9 Remove original [`deploy.sh`](deploy.sh) from project root
+- [x] 6.9 Remove original [`deploy.sh`](deploy.sh) from project root
