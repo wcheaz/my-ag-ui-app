@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Enable strict error handling
+set -euo pipefail
+
 # Common error handling functions for deployment scripts
 # This file should be sourced by all deployment scripts
 
