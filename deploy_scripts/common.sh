@@ -47,6 +47,24 @@ log_error() {
     echo "[$timestamp] ERROR: $message" | tee -a "$LOG_FILE"
 }
 
+# Structured error logging function with detailed fields
+log_structured_error() {
+    local error_type="$1"
+    local diagnostic="$2"
+    local common_causes="$3"
+    local recovery="$4"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    echo "[$timestamp] ══════════════════════════════════════════════════════════════════════════════" | tee -a "$LOG_FILE"
+    echo "[$timestamp]                          STRUCTURED ERROR" | tee -a "$LOG_FILE"
+    echo "[$timestamp] ══════════════════════════════════════════════════════════════════════════════" | tee -a "$LOG_FILE"
+    echo "[$timestamp] ERROR TYPE: $error_type" | tee -a "$LOG_FILE"
+    echo "[$timestamp] DIAGNOSTIC: $diagnostic" | tee -a "$LOG_FILE"
+    echo "[$timestamp] COMMON CAUSES: $common_causes" | tee -a "$LOG_FILE"
+    echo "[$timestamp] RECOVERY: $recovery" | tee -a "$LOG_FILE"
+    echo "[$timestamp] ══════════════════════════════════════════════════════════════════════════════" | tee -a "$LOG_FILE"
+}
+
 # Common error handler
 handle_error() {
     local error_code="$1"
