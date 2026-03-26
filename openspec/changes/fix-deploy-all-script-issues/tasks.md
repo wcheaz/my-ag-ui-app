@@ -19,7 +19,7 @@
 
 ## 3. Secrets Setup Script Updates
 
-- [ ] 3.1 Add error handling functions import to `deploy_scripts/setup-k8s-secrets.sh`
+- [x] 3.1 Add error handling functions import to `deploy_scripts/setup-k8s-secrets.sh`
 - [ ] 3.2 Implement secrets YAML validation using `kubectl apply --dry-run=server` before applying
 - [ ] 3.3 Add exit code 1 on validation failure with structured error message
 - [ ] 3.4 Add logging for secrets setup start and completion with timestamps

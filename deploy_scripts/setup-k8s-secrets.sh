@@ -2,77 +2,58 @@
 
 # DEBUG LEVEL: FULL (problematic phase)
 
-# Set error handling
-set -e
+# Set strict error handling
+set -euo pipefail
 
 # Source common error handling functions
-if [ -f "deploy_scripts/common.sh" ]; then
-    source "deploy_scripts/common.sh"
-else
-    # Fallback error handling if common.sh is not available
-    VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
-    LOG_FILE="${LOG_FILE:-/tmp/deploy-$(date +%Y%m%d-%H%M%S).log}"
-    
-    log() {
-        local message="$1"
-        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-        echo "[$timestamp] $message" | tee -a "$LOG_FILE"
-    }
-    
-    handle_error() {
-        local error_code="$1"
-        local error_message="$2"
-        local recovery_suggestion="$3"
-        
-        log "ERROR: $error_message"
-        log "RECOVERY: $recovery_suggestion"
-        exit "$error_code"
-    }
-fi
+source "deploy_scripts/common.sh"
+
+# Initialize log file
+setup_log_file
 
 
 
 # Enable debug output if DEBUG=all is set
 if [ "$DEBUG" = "all" ]; then
-    log "DEBUG: Verbose debug output enabled for Kubernetes secrets setup"
+    log_info "DEBUG: Verbose debug output enabled for Kubernetes secrets setup"
     set -x
 fi
 
 # 5.4 Create Kubernetes secrets for sensitive environment variables
-log "Starting Kubernetes secrets setup..."
+log_info "Starting Kubernetes secrets setup..."
 
 # Check if k8s directory exists
 if [ ! -d "k8s" ]; then
-    handle_validation_error 101 "k8s directory not found" \
+    handle_validation_error "k8s directory not found" \
         "Ensure k8s directory exists with Kubernetes manifests: $(pwd)/k8s/"
 fi
-log "k8s directory found: $(pwd)/k8s/"
+log_info "k8s directory found: $(pwd)/k8s/"
 
 # Check if setup-secrets.sh script exists
 if [ ! -f "k8s/setup-secrets.sh" ]; then
-    handle_validation_error 102 "setup-secrets.sh script not found" \
+    handle_validation_error "setup-secrets.sh script not found" \
         "Ensure setup-secrets.sh exists in k8s directory: $(pwd)/k8s/setup-secrets.sh"
 fi
-log "setup-secrets.sh script found: $(pwd)/k8s/setup-secrets.sh"
+log_info "setup-secrets.sh script found: $(pwd)/k8s/setup-secrets.sh"
 
 # Check if .env file exists
 if [ ! -f ".env" ]; then
-    log "WARNING: .env file not found in current directory"
-    log "Using environment variables from shell environment"
+    log_warning ".env file not found in current directory"
+    log_info "Using environment variables from shell environment"
 fi
 
 # Set up environment variables for secrets creation
-log "Setting up environment variables for secrets creation..."
+log_info "Setting up environment variables for secrets creation..."
 
 # Read environment variables from .env file if it exists
 if [ -f ".env" ]; then
-    log "Loading environment variables from .env file..."
+    log_info "Loading environment variables from .env file..."
     while IFS= read -r line; do
         # Skip comments and empty lines
         if [[ ! "$line" =~ ^#.*$ ]] && [[ -n "$line" ]]; then
             # Export the variable
             export "$line"
-            log "Set environment variable: ${line%%=*}"
+            log_info "Set environment variable: ${line%%=*}"
         fi
     done < .env
 fi
@@ -88,19 +69,19 @@ for var in "${REQUIRED_VARS[@]}"; do
 done
 
 if [ ${#MISSING_VARS[@]} -gt 0 ]; then
-    log "ERROR: Missing required environment variables:"
+    log_error "Missing required environment variables:"
     for missing_var in "${MISSING_VARS[@]}"; do
-        log "  - $missing_var"
+        log_error "  - $missing_var"
     done
-    handle_validation_error 103 "Missing required environment variables" \
+    handle_validation_error "Missing required environment variables" \
         "Set the missing environment variables in your shell or .env file before running the script"
 fi
-log "All required environment variables are set"
+log_info "All required environment variables are set"
 
 # Run the secrets setup script
-log "Running secrets setup script..."
+log_info "Running secrets setup script..."
 if ! bash k8s/setup-secrets.sh 2>&1 | tee -a "$LOG_FILE"; then
-    handle_kubernetes_error 104 "Failed to set up Kubernetes secrets" \
+    handle_kubernetes_error "Failed to set up Kubernetes secrets" \
         "Check the secrets setup script output above for errors. Ensure environment variables are correctly set."
 fi
-log "Kubernetes secrets setup completed successfully"
+log_info "Kubernetes secrets setup completed successfully"
