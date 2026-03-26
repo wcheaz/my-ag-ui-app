@@ -675,5 +675,21 @@
       "6.6 Perform end-to-end deployment test using `deploy-all.sh`",
       "6.7 Verify deployment succeeds and application is accessible"
     ]
+  },
+  {
+    "timestamp": "2026-03-26T02:45:51.603Z",
+    "iteration": 43,
+    "duration": 290411,
+    "completionDetected": true,
+    "taskDetected": false,
+    "toolUsage": [],
+    "filesChanged": [
+      "openspec/changes/simplify-deploy-script/.ralph/ralph-loop.state.json"
+    ],
+    "exitCode": 0,
+    "completedTasks": [
+      "6.8 Archive original [`deploy.sh`](deploy.sh) permanently to `archive/deploy.sh.original`",
+      "6.9 Remove original [`deploy.sh`](deploy.sh) from project root"
+    ]
   }
 ]
