@@ -393,6 +393,67 @@ log "   • Rolling update initiated"
 log "   • New pods will be created using registry image"
 log "   • Expected: Direct pod startup (no ImagePullBackOff with registry approach)"
 log ""
+
+# Pod status polling function - checks for Running state every 5 seconds with 5-minute timeout
+poll_pod_status() {
+    log_info "Starting pod status polling for Running state (5-second intervals, 5-minute timeout)..."
+    
+    local max_attempts=60          # 60 attempts × 5 seconds = 5 minutes (300 seconds total)
+    local attempt=1
+    local polling_delay=5          # Fixed 5-second polling interval
+    local pod_running=false
+    
+    while [ $attempt -le $max_attempts ]; do
+        log "Checking pod status for Running state... (attempt $attempt/$max_attempts)"
+        
+        # Get current pod status
+        local pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "Unknown")
+        
+        if [ "$pod_status" = "Running" ]; then
+            log_info "✅ Pod reached Running state successfully"
+            pod_running=true
+            break
+        else
+            log_info "Pod status: $pod_status (waiting for Running state)"
+            
+            # Log additional pod details for debugging
+            local pod_details=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true)
+            log "Pod details: $pod_details"
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            log_error "❌ Pod did not reach Running state within $max_attempts attempts (5-minute timeout)"
+            
+            # Log final pod status for debugging
+            log "Final pod status:"
+            multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
+            
+            log "Pod events for debugging:"
+            multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>&1 | grep -A 20 -B 5 "Events:" | tee -a "$LOG_FILE" || true
+            
+            log_structured_error "POD_RUNNING_TIMEOUT" "Pod did not reach Running state within 5-minute timeout" "Pod stuck in non-Running state, possible image pull issues, application startup failures, or resource constraints" "1. Check pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app, 2. Verify image availability: multipass exec '$VM_NAME' -- microk8s kubectl describe pods -l app=my-ag-ui-app, 3. Check resource usage: multipass exec '$VM_NAME' -- microk8s kubectl top pods, 4. Verify registry accessibility: multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog"
+            
+            return 1
+        fi
+        
+        sleep $polling_delay
+        attempt=$((attempt + 1))
+    done
+    
+    if [ "$pod_running" = true ]; then
+        log_info "✅ Pod status polling completed successfully - pod is Running"
+        return 0
+    else
+        log_error "❌ Pod status polling failed - pod did not reach Running state"
+        return 1
+    fi
+}
+
+# Execute pod status polling
+if ! poll_pod_status; then
+    handle_kubernetes_error 128 "Pod status polling failed - pod did not reach Running state within timeout" \
+        "Check pod logs and events: multipass exec '$VM_NAME' -- microk8s kubectl describe pods -l app=my-ag-ui-app"
+fi
 log "═══════════════════════════════════════════════════════════════════════════════"
 log "🎯 KUBERNETES DEPLOYMENT PHASE COMPLETED"
 

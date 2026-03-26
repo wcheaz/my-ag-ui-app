@@ -67,7 +67,7 @@
 
 - [x] 8.1 Add error handling functions import to `deploy_scripts/deploy-to-k8s.sh`
 - [x] 8.2 Implement deployment manifest validation using `kubectl apply --dry-run=server` before applying
-- [ ] 8.3 Add pod status polling every 5 seconds with 5-minute timeout for Running state
+- [x] 8.3 Add pod status polling every 5 seconds with 5-minute timeout for Running state
 - [ ] 8.4 Verify readiness probe passes before marking deployment successful
 - [ ] 8.5 Capture and log Kubernetes pod events (pull errors, crash loops, probe failures)
 - [ ] 8.6 Add logging for deployment start and completion with timestamps
