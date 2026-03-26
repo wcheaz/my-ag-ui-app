@@ -61,6 +61,15 @@ else
         local recovery_suggestion=$3
         
         log_error "$error_message"
+        log_error ""
+        log_error "MANUAL VERIFICATION STEPS:"
+        log_error "1. Check registry service status: multipass exec '$VM_NAME' -- microk8s kubectl get pods -n container-registry"
+        log_error "2. Verify registry accessibility: curl -s http://localhost:32000/v2/_catalog"
+        log_error "3. Check microk8s status: multipass exec '$VM_NAME' -- microk8s status"
+        log_error "4. Enable registry if needed: multipass exec '$VM_NAME' -- microk8s enable registry"
+        log_error "5. Check registry logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -n container-registry deployment/registry"
+        log_error ""
+        log_error "RECOVERY: $recovery_suggestion"
         log_structured_error "REGISTRY" "$error_message" "Registry connectivity issues, network problems, or service downtime" "$recovery_suggestion"
         exit "$error_code"
     }
@@ -311,9 +320,16 @@ push_image_to_registry() {
     if ! multipass list | grep -q "$VM_NAME"; then
         log "❌ ERROR: VM '$VM_NAME' is not accessible or does not exist"
         log "   Cannot perform image push without VM access"
-        log "RECOVERY STEPS:"
+        log ""
+        log "MANUAL VERIFICATION STEPS:"
         log "1. Check VM status: multipass list"
-        log "2. Start VM if needed: multipass start $VM_NAME"
+        log "2. Verify VM exists: multipass info $VM_NAME 2>/dev/null || echo 'VM not found'"
+        log "3. Check VM IP address: multipass list | grep '$VM_NAME'"
+        log "4. Test VM connectivity: ping -c 2 \$(multipass list | grep '$VM_NAME' | awk '{print \$3}') 2>/dev/null || echo 'VM not reachable'"
+        log ""
+        log "RECOVERY STEPS:"
+        log "1. Start VM if needed: multipass start $VM_NAME"
+        log "2. Create VM if missing: multipass launch --name $VM_NAME --mem 4G --cpus 2"
         log "3. Verify VM is running: multipass info $VM_NAME"
         return 1
     fi
@@ -322,11 +338,19 @@ push_image_to_registry() {
     if ! multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
         log "❌ ERROR: Docker daemon is not accessible within VM"
         log "   Cannot perform image push without Docker daemon access in VM"
+        log ""
+        log "MANUAL VERIFICATION STEPS:"
+        log "1. Check Docker daemon status: multipass exec $VM_NAME -- sudo systemctl status docker"
+        log "2. Check Docker daemon logs: multipass exec $VM_NAME -- sudo journalctl -u docker --no-pager"
+        log "3. Verify Docker service is enabled: multipass exec $VM_NAME -- sudo systemctl is-enabled docker"
+        log "4. Check Docker socket: multipass exec $VM_NAME -- ls -la /var/run/docker.sock"
+        log "5. Check Docker process: multipass exec $VM_NAME -- ps aux | grep docker"
+        log ""
         log "RECOVERY STEPS:"
         log "1. Start Docker daemon in VM: multipass exec $VM_NAME -- sudo systemctl start docker"
-        log "2. Check Docker daemon status in VM: multipass exec $VM_NAME -- sudo systemctl status docker"
-        log "3. Verify Docker is running in VM: multipass exec $VM_NAME -- docker info"
-        log "4. Restart Docker in VM if needed: multipass exec $VM_NAME -- sudo systemctl restart docker"
+        log "2. Enable Docker service on boot: multipass exec $VM_NAME -- sudo systemctl enable docker"
+        log "3. Restart Docker daemon: multipass exec $VM_NAME -- sudo systemctl restart docker"
+        log "4. Verify Docker is running: multipass exec $VM_NAME -- docker info"
         return 1
     fi
     
@@ -335,11 +359,18 @@ push_image_to_registry() {
         log "❌ ERROR: Target image $target_image not found within VM"
         log "   Cannot push image that does not exist in VM's Docker daemon"
         log ""
+        log "MANUAL VERIFICATION STEPS:"
+        log "1. List all images in VM: multipass exec $VM_NAME -- docker images --format 'table {{.Repository}}\t{{.Tag}}\t{{.Size}}'"
+        log "2. Check for similar images: multipass exec $VM_NAME -- docker images | grep my-ag-ui-app"
+        log "3. Verify Docker daemon has images: multipass exec $VM_NAME -- docker images | head -5"
+        log "4. Check image exists on host: docker images | grep my-ag-ui-app"
+        log ""
         log "REQUIRED ACTION:"
         log "1. Ensure image was built on host: docker build -t my-ag-ui-app:latest ."
-        log "2. Tag image within VM: multipass exec $VM_NAME -- docker tag my-ag-ui-app:latest $target_image"
-        log "3. Or load image from host to VM: docker save my-ag-ui-app:latest | multipass exec $VM_NAME -- docker load"
-        log "4. Then retry the push operation"
+        log "2. Transfer image to VM: docker save my-ag-ui-app:latest | multipass exec $VM_NAME -- docker load"
+        log "3. Tag image within VM: multipass exec $VM_NAME -- docker tag my-ag-ui-app:latest $target_image"
+        log "4. Verify image in VM: multipass exec $VM_NAME -- docker images $target_image"
+        log "5. Then retry the push operation"
         return 1
     fi
     
@@ -354,11 +385,21 @@ push_image_to_registry() {
     if ! check_disk_space "Docker image push" 2 "."; then
         log "❌ ERROR: Insufficient disk space for Docker image push"
         log "   Docker push requires additional disk space for temporary files and network buffers"
+        log ""
+        log "MANUAL VERIFICATION STEPS:"
+        log "1. Check disk usage: df -h"
+        log "2. Check Docker disk usage: docker system df"
+        log "3. Check large files: find /var/lib/docker -type f -size +100M 2>/dev/null | head -5"
+        log "4. Check disk space by directory: du -sh /var/lib/docker/* 2>/dev/null | sort -hr | head -5"
+        log "5. Check available space: df -h . | awk 'NR==2 {print $4}'"
+        log ""
         log "RECOVERY STEPS:"
-        log "1. Clean up disk space: docker system prune -f"
+        log "1. Clean up Docker system: docker system prune -f"
         log "2. Remove unused images: docker image prune -f"
-        log "3. Check disk usage: df -h"
-        log "4. Retry the push operation after freeing disk space"
+        log "3. Remove dangling volumes: docker volume prune -f"
+        log "4. Clean up build cache: docker builder prune -f"
+        log "5. Check disk usage again: df -h"
+        log "6. Retry the push operation after freeing disk space"
         return 1
     fi
     
@@ -584,6 +625,25 @@ log_info "Starting Docker image push to microk8s registry..."
 
 # Execute the image push function
 if ! push_image_to_registry; then
+    log_error "❌ ERROR: Docker image push to microk8s registry failed after all retry attempts"
+    log_error ""
+    log_error "MANUAL VERIFICATION STEPS:"
+    log_error "1. Verify VM is accessible: multipass list | grep $VM_NAME"
+    log_error "2. Verify Docker daemon in VM: multipass exec $VM_NAME -- docker info"
+    log_error "3. Check image exists in VM: multipass exec $VM_NAME -- docker images localhost:32000/my-ag-ui-app:latest"
+    log_error "4. Verify registry is accessible: curl -s http://localhost:32000/v2/_catalog"
+    log_error "5. Check registry status: multipass exec $VM_NAME -- microk8s kubectl get pods -n container-registry"
+    log_error "6. Verify sufficient disk space: multipass exec $VM_NAME -- df -h"
+    log_error "7. Check network connectivity: multipass exec $VM_NAME -- ping -c 2 localhost"
+    log_error "8. Manual push attempt: multipass exec $VM_NAME -- docker push localhost:32000/my-ag-ui-app:latest"
+    log_error ""
+    log_error "If all verification steps pass but push still fails:"
+    log_error "1. Check Docker daemon logs: multipass exec $VM_NAME -- sudo journalctl -u docker --no-pager"
+    log_error "2. Check registry logs: multipass exec $VM_NAME -- microk8s kubectl logs -n container-registry deployment/registry"
+    log_error "3. Restart Docker daemon: multipass exec $VM_NAME -- sudo systemctl restart docker"
+    log_error "4. Restart registry: multipass exec $VM_NAME -- microk8s disable registry && multipass exec $VM_NAME -- microk8s enable registry"
+    log_error ""
+    
     log_structured_error "DOCKER_PUSH_FAILURE" \
         "Docker image push to microk8s registry failed after all retry attempts" \
         "Registry connectivity issues, network problems, image not found in VM, Docker daemon issues, or insufficient disk space" \
