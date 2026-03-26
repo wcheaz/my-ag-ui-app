@@ -574,7 +574,7 @@ push_image_to_registry() {
 # ===========================
 
 # Main script execution
-log_info "=== DOCKER IMAGE PUSH TO MICROK8S REGISTRY ==="
+log_info "Starting Docker image push to microk8s registry..."
 
 # Execute the image push function
 if ! push_image_to_registry; then
