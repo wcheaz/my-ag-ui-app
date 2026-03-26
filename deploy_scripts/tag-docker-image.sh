@@ -6,12 +6,15 @@
 
 set -euo pipefail
 
+# Set default values
+DEBUG="${DEBUG:-false}"
+VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
+
 # Source common error handling functions
 if [ -f "deploy_scripts/common.sh" ]; then
     source "deploy_scripts/common.sh"
 else
     # Fallback error handling if common.sh is not available
-    VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
     LOG_FILE="${LOG_FILE:-/tmp/deploy-$(date +%Y%m%d-%H%M%S).log}"
     
     log() {
@@ -418,8 +421,8 @@ log_info "Using comprehensive tagging function with validation and error handlin
 
 # Use the comprehensive image tagging function with full validation and error handling
 if ! tag_image_for_local_registry; then
-    handle_docker_error 133 "Failed to tag Docker image for local registry" \
-        "Check logs above for detailed error analysis and recovery steps."
+    handle_error 1 "Failed to tag Docker image for local registry" \
+        "Check logs above for detailed error analysis and recovery steps." "DOCKER"
 fi
 
 log_info "✅ Docker image tagging for registry completed with comprehensive validation"
