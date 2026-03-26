@@ -113,3 +113,28 @@ handle_network_error() {
 handle_validation_error() {
     handle_error "$ERROR_VALIDATION" "$1" "$2" "VALIDATION"
 }
+
+# Setup log file function - creates timestamped log file and directory if needed
+setup_log_file() {
+    local log_dir="${LOG_DIR:-/tmp}"
+    local timestamp=$(date '+%Y%m%d-%H%M%S')
+    
+    # Ensure log directory exists
+    mkdir -p "$log_dir"
+    
+    # Set global log file path if not already set
+    if [[ -z "${LOG_FILE:-}" ]]; then
+        LOG_FILE="$log_dir/deploy-$timestamp.log"
+    fi
+    
+    # Create log file with header
+    echo "=============================================" > "$LOG_FILE"
+    echo "  DEPLOYMENT LOG - $timestamp" >> "$LOG_FILE"
+    echo "=============================================" >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
+    echo "Log file created: $LOG_FILE"
+    echo "Deployment started at: $(date '+%Y-%m-%d %H:%M:%S')" >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
+    
+    log_info "Log file initialized: $LOG_FILE"
+}
