@@ -1,34 +1,7 @@
-# my-ag-ui-app Kubernetes Deployment Manifest
-# ============================================ 
-# NOTE: Updated for Local Microk8s Registry
-# This deployment has been updated to use the local microk8s registry
-# for reliable local deployments without external dependencies.
-#
-# Benefits:
-# - Eliminates external network dependencies
-# - Provides faster deployment times
-# - Works with microk8s built-in local registry
-# - Ensures consistent local development environment
-#
-# Image: localhost:32000/my-ag-ui-app:latest
-# Registry: microk8s built-in local registry at localhost:32000
-#
-# CONFIGURABLE VALUES ANALYSIS (Task 9.3):
-# =========================================
-# The following values are appropriately hardcoded for this deployment:
-# - app-port: 3000 (defined in ConfigMap, but hardcoded here for Kubernetes container spec)
-# - probe timing values: Configured for optimal startup and health check behavior
-# - resource limits: Set for local development environment constraints
-#
-# Values made configurable in ConfigMap:
-# - llm-max-tokens, llm-context-window: Application behavior settings
-# - infrastructure values: Port mappings, resource requests/limits, probe timings
-#
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: my-ag-ui-app
-  namespace: default
   labels:
     app: my-ag-ui-app
 spec:
@@ -41,88 +14,8 @@ spec:
       labels:
         app: my-ag-ui-app
     spec:
-      # No imagePullSecrets required - local microk8s registry doesn't need authentication
-      # Decision: Omit imagePullSecrets to simplify local development
-      # Rationale: Local registry access within VM is secure by default
-      # Note: External registries would require imagePullSecrets configuration
       containers:
       - name: my-ag-ui-app
-        # Using localhost:32000 for local microk8s registry access
-        # Decision: localhost:32000 ensures Kubernetes pulls from local registry
-        # Rationale: Eliminates external network access, works with microk8s built-in registry
-        # Alternative: Cluster IP would work but is less portable
         image: localhost:32000/my-ag-ui-app:latest
-        # IfNotPresent policy: Use local image if available, pull from registry if not found
-        # Decision: Optimizes local development by avoiding unnecessary pulls
-        # Rationale: Speeds up deployment when image is already present on node
-        # Note: 'Always' would force registry pull every time, 'Never' would never pull
-        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
-          name: http
-        env:
-        # Sensitive environment variables from secrets
-        - name: OPENAI_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: my-ag-ui-app-secrets
-              key: openai-api-key
-        - name: OPENAI_BASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: my-ag-ui-app-secrets
-              key: openai-base-url
-        - name: OPENAI_MODEL
-          valueFrom:
-            secretKeyRef:
-              name: my-ag-ui-app-secrets
-              key: openai-model
-        - name: EMBEDDING_MODEL
-          valueFrom:
-            secretKeyRef:
-              name: my-ag-ui-app-secrets
-              key: embedding-model
-        - name: LOGFIRE_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: my-ag-ui-app-secrets
-              key: logfire-token
-        # Non-sensitive environment variables from config map
-        - name: LLM_MAX_TOKENS
-          valueFrom:
-            configMapKeyRef:
-              name: my-ag-ui-app-config
-              key: llm-max-tokens
-        - name: LLM_CONTEXT_WINDOW
-          valueFrom:
-            configMapKeyRef:
-              name: my-ag-ui-app-config
-              key: llm-context-window
-        # Health check path configuration
-        # NOTE: The livenessProbe and readinessProbe paths below should match this value
-        - name: HEALTH_CHECK_PATH
-          value: "/api/health"
-        resources:
-          requests:
-            cpu: "100m"
-            memory: "256Mi"
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
-        livenessProbe:
-          httpGet:
-            path: /api/health
-            port: 3000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /api/health
-            port: 3000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 3
-      restartPolicy: Always
