@@ -889,16 +889,111 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
         POD_PHASE=$(echo "$POD_STATUS_JSON" | grep -o '"phase":"Running"' || echo "")
         POD_READY=$(echo "$POD_STATUS_JSON" | grep -o '"ready":true' || echo "")
         
-        # Container startup verification - check for exit code 0 (service should not terminate)
-        CONTAINER_EXIT_CODE=$(echo "$POD_STATUS_JSON" | grep -o '"exitCode":[0-9]*' | head -1 | cut -d':' -f2 || echo "")
-        CONTAINER_STATE=$(echo "$POD_STATUS_JSON" | grep -o '"lastState":{"terminated"' || echo "")
+        # Container startup verification - check container doesn't exit with code 0
+        verify_container_startup() {
+            local pod_status_json="$1"
+            
+            # Extract container exit code and state information
+            local container_exit_code=$(echo "$pod_status_json" | grep -o '"exitCode":[0-9]*' | head -1 | cut -d':' -f2 || echo "")
+            local container_terminated_state=$(echo "$pod_status_json" | grep -o '"lastState":{"terminated"' || echo "")
+            local container_waiting_state=$(echo "$pod_status_json" | grep -o '"lastState":{"waiting"' || echo "")
+            local container_running_state=$(echo "$pod_status_json" | grep -o '"lastState":{"running"' || echo "")
+            
+            # Get container state for logging
+            local container_phase=$(echo "$pod_status_json" | grep -o '"phase":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "Unknown")
+            local container_ready=$(echo "$pod_status_json" | grep -o '"ready":true' || echo "")
+            
+            # Log container state changes (Creating, Running, Terminated)
+            if [ -n "$container_phase" ]; then
+                case "$container_phase" in
+                    "Pending")
+                        log_info "🔄 Container state: Creating (pod being scheduled/created)"
+                        ;;
+                    "Running")
+                        if [ -n "$container_ready" ]; then
+                            log_info "✅ Container state: Running and Ready (container is operational and healthy)"
+                        else
+                            log_info "🔄 Container state: Running but not Ready (container started, waiting for readiness)"
+                        fi
+                        ;;
+                    "Succeeded")
+                        log_error "❌ Container state: Terminated with exit code 0 (container completed execution)"
+                        log_error "   This indicates the application is not running as a service - it completed instead of running continuously"
+                        log_error "   A service should run indefinitely, not exit with code 0"
+                        log_structured_error "CONTAINER_EXIT_CODE_0" "Container terminated with exit code 0 instead of running continuously" "Application configured to complete execution instead of running as service, missing daemon/service mode, main function returning instead of running indefinitely" "1. Check application startup code, 2. Ensure main process runs indefinitely, 3. Add daemon/service mode if missing, 4. Verify process doesn't exit with return code"
+                        return 1
+                        ;;
+                    "Failed")
+                        if [ -n "$container_exit_code" ] && [ "$container_exit_code" != "0" ]; then
+                            log_error "❌ Container state: Failed with exit code $container_exit_code (container terminated with error)"
+                            log_error "   Application crashed during startup or execution"
+                            log_structured_error "CONTAINER_CRASH" "Container terminated with exit code $container_exit_code" "Application crashed during startup or execution due to errors, exceptions, or resource constraints" "1. Check container logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app, 2. Check application error handling, 3. Verify resource limits in deployment.yaml, 4. Fix application code errors"
+                        else
+                            log_error "❌ Container state: Failed (container terminated without specific exit code)"
+                            log_structured_error "CONTAINER_FAILED" "Container failed during startup or execution" "Container terminated due to resource constraints, health check failures, or other startup issues" "1. Check container logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app, 2. Check pod events: multipass exec '$VM_NAME' -- microk8s kubectl get events --field-selector involvedObject.name=<pod-name>, 3. Verify resource limits and health check configuration"
+                        fi
+                        return 1
+                        ;;
+                    "Unknown")
+                        log_warning "❓ Container state: Unknown (status cannot be determined)"
+                        ;;
+                esac
+            fi
+            
+            # Check for specific container states that indicate issues
+            if [ -n "$container_terminated_state" ]; then
+                if [ "$container_exit_code" = "0" ]; then
+                    log_error "❌ CONTAINER STARTUP FAILURE: Container terminated with exit code 0"
+                    log_error "   Application completed execution instead of running as a continuous service"
+                    log_error "   This is not a service - it's a one-time execution that finished"
+                    log_structured_error "CONTAINER_EXIT_CODE_0" "Container terminated with exit code 0 instead of running continuously" "Application configured to complete execution instead of running as service, missing daemon/service mode, main function returning instead of running indefinitely" "1. Check application startup code, 2. Ensure main process runs indefinitely, 3. Add daemon/service mode if missing, 4. Verify process doesn't exit with return code"
+                    return 1
+                elif [ -n "$container_exit_code" ]; then
+                    log_error "❌ CONTAINER CRASH: Container terminated with exit code $container_exit_code"
+                    log_error "   Application crashed during startup or execution"
+                    log_structured_error "CONTAINER_CRASH" "Container terminated with exit code $container_exit_code" "Application crashed during startup or execution due to errors, exceptions, or resource constraints" "1. Check container logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app, 2. Check application error handling, 3. Verify resource limits in deployment.yaml, 4. Fix application code errors"
+                    return 1
+                fi
+            fi
+            
+            # Check for waiting states that might indicate issues
+            if [ -n "$container_waiting_state" ]; then
+                # Extract waiting reason if available
+                local waiting_reason=$(echo "$pod_status_json" | grep -o '"reason":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "unknown")
+                case "$waiting_reason" in
+                    "ImagePullBackOff"|"ErrImagePull")
+                        log_warning "⚠️  Container waiting: Image pull issue ($waiting_reason)"
+                        ;;
+                    "CrashLoopBackOff")
+                        log_error "❌ Container waiting: Crash loop detected ($waiting_reason)"
+                        log_structured_error "CONTAINER_CRASH_LOOP" "Container in CrashLoopBackOff state" "Application keeps crashing and restarting, indicating persistent startup or runtime issues" "1. Check container logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app, 2. Check previous container logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app --previous, 3. Verify application stability and resource limits"
+                        return 1
+                        ;;
+                    *)
+                        log_info "🔄 Container waiting: $waiting_reason"
+                        ;;
+                esac
+            fi
+            
+            # If container is running and ready, verify it stays running
+            if [ "$container_phase" = "Running" ] && [ -n "$container_ready" ]; then
+                log_info "✅ Container verification passed: Container is Running and Ready"
+                log_info "   Container runs continuously and responds to health checks"
+                return 0
+            elif [ "$container_phase" = "Running" ]; then
+                log_info "🔄 Container is Running but not yet Ready"
+                return 0  # Still acceptable, just waiting for readiness
+            fi
+            
+            # Default case - container is still starting up
+            log_info "🔄 Container startup verification in progress..."
+            return 0
+        }
         
-        if [ -n "$CONTAINER_STATE" ] && [ "$CONTAINER_EXIT_CODE" = "0" ]; then
-            log_error "❌ CONTAINER STARTUP FAILURE: Container terminated with exit code 0"
-            log_error "   This indicates the application is not running as a service - it completed execution instead"
-            log_error "   A service should run continuously, not exit with code 0"
-            log_error "   Check application startup configuration and ensure it runs as a daemon/service"
-            log_structured_error "CONTAINER_EXIT_CODE_0" "Container terminated with exit code 0 instead of running continuously" "Application configured to complete execution instead of running as service, missing daemon/service mode, main function returning instead of running indefinitely" "1. Check application startup code, 2. Ensure main process runs indefinitely, 3. Add daemon/service mode if missing, 4. Verify process doesn't exit with return code"
+        # Execute container startup verification
+        if ! verify_container_startup "$POD_STATUS_JSON"; then
+            log_error "❌ Container startup verification failed"
+            # Continue to next attempt - error is already logged by the function
         fi
         
         if [ -n "$POD_PHASE" ] && [ -n "$POD_READY" ]; then
