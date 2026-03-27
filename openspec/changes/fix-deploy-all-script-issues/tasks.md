@@ -91,7 +91,7 @@
 - [x] 10.1 Add container startup verification to check container doesn't exit with code 0
 - [x] 10.2 Add logging for container state changes (Creating, Running, Terminated)
 - [x] 10.3 Verify container runs continuously and responds to health checks
-- [ ] 10.4 Test container termination scenario to verify error detection
+- [/] 10.4 Test container termination scenario to verify error detection
 - [ ] 10.5 Test container startup scenario to verify successful verification
 
 ## 11. Main Deployment Script Updates

@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: my-ag-ui-app
+  name: termination-test-deployment
   labels:
-    app: my-ag-ui-app
+    app: termination-test
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: my-ag-ui-app
+      app: termination-test
   template:
     metadata:
       labels:
-        app: my-ag-ui-app
+        app: termination-test
     spec:
       containers:
-      - name: my-ag-ui-app
+      - name: termination-test-container
         image: localhost:32000/my-ag-ui-app:latest
         ports:
         - containerPort: 3000
@@ -24,42 +24,6 @@ spec:
         args: ["echo 'Container terminating for test - this should trigger error detection'; exit 0"]
         # This command will cause the container to exit with code 0 immediately
         # This should trigger the container termination error detection
-        env:
-        - name: OPENAI_API_KEY
-          valueFrom:
-            secretKeyRef:
-              key: openai-api-key
-              name: my-ag-ui-app-secrets
-        - name: OPENAI_BASE_URL
-          valueFrom:
-            secretKeyRef:
-              key: openai-base-url
-              name: my-ag-ui-app-secrets
-        - name: OPENAI_MODEL
-          valueFrom:
-            secretKeyRef:
-              key: openai-model
-              name: my-ag-ui-app-secrets
-        - name: EMBEDDING_MODEL
-          valueFrom:
-            secretKeyRef:
-              key: embedding-model
-              name: my-ag-ui-app-secrets
-        - name: LOGFIRE_TOKEN
-          valueFrom:
-            secretKeyRef:
-              key: logfire-token
-              name: my-ag-ui-app-secrets
-        - name: LLM_MAX_TOKENS
-          valueFrom:
-            configMapKeyRef:
-              key: llm-max-tokens
-              name: my-ag-ui-app-config
-        - name: LLM_CONTEXT_WINDOW
-          valueFrom:
-            configMapKeyRef:
-              key: llm-context-window
-              name: my-ag-ui-app-config
         livenessProbe:
           httpGet:
             path: /api/health
@@ -81,17 +45,14 @@ spec:
           requests:
             cpu: 100m
             memory: 256Mi
-      imagePullSecrets:
-      - name: registry-secret
-      restartPolicy: Always
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: my-ag-ui-app-service
+  name: termination-test-service
 spec:
   selector:
-    app: my-ag-ui-app
+    app: termination-test
   ports:
     - protocol: TCP
       port: 80
@@ -100,7 +61,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: my-ag-ui-app-ingress
+  name: termination-test-ingress
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
@@ -111,6 +72,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: my-ag-ui-app-service
+            name: termination-test-service
             port:
               number: 80

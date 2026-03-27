@@ -590,7 +590,7 @@ If deployment fails or causes issues:
 ## Current Task Context
 
 ## Current Task
-- 8.7 Add exit code 1 on deployment failure with pod details and error reason
+- 10.4 Test container termination scenario to verify error detection
 ## Completed Tasks for Git Commit
 - [x] 1.1 Archive current deployment manifest as `k8s/deployment.yaml.backup`
 - [x] 1.2 Document current image tag and deployment state in `openspec/changes/fix-deploy-all-script-issues/DEPLOYMENT_STATE.md`
@@ -642,3 +642,17 @@ If deployment fails or causes issues:
 - [x] 8.4 Verify readiness probe passes before marking deployment successful
 - [x] 8.5 Capture and log Kubernetes pod events (pull errors, crash loops, probe failures)
 - [x] 8.6 Add logging for deployment start and completion with timestamps
+- [x] 8.7 Add exit code 1 on deployment failure with pod details and error reason
+- [x] 8.8 Test manifest validation with invalid YAML to verify error handling
+- [x] 8.9 Test pod startup verification with successful deployment
+- [x] 8.10 Test pod startup failure scenario to verify error handling and logging
+- [x] 9.1 Verify application exposes `/api/health` endpoint that returns HTTP 200
+- [x] 9.2 Review `k8s/deployment.yaml` health check configuration
+- [x] 9.3 Update liveness probe configuration: 10s interval, 30s initial delay, 3 failure threshold
+- [x] 9.4 Update readiness probe configuration: 5s interval, 5s initial delay, 3 failure threshold
+- [x] 9.5 Add `HEALTH_CHECK_PATH` environment variable support to deployment manifest
+- [x] 9.6 Test health checks with application running to verify HTTP 200 response
+- [x] 9.7 Test health check failure scenario to verify pod restart behavior
+- [x] 10.1 Add container startup verification to check container doesn't exit with code 0
+- [x] 10.2 Add logging for container state changes (Creating, Running, Terminated)
+- [x] 10.3 Verify container runs continuously and responds to health checks
