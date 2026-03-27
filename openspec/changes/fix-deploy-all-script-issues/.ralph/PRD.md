@@ -590,7 +590,7 @@ If deployment fails or causes issues:
 ## Current Task Context
 
 ## Current Task
-- 10.4 Test container termination scenario to verify error detection
+- 11.1 Add `set -euo pipefail` to `deploy-all.sh` for strict error handling
 ## Completed Tasks for Git Commit
 - [x] 1.1 Archive current deployment manifest as `k8s/deployment.yaml.backup`
 - [x] 1.2 Document current image tag and deployment state in `openspec/changes/fix-deploy-all-script-issues/DEPLOYMENT_STATE.md`
@@ -656,3 +656,5 @@ If deployment fails or causes issues:
 - [x] 10.1 Add container startup verification to check container doesn't exit with code 0
 - [x] 10.2 Add logging for container state changes (Creating, Running, Terminated)
 - [x] 10.3 Verify container runs continuously and responds to health checks
+- [x] 10.4 Test container termination scenario to verify error detection
+- [x] 10.5 Test container startup scenario to verify successful verification

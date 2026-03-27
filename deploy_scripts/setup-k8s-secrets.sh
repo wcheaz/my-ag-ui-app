@@ -101,26 +101,41 @@ if ! bash k8s/setup-secrets.sh 2>&1 | tee -a "$LOG_FILE"; then
 fi
 log_info "Kubernetes secrets YAML file generated successfully: k8s/secrets.yaml"
 
+# Copy the secrets file to the VM for validation and application
+log_info "Copying secrets file to VM for Kubernetes operations..."
+if ! multipass transfer k8s/secrets.yaml "${VM_NAME:-my-ag-ui-app-k8s}:/home/ubuntu/secrets.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+    log_error "Failed to copy secrets file to VM"
+    log_structured_error "FILE TRANSFER FAILED" \
+        "The secrets.yaml file could not be transferred to the Multipass VM" \
+        "VM not running, file permission issues, network connectivity problems, or insufficient disk space on VM" \
+        "1. Verify VM is running: multipass list\n2. Check file permissions: ls -la k8s/secrets.yaml\n3. Verify network connectivity to VM\n4. Check available disk space on VM: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- df -h"
+    exit 1
+fi
+log_info "Secrets file copied to VM successfully"
+
 # Validate the generated secrets file using Kubernetes API server
 log_info "Validating secrets YAML against Kubernetes API server..."
-if ! kubectl apply --dry-run=server -f "k8s/secrets.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+if ! multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply --dry-run=server -f /home/ubuntu/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
     log_error "Secrets YAML validation failed against Kubernetes API server"
     log_structured_error "KUBERNETES SECRETS VALIDATION FAILURE" \
         "Generated secrets YAML file is invalid or incompatible with Kubernetes API server" \
         "YAML syntax errors in generated secrets file, Invalid base64 encoding of secret values, Missing required fields or incorrect Kubernetes API version, Kubernetes cluster connectivity issues" \
-        "1. Check the generated file for errors: cat k8s/secrets.yaml\n2. Verify Kubernetes cluster connectivity: kubectl cluster-info\n3. Ensure you have necessary permissions: kubectl auth can-i create secret\n4. Fix any environment variable issues and regenerate the file"
+        "1. Check the generated file for errors: cat k8s/secrets.yaml\n2. Verify Kubernetes cluster connectivity: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl cluster-info\n3. Ensure you have necessary permissions: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl auth can-i create secret\n4. Fix any environment variable issues and regenerate the file"
     exit 1
 fi
 log_info "Secrets YAML validation passed"
 
 # Apply the validated secrets to Kubernetes
 log_info "Applying secrets to Kubernetes cluster..."
-if ! kubectl apply -f "k8s/secrets.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+if ! multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply -f /home/ubuntu/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
     log_error "Failed to apply secrets to Kubernetes cluster"
     log_structured_error "KUBERNETES SECRETS APPLICATION FAILED" \
         "The kubectl apply command failed to apply the validated secrets YAML to the Kubernetes cluster" \
         "Kubernetes cluster connectivity issues, insufficient permissions, invalid cluster configuration, or conflicting existing resources" \
-        "1. Check Kubernetes cluster connectivity: kubectl cluster-info\n2. Verify your kubectl context: kubectl config current-context\n3. Check permissions: kubectl auth can-i create secret\n4. Check for existing secrets: kubectl get secret my-ag-ui-app-secrets\n5. If secrets exist, delete first: kubectl delete secret my-ag-ui-app-secrets\n6. Ensure Kubernetes cluster is running and accessible"
+        "1. Check Kubernetes cluster connectivity: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl cluster-info\n2. Verify your kubectl context: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl config current-context\n3. Check permissions: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl auth can-i create secret\n4. Check for existing secrets: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl get secret my-ag-ui-app-secrets\n5. If secrets exist, delete first: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl delete secret my-ag-ui-app-secrets\n6. Ensure Kubernetes cluster is running and accessible"
     exit 1
 fi
+
+# Secrets setup completed successfully
+
 log_info "Kubernetes secrets setup completed successfully"

@@ -13,90 +13,25 @@ else
     # Fallback error handling if common.sh is not available
     VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
     LOG_FILE="${LOG_FILE:-/tmp/deploy-$(date +%Y%m%d-%H%M%S).log}"
+fi
+
+# Set default debug level to prevent unbound variable errors
+DEBUG="${DEBUG:-}"
+
+# Override setup_log_file function to ensure proper initialization
+setup_log_file() {
+    # Create log file with header
+    timestamp=$(date '+%Y%m%d-%H%M%S')
+    echo "=============================================" > "$LOG_FILE"
+    echo "  DEPLOYMENT LOG - $timestamp" >> "$LOG_FILE"
+    echo "=============================================" >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
+    echo "Log file created: $LOG_FILE"
+    echo "Deployment started at: $(date '+%Y-%m-%d %H:%M:%S')" >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
     
-    log() {
-        local message="$1"
-        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-        echo "[$timestamp] $message" | tee -a "$LOG_FILE"
-    }
-    
-    log_info() {
-        local message="$1"
-        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-        echo "[$timestamp] INFO: $message" | tee -a "$LOG_FILE"
-    }
-    
-    log_warning() {
-        local message="$1"
-        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-        echo "[$timestamp] WARNING: $message" | tee -a "$LOG_FILE"
-    }
-    
-    log_error() {
-        local message="$1"
-        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-        echo "[$timestamp] ERROR: $message" | tee -a "$LOG_FILE"
-    }
-    
-    log_structured_error() {
-        local error_type="$1"
-        local diagnostic="$2"
-        local common_causes="$3"
-        local recovery="$4"
-        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-        
-        echo "[$timestamp] ══════════════════════════════════════════════════════════════════════════════" | tee -a "$LOG_FILE"
-        echo "[$timestamp]                          STRUCTURED ERROR" | tee -a "$LOG_FILE"
-        echo "[$timestamp] ══════════════════════════════════════════════════════════════════════════════" | tee -a "$LOG_FILE"
-        echo "[$timestamp] ERROR TYPE: $error_type" | tee -a "$LOG_FILE"
-        echo "[$timestamp] DIAGNOSTIC: $diagnostic" | tee -a "$LOG_FILE"
-        echo "[$timestamp] COMMON CAUSES: $common_causes" | tee -a "$LOG_FILE"
-        echo "[$timestamp] RECOVERY: $recovery" | tee -a "$LOG_FILE"
-        echo "[$timestamp] ══════════════════════════════════════════════════════════════════════════════" | tee -a "$LOG_FILE"
-    }
-    
-    handle_registry_error() {
-        local error_code=$1
-        local error_message=$2
-        local recovery_suggestion=$3
-        
-        log_error "$error_message"
-        log_error ""
-        log_error "MANUAL VERIFICATION STEPS:"
-        log_error "1. Check registry service status: multipass exec '$VM_NAME' -- microk8s kubectl get pods -n container-registry"
-        log_error "2. Verify registry accessibility: curl -s http://localhost:32000/v2/_catalog"
-        log_error "3. Check microk8s status: multipass exec '$VM_NAME' -- microk8s status"
-        log_error "4. Enable registry if needed: multipass exec '$VM_NAME' -- microk8s enable registry"
-        log_error "5. Check registry logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -n container-registry deployment/registry"
-        log_error ""
-        log_error "RECOVERY: $recovery_suggestion"
-        log_structured_error "REGISTRY" "$error_message" "Registry connectivity issues, network problems, or service downtime" "$recovery_suggestion"
-        exit "$error_code"
-    }
-    
-    setup_log_file() {
-        local log_dir="/tmp"
-        local timestamp=$(date '+%Y%m%d-%H%M%S')
-        
-        # Ensure log directory exists
-        mkdir -p "$log_dir"
-        
-        # Set global log file path if not already set
-        if [[ -z "${LOG_FILE:-}" ]]; then
-            LOG_FILE="$log_dir/deploy-$timestamp.log"
-        fi
-        
-        # Create log file with header
-        echo "=============================================" > "$LOG_FILE"
-        echo "  DEPLOYMENT LOG - $timestamp" >> "$LOG_FILE"
-        echo "=============================================" >> "$LOG_FILE"
-        echo "" >> "$LOG_FILE"
-        echo "Log file created: $LOG_FILE"
-        echo "Deployment started at: $(date '+%Y-%m-%d %H:%M:%S')" >> "$LOG_FILE"
-        echo "" >> "$LOG_FILE"
-        
-        log_info "Log file initialized: $LOG_FILE"
-    }
+    log_info "Log file initialized: $LOG_FILE"
+}
     
     verify_command() {
         local command_description="$1"
@@ -133,7 +68,6 @@ else
         
         return 0
     }
-fi
 
 # Initialize log file
 if command -v setup_log_file >/dev/null 2>&1; then

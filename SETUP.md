@@ -370,9 +370,542 @@ If you still encounter issues:
 4. **Missing dependencies**: Make sure `concurrently` is installed (included with `pnpm install`)
 5. **uv not found**: If you don't want to install uv, you can use pip instead (see SETUP-FIX.md for alternative scripts)
 
+## Deployment Environment Variables
+
+The deployment system supports additional environment variables that control deployment behavior and logging. These variables can be set in your shell or in a `.env` file.
+
+### HEALTH_CHECK_PATH
+
+**Description**: Controls the health check endpoint path used in Kubernetes liveness and readiness probes.
+
+**Default Value**: `/api/health`
+
+**Usage**:
+```bash
+# Set custom health check path
+export HEALTH_CHECK_PATH="/custom/health/endpoint"
+
+# Or use in .env file
+echo "HEALTH_CHECK_PATH=/custom/health/endpoint" >> .env
+```
+
+**Notes**:
+- This variable is used in the Kubernetes deployment manifest
+- The path must be accessible and return HTTP 200 for the health check to pass
+- Changing this value requires updating the deployment configuration
+- The application must implement a health check endpoint at the specified path
+
+### VERBOSE
+
+**Description**: Enables verbose logging mode for deployment scripts, providing detailed debugging information and environment context.
+
+**Default Value**: `false` (verbose logging disabled)
+
+**Usage**:
+```bash
+# Enable verbose logging for deployment
+export VERBOSE="true"
+
+# Or use in .env file
+echo "VERBOSE=true" >> .env
+
+# Run deployment with verbose logging
+VERBOSE=true ./deploy-all.sh
+```
+
+**Verbose Mode Includes**:
+- Environment context logging (Kubernetes, registry, VM status)
+- Detailed command output and error messages
+- Structured error information with recovery steps
+- Deployment timing and duration information
+- Debug information for troubleshooting
+
+**Example Output**:
+```
+[2026-03-27 18:05:22] INFO: 📊 ENVIRONMENT CONTEXT:
+[2026-03-27 18:05:22] INFO:   • Kubernetes: ✅ Accessible
+[2026-03-27 18:05:22] INFO:   • Node Count: 1
+[2026-03-27 18:05:22] INFO:   • Registry: ❌ Not accessible
+[2026-03-27 18:05:22] INFO:   • VM: ✅ Running (my-ag-ui-app-k8s)
+```
+
+### VM_NAME
+
+**Description**: Specifies the name of the Multipass VM used for Kubernetes deployment.
+
+**Default Value**: `my-ag-ui-app-k8s`
+
+**Usage**:
+```bash
+# Set custom VM name
+export VM_NAME="my-custom-k8s-vm"
+
+# Or use in .env file
+echo "VM_NAME=my-custom-k8s-vm" >> .env
+```
+
+**Notes**:
+- This variable is used throughout the deployment scripts to reference the correct VM
+- If you change the VM name, ensure the VM exists and is running: `multipass list`
+- The VM must have Microk8s installed and configured
+
+### LOG_DIR
+
+**Description**: Specifies the directory where deployment log files are stored.
+
+**Default Value**: `/tmp`
+
+**Usage**:
+```bash
+# Set custom log directory
+export LOG_DIR="/var/log/deployments"
+
+# Or use in .env file
+echo "LOG_DIR=/var/log/deployments" >> .env
+```
+
+**Notes**:
+- Log files are named with pattern: `deploy-YYYYMMDD-HHMMSS.log`
+- The directory must exist and be writable by the deployment process
+- Log rotation is handled automatically (100MB limit, keeps last 10 files)
+
+## Logging and Retention Policy
+
+### Log File Location
+
+Deployment logs are automatically created and stored in the location specified by the `LOG_DIR` environment variable.
+
+**Default Log Directory**: `/tmp/`
+
+**Log File Naming Convention**:
+```
+deploy-YYYYMMDD-HHMMSS.log
+Example: deploy-20260327-180522.log
+```
+
+**Finding Log Files**:
+```bash
+# List all deployment logs
+ls -la /tmp/deploy-*.log
+
+# List most recent logs first
+ls -lt /tmp/deploy-*.log
+
+# Find the latest log file
+LATEST_LOG=$(ls -t /tmp/deploy-*.log | head -1)
+echo "Latest log: $LATEST_LOG"
+
+# View latest log file in real-time
+tail -f /tmp/deploy-$(ls -t /tmp/deploy-*.log | head -1 | cut -d/ -f3)
+```
+
+### Log Retention Policy
+
+The deployment system includes automatic log rotation and cleanup to prevent disk exhaustion.
+
+**Rotation Criteria**:
+- **File Size**: Log files are rotated when they exceed 100MB
+- **Retention Period**: Only the most recent 10 log files are kept
+- **Cleanup Process**: Automatic cleanup runs at the start of each deployment
+
+**Rotation Process**:
+1. **Large File Detection**: When a log file exceeds 100MB, it's flagged for rotation
+2. **File Rotation**: The large file is renamed with a timestamp:
+   ```
+   deploy-20260327-180522.log → deploy-20260327-180522.log.rotated-20260327-190000
+   ```
+3. **Compression**: Rotated files are automatically compressed to save space:
+   ```
+   deploy-20260327-180522.log.rotated-20260327-190000 → deploy-20260327-180522.log.rotated-20260327-190000.gz
+   ```
+4. **Cleanup**: Only the 10 most recent log files (including rotated ones) are kept
+
+**Retention Examples**:
+```
+# Before cleanup (15 files):
+deploy-20260327-180522.log              (current)
+deploy-20260327-175049.log.rotated-20260327-180015.gz
+deploy-20260327-172100.log.rotated-20260327-180522.gz
+... (12 more files)
+
+# After cleanup (10 files):
+deploy-20260327-180522.log              (current) - KEPT
+deploy-20260327-175049.log.rotated-20260327-180015.gz - KEPT
+... (8 most recent files) - KEPT
+... (5 oldest files) - REMOVED
+```
+
+### Log File Management
+
+**Manual Log Cleanup**:
+```bash
+# Clean up logs older than 7 days
+find /tmp -name "deploy-*.log*" -mtime +7 -delete
+
+# Clean up all deployment logs
+rm -f /tmp/deploy-*.log*
+
+# Check total log file size
+du -sh /tmp/deploy-*.log*
+```
+
+**Custom Log Retention**:
+If you need different retention settings, you can modify the `cleanup_old_logs()` function in `deploy_scripts/common.sh`:
+
+```bash
+# In deploy_scripts/common.sh, modify these parameters:
+cleanup_old_logs() {
+    local log_dir="${LOG_DIR:-/tmp}"
+    local max_size_mb=100          # Change rotation size threshold
+    local max_logs=10               # Change number of files to keep
+    # ... rest of function
+}
+```
+
+**Log File Content Structure**:
+Each log file contains:
+- **Timestamp**: Every log entry includes timestamp with millisecond precision
+- **Log Level**: INFO, WARNING, ERROR with clear visual indicators
+- **Step Progress**: Clear marking of deployment step start and completion
+- **Error Details**: Structured error messages with recovery steps
+- **Environment Context**: System status information in VERBOSE mode
+
+**Example Log Excerpt**:
+```
+[2026-03-27 18:05:22] INFO: 🚀 STARTING DEPLOYMENT PIPELINE
+[2026-03-27 18:05:22] INFO: Environment: development
+[2026-03-27 18:05:22] INFO: Verbose mode: false
+[2026-03-27 18:05:22] INFO: 📋 Step 1: Setting up Kubernetes secrets...
+[2026-03-27 18:05:55] ERROR: ❌ STEP 1 FAILED: Failed to set up Kubernetes secrets
+[2026-03-27 18:05:55] ERROR: 🔄 INITIATING ROLLBACK PROCEDURE
+```
+
+### Log File Security
+
+**Access Control**:
+- Log files are created with default umask permissions
+- Log directory should have appropriate permissions (typically 755)
+- Consider setting restrictive permissions for production environments
+
+**Sensitive Information**:
+- Log files may contain environment variable names and error details
+- Actual secret values (API keys, tokens) are not logged
+- Ensure log files are not committed to version control
+
+**Production Considerations**:
+For production environments, consider these additional logging practices:
+
+1. **Centralized Logging**: Configure log aggregation to a central system
+2. **Log Rotation Alerts**: Set up monitoring for log file sizes
+3. **Backup Policy**: Implement backup procedures for important log files
+4. **Access Controls**: Restrict log file access to authorized personnel
+5. **Compliance**: Ensure logging practices meet regulatory requirements
+
+### Best Practices
+
+1. **Monitor Log Sizes**: Keep an eye on log file growth
+2. **Regular Review**: Periodically review logs for recurring issues
+3. **Archive Important Logs**: Save logs from critical deployments for later analysis
+4. **Document Issues**: Use log excerpts when creating bug reports
+5. **Clean Up Regularly**: Implement regular log cleanup in your deployment process
+
+**Example Log Analysis**:
+```bash
+# Find most common errors
+grep "ERROR:" /tmp/deploy-*.log | sort | uniq -c | sort -nr
+
+# Find deployment durations
+grep "DEPLOYMENT PIPELINE COMPLETED" /tmp/deploy-*.log
+
+# Check for rollback occurrences
+grep "ROLLBACK" /tmp/deploy-*.log | wc -l
+```
+
+## Image Retention Policy
+
+### Overview
+
+The deployment system includes an image retention policy to manage Docker image versions in the Microk8s registry. This policy helps maintain storage efficiency while ensuring rollback capability and deployment reliability.
+
+### Current Image Management
+
+**Image Tagging Strategy**:
+- **Development**: Images are tagged as `localhost:32000/my-ag-ui-app:latest`
+- **Deployments**: Each deployment creates a new image with the `latest` tag
+- **Registry**: Microk8s registry stores images in `/var/snap/microk8s/common/registry/storage`
+
+**Current Behavior**:
+- Each deployment builds a new image and pushes it to the registry
+- The `latest` tag is updated to point to the most recent image
+- Previous image versions remain in the registry but are not directly accessible via tags
+- No automatic cleanup of old image versions is currently implemented
+
+### Retention Policy
+
+**Policy Statement**: The system retains the last 5 versions of deployed images to ensure rollback capability while managing storage usage.
+
+**Retention Criteria**:
+- **Maximum Versions**: 5 most recent image versions
+- **Cleanup Trigger**: Manual cleanup or automated script execution
+- **Protected Images**: Currently deployed image (latest) is always protected
+- **Rollback Images**: Images needed for rollback are protected during cleanup
+
+### Implementation
+
+The image retention policy can be implemented manually or through automated scripts:
+
+**Manual Image Management**:
+```bash
+# List all images in Microk8s registry
+multipass exec my-ag-ui-app-k8s -- docker images localhost:32000/my-ag-ui-app
+
+# List with detailed information including creation dates
+multipass exec my-ag-ui-app-k8s -- docker images localhost:32000/my-ag-ui-app --format "table {{.CreatedAt}}\t{{.ID}}\t{{.Size}}\t{{.Tag}}"
+
+# Remove specific old images (keeping last 5)
+multipass exec my-ag-ui-app-k8s -- docker rmi localhost:32000/my-ag-ui-app:<image-id>
+```
+
+**Automated Cleanup Script**:
+Create a script `cleanup-images.sh`:
+```bash
+#!/bin/bash
+
+# Image retention cleanup script
+# Keeps last 5 versions of my-ag-ui-app images
+
+VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
+MAX_VERSIONS=5
+IMAGE_NAME="localhost:32000/my-ag-ui-app"
+
+echo "Cleaning up old image versions (keeping last $MAX_VERSIONS)..."
+
+# Get list of images sorted by creation time (newest first)
+IMAGE_LIST=$(multipass exec "$VM_NAME" -- docker images "$IMAGE_NAME" --format "{{.CreatedAt}}\t{{.ID}}" | sort -r)
+
+# Count total images
+TOTAL_IMAGES=$(echo "$IMAGE_LIST" | wc -l)
+
+if [ "$TOTAL_IMAGES" -le "$MAX_VERSIONS" ]; then
+    echo "Total images ($TOTAL_IMAGES) is within retention limit ($MAX_VERSIONS). No cleanup needed."
+    exit 0
+fi
+
+# Calculate how many to remove
+TO_REMOVE=$((TOTAL_IMAGES - MAX_VERSIONS))
+echo "Found $TOTAL_IMAGES images, will remove $TO_REMOVE oldest versions."
+
+# Remove oldest images (skip first MAX_VERSIONS)
+echo "$IMAGE_LIST" | tail -n "+$((MAX_VERSIONS + 1))" | while read -r created image_id; do
+    if [ -n "$image_id" ]; then
+        echo "Removing image: $image_id (created: $created)"
+        multipass exec "$VM_NAME" -- docker rmi "$IMAGE_NAME:$image_id" || echo "Failed to remove $image_id"
+    fi
+done
+
+echo "Image cleanup completed."
+```
+
+### Manual Retention Management
+
+**Checking Current Image Status**:
+```bash
+# Check current image count and sizes
+multipass exec my-ag-ui-app-k8s -- docker images localhost:32000/my-ag-ui-app
+
+# Check registry storage usage
+multipass exec my-ag-ui-app-k8s -- du -sh /var/snap/microk8s/common/registry/storage
+
+# List images by creation date
+multipass exec my-ag-ui-app-k8s -- docker images localhost:32000/my-ag-ui-app --format "{{.CreatedAt}}\t{{.Size}}\t{{.Tag}}" | sort
+```
+
+**Safe Image Removal**:
+```bash
+# Always verify image is not in use before removal
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+# Remove images older than specific date
+multipass exec my-ag-ui-app-k8s -- docker images localhost:32000/my-ag-ui-app --format "{{.CreatedAt}}\t{{.ID}}" | awk '$1 < "2026-03-20" {print $2}' | xargs -r docker rmi
+```
+
+### Automated Retention Implementation
+
+To implement automated image retention, you can add the cleanup process to your deployment workflow:
+
+**Option 1: Pre-Deployment Cleanup**
+Add to `deploy-all.sh` before the Docker build step:
+```bash
+# Clean up old images before building new one
+echo "🧹 Cleaning up old image versions..."
+if [ -f "cleanup-images.sh" ]; then
+    ./cleanup-images.sh
+else
+    echo "cleanup-images.sh not found, skipping image cleanup"
+fi
+```
+
+**Option 2: Scheduled Cleanup**
+Add to crontab or system scheduler:
+```bash
+# Add to crontab: Run daily at 2 AM
+0 2 * * * /path/to/project/cleanup-images.sh >> /var/log/image-cleanup.log 2>&1
+```
+
+**Option 3: Git Hook Cleanup**
+Add to `.git/hooks/post-commit`:
+```bash
+#!/bin/bash
+# Clean up images after significant commits
+if git log -1 --pretty=format:"%s" | grep -q "major\|release\|deploy"; then
+    ./cleanup-images.sh
+fi
+```
+
+### Storage Considerations
+
+**Image Size Estimation**:
+- **Typical Image Size**: 200-500MB (depends on dependencies)
+- **5 Versions Storage**: ~1-2.5GB total storage required
+- **Registry Storage**: Located in `/var/snap/microk8s/common/registry/storage`
+
+**Monitoring Storage Usage**:
+```bash
+# Check registry storage usage
+multipass exec my-ag-ui-app-k8s -- du -sh /var/snap/microk8s/common/registry/storage
+
+# Check available disk space
+multipass exec my-ag-ui-app-k8s -- df -h
+
+# Monitor image count over time
+echo "Current image count: $(multipass exec my-ag-ui-app-k8s -- docker images localhost:32000/my-ag-ui-app | wc -l)"
+```
+
+### Rollback and Version Management
+
+**Image Versioning Strategy**:
+- **Latest**: Always points to the most recent deployment
+- **Previous Versions**: Retained for rollback capability
+- **Version Tags**: Consider using semantic versioning for production releases
+
+**Rollback Process with Image Retention**:
+1. **Identify Target Version**: Find the image ID of the version to rollback to
+2. **Verify Availability**: Ensure the image exists in the registry
+3. **Update Deployment**: Modify the deployment manifest to use the specific image
+4. **Apply Changes**: Deploy the previous version
+
+**Example Rollback**:
+```bash
+# List available versions
+multipass exec my-ag-ui-app-k8s -- docker images localhost:32000/my-ag-ui-app
+
+# Update deployment to use specific image
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl set image deployment/my-ag-ui-app my-ag-ui-app=localhost:32000/my-ag-ui-app:<image-id>
+
+# Verify rollback
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout status deployment/my-ag-ui-app
+```
+
+### Best Practices
+
+1. **Regular Cleanup**: Implement regular image cleanup to prevent storage issues
+2. **Monitor Storage**: Keep an eye on registry storage usage
+3. **Test Rollbacks**: Periodically test rollback capability with retained images
+4. **Document Versions**: Maintain documentation of what each image version contains
+5. **Production Consideration**: In production, consider keeping more versions (7-10) for better rollback capability
+
+**Production Recommendations**:
+- **Increase Retention**: Consider 7-10 versions for production environments
+- **Automated Monitoring**: Set up alerts for storage usage
+- **Regular Testing**: Monthly rollback testing with retained images
+- **Documentation**: Maintain release notes for each image version
+
+**Development vs Production**:
+- **Development**: 3-5 versions (faster iteration, less storage concern)
+- **Staging**: 5-7 versions (testing rollback scenarios)
+- **Production**: 7-10 versions (maximum rollback capability, stability focused)
+
+### Troubleshooting Image Retention Issues
+
+**Common Issues**:
+1. **Storage Full**: Registry storage exhausted
+2. **Cleanup Failures**: Images in use cannot be removed
+3. **Rollback Failures**: Target image no longer available
+4. **Permission Issues**: Cannot access or remove images
+
+**Solutions**:
+```bash
+# Force remove images (use with caution)
+multipass exec my-ag-ui-app-k8s -- docker rmi -f localhost:32000/my-ag-ui-app:<image-id>
+
+# Check which images are in use
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods -o jsonpath='{.items[*].spec.containers[*].image}'
+
+# Clean up dangling images
+multipass exec my-ag-ui-app-k8s -- docker image prune -f
+
+# Restart registry service if needed
+multipass exec my-ag-ui-app-k8s -- sudo systemctl restart snap.microk8s.daemon-registry.service
+```
+
+### ENVIRONMENT
+
+**Description**: Specifies the deployment environment (used for logging and configuration).
+
+**Default Value**: `development`
+
+**Usage**:
+```bash
+# Set production environment
+export ENVIRONMENT="production"
+
+# Or use in .env file
+echo "ENVIRONMENT=production" >> .env
+```
+
+**Notes**:
+- This variable is primarily used for logging and environment-specific configuration
+- It can be used to customize deployment behavior for different environments
+- The value is included in deployment log headers for context
+
+### Best Practices
+
+1. **Environment Variables for Deployment**:
+   ```bash
+   # Create a .env.deploy file for deployment-specific variables
+   cp .env .env.deploy
+   echo "VERBOSE=true" >> .env.deploy
+   echo "LOG_DIR=/var/log/deployments" >> .env.deploy
+   
+   # Use the deployment-specific env file
+   export $(cat .env.deploy | xargs) && ./deploy-all.sh
+   ```
+
+2. **CI/CD Integration**:
+   ```bash
+   # Example GitHub Actions environment setup
+   echo "ENVIRONMENT=production" >> $GITHUB_ENV
+   echo "VERBOSE=true" >> $GITHUB_ENV
+   echo "VM_NAME=prod-k8s-vm" >> $GITHUB_ENV
+   ```
+
+3. **Debugging with Verbose Logging**:
+   ```bash
+   # Always use verbose mode when debugging deployment issues
+   VERBOSE=true ./deploy-all.sh 2>&1 | tee deployment-debug.log
+   ```
+
+4. **Custom Health Check Paths**:
+   ```bash
+   # If your application uses a non-standard health check endpoint
+   export HEALTH_CHECK_PATH="/health/status"
+   ./deploy-all.sh
+   ```
+
 ## Security Notes
 
 - Never commit your `.env` file to version control
 - The `.env` file is already included in `.gitignore`
 - Keep your API keys secure and don't share them publicly
 - Rotate your API keys periodically for better security
+- Deployment environment variables can contain sensitive information - treat them like API keys

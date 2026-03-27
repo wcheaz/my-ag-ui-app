@@ -17,6 +17,9 @@ fi
 # Initialize log file
 setup_log_file
 
+# Clean up old log files to prevent disk exhaustion
+cleanup_old_logs
+
 # Rollback function to restore previous deployment state
 rollback_deployment() {
     log_error "🔄 INITIATING ROLLBACK PROCEDURE"
@@ -24,7 +27,17 @@ rollback_deployment() {
     
     if [ -f "k8s/deployment.yaml.backup" ]; then
         log_info "🔄 Rolling back using backup deployment manifest..."
-        if ! multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply -f k8s/deployment.yaml.backup 2>&1 | tee -a "$LOG_FILE"; then
+        log_info "🔄 Transferring backup deployment manifest to VM..."
+        
+        # Transfer backup file to VM
+        if ! multipass transfer k8s/deployment.yaml.backup "${VM_NAME:-my-ag-ui-app-k8s}:/home/ubuntu/deployment.yaml.backup" 2>&1 | tee -a "$LOG_FILE"; then
+            log_error "❌ ROLLBACK FAILED: Could not transfer backup deployment manifest to VM"
+            log_error "   Manual intervention required to restore deployment state"
+            return
+        fi
+        
+        # Apply the backup deployment manifest
+        if ! multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply -f /home/ubuntu/deployment.yaml.backup 2>&1 | tee -a "$LOG_FILE"; then
             log_error "❌ ROLLBACK FAILED: Could not apply backup deployment manifest"
             log_error "   Manual intervention required to restore deployment state"
         else

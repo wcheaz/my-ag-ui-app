@@ -97,10 +97,14 @@ echo "$build_output" | tee -a "$LOG_FILE"
 
 # Show build summary in console if not in verbose mode
 if [ "${VERBOSE:-false}" != "true" ]; then
-    # Extract and show key information from build output
-    echo "$build_output" | grep -E "(Successfully built|Successfully tagged| => | --->)" | head -10 | while read -r line; do
-        log_info "Build: $line"
-    done
+    # Extract and show key information from build output (if available)
+    if echo "$build_output" | grep -q -E "(Successfully built|Successfully tagged| => | --->)"; then
+        echo "$build_output" | grep -E "(Successfully built|Successfully tagged| => | --->)" | head -10 | while IFS= read -r line; do
+            [ -n "$line" ] && log_info "Build: $line"
+        done
+    else
+        log_info "Build: Docker image built successfully (no detailed build summary available)"
+    fi
 fi
 
 log_info "Docker image 'my-ag-ui-app:latest' built successfully"

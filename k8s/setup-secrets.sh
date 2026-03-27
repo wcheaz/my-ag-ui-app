@@ -141,12 +141,12 @@ get_env_value() {
 
 log "Setting up Kubernetes secrets..."
 
-# Check if kubectl is available
-if ! command -v kubectl >/dev/null 2>&1; then
-    handle_error 7 "kubectl command not found" \
-        "1. Install kubectl: follow Kubernetes installation guide\n" \
-        "2. Ensure kubectl is in your PATH: export PATH=\$PATH:/usr/local/bin\n" \
-        "3. Verify Kubernetes cluster is accessible: kubectl cluster-info"
+# Check if multipass is available (since we use multipass exec for kubectl operations)
+if ! command -v multipass >/dev/null 2>&1; then
+    handle_error 7 "multipass command not found" \
+        "1. Install multipass: follow Multipass installation guide\n" \
+        "2. Ensure multipass is in your PATH: export PATH=\$PATH:/usr/local/bin\n" \
+        "3. Verify Multipass VM is accessible: multipass list"
 fi
 
 # Get environment variable values with error handling
@@ -232,13 +232,13 @@ fi
 
 # Validate generated YAML file with Kubernetes API server
 log "Validating generated secrets file against Kubernetes API server..."
-if ! kubectl apply --dry-run=server -f "$OUTPUT_FILE" 2>/dev/null; then
+if ! multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply --dry-run=server -f "$OUTPUT_FILE" 2>/dev/null; then
     handle_error 12 "Secrets YAML validation failed against Kubernetes API server" \
         "1. Check the generated file for syntax errors: cat $OUTPUT_FILE\n" \
         "2. Verify all base64 values are properly encoded\n" \
         "3. Ensure no special characters broke the YAML format\n" \
-        "4. Check Kubernetes cluster connectivity: kubectl cluster-info\n" \
-        "5. Verify you have necessary permissions: kubectl auth can-i create secret\n" \
+        "4. Check Kubernetes cluster connectivity: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl cluster-info\n" \
+        "5. Verify you have necessary permissions: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl auth can-i create secret\n" \
         "6. Try regenerating the file after fixing environment variables"
 fi
 
@@ -247,13 +247,13 @@ log "✅ Kubernetes secrets file generated successfully: $OUTPUT_FILE"
 # Optional: Apply the secrets to Kubernetes if requested
 if [ "$1" = "--apply" ]; then
     log "Applying secrets to Kubernetes cluster..."
-    if ! kubectl apply -f "$OUTPUT_FILE" 2>/dev/null; then
+    if ! multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply -f "$OUTPUT_FILE" 2>/dev/null; then
         handle_error 13 "Failed to apply secrets to Kubernetes cluster" \
-            "1. Check Kubernetes cluster connectivity: kubectl cluster-info\n" \
-            "2. Verify kubectl configuration: kubectl config current-context\n" \
-            "3. Ensure you have necessary permissions: kubectl auth can-i create secret\n" \
-            "4. Check for existing secrets: kubectl get secret my-ag-ui-app-secrets\n" \
-            "5. Ensure secrets file passes validation: kubectl apply --dry-run=server -f $OUTPUT_FILE"
+            "1. Check Kubernetes cluster connectivity: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl cluster-info\n" \
+            "2. Verify kubectl configuration: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl config current-context\n" \
+            "3. Ensure you have necessary permissions: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl auth can-i create secret\n" \
+            "4. Check for existing secrets: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl get secret my-ag-ui-app-secrets\n" \
+            "5. Ensure secrets file passes validation: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl apply --dry-run=server -f $OUTPUT_FILE"
     fi
     log "✅ Secrets applied to Kubernetes cluster successfully"
 fi

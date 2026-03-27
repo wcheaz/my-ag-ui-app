@@ -1,218 +1,309 @@
-# Rollback Procedure for Deployment Scripts
+# Rollback Procedures
 
-This document provides the rollback procedure for restoring the original monolithic `deploy.sh` script if issues arise with the new modular deployment system.
+This document describes the error handling and rollback procedures for the deployment pipeline.
 
-## When to Consider Rollback
+## Overview
 
-Consider rolling back to the original `deploy.sh` in these scenarios:
+The deployment pipeline includes automatic rollback capabilities to ensure service availability and minimize downtime when deployment failures occur. The system is designed to detect failures, log structured error information, and automatically restore the previous stable deployment state.
 
-1. **Critical Deployment Failures**: When the modular scripts consistently fail and you need a working deployment solution
-2. **CI/CD Pipeline Breakage**: When existing workflows cannot be easily updated to use the new modular system
-3. **Development Workflow Disruption**: When the new system significantly impacts team productivity
-4. **Debugging Complexities**: When isolating issues across multiple scripts becomes more difficult than using the monolithic approach
+## Automatic Rollback Process
 
-## Quick Rollback Procedure
+### Trigger Conditions
 
-### Step 1: Backup Current State (Optional but Recommended)
+Automatic rollback is triggered when any of the following conditions occur:
+1. **Script Failure**: Any deployment script exits with a non-zero code
+2. **Command Timeout**: Any command exceeds its timeout limit
+3. **Validation Failure**: Kubernetes manifest validation fails
+4. **Resource Unavailable**: Required resources (VM, registry, Kubernetes) are unavailable
 
-```bash
-# Create a backup of the current modular system
-cp -r deploy_scripts deploy_scripts_backup_$(date +%Y%m%d_%H%M%S)
-cp deploy-all.sh deploy-all.sh_backup_$(date +%Y%m%d_%H%M%S)
-```
+### Rollback Sequence
 
-### Step 2: Restore Original deploy.sh
+When a failure is detected, the system performs the following steps:
 
-```bash
-# Copy the archived original deploy.sh to project root
-cp archive/deploy.sh.original deploy.sh
+1. **Error Detection**
+   ```bash
+   [2026-03-27 18:05:55] ERROR: ❌ STEP 1 FAILED: Failed to set up Kubernetes secrets
+   ```
 
-# Make it executable
-chmod +x deploy.sh
-```
+2. **Rollback Initiation**
+   ```bash
+   [2026-03-27 18:05:55] ERROR: 🔄 INITIATING ROLLBACK PROCEDURE
+   [2026-03-27 18:05:55] ERROR: Deployment failed - attempting to restore previous state
+   ```
 
-### Step 3: Remove Modular System (Optional)
+3. **Backup File Transfer**
+   ```bash
+   [2026-03-27 18:05:55] INFO: 🔄 Transferring backup deployment manifest to VM...
+   ```
 
-```bash
-# Remove the orchestrator script
-rm deploy-all.sh
+4. **Backup Application**
+   ```bash
+   deployment.apps/my-ag-ui-app configured
+   ```
 
-# Remove the modular scripts directory (only if you're sure they won't be needed)
-rm -rf deploy_scripts
-```
+5. **Rollback Completion**
+   ```bash
+   [2026-03-27 18:05:55] INFO: ✅ ROLLBACK SUCCESSFUL: Previous deployment state restored
+   [2026-03-27 18:05:55] INFO:    Services should be returning to previous stable state
+   ```
 
-### Step 4: Test Restored System
+### Rollback Components
 
-```bash
-# Test the restored monolithic deployment script
-./deploy.sh
-```
+The rollback system uses the following components:
 
-## Detailed Rollback with Preservation
+- **Backup Manifest**: `k8s/deployment.yaml.backup` - Contains the last known good deployment configuration
+- **Rollback Function**: `rollback_deployment()` in `deploy-all.sh` - Handles the rollback process
+- **Error Handling**: `log_structured_error()` in `deploy_scripts/common.sh` - Provides structured error information
+- **Backup Transfer**: Multipass file transfer to ensure backup is available in the VM
 
-If you want to rollback but preserve the modular system for future use:
+## Manual Rollback Procedures
 
-### Step 1: Archive Modular System
+### Scenario 1: Automatic Rollback Failed
 
-```bash
-# Create a comprehensive archive of the modular system
-tar -czf deployment_modular_system_backup_$(date +%Y%m%d_%H%M%S).tar.gz \
-    deploy_all.sh \
-    deploy_scripts/ \
-    README.md
-```
-
-### Step 2: Restore Original deploy.sh
+If the automatic rollback fails, you can manually restore the deployment:
 
 ```bash
-# Copy the archived original to project root
-cp archive/deploy.sh.original deploy.sh
-chmod +x deploy.sh
+# Check if backup file exists
+ls -la k8s/deployment.yaml.backup
+
+# Manually apply the backup deployment
+multipass transfer k8s/deployment.yaml.backup my-ag-ui-app-k8s:/home/ubuntu/deployment.yaml.backup
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/deployment.yaml.backup
 ```
 
-### Step 3: Update Documentation
+### Scenario 2: Need to Rollback to Specific Version
+
+If you need to rollback to a specific previous version:
 
 ```bash
-# Create a rollback note in your project documentation
-cat >> ROLLBACK_NOTE.md << EOF
-# Deployment System Rollback Notice
+# List available backup files
+ls -la k8s/deployment.yaml.backup*
 
-Date: $(date)
-Reason: [Add reason for rollback here]
-
-The deployment system was rolled back from modular scripts to the original monolithic deploy.sh.
-
-The modular system has been archived as: deployment_modular_system_backup_$(date +%Y%m%d_%H%M%S).tar.gz
-
-To restore the modular system in the future:
-1. Extract the backup archive
-2. Copy deploy-all.sh to project root
-3. Copy deploy_scripts/ directory to project root
-4. Update README.md and workflows
-EOF
+# Choose the appropriate backup file and apply it
+multipass transfer k8s/deployment.yaml.backup.20260327_213120 my-ag-ui-app-k8s:/home/ubuntu/backup.yaml
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/backup.yaml
 ```
 
-## Reverting the Rollback
+### Scenario 3: Complete Environment Reset
 
-After fixing the issues that caused the rollback, you can restore the modular system:
-
-### Step 1: Restore Modular Scripts
+For a complete environment reset:
 
 ```bash
-# Extract the backup (if you created one)
-tar -xzf deployment_modular_system_backup_YYYYMMDD_HHMMSS.tar.gz
+# Delete the current deployment
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl delete deployment my-ag-ui-app
 
-# Or recreate from scratch if needed
+# Apply the backup deployment
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/deployment.yaml.backup
+
+# Wait for pods to be ready
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl wait --for=condition=ready pod -l app=my-ag-ui-app --timeout=300s
 ```
 
-### Step 2: Restore Orchestrator
+## Common Error Scenarios and Recovery
 
-```bash
-# Ensure deploy-all.sh is in project root and executable
-chmod +x deploy-all.sh
+### 1. IMAGE_VERIFICATION_TIMEOUT
+
+**Error Message**:
+```
+ERROR TYPE: IMAGE_VERIFICATION_TIMEOUT
+DIAGNOSTIC: Image verification failed after 7 attempts with exponential backoff
+COMMON CAUSES: Registry catalog update delays, registry connectivity issues, or registry service problems
+RECOVERY: 1. Manual verification: curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list 2. Check registry status: verify_microk8s_registry 3. Proceed with deployment if image exists 4. Or retry verification after waiting
 ```
 
-### Step 3: Archive Original Again
+**Recovery Steps**:
+1. Verify the image exists in the registry:
+   ```bash
+   curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list
+   ```
+2. Check registry status:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods -n registry
+   ```
+3. If image exists, continue with deployment:
+   ```bash
+   # Skip image verification by temporarily modifying the script
+   ```
+4. Or wait and retry the deployment
 
-```bash
-# Move the current deploy.sh to archive
-mkdir -p archive
-mv deploy.sh archive/deploy.sh.rollback_$(date +%Y%m%d_%H%M%S)
-cp archive/deploy.sh.original archive/deploy.sh  # Ensure original is preserved
+### 2. KUBERNETES SECRETS VALIDATION FAILURE
+
+**Error Message**:
+```
+ERROR TYPE: KUBERNETES SECRETS VALIDATION FAILURE
+DIAGNOSTIC: Generated secrets YAML file is invalid or incompatible with Kubernetes API server
+COMMON CAUSES: YAML syntax errors in generated secrets file, Invalid base64 encoding of secret values, Missing required fields or incorrect Kubernetes API version, Kubernetes cluster connectivity issues
+RECOVERY: 1. Check the generated file for errors: cat k8s/secrets.yaml 2. Verify Kubernetes cluster connectivity: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl cluster-info 3. Ensure you have necessary permissions: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl auth can-i create secret 4. Fix any environment variable issues and regenerate the file
 ```
 
-### Step 4: Update Workflows and Documentation
+**Recovery Steps**:
+1. Check the generated secrets file:
+   ```bash
+   cat k8s/secrets.yaml
+   ```
+2. Verify Kubernetes connectivity:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl cluster-info
+   ```
+3. Check permissions:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl auth can-i create secret
+   ```
+4. Fix environment variables and regenerate:
+   ```bash
+   # Check .env file and fix any issues
+   ./deploy_scripts/setup-k8s-secrets.sh
+   ```
 
-```bash
-# Update any CI/CD pipelines, scripts, or documentation that reference deploy.sh
-# to use deploy-all.sh instead
+### 3. ROLLBACK FAILED
+
+**Error Message**:
+```
+ERROR: ❌ ROLLBACK FAILED: Could not apply backup deployment manifest
+ERROR:    Manual intervention required to restore deployment state
 ```
 
-## Emergency Rollback (Quick Fix)
+**Recovery Steps**:
+1. Check if backup file exists:
+   ```bash
+   ls -la k8s/deployment.yaml.backup
+   ```
+2. If backup exists, apply manually:
+   ```bash
+   multipass transfer k8s/deployment.yaml.backup my-ag-ui-app-k8s:/home/ubuntu/backup.yaml
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/backup.yaml
+   ```
+3. If no backup exists, recreate from running pods:
+   ```bash
+   # Get current deployment configuration
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment my-ag-ui-app -o yaml > k8s/deployment.yaml.backup
+   ```
 
-For emergency situations when you need immediate deployment capability:
+## Interpreting Rollback Logs
 
-```bash
-# Emergency restore - directly from archive
-cp archive/deploy.sh.original deploy.sh && chmod +x deploy.sh
+### Log Structure
 
-# Run deployment
-./deploy.sh
+Rollback logs follow a structured format:
+
 ```
+[2026-03-27 18:05:55] ERROR: 🔄 INITIATING ROLLBACK PROCEDURE
+[2026-03-27 18:05:55] ERROR: Deployment failed - attempting to restore previous state
+[2026-03-27 18:05:55] INFO: 🔄 Rolling back using backup deployment manifest...
+[2026-03-27 18:05:55] INFO: 🔄 Transferring backup deployment manifest to VM...
+[2026-03-27 18:05:55] ERROR: ❌ ROLLBACK FAILED: Could not apply backup deployment manifest
+[2026-03-27 18:05:55] ERROR:    Manual intervention required to restore deployment state
+```
+
+### Key Log Indicators
+
+- **🔄 INITIATING ROLLBACK**: Rollback process started
+- **🔄 Rolling back**: Backup deployment being applied
+- **🔄 Transferring**: Backup file being transferred to VM
+- **✅ ROLLBACK SUCCESSFUL**: Rollback completed successfully
+- **❌ ROLLBACK FAILED**: Rollback failed, manual intervention needed
+
+### Log Locations
+
+Rollback logs are written to:
+- **Console**: Real-time output during deployment
+- **Log Files**: `/tmp/deploy-*.log` (timestamped)
+- **Structured Errors**: Detailed error information with recovery steps
+
+## Best Practices
+
+### Before Deployment
+
+1. **Verify Prerequisites**
+   - Ensure VM is running: `multipass list`
+   - Check Kubernetes status: `multipass exec my-ag-ui-app-k8s -- microk8s status`
+   - Verify registry access: `curl -s http://localhost:32000/v2/_catalog`
+
+2. **Backup Current State**
+   - Ensure `k8s/deployment.yaml.backup` exists
+   - Test backup file validity
+
+3. **Environment Preparation**
+   - Verify `.env` file exists and is correct
+   - Check all required environment variables are set
+
+### During Deployment
+
+1. **Monitor Progress**
+   - Watch deployment output for errors
+   - Check log files: `tail -f /tmp/deploy-*.log`
+
+2. **Use VERBOSE Mode for Debugging**
+   ```bash
+   VERBOSE=true ./deploy-all.sh
+   ```
+
+### After Rollback
+
+1. **Verify Service Recovery**
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment my-ag-ui-app
+   ```
+
+2. **Check Application Health**
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl describe pod <pod-name>
+   ```
+
+3. **Review Rollback Logs**
+   ```bash
+   grep -A 10 -B 5 "ROLLBACK" /tmp/deploy-*.log
+   ```
 
 ## Troubleshooting Rollback Issues
 
-### Issue: deploy.sh.original Missing
+### Common Issues
 
-If the original script is not in the archive directory:
+1. **Backup File Missing**
+   - **Cause**: `k8s/deployment.yaml.backup` doesn't exist
+   - **Solution**: Create backup from current deployment
 
-1. **Check if it was moved elsewhere**:
-   ```bash
-   find . -name "deploy.sh.original" -type f
-   ```
+2. **VM Connectivity Issues**
+   - **Cause**: Cannot connect to Multipass VM
+   - **Solution**: Check VM status: `multipass list`
 
-2. **Check git history**:
-   ```bash
-   git log --oneline --follow deploy.sh
-   git show <commit-hash>:deploy.sh > deploy.sh.restored
-   ```
+3. **Permission Issues**
+   - **Cause**: Insufficient Kubernetes permissions
+   - **Solution**: Check permissions: `multipass exec my-ag-ui-app-k8s -- microk8s kubectl auth can-i create deployment`
 
-3. **Recreate from documentation** (last resort):
-   - Use the deployment documentation in README.md
-   - Reconstruct the script based on the modular scripts
+4. **Registry Issues**
+   - **Cause**: Microk8s registry not accessible
+   - **Solution**: Check registry: `curl -s http://localhost:32000/v2/_catalog`
 
-### Issue: Permissions Problems
+### Debug Commands
 
-After rollback, ensure proper permissions:
-
-```bash
-chmod +x deploy.sh
-ls -la deploy.sh  # Should show -rwxr-xr-x
-```
-
-### Issue: Environment Variables
-
-The original `deploy.sh` might expect different environment variables. Check:
+Use these commands to debug rollback issues:
 
 ```bash
-# Compare environment variable requirements
-grep -n "export\|\$" deploy.sh | head -20
+# Check VM status
+multipass list
+
+# Check Kubernetes cluster status
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl cluster-info
+
+# Check deployment status
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment my-ag-ui-app
+
+# Check pod status
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods
+
+# Check recent rollback logs
+grep -A 10 -B 5 "ROLLBACK" /tmp/deploy-*.log | tail -30
 ```
 
-## Best Practices for Rollback
+## Contact and Support
 
-1. **Document Everything**: Keep a record of why the rollback was performed and what issues were encountered
+If you encounter rollback issues that cannot be resolved with the procedures in this document:
 
-2. **Test Before Full Rollback**: Test the restored deploy.sh in a staging environment if possible
-
-3. **Communicate Changes**: Inform all team members about the rollback and any workflow changes
-
-4. **Plan for Re-migration**: Use the rollback period to fix the issues with the modular system
-
-5. **Preserve Debug Information**: Keep logs and error reports from the modular system failures
-
-## Prevention: Avoiding Future Rollbacks
-
-To minimize the need for future rollbacks:
-
-1. **Gradual Migration**: Consider running both systems in parallel during transition
-
-2. **Feature Flags**: Implement feature flags in the deployment system to enable/disable modular components
-
-3. **Extensive Testing**: Test the modular system thoroughly in non-production environments
-
-4. **Monitoring**: Add monitoring and health checks to detect issues early
-
-5. **Documentation**: Keep detailed documentation of all deployment system changes
-
-## Support
-
-If you encounter issues during rollback or need assistance:
-
-1. **Review git history**: Check previous commits for deployment script changes
-2. **Consult team**: Discuss with team members who worked on the modular system
-3. **Create issue**: Open a GitHub issue detailing the rollback problems
-
----
-
-**Note**: This rollback procedure is designed to be safe and reversible. Always test in a non-production environment when possible.
+1. Check the project README for additional resources
+2. Review deployment logs for detailed error information
+3. Create an issue in the project repository with:
+   - Complete error messages
+   - Relevant log excerpts
+   - Steps you've already tried
+   - Environment information (OS, Multipass version, etc.)

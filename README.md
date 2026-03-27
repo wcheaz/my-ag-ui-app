@@ -122,12 +122,41 @@ To run the complete deployment pipeline with all phases:
 ```
 
 This orchestrator script executes all deployment phases in sequence:
-1. **Setup Kubernetes Secrets** - Configures secrets for the application
-2. **Build Docker Image** - Builds the application container image
-3. **Tag Docker Image** - Tags image for local registry
-4. **Setup Microk8s Registry** - Configures microk8s registry for image distribution
-5. **Push Docker Image** - Pushes tagged image to microk8s registry
-6. **Deploy to Kubernetes** - Deploys application to Kubernetes cluster
+1. **Setup Kubernetes Secrets** - Configures secrets for the application with validation
+2. **Build Docker Image** - Builds the application container image with dependency validation
+3. **Tag Docker Image** - Tags image for local registry with comprehensive verification
+4. **Setup Microk8s Registry** - Configures microk8s registry with connectivity verification
+5. **Push Docker Image** - Pushes tagged image to microk8s registry with exponential backoff verification
+6. **Deploy to Kubernetes** - Deploys application to Kubernetes cluster with pod status monitoring
+
+##### Enhanced Deployment Features
+
+The deployment pipeline includes robust error handling and monitoring:
+
+**🔍 VERBOSE Mode**
+For detailed debugging and environment context logging:
+```bash
+VERBOSE=true ./deploy-all.sh
+```
+
+**🔄 Automatic Rollback**
+If any deployment step fails, the system automatically:
+1. Logs structured error messages with recovery steps
+2. Initiates rollback procedure to restore previous deployment state
+3. Applies backup deployment manifest to maintain service availability
+
+**📋 Structured Error Handling**
+All errors include:
+- Error type classification
+- Detailed diagnostic information
+- Common causes analysis
+- Step-by-step recovery instructions
+
+**📊 Logging and Monitoring**
+- Timestamped log files created in `/tmp/deploy-*.log`
+- Automatic log rotation (100MB limit, keeps last 10 files)
+- Deployment summary with step status and duration
+- Environment context logging (Kubernetes, registry, VM status)
 
 #### Individual Phase Scripts
 
@@ -485,5 +514,278 @@ If you encounter Docker-related errors during deployment:
 4. **Image loading fails**: Docker is not ready to accept images
    - Verify Docker is running: `multipass exec my-ag-ui-app-k8s -- docker ps`
    - Check disk space: `multipass exec my-ag-ui-app-k8s -- df -h`
+
+## Deployment Troubleshooting
+
+This section covers common deployment issues and their solutions.
+
+### 1. Image Verification Timeout
+
+**Symptoms**:
+```
+ERROR TYPE: IMAGE_VERIFICATION_TIMEOUT
+DIAGNOSTIC: Image verification failed after 7 attempts with exponential backoff
+```
+
+**Causes**:
+- Registry catalog update delays
+- Registry connectivity issues
+- Microk8s registry service problems
+
+**Solutions**:
+1. **Verify image exists in registry**:
+   ```bash
+   curl -s http://localhost:32000/v2/my-ag-ui-app/tags/list
+   ```
+
+2. **Check registry status**:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods -n registry
+   ```
+
+3. **Wait and retry**: The verification uses exponential backoff, so waiting a few minutes and retrying often resolves the issue
+
+4. **Proceed with deployment**: If image exists, you can skip verification by temporarily modifying the script
+
+### 2. Rollback Procedure Failed
+
+**Symptoms**:
+```
+ERROR: ❌ ROLLBACK FAILED: Could not apply backup deployment manifest
+ERROR:    Manual intervention required to restore deployment state
+```
+
+**Causes**:
+- Backup deployment manifest missing
+- VM connectivity issues
+- Kubernetes permission issues
+
+**Solutions**:
+1. **Check backup file exists**:
+   ```bash
+   ls -la k8s/deployment.yaml.backup
+   ```
+
+2. **Manual rollback**:
+   ```bash
+   multipass transfer k8s/deployment.yaml.backup my-ag-ui-app-k8s:/home/ubuntu/backup.yaml
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/backup.yaml
+   ```
+
+3. **Create backup from current deployment**:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl get deployment my-ag-ui-app -o yaml > k8s/deployment.yaml.backup
+   ```
+
+### 3. Kubernetes Secrets Validation Failure
+
+**Symptoms**:
+```
+ERROR TYPE: KUBERNETES SECRETS VALIDATION FAILURE
+DIAGNOSTIC: Generated secrets YAML file is invalid or incompatible with Kubernetes API server
+```
+
+**Causes**:
+- Missing environment variables
+- Invalid base64 encoding
+- YAML syntax errors
+- Kubernetes connectivity issues
+
+**Solutions**:
+1. **Check required environment variables**:
+   ```bash
+   echo "Required: OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, EMBEDDING_MODEL"
+   export OPENAI_API_KEY="your-key"  # Set missing variables
+   ```
+
+2. **Verify Kubernetes connectivity**:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl cluster-info
+   ```
+
+3. **Check permissions**:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl auth can-i create secret
+   ```
+
+4. **Regenerate secrets file**:
+   ```bash
+   ./deploy_scripts/setup-k8s-secrets.sh
+   ```
+
+### 4. Application CrashLoopBackOff
+
+**Symptoms**:
+```bash
+my-ag-ui-app-6dc4f774d4-kddvv   0/1     CrashLoopBackOff   88 (90s ago)    4h48m
+```
+
+**Causes**:
+- Application-level issues (not deployment pipeline issues)
+- Missing environment variables in pods
+- Health check endpoint failures
+- Resource constraints
+
+**Solutions**:
+1. **Check pod logs**:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl logs <pod-name>
+   ```
+
+2. **Describe pod for details**:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl describe pod <pod-name>
+   ```
+
+3. **Check environment variables in pod**:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec <pod-name> -- env
+   ```
+
+4. **Note**: This is typically an application-level issue that requires developer attention
+
+### 5. VM Connectivity Issues
+
+**Symptoms**:
+```
+ERROR: Failed to connect to VM
+multipass: command not found
+```
+
+**Causes**:
+- Multipass not installed
+- VM not running
+- Network connectivity issues
+
+**Solutions**:
+1. **Check Multipass status**:
+   ```bash
+   multipass list
+   ```
+
+2. **Start VM if not running**:
+   ```bash
+   multipass start my-ag-ui-app-k8s
+   ```
+
+3. **Install Multipass** (if missing):
+   ```bash
+   # Ubuntu/Debian
+   sudo snap install multipass
+   
+   # macOS
+   brew install multipass
+   ```
+
+### 6. Log File Synchronization Issues
+
+**Symptoms**:
+```
+ERROR: package.json and package-lock.json are out of sync
+```
+
+**Causes**:
+- Dependencies updated without updating lock file
+- Manual editing of package-lock.json
+- Merge conflicts in lock file
+
+**Solutions**:
+1. **Fix synchronization**:
+   ```bash
+   npm install
+   ```
+
+2. **Verify fix**:
+   ```bash
+   npm ci --dry-run
+   ```
+
+3. **Commit both files**:
+   ```bash
+   git add package.json package-lock.json
+   git commit -m "Fix lock file synchronization"
+   ```
+
+### 7. Permission Issues
+
+**Symptoms**:
+```
+ERROR: permission denied
+ERROR: insufficient permissions
+```
+
+**Causes**:
+- Not in Kubernetes admin group
+- Multipass user permission issues
+- Docker group membership
+
+**Solutions**:
+1. **Check Kubernetes permissions**:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl auth can-i create deployment
+   ```
+
+2. **Add user to Docker group**:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- sudo usermod -aG docker ubuntu
+   multipass exec my-ag-ui-app-k8s -- newgrp docker
+   ```
+
+### 8. Getting More Debug Information
+
+**Enable Verbose Logging**:
+```bash
+VERBOSE=true ./deploy-all.sh
+```
+
+**Check Log Files**:
+```bash
+# List recent deployment logs
+ls -la /tmp/deploy-*.log | tail -5
+
+# View latest log file
+tail -f /tmp/deploy-$(ls -t /tmp/deploy-*.log | head -1 | cut -d/ -f3)
+```
+
+**Environment Context Check**:
+```bash
+# Check deployment environment status
+VERBOSE=true ./deploy-all.sh 2>&1 | grep -A 10 "ENVIRONMENT CONTEXT"
+```
+
+### 9. Emergency Recovery Procedures
+
+**Complete Environment Reset**:
+```bash
+# Delete current deployment
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl delete deployment my-ag-ui-app
+
+# Apply backup deployment
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/deployment.yaml.backup
+
+# Wait for recovery
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl wait --for=condition=ready pod -l app=my-ag-ui-app --timeout=300s
+```
+
+**VM Recreate (Last Resort)**:
+```bash
+# Delete and recreate VM
+multipass delete my-ag-ui-app-k8s
+multipass purge
+multipass launch --name my-ag-ui-app-k8s --memory 4G --cpus 2
+```
+
+### 10. When to Get Help
+
+If you encounter issues not covered here:
+
+1. **Check deployment logs**: `/tmp/deploy-*.log`
+2. **Review rollback procedures**: `ROLLBACK_PROCEDURE.md`
+3. **Check environment variables**: `SETUP.md`
+4. **Create GitHub issue** with:
+   - Complete error messages
+   - Relevant log excerpts
+   - Environment information
+   - Steps you've already tried
 
 For detailed debugging information, see: `hidden/KUBERNETES-EXPLANATION.md`
