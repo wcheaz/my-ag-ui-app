@@ -869,5 +869,59 @@
     "completedTasks": [
       "8.3 Add pod status polling every 5 seconds with 5-minute timeout for Running state"
     ]
+  },
+  {
+    "timestamp": "2026-03-26T20:41:32.888Z",
+    "iteration": 63,
+    "duration": 182843,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [],
+    "exitCode": 0,
+    "completedTasks": [
+      "8.4 Verify readiness probe passes before marking deployment successful"
+    ]
+  },
+  {
+    "timestamp": "2026-03-26T20:45:13.151Z",
+    "iteration": 64,
+    "duration": 220262,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [],
+    "exitCode": 0,
+    "completedTasks": [
+      "8.5 Capture and log Kubernetes pod events (pull errors, crash loops, probe failures)"
+    ]
+  },
+  {
+    "timestamp": "2026-03-26T20:46:53.418Z",
+    "iteration": 65,
+    "duration": 100266,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [],
+    "exitCode": 0,
+    "completedTasks": [
+      "8.6 Add logging for deployment start and completion with timestamps"
+    ]
+  },
+  {
+    "timestamp": "2026-03-27T01:17:41.692Z",
+    "iteration": 67,
+    "duration": 97068,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [
+      "deploy_scripts/deploy-to-k8s.sh"
+    ],
+    "exitCode": 0,
+    "completedTasks": [
+      "8.7 Add exit code 1 on deployment failure with pod details and error reason"
+    ]
   }
 ]

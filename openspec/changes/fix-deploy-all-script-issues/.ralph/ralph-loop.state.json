@@ -1,6 +1,6 @@
 {
   "active": true,
-  "iteration": 62,
+  "iteration": 67,
   "minIterations": 1,
   "maxIterations": 100,
   "completionPromise": "COMPLETE",
@@ -11,6 +11,6 @@
   "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-deploy-all-script-issues/.ralph/prompt-template.md",
   "noCommit": false,
   "model": "",
-  "startedAt": "2026-03-26T18:29:11.279Z",
-  "resumedAt": null
+  "startedAt": "2026-03-27T01:16:04.618Z",
+  "resumedAt": "2026-03-27T01:16:04.619Z"
 }

@@ -590,4 +590,55 @@ If deployment fails or causes issues:
 ## Current Task Context
 
 ## Current Task
-- 1.1 Archive current deployment manifest as `k8s/deployment.yaml.backup`
+- 8.7 Add exit code 1 on deployment failure with pod details and error reason
+## Completed Tasks for Git Commit
+- [x] 1.1 Archive current deployment manifest as `k8s/deployment.yaml.backup`
+- [x] 1.2 Document current image tag and deployment state in `openspec/changes/fix-deploy-all-script-issues/DEPLOYMENT_STATE.md`
+- [x] 1.3 Test manual rollback procedure by reapplying backup manifest
+- [x] 1.4 Verify rollback procedure restores pods to Running state
+- [x] 2.1 Add `set -euo pipefail` to `deploy_scripts/common.sh` for strict error handling
+- [x] 2.2 Implement `log_info()` function in `deploy_scripts/common.sh` with timestamp and INFO level
+- [x] 2.3 Implement `log_warning()` function in `deploy_scripts/common.sh` with timestamp and WARNING level
+- [x] 2.4 Implement `log_error()` function in `deploy_scripts/common.sh` with timestamp and ERROR level
+- [x] 2.5 Implement `log_structured_error()` function in `deploy_scripts/common.sh` with ERROR TYPE, DIAGNOSTIC, COMMON CAUSES, and RECOVERY fields
+- [x] 2.6 Implement `setup_log_file()` function in `deploy_scripts/common.sh` to create timestamped log file
+- [x] 2.7 Implement `cleanup_old_logs()` function in `deploy_scripts/common.sh` to rotate logs older than 100MB
+- [x] 2.8 Implement `verify_command()` function in `deploy_scripts/common.sh` to check command exit code and log errors
+- [x] 2.9 Add `HEALTH_CHECK_PATH` environment variable support with default `/api/health` to `deploy_scripts/common.sh`
+- [x] 3.1 Add error handling functions import to `deploy_scripts/setup-k8s-secrets.sh`
+- [x] 3.2 Implement secrets YAML validation using `kubectl apply --dry-run=server` before applying
+- [x] 3.3 Add exit code 1 on validation failure with structured error message
+- [x] 3.4 Add logging for secrets setup start and completion with timestamps
+- [x] 3.5 Add detailed error message with recovery steps when validation fails
+- [x] 3.6 Test secrets validation with invalid YAML to verify error handling
+- [x] 3.7 Test secrets validation with valid YAML to verify successful application
+- [x] 4.1 Add error handling functions import to `deploy_scripts/build-docker-image.sh`
+- [x] 4.2 Add logging for build start and completion with timestamps
+- [x] 4.3 Add exit code 1 on build failure with error details
+- [x] 4.4 Log build output on success and failure for debugging
+- [x] 4.5 Test build failure scenario to verify error handling
+- [x] 5.1 Add error handling functions import to `deploy_scripts/tag-docker-image.sh`
+- [x] 5.2 Add logging for tagging start and completion with timestamps
+- [x] 5.3 Add exit code 1 on tagging failure with error details
+- [x] 5.4 Verify tagged image exists after successful tagging
+- [x] 5.5 Test tagging failure scenario to verify error handling
+- [x] 6.1 Add error handling functions import to `deploy_scripts/setup-microk8s-registry.sh`
+- [x] 6.2 Implement registry connectivity verification using `curl` before enabling registry
+- [x] 6.3 Add logging for registry setup start and completion with timestamps
+- [x] 6.4 Add exit code 1 on registry setup failure with error details
+- [x] 6.5 Verify registry returns valid JSON response on connectivity check
+- [x] 6.6 Test registry connectivity failure scenario to verify error handling
+- [x] 7.1 Add error handling functions import to `deploy_scripts/push-docker-image.sh`
+- [x] 7.2 Implement image verification with exponential backoff retry logic (1s, 2s, 4s, 8s, 16s, 32s, 64s)
+- [x] 7.3 Add maximum retry limit of 7 attempts for image verification
+- [x] 7.4 Add logging for push start and completion with timestamps
+- [x] 7.5 Add exit code 1 on push failure or verification timeout with error details
+- [x] 7.6 Provide manual verification steps in error message when verification fails
+- [x] 7.7 Test image verification with registry catalog delays to verify retry logic
+- [x] 7.8 Test push failure scenario to verify error handling
+- [x] 8.1 Add error handling functions import to `deploy_scripts/deploy-to-k8s.sh`
+- [x] 8.2 Implement deployment manifest validation using `kubectl apply --dry-run=server` before applying
+- [x] 8.3 Add pod status polling every 5 seconds with 5-minute timeout for Running state
+- [x] 8.4 Verify readiness probe passes before marking deployment successful
+- [x] 8.5 Capture and log Kubernetes pod events (pull errors, crash loops, probe failures)
+- [x] 8.6 Add logging for deployment start and completion with timestamps
