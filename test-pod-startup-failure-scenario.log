@@ -1,0 +1,322 @@
+=============================================
+  DEPLOYMENT LOG - 20260326-213119
+=============================================
+
+Deployment started at: 2026-03-26 21:31:19
+
+[2026-03-26 21:31:19] INFO: Log file initialized: test-pod-startup-failure-scenario.log
+[2026-03-26 21:31:19] INFO: Starting pod startup failure scenario test
+[2026-03-26 21:31:19] INFO: =================================================
+[2026-03-26 21:31:19] INFO: Checking if VM 'my-ag-ui-app-k8s' is running...
+[2026-03-26 21:31:19] INFO: VM 'my-ag-ui-app-k8s' is running
+[2026-03-26 21:31:19] INFO: Checking Kubernetes connectivity...
+[2026-03-26 21:31:20] INFO: Kubernetes is accessible in VM 'my-ag-ui-app-k8s'
+[2026-03-26 21:31:20] INFO: Creating backup of current deployment manifest...
+[2026-03-26 21:31:20] INFO: Backup created: k8s/deployment.yaml.backup.20260326_213120
+[2026-03-26 21:31:20] INFO: Creating deployment manifest that will cause pod startup failure...
+[2026-03-26 21:31:20] INFO: Created deployment manifest with non-existent image (will cause ImagePullBackOff)
+[2026-03-26 21:31:20] INFO: 
+[2026-03-26 21:31:20] INFO: TEST 1: Deploying problematic manifest and verifying error handling...
+[2026-03-26 21:31:20] INFO: =================================================================
+[2026-03-26 21:31:20] INFO: Applying deployment with non-existent image...
+deployment.apps/my-ag-ui-app unchanged
+[2026-03-26 21:31:20] INFO: Deployment manifest applied successfully (expected - this should create the deployment)
+[2026-03-26 21:31:20] INFO: Waiting 10 seconds for deployment to start...
+[2026-03-26 21:31:30] INFO: Checking deployment status...
+[2026-03-26 21:31:31] INFO: Deployment availability status: False
+[2026-03-26 21:31:31] INFO: Checking pod status...
+[2026-03-26 21:31:31] INFO: Found pod: my-ag-ui-app-58878bb6fd-qtnmb
+[2026-03-26 21:31:32] INFO: Pod status: Running
+[2026-03-26 21:31:32] INFO: Getting pod events...
+LAST SEEN   TYPE      REASON    OBJECT                              MESSAGE
+104s        Normal    Pulling   pod/my-ag-ui-app-58878bb6fd-qtnmb   Pulling image "localhost:32000/my-ag-ui-app:latest"
+2m7s        Warning   BackOff   pod/my-ag-ui-app-58878bb6fd-qtnmb   Back-off restarting failed container my-ag-ui-app in pod my-ag-ui-app-58878bb6fd-qtnmb_default(88eb4d4a-fe5a-4f48-93cc-26dd8dacb777)
+[2026-03-26 21:31:32] INFO: Getting pod description...
+Name:             my-ag-ui-app-58878bb6fd-qtnmb
+Namespace:        default
+Priority:         0
+Service Account:  default
+Node:             my-ag-ui-app-k8s/10.237.212.68
+Start Time:       Thu, 26 Mar 2026 21:19:06 -0400
+Labels:           app=my-ag-ui-app
+                  pod-template-hash=58878bb6fd
+Annotations:      cni.projectcalico.org/containerID: 43ebe21423c10967469265ec1dbabc6fa4206cd3403506b6f36672abd3c5dd13
+                  cni.projectcalico.org/podIP: 10.1.217.10/32
+                  cni.projectcalico.org/podIPs: 10.1.217.10/32
+                  kubectl.kubernetes.io/restartedAt: 2026-03-26T21:19:06-04:00
+Status:           Running
+IP:               10.1.217.10
+IPs:
+  IP:           10.1.217.10
+Controlled By:  ReplicaSet/my-ag-ui-app-58878bb6fd
+Containers:
+  my-ag-ui-app:
+    Container ID:   containerd://ca7b9fc95ff0fc4d3b325ed73026dde4c783e0f58fdcf467b878e76c1d90746a
+    Image:          localhost:32000/my-ag-ui-app:latest
+    Image ID:       localhost:32000/my-ag-ui-app@sha256:9bb7f19157560c1ab63f2e6173528cca2e296fb3b25378e6aa41f46c698b775f
+    Port:           3000/TCP
+    Host Port:      0/TCP
+    State:          Waiting
+      Reason:       CrashLoopBackOff
+    Last State:     Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Thu, 26 Mar 2026 21:29:49 -0400
+      Finished:     Thu, 26 Mar 2026 21:30:47 -0400
+    Ready:          False
+    Restart Count:  7
+    Limits:
+      cpu:     500m
+      memory:  512Mi
+    Requests:
+      cpu:      100m
+      memory:   256Mi
+    Liveness:   http-get http://:3000/api/health delay=30s timeout=5s period=10s #success=1 #failure=3
+    Readiness:  http-get http://:3000/api/health delay=5s timeout=3s period=5s #success=1 #failure=3
+    Environment:
+      OPENAI_API_KEY:      <set to the key 'openai-api-key' in secret 'my-ag-ui-app-secrets'>         Optional: false
+      OPENAI_BASE_URL:     <set to the key 'openai-base-url' in secret 'my-ag-ui-app-secrets'>        Optional: false
+      OPENAI_MODEL:        <set to the key 'openai-model' in secret 'my-ag-ui-app-secrets'>           Optional: false
+      EMBEDDING_MODEL:     <set to the key 'embedding-model' in secret 'my-ag-ui-app-secrets'>        Optional: false
+      LOGFIRE_TOKEN:       <set to the key 'logfire-token' in secret 'my-ag-ui-app-secrets'>          Optional: false
+      LLM_MAX_TOKENS:      <set to the key 'llm-max-tokens' of config map 'my-ag-ui-app-config'>      Optional: false
+      LLM_CONTEXT_WINDOW:  <set to the key 'llm-context-window' of config map 'my-ag-ui-app-config'>  Optional: false
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-8flbx (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       False 
+  ContainersReady             False 
+  PodScheduled                True 
+Volumes:
+  kube-api-access-8flbx:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason   Age                   From     Message
+  ----     ------   ----                  ----     -------
+  Warning  BackOff  2m7s (x22 over 7m5s)  kubelet  Back-off restarting failed container my-ag-ui-app in pod my-ag-ui-app-58878bb6fd-qtnmb_default(88eb4d4a-fe5a-4f48-93cc-26dd8dacb777)
+  Normal   Pulling  104s (x8 over 12m)    kubelet  Pulling image "localhost:32000/my-ag-ui-app:latest"
+[2026-03-26 21:31:33] WARNING: ⚠️  TEST 1 PARTIAL: ImagePullBackOff not detected, but pod may still be failing
+[2026-03-26 21:31:33] INFO: Getting container logs...
+▲ Next.js 16.1.0
+- Local:         http://my-ag-ui-app-58878bb6fd-qtnmb:3000
+- Network:       http://my-ag-ui-app-58878bb6fd-qtnmb:3000
+
+✓ Starting...
+✓ Ready in 127ms
+[2026-03-26 21:31:33] INFO: Checking container status...
+[2026-03-26 21:31:34] INFO: Container status: {"waiting":{"message":"back-off 5m0s restarting failed container=my-ag-ui-app pod=my-ag-ui-app-58878bb6fd-qtnmb_default(88eb4d4a-fe5a-4f48-93cc-26dd8dacb777)","reason":"CrashLoopBackOff"}}
+[2026-03-26 21:31:34] INFO: 
+[2026-03-26 21:31:34] INFO: TEST 2: Testing error handling functions...
+[2026-03-26 21:31:34] INFO: =========================================
+[2026-03-26 21:31:34] INFO: Sourcing deploy-to-k8s.sh functions...
+2026-03-26 21:31:34 - DEBUG: Running with full verbose output (critical failure phase)
+2026-03-26 21:31:34 - DEBUG: Set DEBUG=all for explicit debugging if needed
+2026-03-26 21:31:34 - Starting phase: KUBERNETES_DEPLOYMENT
+[2026-03-26 21:31:34] INFO: 🚀 STARTING KUBERNETES DEPLOYMENT PHASE
+[2026-03-26 21:31:34] INFO: ═══════════════════════════════════════════════════════════════════════════════
+2026-03-26 21:31:34 - 📋 DEPLOYMENT DETAILS:
+2026-03-26 21:31:34 -    • Manifest: k8s/deployment.yaml
+2026-03-26 21:31:34 -    • Image: localhost:32000/my-ag-ui-app:latest (from local registry)
+2026-03-26 21:31:34 -    • Strategy: Rolling update with pod restart
+2026-03-26 21:31:34 -    • Registry: microk8s local registry
+2026-03-26 21:31:34 - 
+[2026-03-26 21:31:34] INFO: 🔄 STEP 1: Applying deployment manifest...
+[2026-03-26 21:31:34] INFO:    • Manifest: k8s/deployment.yaml
+[2026-03-26 21:31:34] INFO:    • Image: localhost:32000/my-ag-ui-app:latest (from local registry)
+[2026-03-26 21:31:34] INFO:    • Strategy: Rolling update with pod restart
+[2026-03-26 21:31:34] INFO:    • Registry: microk8s local registry
+[2026-03-26 21:31:34] INFO: 
+2026-03-26 21:31:34 - 📊 PRE-APPLOY VERIFICATION: Checking current deployment state...
+2026-03-26 21:31:35 -    • Current deployment state: EXISTS
+2026-03-26 21:31:35 -    • Current replicas: 1
+2026-03-26 21:31:35 -    • Ready replicas: 
+2026-03-26 21:31:35 -    • Updated replicas: 1
+2026-03-26 21:31:35 -    • Action: UPDATE existing deployment
+2026-03-26 21:31:35 - 📋 MANIFEST VALIDATION: Checking deployment.yaml file...
+2026-03-26 21:31:35 - 🔍 REGISTRY PORT VALIDATION: Checking for registry port mismatches...
+2026-03-26 21:31:35 -    ✓ Registry port validation: PASSED (using port 32000)
+2026-03-26 21:31:35 -    • Manifest file size: 36 lines
+2026-03-26 21:31:35 -    • Manifest validation: PASSED
+2026-03-26 21:31:35 - 🔌 KUBERNETES CONNECTION: Verifying cluster access...
+2026-03-26 21:31:35 -    • Kubernetes cluster: ACCESSIBLE
+2026-03-26 21:31:35 - 🏷️  NAMESPACE VERIFICATION: Checking target namespace...
+2026-03-26 21:31:35 -    • Target namespace: default
+2026-03-26 21:31:36 -    • Namespace status: EXISTS and ACTIVE
+2026-03-26 21:31:36 - 🚀 APPLYING DEPLOYMENT MANIFEST with detailed logging...
+2026-03-26 21:31:36 -    • First validating deployment manifest with dry-run...
+2026-03-26 21:31:36 -    • Command: multipass exec 'my-ag-ui-app-k8s' -- microk8s kubectl apply --dry-run=server -f k8s/deployment.yaml
+2026-03-26 21:31:36 -    • Expected: Validation against Kubernetes API server
+[2026-03-26 21:31:36] INFO: Starting deployment manifest validation using kubectl apply --dry-run=server...
+deployment.apps/my-ag-ui-app unchanged (server dry run)
+[2026-03-26 21:31:36] INFO: ✅ Deployment manifest validation successful
+2026-03-26 21:31:36 -    • Validation passed, proceeding with actual deployment...
+2026-03-26 21:31:36 -    • Command: multipass exec 'my-ag-ui-app-k8s' -- microk8s kubectl apply -f k8s/deployment.yaml
+2026-03-26 21:31:36 -    • Expected: Deployment resource creation/update
+2026-03-26 21:31:36 -    • Output will be captured and analyzed below...
+2026-03-26 21:31:37 - 📤 KUBECTL APPLY OUTPUT (first 1000 chars):
+deployment.apps/my-ag-ui-app unchanged
+2026-03-26 21:31:37 - ✅ KUBECTL APPLY: Command completed successfully (exit code: 0)
+2026-03-26 21:31:37 -    • Result: Deployment unchanged (no changes detected)
+2026-03-26 21:31:37 -    • Action: No update needed - configuration identical
+2026-03-26 21:31:37 - 🔍 POST-APPLY VERIFICATION: Checking deployment status after apply...
+2026-03-26 21:31:37 -    ✅ Deployment verification: PASSED
+2026-03-26 21:31:37 -       • Deployment resource exists: my-ag-ui-app
+2026-03-26 21:31:38 -       • Deployment spec: {"progressDeadlineSeconds":600,"replicas":1,"revisionHistoryLimit":10,"selector":{"matchLabels":{"app":"my-ag-ui-app"}},"strategy":{"rollingUpdate":{"maxSurge":"25%","maxUnavailable":"25%"},"type":"RollingUpdate"},"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"2026-03-26T21:19:06-04:00"},"creationTimestamp":null,"labels":{"app":"my-ag-ui-app"}},"spec":{"containers":[{"env":[{"name":"OPENAI_API_KEY","valueFrom":{"secretKeyRef":{"key":"openai-api-key","name":"my-ag-ui-app-secrets"}}},{"name":"OPENAI_BASE_URL","valueFrom":{"secretKeyRef":{"key":"openai-base-url","name":"my-ag-ui-app-secrets"}}},{"name":"OPENAI_MODEL","valueFrom":{"secretKeyRef":{"key":"openai-model","name":"my-ag-ui-app-secrets"}}},{"name":"EMBEDDING_MODEL","valueFrom":{"secretKeyRef":{"key":"embedding-model","name":"my-ag-ui-app-secrets"}}},{"name":"LOGFIRE_TOKEN","valueFrom":{"secretKeyRef":{"key":"logfire-token","name":"my-ag-ui-app-secrets"}}},{"name":"LLM_MAX_TOKENS","valueFrom":{"configMapKeyRef":{"key":"llm-max-tokens","name":"my-ag-ui-app-config"}}},{"name":"LLM_CONTEXT_WINDOW","valueFrom":{"configMapKeyRef":{"key":"llm-context-window","name":"my-ag-ui-app-config"}}}],"image":"localhost:32000/my-ag-ui-app:latest","imagePullPolicy":"Always","livenessProbe":{"failureThreshold":3,"httpGet":{"path":"/api/health","port":3000,"scheme":"HTTP"},"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":5},"name":"my-ag-ui-app","ports":[{"containerPort":3000,"name":"http","protocol":"TCP"}],"readinessProbe":{"failureThreshold":3,"httpGet":{"path":"/api/health","port":3000,"scheme":"HTTP"},"initialDelaySeconds":5,"periodSeconds":5,"successThreshold":1,"timeoutSeconds":3},"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"256Mi"}},"terminationMessagePath":"/dev/termination-log","terminationMessagePolicy":"File"}],"dnsPolicy":"ClusterFirst","restartPolicy":"Always","schedulerName":"default-scheduler","securityContext":{},"terminationGracePeriodSeconds":30}}}
+2026-03-26 21:31:38 -       • Deployment status: {"conditions":[{"lastTransitionTime":"2026-03-25T20:53:24Z","lastUpdateTime":"2026-03-25T20:53:24Z","message":"Deployment does not have minimum availability.","reason":"MinimumReplicasUnavailable","status":"False","type":"Available"},{"lastTransitionTime":"2026-03-27T01:29:07Z","lastUpdateTime":"2026-03-27T01:29:07Z","message":"ReplicaSet \"my-ag-ui-app-58878bb6fd\" has timed out progressing.","reason":"ProgressDeadlineExceeded","status":"False","type":"Progressing"}],"observedGeneration":18,"replicas":2,"unavailableReplicas":2,"updatedReplicas":1}
+2026-03-26 21:31:38 -       ✅ Image reference verification: PASSED
+2026-03-26 21:31:38 -          • Expected: localhost:32000/my-ag-ui-app:latest
+2026-03-26 21:31:38 -          • Actual: localhost:32000/my-ag-ui-app:latest
+2026-03-26 21:31:38 - ✅ Deployment manifest application process completed
+2026-03-26 21:31:38 -    • Kubernetes deployment resource processed
+2026-03-26 21:31:38 -    • Next step: Deployment restart to trigger pod creation
+2026-03-26 21:31:38 - 
+2026-03-26 21:31:38 - 🔄 STEP 2: Restarting deployment to trigger pod recreation...
+2026-03-26 21:31:38 -    • This will create new pods using the updated registry image
+2026-03-26 21:31:38 -    • Pods will pull image from localhost:32000/my-ag-ui-app:latest
+deployment.apps/my-ag-ui-app restarted
+2026-03-26 21:31:39 - ✅ Deployment restarted successfully
+2026-03-26 21:31:39 -    • Rolling update initiated
+2026-03-26 21:31:39 -    • New pods will be created using registry image
+2026-03-26 21:31:39 -    • Expected: Direct pod startup (no ImagePullBackOff with registry approach)
+2026-03-26 21:31:39 - 
+[2026-03-26 21:31:39] INFO: Starting pod status polling for Running state (5-second intervals, 5-minute timeout)...
+2026-03-26 21:31:39 - Checking pod status for Running state... (attempt 1/60)
+[2026-03-26 21:31:39] INFO: ✅ Pod reached Running state successfully
+[2026-03-26 21:31:39] INFO: ✅ Pod status polling completed successfully - pod is Running
+[2026-03-26 21:31:39] INFO: Capturing Kubernetes pod events for analysis...
+[2026-03-26 21:31:40] INFO: Analyzing events for pod: my-ag-ui-app-58878bb6fd-qtnmb
+2026-03-26 21:31:40 - === POD EVENTS ===
+LAST SEEN   TYPE      REASON    OBJECT                              MESSAGE
+2m15s       Warning   BackOff   pod/my-ag-ui-app-58878bb6fd-qtnmb   Back-off restarting failed container my-ag-ui-app in pod my-ag-ui-app-58878bb6fd-qtnmb_default(88eb4d4a-fe5a-4f48-93cc-26dd8dacb777)
+112s        Normal    Pulling   pod/my-ag-ui-app-58878bb6fd-qtnmb   Pulling image "localhost:32000/my-ag-ui-app:latest"
+2026-03-26 21:31:40 - === END POD EVENTS ===
+[2026-03-26 21:31:40] INFO: Analyzing specific event types...
+[2026-03-26 21:31:43] INFO: === POD EVENTS SUMMARY ===
+[2026-03-26 21:31:43] INFO: Pull Errors: 0
+[2026-03-26 21:31:43] INFO: Crash Loops: 0
+[2026-03-26 21:31:43] INFO: Probe Failures: 0
+[2026-03-26 21:31:43] INFO: === END POD EVENTS SUMMARY ===
+[2026-03-26 21:31:43] INFO: Detailed pod description for comprehensive debugging:
+Name:             my-ag-ui-app-58878bb6fd-qtnmb
+Namespace:        default
+Priority:         0
+Service Account:  default
+Node:             my-ag-ui-app-k8s/10.237.212.68
+Start Time:       Thu, 26 Mar 2026 21:19:06 -0400
+Labels:           app=my-ag-ui-app
+                  pod-template-hash=58878bb6fd
+Annotations:      cni.projectcalico.org/containerID: 43ebe21423c10967469265ec1dbabc6fa4206cd3403506b6f36672abd3c5dd13
+                  cni.projectcalico.org/podIP: 10.1.217.10/32
+                  cni.projectcalico.org/podIPs: 10.1.217.10/32
+                  kubectl.kubernetes.io/restartedAt: 2026-03-26T21:19:06-04:00
+Status:           Running
+IP:               10.1.217.10
+IPs:
+  IP:           10.1.217.10
+Controlled By:  ReplicaSet/my-ag-ui-app-58878bb6fd
+Containers:
+  my-ag-ui-app:
+    Container ID:   containerd://ca7b9fc95ff0fc4d3b325ed73026dde4c783e0f58fdcf467b878e76c1d90746a
+    Image:          localhost:32000/my-ag-ui-app:latest
+    Image ID:       localhost:32000/my-ag-ui-app@sha256:9bb7f19157560c1ab63f2e6173528cca2e296fb3b25378e6aa41f46c698b775f
+    Port:           3000/TCP
+    Host Port:      0/TCP
+    State:          Waiting
+      Reason:       CrashLoopBackOff
+    Last State:     Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Thu, 26 Mar 2026 21:29:49 -0400
+      Finished:     Thu, 26 Mar 2026 21:30:47 -0400
+    Ready:          False
+    Restart Count:  7
+    Limits:
+      cpu:     500m
+      memory:  512Mi
+    Requests:
+      cpu:      100m
+      memory:   256Mi
+    Liveness:   http-get http://:3000/api/health delay=30s timeout=5s period=10s #success=1 #failure=3
+    Readiness:  http-get http://:3000/api/health delay=5s timeout=3s period=5s #success=1 #failure=3
+    Environment:
+      OPENAI_API_KEY:      <set to the key 'openai-api-key' in secret 'my-ag-ui-app-secrets'>         Optional: false
+      OPENAI_BASE_URL:     <set to the key 'openai-base-url' in secret 'my-ag-ui-app-secrets'>        Optional: false
+      OPENAI_MODEL:        <set to the key 'openai-model' in secret 'my-ag-ui-app-secrets'>           Optional: false
+      EMBEDDING_MODEL:     <set to the key 'embedding-model' in secret 'my-ag-ui-app-secrets'>        Optional: false
+      LOGFIRE_TOKEN:       <set to the key 'logfire-token' in secret 'my-ag-ui-app-secrets'>          Optional: false
+      LLM_MAX_TOKENS:      <set to the key 'llm-max-tokens' of config map 'my-ag-ui-app-config'>      Optional: false
+      LLM_CONTEXT_WINDOW:  <set to the key 'llm-context-window' of config map 'my-ag-ui-app-config'>  Optional: false
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-8flbx (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       False 
+  ContainersReady             False 
+  PodScheduled                True 
+Volumes:
+  kube-api-access-8flbx:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason   Age                     From     Message
+  ----     ------   ----                    ----     -------
+  Warning  BackOff  2m19s (x22 over 7m17s)  kubelet  Back-off restarting failed container my-ag-ui-app in pod my-ag-ui-app-58878bb6fd-qtnmb_default(88eb4d4a-fe5a-4f48-93cc-26dd8dacb777)
+  Normal   Pulling  116s (x8 over 12m)      kubelet  Pulling image "localhost:32000/my-ag-ui-app:latest"
+[2026-03-26 21:31:44] INFO: Starting readiness probe verification...
+[2026-03-26 21:31:44] INFO: Verifying readiness probe passes before marking deployment successful...
+2026-03-26 21:31:44 - Checking readiness probe status... (attempt 1/60)
+[2026-03-26 21:31:44] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:31:49 - Checking readiness probe status... (attempt 2/60)
+[2026-03-26 21:31:49] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:31:54 - Checking readiness probe status... (attempt 3/60)
+[2026-03-26 21:31:55] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:32:00 - Checking readiness probe status... (attempt 4/60)
+[2026-03-26 21:32:00] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:32:05 - Checking readiness probe status... (attempt 5/60)
+[2026-03-26 21:32:06] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:32:11 - Checking readiness probe status... (attempt 6/60)
+[2026-03-26 21:32:11] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:32:16 - Checking readiness probe status... (attempt 7/60)
+[2026-03-26 21:32:16] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:32:21 - Checking readiness probe status... (attempt 8/60)
+[2026-03-26 21:32:22] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:32:27 - Checking readiness probe status... (attempt 9/60)
+[2026-03-26 21:32:27] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:32:32 - Checking readiness probe status... (attempt 10/60)
+[2026-03-26 21:32:33] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:32:38 - Checking readiness probe status... (attempt 11/60)
+[2026-03-26 21:32:38] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:32:43 - Checking readiness probe status... (attempt 12/60)
+[2026-03-26 21:32:44] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:32:49 - Checking readiness probe status... (attempt 13/60)
+[2026-03-26 21:32:49] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:32:54 - Checking readiness probe status... (attempt 14/60)
+[2026-03-26 21:32:54] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:32:59 - Checking readiness probe status... (attempt 15/60)
+[2026-03-26 21:33:00] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:33:05 - Checking readiness probe status... (attempt 16/60)
+[2026-03-26 21:33:05] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:33:10 - Checking readiness probe status... (attempt 17/60)
+[2026-03-26 21:33:11] INFO: Readiness probe not yet ready. Container status: 
+2026-03-26 21:33:16 - Checking readiness probe status... (attempt 18/60)
+[2026-03-26 21:33:16] INFO: Readiness probe not yet ready. Container status: 

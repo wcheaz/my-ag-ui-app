@@ -74,7 +74,7 @@
 - [x] 8.7 Add exit code 1 on deployment failure with pod details and error reason
 - [x] 8.8 Test manifest validation with invalid YAML to verify error handling
 - [x] 8.9 Test pod startup verification with successful deployment
-- [ ] 8.10 Test pod startup failure scenario to verify error handling and logging
+- [x] 8.10 Test pod startup failure scenario to verify error handling and logging
 
 ## 9. Health Check Configuration
 
