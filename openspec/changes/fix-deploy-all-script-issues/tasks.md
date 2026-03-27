@@ -96,7 +96,7 @@
 
 ## 11. Main Deployment Script Updates
 
-- [ ] 11.1 Add `set -euo pipefail` to `deploy-all.sh` for strict error handling
+- [x] 11.1 Add `set -euo pipefail` to `deploy-all.sh` for strict error handling
 - [ ] 11.2 Import error handling functions from `deploy_scripts/common.sh`
 - [ ] 11.3 Call `setup_log_file()` at script start to create timestamped log file
 - [ ] 11.4 Add deployment summary logging at completion with step status and duration
