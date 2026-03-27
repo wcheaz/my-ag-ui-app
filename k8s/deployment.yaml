@@ -19,6 +19,9 @@ spec:
         image: localhost:32000/non-existent-image:latest
         ports:
         - containerPort: 3000
+        env:
+        - name: HEALTH_CHECK_PATH
+          value: "/api/health"
         livenessProbe:
           httpGet:
             path: /api/health

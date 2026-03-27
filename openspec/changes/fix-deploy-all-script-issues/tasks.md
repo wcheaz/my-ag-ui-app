@@ -80,9 +80,9 @@
 
 - [x] 9.1 Verify application exposes `/api/health` endpoint that returns HTTP 200
 - [x] 9.2 Review `k8s/deployment.yaml` health check configuration
-- [ ] 9.3 Update liveness probe configuration: 10s interval, 30s initial delay, 3 failure threshold
-- [ ] 9.4 Update readiness probe configuration: 5s interval, 5s initial delay, 3 failure threshold
-- [ ] 9.5 Add `HEALTH_CHECK_PATH` environment variable support to deployment manifest
+- [x] 9.3 Update liveness probe configuration: 10s interval, 30s initial delay, 3 failure threshold
+- [x] 9.4 Update readiness probe configuration: 5s interval, 5s initial delay, 3 failure threshold
+- [x] 9.5 Add `HEALTH_CHECK_PATH` environment variable support to deployment manifest
 - [ ] 9.6 Test health checks with application running to verify HTTP 200 response
 - [ ] 9.7 Test health check failure scenario to verify pod restart behavior
 
