@@ -71,7 +71,7 @@
 - [x] 8.4 Verify readiness probe passes before marking deployment successful
 - [x] 8.5 Capture and log Kubernetes pod events (pull errors, crash loops, probe failures)
 - [x] 8.6 Add logging for deployment start and completion with timestamps
-- [ ] 8.7 Add exit code 1 on deployment failure with pod details and error reason
+- [x] 8.7 Add exit code 1 on deployment failure with pod details and error reason
 - [ ] 8.8 Test manifest validation with invalid YAML to verify error handling
 - [ ] 8.9 Test pod startup verification with successful deployment
 - [ ] 8.10 Test pod startup failure scenario to verify error handling and logging

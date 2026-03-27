@@ -16,6 +16,37 @@ if [ -f "deploy_scripts/common.sh" ]; then
     log() {
         echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
     }
+    
+    # Add deployment-specific error handler that exits with code 1
+    handle_deployment_error() {
+        local error_message="$1"
+        local recovery_suggestion="$2"
+        local error_type="${3:-DEPLOYMENT_FAILURE}"
+        
+        log_error "❌ DEPLOYMENT FAILURE: $error_message"
+        log_structured_error "$error_type" "$error_message" "Deployment process failed due to configuration, resource, or connectivity issues" "$recovery_suggestion"
+        
+        # Get pod details for deployment failure context
+        log "=== POD DETAILS FOR DEPLOYMENT FAILURE ==="
+        local pod_name=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "no-pods-found")
+        if [ "$pod_name" != "no-pods-found" ] && [ -n "$pod_name" ]; then
+            log "Pod name: $pod_name"
+            log "Pod status:"
+            multipass exec "$VM_NAME" -- microk8s kubectl get pod "$pod_name" -o wide 2>&1 | tee -a "$LOG_FILE" || true
+            log "Pod events:"
+            multipass exec "$VM_NAME" -- microk8s kubectl get events --field-selector involvedObject.name="$pod_name" 2>&1 | tee -a "$LOG_FILE" || true
+            log "Pod container logs:"
+            multipass exec "$VM_NAME" -- microk8s kubectl logs "$pod_name" --tail=20 2>&1 | tee -a "$LOG_FILE" || true
+        else
+            log "No pods found for app=my-ag-ui-app"
+            log "All pods in cluster:"
+            multipass exec "$VM_NAME" -- microk8s kubectl get pods -A 2>&1 | tee -a "$LOG_FILE" || true
+        fi
+        log "=== END POD DETAILS ==="
+        
+        # Exit with code 1 for deployment failure
+        exit 1
+    }
 else
     # Fallback error handling if common.sh is not available
     VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
@@ -24,6 +55,23 @@ else
     
     log() {
         echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+    }
+    
+    # Add deployment-specific error handler for fallback case
+    handle_deployment_error() {
+        local error_message="$1"
+        local recovery_suggestion="$2"
+        
+        log "ERROR: $error_message"
+        log "RECOVERY: $recovery_suggestion"
+        
+        # Get basic pod details
+        log "=== POD DETAILS FOR DEPLOYMENT FAILURE ==="
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
+        log "=== END POD DETAILS ==="
+        
+        # Exit with code 1 for deployment failure
+        exit 1
     }
     
     handle_secrets_error() {
@@ -180,8 +228,9 @@ log "   • Manifest validation: PASSED"
 log "🔌 KUBERNETES CONNECTION: Verifying cluster access..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl cluster-info 2>&1 | grep -q "is running"; then
     log "❌ ERROR: Kubernetes cluster is not accessible"
-    handle_kubernetes_error 142 "Kubernetes cluster inaccessible" \
-        "Verify microk8s is running and accessible: multipass exec '$VM_NAME' -- microk8s status"
+    handle_deployment_error "Kubernetes cluster inaccessible" \
+        "Verify microk8s is running and accessible: multipass exec '$VM_NAME' -- microk8s status" \
+        "KUBERNETES_CLUSTER_INACCESSIBLE"
 fi
 log "   • Kubernetes cluster: ACCESSIBLE"
 
@@ -373,8 +422,24 @@ else
         log "     5. Check for registry port issues: grep -E '(localhost:5000|localhost:32000)' k8s/deployment.yaml"
     fi
     
-    handle_kubernetes_error 106 "Failed to apply deployment manifest" \
-        "Check the deployment file: k8s/deployment.yaml. Ensure it references secrets and config maps correctly. Error details logged above."
+    # Add exit code 1 on deployment failure with pod details and error reason
+    log_structured_error "KUBECTL_APPLY_FAILURE" "Deployment manifest application failed" "kubectl apply command failed during deployment manifest application" "1. Check kubectl apply output above for specific error details, 2. Verify deployment manifest syntax: kubectl apply --dry-run=client -f k8s/deployment.yaml, 3. Check Kubernetes API server connectivity: kubectl cluster-info, 4. Verify resource references in manifest (secrets, configmaps)"
+    
+    # Get pod details for error context
+    log "=== POD DETAILS FOR DEPLOYMENT FAILURE ==="
+    local pod_name=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "no-pods-found")
+    if [ "$pod_name" != "no-pods-found" ] && [ -n "$pod_name" ]; then
+        log "Pod name: $pod_name"
+        multipass exec "$VM_NAME" -- microk8s kubectl describe pod "$pod_name" 2>&1 | tee -a "$LOG_FILE" || true
+    else
+        log "No pods found for app=my-ag-ui-app"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -A 2>&1 | tee -a "$LOG_FILE" || true
+    fi
+    log "=== END POD DETAILS ==="
+    
+    # Exit with code 1 for deployment failure
+    exit 1
+
 fi
 
 log "✅ Deployment manifest application process completed"
@@ -385,8 +450,9 @@ log "🔄 STEP 2: Restarting deployment to trigger pod recreation..."
 log "   • This will create new pods using the updated registry image"
 log "   • Pods will pull image from localhost:32000/my-ag-ui-app:latest"
 if ! multipass exec "$VM_NAME" -- microk8s kubectl rollout restart deployment/my-ag-ui-app 2>&1 | tee -a "$LOG_FILE"; then
-    handle_kubernetes_error 125 "Failed to restart deployment" \
-        "Check if deployment exists: microk8s kubectl get deployment my-ag-ui-app. Ensure deployment is in a state that can be restarted."
+    handle_deployment_error "Failed to restart deployment" \
+        "Check if deployment exists: microk8s kubectl get deployment my-ag-ui-app. Ensure deployment is in a state that can be restarted." \
+        "DEPLOYMENT_RESTART_FAILURE"
 fi
 log "✅ Deployment restarted successfully"
 log "   • Rolling update initiated"
@@ -583,8 +649,29 @@ poll_pod_status() {
 
 # Execute pod status polling
 if ! poll_pod_status; then
-    handle_kubernetes_error 128 "Pod status polling failed - pod did not reach Running state within timeout" \
-        "Check pod logs and events: multipass exec '$VM_NAME' -- microk8s kubectl describe pods -l app=my-ag-ui-app"
+    log_error "❌ POD STATUS POLLING FAILED: Pod did not reach Running state within timeout"
+    log_structured_error "POD_STATUS_POLLING_FAILURE" "Pod did not reach Running state within timeout" "Pod failed to reach Running state within the allocated timeout period" "1. Check pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app, 2. Check pod events: multipass exec '$VM_NAME' -- microk8s kubectl get events --field-selector involvedObject.name=<pod-name>, 3. Check pod describe: multipass exec '$VM_NAME' -- microk8s kubectl describe pods -l app=my-ag-ui-app, 4. Verify image pull: multipass exec '$VM_NAME' -- microk8s kubectl get pods -l app=my-ag-ui-app -o yaml | grep image:"
+    
+    # Get detailed pod information for error context
+    log "=== DETAILED POD INFORMATION FOR STATUS FAILURE ==="
+    local pod_name=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "no-pods-found")
+    if [ "$pod_name" != "no-pods-found" ] && [ -n "$pod_name" ]; then
+        log "Failed pod name: $pod_name"
+        log "Pod status details:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pod "$pod_name" -o wide 2>&1 | tee -a "$LOG_FILE" || true
+        log "Pod events:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get events --field-selector involvedObject.name="$pod_name" 2>&1 | tee -a "$LOG_FILE" || true
+        log "Pod container logs:"
+        multipass exec "$VM_NAME" -- microk8s kubectl logs "$pod_name" --tail=30 2>&1 | tee -a "$LOG_FILE" || true
+    else
+        log "No pods found for app=my-ag-ui-app"
+        log "All pods in cluster:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -A 2>&1 | tee -a "$LOG_FILE" || true
+    fi
+    log "=== END DETAILED POD INFORMATION ==="
+    
+    # Exit with code 1 for deployment failure
+    exit 1
 fi
 
 # Verify readiness probe passes before marking deployment successful
@@ -696,8 +783,29 @@ verify_readiness_probe() {
 
 # Execute readiness probe verification
 if ! verify_readiness_probe; then
-    handle_kubernetes_error 129 "Readiness probe verification failed" \
-        "Application not ready to serve traffic. Check health check endpoint and application logs."
+    log_error "❌ READINESS PROBE VERIFICATION FAILED: Application not ready to serve traffic"
+    log_structured_error "READINESS_PROBE_FAILURE" "Readiness probe verification failed" "Application failed readiness probe verification and is not ready to serve traffic" "1. Check application logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app, 2. Verify health check endpoint: curl http://<pod-ip>:3000${HEALTH_CHECK_PATH:-/api/health}, 3. Check deployment manifest probe configuration, 4. Verify application is properly starting and not crashing"
+    
+    # Get detailed pod information for readiness failure
+    log "=== DETAILED POD INFORMATION FOR READINESS FAILURE ==="
+    local pod_name=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "no-pods-found")
+    if [ "$pod_name" != "no-pods-found" ] && [ -n "$pod_name" ]; then
+        log "Failed readiness pod name: $pod_name"
+        log "Pod status and readiness details:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pod "$pod_name" -o yaml 2>&1 | grep -A 20 -B 5 "ready\|Ready" | tee -a "$LOG_FILE" || true
+        log "Pod container status:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pod "$pod_name" -o jsonpath='{.status.containerStatuses}' 2>&1 | tee -a "$LOG_FILE" || true
+        log "Recent pod events:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get events --field-selector involvedObject.name="$pod_name" --sort-by='.lastTimestamp' | tail -10 2>&1 | tee -a "$LOG_FILE" || true
+    else
+        log "No pods found for app=my-ag-ui-app"
+        log "All pods in cluster:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -A 2>&1 | tee -a "$LOG_FILE" || true
+    fi
+    log "=== END DETAILED POD INFORMATION FOR READINESS FAILURE ==="
+    
+    # Exit with code 1 for deployment failure
+    exit 1
 fi
 log_info "✅ Readiness probe verification passed - deployment can be marked successful"
 log "═══════════════════════════════════════════════════════════════════════════════"
@@ -829,8 +937,9 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
         # Use specialized error handler for image pull failures, generic handler for other issues
         if [ "$SAW_IMAGE_PULL_BACK_OFF" = true ]; then
             log "ERROR TYPE: ImagePullBackOff detected - using specialized image pull error handling"
-            handle_kubernetes_error 126 "Pod stuck in ImagePullBackOff state - image pull failure" \
-                "Check registry access and image availability. Verify image exists in registry: multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog"
+            handle_deployment_error "Pod stuck in ImagePullBackOff state - image pull failure" \
+                "Check registry access and image availability. Verify image exists in registry: multipass exec '$VM_NAME' -- curl -s http://localhost:32000/v2/_catalog" \
+                "IMAGE_PULL_BACKOFF_FAILURE"
             
             # Additional specific guidance for common ImagePullBackOff causes
             log "=== ADDITIONAL IMAGE PULL BACKOFF TROUBLESHOOTING ==="
@@ -933,8 +1042,9 @@ while [ $PROBE_WAIT_ATTEMPT -le $MAX_PROBE_WAIT_ATTEMPTS ]; do
         log "Probe status details:"
         multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.containerStatuses[0].lastState}' 2>/dev/null | tee -a "$LOG_FILE" || true
         
-        handle_kubernetes_error 127 "Pod probes did not pass within timeout" \
-            "Check application logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app. Verify /health endpoint is working correctly."
+        handle_deployment_error "Pod probes did not pass within timeout" \
+            "Check application logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app. Verify /health endpoint is working correctly." \
+            "POD_PROBES_TIMEOUT_FAILURE"
     fi
     
     # OPTIMIZED: Smart delay strategy - start with 2s, increase to 4s for later attempts
@@ -951,16 +1061,18 @@ log "✓ Pod readiness and liveness probes verification completed successfully"
 # Apply service manifest
 log "Applying service manifest..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_kubernetes_error 107 "Failed to apply service manifest" \
-        "Check the service file: k8s/service.yaml. Ensure it references the correct deployment."
+    handle_deployment_error "Failed to apply service manifest" \
+        "Check the service file: k8s/service.yaml. Ensure it references the correct deployment." \
+        "SERVICE_MANIFEST_FAILURE"
 fi
 log "Service manifest applied successfully"
 
 # Apply ingress manifest
 log "Applying ingress manifest..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/ingress.yaml 2>&1 | tee -a "$LOG_FILE"; then
-    handle_kubernetes_error 108 "Failed to apply ingress manifest" \
-        "Check the ingress file: k8s/ingress.yaml. Ensure ingress controller is enabled in microk8s."
+    handle_deployment_error "Failed to apply ingress manifest" \
+        "Check the ingress file: k8s/ingress.yaml. Ensure ingress controller is enabled in microk8s." \
+        "INGRESS_MANIFEST_FAILURE"
 fi
 log "Ingress manifest applied successfully"
 
@@ -989,8 +1101,33 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     fi
     
     if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-    handle_kubernetes_error 109 "Deployment did not become ready within $MAX_ATTEMPTS attempts" \
-        "Check pod logs: microk8s kubectl logs -l app=my-ag-ui-app. Check pod status: microk8s kubectl get pods -l app=my-ag-ui-app"
+    log_error "❌ DEPLOYMENT READINESS FAILURE: Deployment did not become ready within $MAX_ATTEMPTS attempts"
+    log_structured_error "DEPLOYMENT_READINESS_FAILURE" "Deployment did not become ready within timeout" "Deployment failed to reach ready state within the allocated timeout period" "1. Check pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app, 2. Check pod status: multipass exec '$VM_NAME' -- microk8s kubectl get pods -l app=my-ag-ui-app, 3. Check deployment status: multipass exec '$VM_NAME' -- microk8s kubectl describe deployment my-ag-ui-app, 4. Verify resource availability and constraints"
+    
+    # Get detailed deployment and pod information for readiness failure
+    log "=== DETAILED DEPLOYMENT INFORMATION FOR READINESS FAILURE ==="
+    log "Deployment status:"
+    multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o yaml 2>&1 | grep -A 15 -B 5 "status:" | tee -a "$LOG_FILE" || true
+    log "Pod details:"
+    multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o wide 2>&1 | tee -a "$LOG_FILE" || true
+    
+    # Get pod name for detailed analysis
+    local pod_name=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "no-pods-found")
+    if [ "$pod_name" != "no-pods-found" ] && [ -n "$pod_name" ]; then
+        log "Failed deployment pod name: $pod_name"
+        log "Pod describe output:"
+        multipass exec "$VM_NAME" -- microk8s kubectl describe pod "$pod_name" 2>&1 | tee -a "$LOG_FILE" || true
+        log "Pod container logs:"
+        multipass exec "$VM_NAME" -- microk8s kubectl logs "$pod_name" --tail=30 2>&1 | tee -a "$LOG_FILE" || true
+    else
+        log "No pods found for app=my-ag-ui-app"
+        log "All pods in cluster:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -A 2>&1 | tee -a "$LOG_FILE" || true
+    fi
+    log "=== END DETAILED DEPLOYMENT INFORMATION ==="
+    
+    # Exit with code 1 for deployment failure
+    exit 1
     fi
     
     # OPTIMIZED: Balanced delay - reduced from 10s to 8s for faster feedback
@@ -1006,9 +1143,33 @@ POD_STATUS=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag
 log "Pod status: $POD_STATUS"
 
 if ! multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[*].status.containerStatuses[*].ready}' 2>&1 | grep -q "true"; then
-    log "WARNING: Some pods may not be ready"
+    log_error "❌ POD READINESS FAILURE: Some pods are not ready"
+    log_structured_error "POD_READINESS_FAILURE" "Pods not ready for deployment" "One or more pods failed to reach ready state" "1. Check pod logs: multipass exec '$VM_NAME' -- microk8s kubectl logs -l app=my-ag-ui-app, 2. Check pod status: multipass exec '$VM_NAME' -- microk8s kubectl get pods -l app=my-ag-ui-app, 3. Check pod describe: multipass exec '$VM_NAME' -- microk8s kubectl describe pods -l app=my-ag-ui-app"
+    
+    # Get detailed pod information for readiness failure
+    log "=== DETAILED POD INFORMATION FOR READINESS FAILURE ==="
     log "Detailed pod status:"
-    multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE"
+    multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o wide 2>&1 | tee -a "$LOG_FILE"
+    
+    # Get pod name for detailed analysis
+    local pod_name=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "no-pods-found")
+    if [ "$pod_name" != "no-pods-found" ] && [ -n "$pod_name" ]; then
+        log "Unready pod name: $pod_name"
+        log "Pod container status details:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pod "$pod_name" -o jsonpath='{.status.containerStatuses}' 2>&1 | tee -a "$LOG_FILE" || true
+        log "Pod events:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get events --field-selector involvedObject.name="$pod_name" 2>&1 | tee -a "$LOG_FILE" || true
+        log "Pod logs:"
+        multipass exec "$VM_NAME" -- microk8s kubectl logs "$pod_name" --tail=20 2>&1 | tee -a "$LOG_FILE" || true
+    else
+        log "No pods found for app=my-ag-ui-app"
+        log "All pods in cluster:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -A 2>&1 | tee -a "$LOG_FILE" || true
+    fi
+    log "=== END DETAILED POD INFORMATION ==="
+    
+    # Exit with code 1 for deployment failure
+    exit 1
 else
     log "All pods are ready"
 fi
