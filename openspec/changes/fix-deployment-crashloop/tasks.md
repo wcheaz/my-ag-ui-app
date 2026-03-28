@@ -28,7 +28,7 @@
 
 ## 3. Docker Configuration
 
-- [ ] 3.1 Update Dockerfile to set NODE_ENV=production
+- [x] 3.1 Update Dockerfile to set NODE_ENV=production
   - Done when: Dockerfile contains `ENV NODE_ENV=production` before build steps
   - Verify by: Inspecting Dockerfile and confirming environment variable is set
 
