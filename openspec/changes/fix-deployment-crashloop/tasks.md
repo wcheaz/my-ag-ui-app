@@ -44,7 +44,7 @@
   - Done when: Container starts and stays running without exiting with code 0
   - Verify by: Running `docker run -p 3000:3000 my-ag-ui-app:latest` and confirming container remains running
 
-- [ ] 3.5 Verify container does not exit with code 0 in production mode
+- [x] 3.5 Verify container does not exit with code 0 in production mode
   - Done when: Container process does not terminate with exit code 0 after startup
   - Verify by: Running container and checking exit code is not 0 or process stays running
 
