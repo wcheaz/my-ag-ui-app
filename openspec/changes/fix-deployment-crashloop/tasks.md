@@ -64,7 +64,7 @@
 
 ## 5. Rollback Mechanism Fix
 
-- [ ] 5.1 Identify current rollback implementation in deployment scripts
+- [x] 5.1 Identify current rollback implementation in deployment scripts
   - Done when: Rollback logic is located in deployment scripts (e.g., `deploy-all.sh` or `deploy-to-k8s.sh`)
   - Verify by: Searching deployment scripts for rollback-related code
 
