@@ -40,7 +40,7 @@
   - Done when: Dockerfile CMD is `["npm", "start"]` or equivalent production server command
   - Verify by: Inspecting Dockerfile and confirming CMD starts production server
 
-- [ ] 3.4 Test Docker container stays running in production mode
+- [x] 3.4 Test Docker container stays running in production mode
   - Done when: Container starts and stays running without exiting with code 0
   - Verify by: Running `docker run -p 3000:3000 my-ag-ui-app:latest` and confirming container remains running
 
