@@ -20,10 +20,7 @@ spec:
         ports:
         - containerPort: 3000
           name: http
-        command: ["/bin/sh", "-c"]
-        args: ["echo 'Container terminating for test - this should trigger error detection'; exit 0"]
-        # This command will cause the container to exit with code 0 immediately
-        # This should trigger the container termination error detection
+        
         env:
         - name: OPENAI_API_KEY
           valueFrom:
@@ -64,15 +61,17 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-          initialDelaySeconds: 5
+          initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 1
           failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /api/health
             port: 3000
-          initialDelaySeconds: 5
-          periodSeconds: 5
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 1
           failureThreshold: 3
         resources:
           limits:

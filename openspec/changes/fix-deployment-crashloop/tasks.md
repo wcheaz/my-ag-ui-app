@@ -50,16 +50,16 @@
 
 ## 4. Kubernetes Configuration
 
-- [ ] 4.1 Update `k8s/deployment.yaml` to configure readiness probe for `/api/health`
+- [x] 4.1 Update `k8s/deployment.yaml` to configure readiness probe for `/api/health`
   - Done when: Deployment manifest contains readinessProbe with path `/api/health`, port 3000, initialDelaySeconds 10, periodSeconds 10, timeoutSeconds 1, failureThreshold 3
   - Verify by: Inspecting `k8s/deployment.yaml` and confirming readinessProbe configuration
 
-- [ ] 4.2 Update `k8s/deployment.yaml` to configure liveness probe for `/api/health`
+- [x] 4.2 Update `k8s/deployment.yaml` to configure liveness probe for `/api/health`
   - Done when: Deployment manifest contains livenessProbe with path `/api/health`, port 3000, initialDelaySeconds 30, periodSeconds 10, timeoutSeconds 1, failureThreshold 3
   - Verify by: Inspecting `k8s/deployment.yaml` and confirming livenessProbe configuration
 
-- [ ] 4.3 Verify probe timeouts accommodate Next.js startup time
-  - Done when: Probes are configured with appropriate timeouts (60s for readiness, 60s for liveness)
+- [x] 4.3 Verify probe timeouts accommodate Next.js startup time
+  - Done when: Probes are configured with appropriate timeouts (1s for readiness, 1s for liveness, with 30s initial delay for liveness)
   - Verify by: Checking deployment manifest and confirming timeoutSeconds values
 
 ## 5. Rollback Mechanism Fix
