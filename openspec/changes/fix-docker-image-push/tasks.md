@@ -12,7 +12,7 @@
   - Done when: Step 5 (Pushing Docker image) completes successfully without verification timeout errors
   - Verify by: Checking deployment log shows "✅ Image verification successful" instead of "❌ ERROR: Image verification failed"
 
-- [ ] 2.2 Confirm image appears in registry catalog without retry delays
+- [x] 2.2 Confirm image appears in registry catalog without retry delays
   - Execute: `curl -s "http://localhost:32000/v2/my-ag-ui-app/tags/list"`
   - Done when: Command returns `{"name":"my-ag-ui-app","tags":["latest"]}` immediately (no exponential backoff retries needed)
   - Verify by: Deployment log shows verification succeeded on attempt 1/7 instead of failing after 7 attempts
