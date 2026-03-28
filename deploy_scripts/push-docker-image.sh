@@ -500,7 +500,7 @@ push_image_to_registry() {
         log_info "Image verification attempt $registry_verification_attempts/$max_registry_verification_attempts (delay: ${verification_delay}s) at $(date '+%Y-%m-%d %H:%M:%S')"
         
         # Check if image appears in registry catalog
-        if curl -s "http://localhost:32000/v2/my-ag-ui-app/tags/list" 2>/dev/null | grep -q '"latest"'; then
+        if multipass exec "$VM_NAME" -- curl -s "http://localhost:32000/v2/my-ag-ui-app/tags/list" 2>/dev/null | grep -q '"latest"'; then
             log_info "✅ Image 'my-ag-ui-app:latest' found in registry tags list at $(date '+%Y-%m-%d %H:%M:%S')"
             image_verified_in_registry=true
             break
