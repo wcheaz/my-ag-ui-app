@@ -33,20 +33,67 @@ rollback_deployment() {
         if ! multipass transfer k8s/deployment.yaml.backup "${VM_NAME:-my-ag-ui-app-k8s}:/home/ubuntu/deployment.yaml.backup" 2>&1 | tee -a "$LOG_FILE"; then
             log_error "❌ ROLLBACK FAILED: Could not transfer backup deployment manifest to VM"
             log_error "   Manual intervention required to restore deployment state"
-            return
+            return 1
         fi
         
-        # Apply the backup deployment manifest
-        if ! multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply -f /home/ubuntu/deployment.yaml.backup 2>&1 | tee -a "$LOG_FILE"; then
-            log_error "❌ ROLLBACK FAILED: Could not apply backup deployment manifest"
-            log_error "   Manual intervention required to restore deployment state"
+        # Get current deployment resource version before applying changes
+        log_info "🔄 Retrieving current deployment resource version..."
+        local current_resource_version=""
+        if multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.metadata.resourceVersion}' 2>/dev/null; then
+            current_resource_version=$(multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.metadata.resourceVersion}' 2>/dev/null || echo "")
+            log_info "🔄 Current deployment resource version: $current_resource_version"
         else
+            log_warning "🔄 Could not retrieve current deployment resource version - deployment may not exist"
+        fi
+        
+        # Strategy 1: Try to apply with graceful conflict handling
+        log_info "🔄 Attempting rollback with conflict resolution..."
+        if multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply -f /home/ubuntu/deployment.yaml.backup 2>&1 | tee -a "$LOG_FILE"; then
             log_info "✅ ROLLBACK SUCCESSFUL: Previous deployment state restored"
             log_info "   Services should be returning to previous stable state"
+            return 0
+        else
+            local apply_exit_code=$?
+            log_error "❌ ROLLBACK CONFLICT: Deployment manifest application failed (exit code: $apply_exit_code)"
+            log_error "   This indicates a resource version conflict or other conflict"
+            
+            # Strategy 2: Try with --force flag to override conflicts
+            log_info "🔄 Attempting force rollback to resolve conflicts..."
+            if multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply -f /home/ubuntu/deployment.yaml.backup --force 2>&1 | tee -a "$LOG_FILE"; then
+                log_info "✅ FORCE ROLLBACK SUCCESSFUL: Previous deployment state restored with override"
+                log_info "   Services should be returning to previous stable state"
+                return 0
+            else
+                local force_exit_code=$?
+                log_error "❌ FORCE ROLLBACK FAILED: Could not apply backup deployment manifest even with force (exit code: $force_exit_code)"
+                
+                # Strategy 3: Delete and recreate the deployment
+                log_info "🔄 Attempting delete-and-recreate strategy..."
+                if multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl delete deployment my-ag-ui-app --ignore-not-found=true 2>&1 | tee -a "$LOG_FILE"; then
+                    log_info "🔄 Deployment deleted successfully"
+                    sleep 2  # Give Kubernetes time to cleanup
+                    
+                    if multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply -f /home/ubuntu/deployment.yaml.backup 2>&1 | tee -a "$LOG_FILE"; then
+                        log_info "✅ DELETE-AND-RECREATE ROLLBACK SUCCESSFUL: Previous deployment state restored"
+                        log_info "   Services should be returning to previous stable state"
+                        return 0
+                    else
+                        local recreate_exit_code=$?
+                        log_error "❌ DELETE-AND-RECREATE ROLLBACK FAILED: Could not recreate deployment (exit code: $recreate_exit_code)"
+                        log_error "   Manual intervention required to restore deployment state"
+                        return 1
+                    fi
+                else
+                    log_error "❌ DELETE STRATEGY FAILED: Could not delete existing deployment"
+                    log_error "   Manual intervention required to restore deployment state"
+                    return 1
+                fi
+            fi
         fi
     else
         log_error "❌ ROLLBACK FAILED: No backup deployment manifest found (k8s/deployment.yaml.backup)"
         log_error "   Cannot perform automatic rollback - manual intervention required"
+        return 1
     fi
 }
 

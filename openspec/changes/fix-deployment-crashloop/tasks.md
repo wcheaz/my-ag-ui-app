@@ -68,7 +68,7 @@
   - Done when: Rollback logic is located in deployment scripts (e.g., `deploy-all.sh` or `deploy-to-k8s.sh`)
   - Verify by: Searching deployment scripts for rollback-related code
 
-- [ ] 5.2 Update rollback script to handle resource version conflicts
+- [x] 5.2 Update rollback script to handle resource version conflicts
   - Done when: Rollback script retrieves current resource version before applying changes and handles conflicts gracefully
   - Verify by: Reviewing updated rollback code and confirming conflict handling logic
 
