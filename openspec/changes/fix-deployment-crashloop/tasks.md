@@ -72,7 +72,7 @@
   - Done when: Rollback script retrieves current resource version before applying changes and handles conflicts gracefully
   - Verify by: Reviewing updated rollback code and confirming conflict handling logic
 
-- [ ] 5.3 Test rollback mechanism with intentional version conflicts
+- [x] 5.3 Test rollback mechanism with intentional version conflicts
   - Done when: Rollback successfully handles version conflicts and restores previous deployment state
   - Verify by: Creating intentional conflict and running rollback, confirming previous deployment is restored
 
