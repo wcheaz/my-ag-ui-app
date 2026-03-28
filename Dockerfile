@@ -3,6 +3,9 @@ FROM node:20.12.0-alpine AS builder
 
 WORKDIR /app
 
+# Set production environment for build
+ENV NODE_ENV=production
+
 # Install build dependencies
 COPY package.json package-lock.json ./
 
