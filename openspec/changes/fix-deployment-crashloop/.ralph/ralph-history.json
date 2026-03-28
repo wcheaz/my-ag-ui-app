@@ -50,5 +50,21 @@
     "completedTasks": [
       "3.1 Update Dockerfile to set NODE_ENV=production"
     ]
+  },
+  {
+    "timestamp": "2026-03-28T23:28:40.596Z",
+    "iteration": 4,
+    "duration": 106538,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [
+      "openspec/changes/fix-deployment-crashloop/tasks.md"
+    ],
+    "exitCode": 0,
+    "completedTasks": [
+      "3.2 Configure Dockerfile to use Next.js standalone output",
+      "3.3 Update Dockerfile CMD to use `npm start` for production server"
+    ]
   }
 ]

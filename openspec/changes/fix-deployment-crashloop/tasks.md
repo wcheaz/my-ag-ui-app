@@ -32,11 +32,11 @@
   - Done when: Dockerfile contains `ENV NODE_ENV=production` before build steps
   - Verify by: Inspecting Dockerfile and confirming environment variable is set
 
-- [ ] 3.2 Configure Dockerfile to use Next.js standalone output
+- [x] 3.2 Configure Dockerfile to use Next.js standalone output
   - Done when: Dockerfile copies `.next/standalone` directory and sets it as working directory
   - Verify by: Building Docker image and checking container filesystem contains standalone output
 
-- [ ] 3.3 Update Dockerfile CMD to use `npm start` for production server
+- [x] 3.3 Update Dockerfile CMD to use `npm start` for production server
   - Done when: Dockerfile CMD is `["npm", "start"]` or equivalent production server command
   - Verify by: Inspecting Dockerfile and confirming CMD starts production server
 
