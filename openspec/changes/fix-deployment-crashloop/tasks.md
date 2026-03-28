@@ -1,10 +1,10 @@
 ## 1. Next.js Configuration
 
-- [ ] 1.1 Update `next.config.ts` to enable standalone output mode
+- [x] 1.1 Update `next.config.ts` to enable standalone output mode
   - Done when: `next.config.ts` contains `output: 'standalone'` in the export configuration
   - Verify by: Running `npm run build` and confirming standalone output is generated in `.next/standalone`
 
-- [ ] 1.2 Test production build locally with standalone output
+- [x] 1.2 Test production build locally with standalone output
   - Done when: Production build completes successfully and standalone directory contains all necessary files
   - Verify by: Running `npm run build` and checking `.next/standalone/` directory exists with required files
 
