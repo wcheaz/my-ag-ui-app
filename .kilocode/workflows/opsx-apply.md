@@ -40,10 +40,12 @@ Implement tasks from an OpenSpec change.
 
 4. **Read context files**
 
-   Read the files listed in `contextFiles` from the apply instructions output.
-   The files depend on the schema being used:
-   - **spec-driven**: proposal, specs, design, tasks
-   - Other schemas: follow the contextFiles from CLI output
+    Read the files listed in `contextFiles` from the apply instructions output.
+    The files depend on the schema being used:
+    - **spec-driven**: proposal, specs, design, tasks
+    - Other schemas: follow the contextFiles from CLI output
+    
+    **IMPORTANT**: Always also read `openspec/config.yaml` to get project-specific rules and conventions, especially file placement rules for test files and documentation.
 
 5. **Show current progress**
 
