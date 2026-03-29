@@ -82,7 +82,7 @@
 
 ## 6. Integration Testing
 
-- [ ] 6.1 Build Docker image with all changes
+- [x] 6.1 Build Docker image with all changes
   - Done when: Docker image builds successfully without errors
   - Verify by: Running `docker build -t my-ag-ui-app:latest .` and confirming successful build
 
