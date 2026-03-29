@@ -76,7 +76,7 @@
   - Done when: Rollback successfully handles version conflicts and restores previous deployment state
   - Verify by: Creating intentional conflict and running rollback, confirming previous deployment is restored
 
-- [ ] 5.4 Verify rollback restores previous deployment configuration
+- [x] 5.4 Verify rollback restores previous deployment configuration
   - Done when: Rollback applies backup deployment manifest and pods return to healthy state
   - Verify by: Running rollback and checking pods are healthy with previous configuration
 
