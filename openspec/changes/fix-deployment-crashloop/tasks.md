@@ -120,6 +120,6 @@
   - Done when: Test file `test/test_health_endpoint.py` exists and can verify health endpoint functionality
   - Verify by: Running test file and confirming it passes
 
-- [ ] 7.4 Create test file for container lifecycle verification
+- [x] 7.4 Create test file for container lifecycle verification
   - Done when: Test file `test/test_container_lifecycle.py` exists and can verify container stays running
   - Verify by: Running test file and confirming it passes
