@@ -86,7 +86,7 @@
   - Done when: Docker image builds successfully without errors
   - Verify by: Running `docker build -t my-ag-ui-app:latest .` and confirming successful build
 
-- [ ] 6.2 Push Docker image to local registry
+- [x] 6.2 Push Docker image to local registry
   - Done when: Image is pushed to `localhost:32000/my-ag-ui-app:latest`
   - Verify by: Running `docker push localhost:32000/my-ag-ui-app:latest` and confirming push succeeds
 
