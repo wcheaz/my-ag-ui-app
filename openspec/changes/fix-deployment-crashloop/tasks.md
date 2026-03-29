@@ -94,7 +94,7 @@
   - Done when: Deployment manifest is applied and pods start with new image
   - Verify by: Running `kubectl apply -f k8s/deployment.yaml` and checking pods are starting
 
-- [ ] 6.4 Verify pods reach Ready state without CrashLoopBackOff
+- [x] 6.4 Verify pods reach Ready state without CrashLoopBackOff
   - Done when: All pods are in Running state with Ready condition true
   - Verify by: Running `kubectl get pods` and confirming no pods are in CrashLoopBackOff
 
