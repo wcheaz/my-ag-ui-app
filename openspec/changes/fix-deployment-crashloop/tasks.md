@@ -98,7 +98,7 @@
   - Done when: All pods are in Running state with Ready condition true
   - Verify by: Running `kubectl get pods` and confirming no pods are in CrashLoopBackOff
 
-- [ ] 6.5 Verify health check endpoint is accessible from within cluster
+- [x] 6.5 Verify health check endpoint is accessible from within cluster
   - Done when: Health endpoint returns HTTP 200 when accessed from within cluster
   - Verify by: Running `kubectl exec -it <pod-name> -- curl http://localhost:3000/api/health` and confirming 200 response
 
