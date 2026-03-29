@@ -108,7 +108,7 @@
 
 ## 7. Documentation and Cleanup
 
-- [ ] 7.1 Document health check endpoint in application README
+- [x] 7.1 Document health check endpoint in application README
   - Done when: README.md includes description of `/api/health` endpoint and its purpose
   - Verify by: Checking README.md and confirming health check documentation exists
 

@@ -399,6 +399,53 @@ The following scripts can also be run using your preferred package manager:
 - `lint` - Runs ESLint for code linting
 - `install:agent` - Installs Python dependencies for the agent
 
+## Health Check Endpoint
+
+The application provides a `/api/health` endpoint for Kubernetes health monitoring and container lifecycle management.
+
+### Endpoint Details
+
+- **URL**: `/api/health`
+- **Method**: GET
+- **Authentication**: None required
+- **Response**: HTTP 200 with JSON body
+- **Response Body**:
+  ```json
+  {
+    "status": "healthy"
+  }
+  ```
+
+### Purpose
+
+This health check endpoint is used by Kubernetes for:
+- **Readiness probes**: Determines when the application is ready to receive traffic
+- **Liveness probes**: Determines if the application is still running and healthy
+- **Container lifecycle management**: Prevents containers from exiting with code 0
+
+### Testing the Endpoint
+
+You can test the health endpoint locally during development:
+
+```bash
+# When the development server is running
+curl http://localhost:3000/api/health
+
+# Expected response:
+# {"status":"healthy"}
+```
+
+### Kubernetes Configuration
+
+The health endpoint is configured in the Kubernetes deployment manifest with:
+- **Readiness probe**: Path `/api/health`, port 3000, 10s interval, 1s timeout
+- **Liveness probe**: Path `/api/health`, port 3000, 10s interval, 1s timeout, 30s initial delay
+
+This ensures that:
+- Pods only receive traffic when the application is healthy
+- Unhealthy pods are automatically restarted
+- The deployment remains stable during rolling updates
+
 ## Documentation
 
 The main UI component is in `src/app/page.tsx`. You can:
