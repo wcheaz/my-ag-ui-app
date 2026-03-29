@@ -102,7 +102,7 @@
   - Done when: Health endpoint returns HTTP 200 when accessed from within cluster
   - Verify by: Running `kubectl exec -it <pod-name> -- curl http://localhost:3000/api/health` and confirming 200 response
 
-- [ ] 6.6 Verify application is serving traffic
+- [x] 6.6 Verify application is serving traffic
   - Done when: Application responds to HTTP requests on configured service
   - Verify by: Accessing application through service endpoint and confirming successful response
 
