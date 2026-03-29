@@ -90,7 +90,7 @@
   - Done when: Image is pushed to `localhost:32000/my-ag-ui-app:latest`
   - Verify by: Running `docker push localhost:32000/my-ag-ui-app:latest` and confirming push succeeds
 
-- [ ] 6.3 Deploy updated image to Kubernetes cluster
+- [x] 6.3 Deploy updated image to Kubernetes cluster
   - Done when: Deployment manifest is applied and pods start with new image
   - Verify by: Running `kubectl apply -f k8s/deployment.yaml` and checking pods are starting
 
