@@ -896,11 +896,179 @@ echo "ENVIRONMENT=production" >> .env
    ```
 
 4. **Custom Health Check Paths**:
+    ```bash
+    # If your application uses a non-standard health check endpoint
+    export HEALTH_CHECK_PATH="/health/status"
+    ./deploy-all.sh
+    ```
+
+## Deployment Configuration
+
+### Health Check Implementation
+
+The application includes a built-in health check endpoint at `/api/health` that is used by Kubernetes for monitoring container health and readiness.
+
+**Endpoint Details**:
+- **Path**: `/api/health` (configurable via `HEALTH_CHECK_PATH` environment variable)
+- **Method**: GET
+- **Response**: JSON `{"status": "healthy"}`
+- **Status Code**: 200 (HTTP OK)
+- **Authentication**: None required (publicly accessible)
+- **Response Time**: < 1 second under normal conditions
+
+**Health Check Configuration**:
+```yaml
+# Kubernetes probes configuration (in k8s/deployment.yaml)
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 1
+  failureThreshold: 3
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 1
+  failureThreshold: 3
+```
+
+### Docker Configuration for Production
+
+The Docker container is configured for production deployment with the following optimizations:
+
+**Production Environment**:
+- **Node.js Environment**: `NODE_ENV=production` (set in Dockerfile)
+- **Build Mode**: Next.js standalone output (`output: 'standalone'` in next.config.ts)
+- **Server Command**: `npm start` (production server)
+
+**Standalone Output Benefits**:
+- Reduced container image size
+- Faster startup times
+- Better production performance
+- Minimal dependencies in final image
+
+**Container Lifecycle**:
+- Containers run as non-root user for security
+- Health checks prevent premature termination
+- Proper signal handling for graceful shutdown
+- No exit code 0 on startup (prevents Kubernetes restart loops)
+
+### Kubernetes Deployment Configuration
+
+The Kubernetes deployment is configured with health probes and resource management to ensure stable operation:
+
+**Deployment Configuration**:
+- **Image**: `localhost:32000/my-ag-ui-app:latest`
+- **Replicas**: Configurable based on load requirements
+- **Strategy**: Rolling updates for zero-downtime deployments
+- **Health Monitoring**: Both readiness and liveness probes configured
+
+**Probe Configuration Rationale**:
+- **Readiness Probe**: 10s initial delay, checks if application is ready to receive traffic
+- **Liveness Probe**: 30s initial delay, checks if application is still running and healthy
+- **Timeout**: 1 second for both probes (health endpoint responds quickly)
+- **Failure Threshold**: 3 consecutive failures before action is taken
+
+### Deployment Process
+
+The deployment process includes the following steps with built-in rollback capabilities:
+
+1. **Build Phase**:
    ```bash
-   # If your application uses a non-standard health check endpoint
-   export HEALTH_CHECK_PATH="/health/status"
-   ./deploy-all.sh
+   # Build Docker image with standalone output
+   docker build -t localhost:32000/my-ag-ui-app:latest .
    ```
+
+2. **Push Phase**:
+   ```bash
+   # Push image to local registry
+   docker push localhost:32000/my-ag-ui-app:latest
+   ```
+
+3. **Deploy Phase**:
+   ```bash
+   # Apply Kubernetes configuration
+   kubectl apply -f k8s/deployment.yaml
+   ```
+
+4. **Health Check Phase**:
+   ```bash
+   # Verify deployment is healthy
+   kubectl get pods -l app=my-ag-ui-app
+   kubectl logs -f deployment/my-ag-ui-app
+   ```
+
+### Rollback Mechanism
+
+The deployment includes an automated rollback mechanism that handles deployment failures:
+
+**Rollback Triggers**:
+- Pods enter CrashLoopBackOff state
+- Health check failures exceed threshold
+- Deployment takes too long to become ready
+
+**Rollback Process**:
+1. Detect deployment failure
+2. Retrieve current resource version
+3. Apply previous stable configuration
+4. Verify pods return to healthy state
+
+**Manual Rollback**:
+```bash
+# Rollback to previous version
+kubectl rollout undo deployment/my-ag-ui-app
+
+# Check rollback status
+kubectl rollout status deployment/my-ag-ui-app
+```
+
+### Troubleshooting Deployment Issues
+
+**Common Issues and Solutions**:
+
+1. **CrashLoopBackOff**:
+   - Check application logs: `kubectl logs <pod-name>`
+   - Verify health endpoint is working: `kubectl exec <pod-name> -- curl http://localhost:3000/api/health`
+   - Ensure proper environment variables are set
+
+2. **Image Pull Issues**:
+   - Verify registry is accessible: `curl http://localhost:32000/v2/_catalog`
+   - Check image exists: `docker images localhost:32000/my-ag-ui-app`
+   - Ensure proper image tag in deployment manifest
+
+3. **Health Check Failures**:
+   - Test health endpoint locally: `curl http://localhost:3000/api/health`
+   - Check response time: `time curl http://localhost:3000/api/health`
+   - Verify endpoint returns proper JSON: `{"status":"healthy"}`
+
+4. **Deployment Timeout**:
+   - Increase readiness/liveness probe timeouts if needed
+   - Check resource limits in deployment manifest
+   - Verify container has enough memory/CPU to start
+
+**Debug Commands**:
+```bash
+# Check pod status
+kubectl get pods -l app=my-ag-ui-app
+
+# Check pod events
+kubectl describe pod <pod-name>
+
+# View application logs
+kubectl logs -f deployment/my-ag-ui-app
+
+# Test health endpoint from within cluster
+kubectl exec -it <pod-name> -- curl http://localhost:3000/api/health
+
+# Check deployment status
+kubectl rollout status deployment/my-ag-ui-app
+```
 
 ## Security Notes
 

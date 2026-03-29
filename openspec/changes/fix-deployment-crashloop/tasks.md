@@ -112,7 +112,7 @@
   - Done when: README.md includes description of `/api/health` endpoint and its purpose
   - Verify by: Checking README.md and confirming health check documentation exists
 
-- [ ] 7.2 Update deployment documentation with new configuration
+- [x] 7.2 Update deployment documentation with new configuration
   - Done when: Deployment docs (e.g., SETUP.md or DEPLOYMENT.md) reflect new health check and container lifecycle configuration
   - Verify by: Reviewing deployment docs and confirming updates are present
 
