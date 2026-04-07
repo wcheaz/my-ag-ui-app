@@ -4,7 +4,7 @@
   - **Done when**: Dockerfile is reviewed and relevant build output configuration sections are documented
 - [x] 1.2 Check for Next.js configuration files (next.config.js/ts) and analyze API route handling
   - **Done when**: All Next.js config files are read and API route configuration is documented
-- [ ] 1.3 Build Docker image locally and inspect filesystem to verify API routes are included in standalone output
+- [x] 1.3 Build Docker image locally and inspect filesystem to verify API routes are included in standalone output
   - **Done when**: Docker build completes and inspection confirms presence/absence of API route files
 - [ ] 1.4 Test application locally with production build settings and verify `/api/health` endpoint is accessible
   - **Done when**: Local production build runs and curl to `/api/health` returns HTTP 200 with JSON
