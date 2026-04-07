@@ -134,10 +134,96 @@ This orchestrator script executes all deployment phases in sequence:
 The deployment pipeline includes robust error handling and monitoring:
 
 **🔍 VERBOSE Mode**
-For detailed debugging and environment context logging:
+The VERBOSE environment variable controls the level of detail in deployment logging. This feature helps operators focus on actual errors during normal deployments while providing detailed debugging information when needed.
+
+#### VERBOSE Flag Usage
+
+**Default Behavior (VERBOSE=false or unset)**
+- Shows only ERROR and WARN level messages
+- Suppresses INFO and DEBUG level messages
+- Provides clean, focused output for normal deployments
+- Ideal for production deployments and automated CI/CD pipelines
+
+**Verbose Mode (VERBOSE=true)**
+- Shows all log levels including INFO and DEBUG
+- Provides detailed debugging information
+- Includes environment context and step-by-step execution details
+- Essential for troubleshooting deployment issues
+
+#### When to Use Verbose Mode
+
+**Use VERBOSE=true when:**
+- Troubleshooting deployment failures
+- Investigating intermittent issues
+- Debugging new deployment configurations
+- Understanding deployment pipeline behavior
+- Gathering diagnostic information for support requests
+- Developing or modifying deployment scripts
+
+**Use VERBOSE=false (default) when:**
+- Running regular deployments
+- Automated CI/CD pipeline executions
+- Production deployments
+- Quick deployment status checks
+- When you only care about errors and warnings
+
+#### Examples
+
+**Enable verbose mode:**
 ```bash
 VERBOSE=true ./deploy-all.sh
 ```
+
+**Default (non-verbose) mode:**
+```bash
+./deploy-all.sh
+# or explicitly:
+VERBOSE=false ./deploy-all.sh
+```
+
+**Verbose mode for individual scripts:**
+```bash
+VERBOSE=true ./deploy_scripts/setup-k8s-secrets.sh
+VERBOSE=true ./deploy_scripts/deploy-to-k8s.sh
+```
+
+#### Troubleshooting with Verbose Mode
+
+When encountering deployment issues, enable verbose mode to:
+
+1. **Identify the failure point**: Look for ERROR messages with detailed context
+2. **Check environment configuration**: Verbose mode shows environment variable values and system state
+3. **Understand timing issues**: Detailed timestamps help identify timeout or performance problems
+4. **Verify resource availability**: See detailed resource checks and connectivity tests
+5. **Debug authentication problems**: Detailed secret and credential handling information
+
+#### Common Verbose Mode Patterns
+
+**Successful operation in verbose mode:**
+```
+[2026-04-07 11:13:27] INFO: 🚀 STARTING DEPLOYMENT PIPELINE
+[2026-04-07 11:13:27] INFO: Environment: development
+[2026-04-07 11:13:27] INFO: Verbose mode: true
+[2026-04-07 11:13:27] INFO: 📋 Step 1: Setting up Kubernetes secrets...
+[2026-04-07 11:13:27] INFO: Kubernetes secrets setup completed successfully
+...
+```
+
+**Error detection in verbose mode:**
+```
+[2026-04-07 11:15:35] ERROR: ❌ READINESS PROBE VERIFICATION FAILED
+[2026-04-07 11:15:35] ERROR TYPE: READINESS_PROBE_FAILURE
+[2026-04-07 11:15:35] DIAGNOSTIC: Readiness probe verification failed
+[2026-04-07 11:15:35] COMMON CAUSES: Application failed readiness probe verification
+[2026-04-07 11:15:35] RECOVERY: 1. Check application logs...
+```
+
+#### Verbose Mode Performance Impact
+
+- **Log volume**: Verbose mode generates 5-10x more log output
+- **Performance**: Minimal impact on deployment execution time
+- **Storage**: Logs are automatically rotated and cleaned up
+- **Network**: No additional network traffic (logs are local)
 
 **🔄 Automatic Rollback**
 If any deployment step fails, the system automatically:
