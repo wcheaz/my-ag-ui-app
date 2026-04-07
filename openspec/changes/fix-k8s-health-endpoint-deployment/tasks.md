@@ -13,7 +13,7 @@
 
 - [x] 2.1 Modify Next.js build configuration to ensure API routes are included in standalone output (if required based on investigation)
   - **Done when**: Configuration file is updated and documented with specific changes made
-- [ ] 2.2 Update Dockerfile if needed to ensure API routes are properly copied to production filesystem
+- [x] 2.2 Update Dockerfile if needed to ensure API routes are properly copied to production filesystem
   - **Done when**: Dockerfile changes are made and verified with dry-run build
 - [ ] 2.3 Build updated Docker image and verify API route files exist in output
   - **Done when**: Build succeeds and inspection confirms `/api/health` route file is present in image
