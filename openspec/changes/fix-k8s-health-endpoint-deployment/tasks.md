@@ -22,7 +22,7 @@
 
 ## 3. Conditional Logging Implementation
 
-- [ ] 3.1 Add VERBOSE environment variable check to deploy_scripts/common.sh to conditionally suppress log_info output
+- [x] 3.1 Add VERBOSE environment variable check to deploy_scripts/common.sh to conditionally suppress log_info output
   - **Done when**: common.sh log_info function checks VERBOSE flag and only outputs when VERBOSE=true
 - [ ] 3.2 Update deploy-to-k8s.sh to suppress INFO/DEBUG messages unless VERBOSE=true
   - **Done when**: All INFO/DEBUG log statements in deploy-to-k8s.sh are wrapped in VERBOSE check
