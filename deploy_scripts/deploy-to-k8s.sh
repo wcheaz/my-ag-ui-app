@@ -677,7 +677,7 @@ fi
 # Verify readiness probe passes before marking deployment successful
 log_info "Starting readiness probe verification..."
 verify_readiness_probe() {
-    local max_attempts=60          # 60 attempts × 5 seconds = 5 minutes (300 seconds total)
+    local max_attempts=10          # 10 attempts × 5 seconds = 50 seconds total
     local attempt=1
     local polling_delay=5          # Fixed 5-second polling interval
     local readiness_passed=false
