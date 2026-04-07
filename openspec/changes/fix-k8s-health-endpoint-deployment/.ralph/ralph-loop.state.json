@@ -1,6 +1,6 @@
 {
   "active": true,
-  "iteration": 1,
+  "iteration": 3,
   "minIterations": 1,
   "maxIterations": 50,
   "completionPromise": "COMPLETE",
@@ -11,6 +11,6 @@
   "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-health-endpoint-deployment/.ralph/prompt-template.md",
   "noCommit": false,
   "model": "",
-  "startedAt": "2026-04-07T15:38:21.569Z",
-  "resumedAt": null
+  "startedAt": "2026-04-07T15:41:37.068Z",
+  "resumedAt": "2026-04-07T15:41:37.068Z"
 }
