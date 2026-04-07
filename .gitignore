@@ -25,6 +25,7 @@
 .DS_Store
 
 # debug
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -85,3 +86,6 @@ test/kubernetes/
 
 # Tar files (large build artifacts that should not be committed)
 *.tar
+
+# ralph-docs directory
+ralph-docs
