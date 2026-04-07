@@ -5,6 +5,13 @@ set -euo pipefail
 
 # Common error handling functions for deployment scripts
 # This file should be sourced by all deployment scripts
+#
+# VERBOSE Flag Documentation:
+# - VERBOSE=false (default): Shows only ERROR and WARN level messages
+# - VERBOSE=true: Shows all log levels including INFO and DEBUG
+# - Usage: VERBOSE=true ./deploy-all.sh
+# - When to use: Troubleshooting deployment failures, debugging new configurations
+# - Impact: Generates 5-10x more log output, minimal performance impact
 
 # Global error codes
 ERROR_GENERAL=1
