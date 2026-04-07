@@ -12,7 +12,7 @@ log_info "Starting Docker build process"
 
 # Validate package.json and package-lock.json synchronization
 validate_lock_files() {
-    log "Starting dependency validation..."
+    log_info "Starting dependency validation..."
     
     # Check if package.json exists
     if [ ! -f "package.json" ]; then
@@ -28,7 +28,7 @@ validate_lock_files() {
         return 1
     fi
     
-    log "Checking if package.json and package-lock.json are in sync..."
+    log_info "Checking if package.json and package-lock.json are in sync..."
     
     # Run npm ci --dry-run to validate lock file consistency
     local ci_output
@@ -41,8 +41,8 @@ validate_lock_files() {
         return 1
     fi
     
-    log "✅ SUCCESS: package.json and package-lock.json are synchronized"
-    log "   Dependencies are ready for reproducible Docker builds."
+    log_info "✅ SUCCESS: package.json and package-lock.json are synchronized"
+    log_info "   Dependencies are ready for reproducible Docker builds."
     return 0
 }
 
