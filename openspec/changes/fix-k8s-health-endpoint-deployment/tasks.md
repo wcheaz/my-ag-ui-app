@@ -75,5 +75,5 @@
   - **Done when**: README/docs note cluster runs in Multipass VM and testing requires `multipass exec`
 - [x] 6.3 Clean up any temporary test artifacts or debug files created during investigation
   - **Done when**: Temporary files are removed and repository is in clean state
-- [ ] 6.4 Commit changes with descriptive commit message referencing this change
+- [x] 6.4 Commit changes with descriptive commit message referencing this change
   - **Done when**: Git commit is created with message describing bash fix, config cleanup, health endpoint and logging fixes
