@@ -6,7 +6,7 @@
   - **Done when**: All Next.js config files are read and API route configuration is documented
 - [x] 1.3 Build Docker image locally and inspect filesystem to verify API routes are included in standalone output
   - **Done when**: Docker build completes and inspection confirms presence/absence of API route files
-- [ ] 1.4 Test application locally with production build settings and verify `/api/health` endpoint is accessible
+- [x] 1.4 Test application locally with production build settings and verify `/api/health` endpoint is accessible
   - **Done when**: Local production build runs and curl to `/api/health` returns HTTP 200 with JSON
 
 ## 2. Health Endpoint Build Configuration Fix
