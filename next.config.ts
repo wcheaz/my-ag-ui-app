@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   trailingSlash: false,
   // Disable source maps in production for security and performance
   productionBrowserSourceMaps: false,
+  // Experimental features for standalone output
+  experimental: {
+    // Ensure API routes are properly included in standalone build
+    serverComponentsExternalPackages: ["@copilotkit/runtime"],
+  },
 };
 
 export default nextConfig;
