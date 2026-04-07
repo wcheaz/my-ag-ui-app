@@ -57,6 +57,15 @@ else
         echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
     }
     
+    # Fallback log_info function - only output if VERBOSE=true
+    log_info() {
+        local message="$1"
+        # Only output if VERBOSE is explicitly set to true
+        if [[ "${VERBOSE:-false}" == "true" ]]; then
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - INFO: $message" | tee -a "$LOG_FILE"
+        fi
+    }
+    
     # Add deployment-specific error handler for fallback case
     handle_deployment_error() {
         local error_message="$1"
@@ -163,25 +172,25 @@ log_info "   • Registry: microk8s local registry"
 log_info ""
 
 # Enhanced logging: Pre-apply deployment state verification
-log "📊 PRE-APPLOY VERIFICATION: Checking current deployment state..."
+log_info "📊 PRE-APPLOY VERIFICATION: Checking current deployment state..."
 current_deployment_state=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.status}' 2>/dev/null || echo "NOT_FOUND")
 if [ "$current_deployment_state" != "NOT_FOUND" ]; then
     current_replicas=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "unknown")
     current_ready_replicas=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
     current_updated_replicas=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.status.updatedReplicas}' 2>/dev/null || echo "0")
     
-    log "   • Current deployment state: EXISTS"
-    log "   • Current replicas: $current_replicas"
-    log "   • Ready replicas: $current_ready_replicas"
-    log "   • Updated replicas: $current_updated_replicas"
-    log "   • Action: UPDATE existing deployment"
+    log_info "   • Current deployment state: EXISTS"
+    log_info "   • Current replicas: $current_replicas"
+    log_info "   • Ready replicas: $current_ready_replicas"
+    log_info "   • Updated replicas: $current_updated_replicas"
+    log_info "   • Action: UPDATE existing deployment"
 else
-    log "   • Current deployment state: NOT FOUND"
-    log "   • Action: CREATE new deployment"
+    log_info "   • Current deployment state: NOT FOUND"
+    log_info "   • Action: CREATE new deployment"
 fi
 
 # Enhanced logging: Manifest file validation
-log "📋 MANIFEST VALIDATION: Checking deployment.yaml file..."
+log_info "📋 MANIFEST VALIDATION: Checking deployment.yaml file..."
 if [ ! -f "k8s/deployment.yaml" ]; then
     log "❌ ERROR: Deployment manifest file not found: k8s/deployment.yaml"
     handle_validation_error 140 "Deployment manifest file missing" \
@@ -196,14 +205,14 @@ if [ "$manifest_size" -eq 0 ]; then
 fi
 
 # Enhanced logging: Registry port validation (CRITICAL for microk8s registry approach)
-log "🔍 REGISTRY PORT VALIDATION: Checking for registry port mismatches..."
+log_info "🔍 REGISTRY PORT VALIDATION: Checking for registry port mismatches..."
 expected_registry_port="32000"
 actual_registry_port=$(grep -E "^\s*image:.*localhost:" k8s/deployment.yaml | sed -E 's/.*localhost:([0-9]+)\/.*/\1/' | head -n1 || echo "NOT_FOUND")
 
 if [ "$actual_registry_port" = "NOT_FOUND" ]; then
-    log "   • Registry port check: No localhost registry reference found in deployment.yaml"
-    log "   • This might indicate image references Docker Hub instead of local registry"
-    log "   • Expected: image: localhost:32000/my-ag-ui-app:latest"
+    log_info "   • Registry port check: No localhost registry reference found in deployment.yaml"
+    log_info "   • This might indicate image references Docker Hub instead of local registry"
+    log_info "   • Expected: image: localhost:32000/my-ag-ui-app:latest"
 elif [ "$actual_registry_port" != "$expected_registry_port" ]; then
     log "   ❌ CRITICAL ERROR: Registry port mismatch detected!"
     log "   • Expected registry port: $expected_registry_port (microk8s standard)"
@@ -221,35 +230,35 @@ else
     log "   ✓ Registry port validation: PASSED (using port $actual_registry_port)"
 fi
 
-log "   • Manifest file size: $manifest_size lines"
-log "   • Manifest validation: PASSED"
+log_info "   • Manifest file size: $manifest_size lines"
+log_info "   • Manifest validation: PASSED"
 
 # Enhanced logging: Kubernetes connection check
-log "🔌 KUBERNETES CONNECTION: Verifying cluster access..."
+log_info "🔌 KUBERNETES CONNECTION: Verifying cluster access..."
 if ! multipass exec "$VM_NAME" -- microk8s kubectl cluster-info 2>&1 | grep -q "is running"; then
     log "❌ ERROR: Kubernetes cluster is not accessible"
     handle_deployment_error "Kubernetes cluster inaccessible" \
         "Verify microk8s is running and accessible: multipass exec '$VM_NAME' -- microk8s status" \
         "KUBERNETES_CLUSTER_INACCESSIBLE"
 fi
-log "   • Kubernetes cluster: ACCESSIBLE"
+log_info "   • Kubernetes cluster: ACCESSIBLE"
 
 # Enhanced logging: Namespace verification
-log "🏷️  NAMESPACE VERIFICATION: Checking target namespace..."
+log_info "🏷️  NAMESPACE VERIFICATION: Checking target namespace..."
 target_namespace=$(grep -A 10 "namespace:" k8s/deployment.yaml | grep "namespace:" | head -n1 | awk '{print $2}' || echo "default")
-log "   • Target namespace: $target_namespace"
+log_info "   • Target namespace: $target_namespace"
 
 if ! multipass exec "$VM_NAME" -- microk8s kubectl get namespace "$target_namespace" 2>&1 | grep -q "Active"; then
-    log "   • Namespace status: DOES NOT EXIST (will be created by deployment)"
+    log_info "   • Namespace status: DOES NOT EXIST (will be created by deployment)"
 else
-    log "   • Namespace status: EXISTS and ACTIVE"
+    log_info "   • Namespace status: EXISTS and ACTIVE"
 fi
 
 # Enhanced logging: Apply manifest with detailed output capture and analysis
-log "🚀 APPLYING DEPLOYMENT MANIFEST with detailed logging..."
-log "   • First validating deployment manifest with dry-run..."
-log "   • Command: multipass exec '$VM_NAME' -- microk8s kubectl apply --dry-run=server -f k8s/deployment.yaml"
-log "   • Expected: Validation against Kubernetes API server"
+log_info "🚀 APPLYING DEPLOYMENT MANIFEST with detailed logging..."
+log_info "   • First validating deployment manifest with dry-run..."
+log_info "   • Command: multipass exec '$VM_NAME' -- microk8s kubectl apply --dry-run=server -f k8s/deployment.yaml"
+log_info "   • Expected: Validation against Kubernetes API server"
 
 # Validate deployment manifest using dry-run=server before applying
 log_info "Starting deployment manifest validation using kubectl apply --dry-run=server..."
@@ -262,10 +271,10 @@ if ! multipass exec "$VM_NAME" -- microk8s kubectl apply --dry-run=server -f k8s
 fi
 log_info "✅ Deployment manifest validation successful"
 
-log "   • Validation passed, proceeding with actual deployment..."
-log "   • Command: multipass exec '$VM_NAME' -- microk8s kubectl apply -f k8s/deployment.yaml"
-log "   • Expected: Deployment resource creation/update"
-log "   • Output will be captured and analyzed below..."
+log_info "   • Validation passed, proceeding with actual deployment..."
+log_info "   • Command: multipass exec '$VM_NAME' -- microk8s kubectl apply -f k8s/deployment.yaml"
+log_info "   • Expected: Deployment resource creation/update"
+log_info "   • Output will be captured and analyzed below..."
 
 # Capture kubectl apply output for detailed analysis
 kubectl_apply_output=""
@@ -276,10 +285,10 @@ kubectl_apply_output=$(multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8
 kubectl_apply_exit_code=$?
 
 # Log the full kubectl apply output for debugging
-log "📤 KUBECTL APPLY OUTPUT (first 1000 chars):"
+log_info "📤 KUBECTL APPLY OUTPUT (first 1000 chars):"
 echo "$kubectl_apply_output" | head -c 1000 | tee -a "$LOG_FILE"
 if [ ${#kubectl_apply_output} -gt 1000 ]; then
-    log "... (output truncated, full output logged to file)"
+    log_info "... (output truncated, full output logged to file)"
     echo "$kubectl_apply_output" >> "$LOG_FILE"
 fi
 
@@ -289,43 +298,43 @@ if [ $kubectl_apply_exit_code -eq 0 ]; then
     
     # Analyze the output for deployment creation/update details
     if echo "$kubectl_apply_output" | grep -q "deployment.apps/my-ag-ui-app created"; then
-        log "   • Result: NEW deployment created"
-        log "   • Action: Fresh deployment of my-ag-ui-app"
+        log_info "   • Result: NEW deployment created"
+        log_info "   • Action: Fresh deployment of my-ag-ui-app"
     elif echo "$kubectl_apply_output" | grep -q "deployment.apps/my-ag-ui-app configured"; then
-        log "   • Result: EXISTING deployment configured"
-        log "   • Action: Rolling update initiated for my-ag-ui-app"
+        log_info "   • Result: EXISTING deployment configured"
+        log_info "   • Action: Rolling update initiated for my-ag-ui-app"
     elif echo "$kubectl_apply_output" | grep -q "unchanged"; then
-        log "   • Result: Deployment unchanged (no changes detected)"
-        log "   • Action: No update needed - configuration identical"
+        log_info "   • Result: Deployment unchanged (no changes detected)"
+        log_info "   • Action: No update needed - configuration identical"
     else
-        log "   • Result: Deployment applied (unknown status)"
-        log "   • Note: Output did not match expected patterns, but command succeeded"
+        log_info "   • Result: Deployment applied (unknown status)"
+        log_info "   • Note: Output did not match expected patterns, but command succeeded"
     fi
     
-    # Enhanced logging: Post-apply verification
-    log "🔍 POST-APPLY VERIFICATION: Checking deployment status after apply..."
+# Enhanced logging: Post-apply verification
+log_info "🔍 POST-APPLY VERIFICATION: Checking deployment status after apply..."
     
     # Verify deployment was created/updated successfully
     post_apply_deployment=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o name 2>/dev/null || echo "NOT_FOUND")
     
     if [ "$post_apply_deployment" = "deployment.apps/my-ag-ui-app" ]; then
-        log "   ✅ Deployment verification: PASSED"
-        log "      • Deployment resource exists: my-ag-ui-app"
+        log_info "   ✅ Deployment verification: PASSED"
+        log_info "      • Deployment resource exists: my-ag-ui-app"
         
         # Get detailed deployment information
         deployment_spec=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec}' 2>/dev/null || echo "unavailable")
         deployment_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.status}' 2>/dev/null || echo "unavailable")
         
-        log "      • Deployment spec: $deployment_spec"
-        log "      • Deployment status: $deployment_status"
+        log_info "      • Deployment spec: $deployment_spec"
+        log_info "      • Deployment status: $deployment_status"
         
         # Verify image reference is correct
         deployment_image=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "unavailable")
         
         if [ "$deployment_image" = "localhost:32000/my-ag-ui-app:latest" ]; then
-            log "      ✅ Image reference verification: PASSED"
-            log "         • Expected: localhost:32000/my-ag-ui-app:latest"
-            log "         • Actual: $deployment_image"
+            log_info "      ✅ Image reference verification: PASSED"
+            log_info "         • Expected: localhost:32000/my-ag-ui-app:latest"
+            log_info "         • Actual: $deployment_image"
         else
             log "      ⚠️  Image reference verification: WARNING"
             log "         • Expected: localhost:32000/my-ag-ui-app:latest"
@@ -446,18 +455,18 @@ log "✅ Deployment manifest application process completed"
 log "   • Kubernetes deployment resource processed"
 log "   • Next step: Deployment restart to trigger pod creation"
 log ""
-log "🔄 STEP 2: Restarting deployment to trigger pod recreation..."
-log "   • This will create new pods using the updated registry image"
-log "   • Pods will pull image from localhost:32000/my-ag-ui-app:latest"
+log_info "🔄 STEP 2: Restarting deployment to trigger pod recreation..."
+log_info "   • This will create new pods using the updated registry image"
+log_info "   • Pods will pull image from localhost:32000/my-ag-ui-app:latest"
 if ! multipass exec "$VM_NAME" -- microk8s kubectl rollout restart deployment/my-ag-ui-app 2>&1 | tee -a "$LOG_FILE"; then
     handle_deployment_error "Failed to restart deployment" \
         "Check if deployment exists: microk8s kubectl get deployment my-ag-ui-app. Ensure deployment is in a state that can be restarted." \
         "DEPLOYMENT_RESTART_FAILURE"
 fi
 log "✅ Deployment restarted successfully"
-log "   • Rolling update initiated"
-log "   • New pods will be created using registry image"
-log "   • Expected: Direct pod startup (no ImagePullBackOff with registry approach)"
+log_info "   • Rolling update initiated"
+log_info "   • New pods will be created using registry image"
+log_info "   • Expected: Direct pod startup (no ImagePullBackOff with registry approach)"
 log ""
 
 # Pod events logging function - captures and logs Kubernetes pod events (pull errors, crash loops, probe failures)
@@ -598,7 +607,7 @@ poll_pod_status() {
     local pod_running=false
     
     while [ $attempt -le $max_attempts ]; do
-        log "Checking pod status for Running state... (attempt $attempt/$max_attempts)"
+        log_info "Checking pod status for Running state... (attempt $attempt/$max_attempts)"
         
         # Get current pod status
         local pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "Unknown")
@@ -612,7 +621,7 @@ poll_pod_status() {
             
             # Log additional pod details for debugging
             local pod_details=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true)
-            log "Pod details: $pod_details"
+            log_info "Pod details: $pod_details"
         fi
         
         if [ $attempt -eq $max_attempts ]; then
@@ -685,7 +694,7 @@ verify_readiness_probe() {
     log_info "Verifying readiness probe passes before marking deployment successful..."
     
     while [ $attempt -le $max_attempts ]; do
-        log "Checking readiness probe status... (attempt $attempt/$max_attempts)"
+        log_info "Checking readiness probe status... (attempt $attempt/$max_attempts)"
         
         # Get pod details including readiness status
         local pod_details=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json 2>/dev/null || echo "")
@@ -841,7 +850,7 @@ POD_WAIT_DELAY=5                  # Fixed 5-second polling interval as required
 PREVIOUS_CONTAINER_STATE=""       # Initialize container state tracking
 
 while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
-    log "Checking pod status after deployment restart... (attempt $POD_WAIT_ATTEMPT/$MAX_POD_WAIT_ATTEMPTS)"
+    log_info "Checking pod status after deployment restart... (attempt $POD_WAIT_ATTEMPT/$MAX_POD_WAIT_ATTEMPTS)"
     
     # Get current pod status
     POD_STATUS_JSON=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json 2>/dev/null || echo "")
@@ -1081,7 +1090,7 @@ PROBE_WAIT_ATTEMPT=1
 PROBE_WAIT_DELAY=2                  # Optimized starting delay
 
 while [ $PROBE_WAIT_ATTEMPT -le $MAX_PROBE_WAIT_ATTEMPTS ]; do
-    log "Checking probe status... (attempt $PROBE_WAIT_ATTEMPT/$MAX_PROBE_WAIT_ATTEMPTS)"
+    log_info "Checking probe status... (attempt $PROBE_WAIT_ATTEMPT/$MAX_PROBE_WAIT_ATTEMPTS)"
     
     # Get pod details including probe status
     POD_DETAILS=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json 2>/dev/null || echo "")
@@ -1095,21 +1104,21 @@ while [ $PROBE_WAIT_ATTEMPT -le $MAX_PROBE_WAIT_ATTEMPTS ]; do
         POD_PHASE=$(echo "$POD_DETAILS" | grep -o '"phase":"Running"' || echo "")
         RESTART_COUNT=$(echo "$POD_DETAILS" | grep -o '"restartCount":[0-9]*' | head -1 | cut -d':' -f2 || echo "0")
         
-        if [ -n "$READY" ] && [ -n "$POD_PHASE" ]; then
-            log "✓ Readiness probe: PASSED"
-            log "✓ Liveness probe: PASSED (pod is Running and Ready)"
-            log "✓ Pod restart count: $RESTART_COUNT"
-            
-            # Get detailed probe information if available
-            PROBE_DETAILS=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.containerStatuses[0].state}' 2>/dev/null || echo "")
-            if [ -n "$PROBE_DETAILS" ]; then
-                log "Detailed probe status: $PROBE_DETAILS"
-            fi
-            
-            break
-        else
-            log "Probes not yet ready. Current status:"
-            multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
+if [ -n "$READY" ] && [ -n "$POD_PHASE" ]; then
+        log "✓ Readiness probe: PASSED"
+        log "✓ Liveness probe: PASSED (pod is Running and Ready)"
+        log "✓ Pod restart count: $RESTART_COUNT"
+        
+        # Get detailed probe information if available
+        PROBE_DETAILS=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.containerStatuses[0].state}' 2>/dev/null || echo "")
+        if [ -n "$PROBE_DETAILS" ]; then
+            log_info "Detailed probe status: $PROBE_DETAILS"
+        fi
+        
+        break
+    else
+        log_info "Probes not yet ready. Current status:"
+        multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
             
             # Check for probe-specific errors
             if multipass exec "$VM_NAME" -- microk8s kubectl describe pods -l app=my-ag-ui-app 2>/dev/null | grep -q "Readiness probe failed"; then
@@ -1179,7 +1188,7 @@ ATTEMPT=1
 DEPLOYMENT_DELAY=8                # Optimized delay between deployment checks
 
 while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-    log "Checking deployment status... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
+    log_info "Checking deployment status... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
     
     # Check if deployment is ready
     DEPLOYMENT_READY=$(multipass exec "$VM_NAME" -- microk8s kubectl get deployment my-ag-ui-app -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
@@ -1188,10 +1197,10 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
         log "Deployment is ready"
         break
     else
-        log "Deployment not ready yet... (ready replicas: $DEPLOYMENT_READY)"
+        log_info "Deployment not ready yet... (ready replicas: $DEPLOYMENT_READY)"
         
         # Get pod status for debugging
-        log "Pod status:"
+        log_info "Pod status:"
         multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
     fi
     
@@ -1354,7 +1363,7 @@ log "Testing application accessibility..."
 # First test from within the cluster (pod to pod)
 if multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.podIP}' 2>/dev/null | grep -q "."; then
     POD_IP=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].status.podIP}' 2>/dev/null)
-    log "Application pod IP: $POD_IP"
+    log_info "Application pod IP: $POD_IP"
     
     # Try to access the application from within the cluster
     if multipass exec "$VM_NAME" -- microk8s kubectl run temp-curl --image=curlimages/curl --rm -it --restart=Never -- curl -s --connect-timeout "$NETWORK_CONNECTIVITY_TIMEOUT" "http://$POD_IP:3000/health" >/dev/null 2>&1; then
@@ -1363,7 +1372,7 @@ if multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o
         log "WARNING: Application internal health check failed"
     fi
 else
-    log "Unable to determine pod IP for internal accessibility test"
+    log_info "Unable to determine pod IP for internal accessibility test"
 fi
 
 # Test ingress endpoint accessibility (external access)
@@ -1401,6 +1410,18 @@ log_info "Application should be accessible via ingress (may take a few minutes f
 # Final deployment progress summary
 log ""
 log "🎉 FINAL DEPLOYMENT PROGRESS SUMMARY:"
+log "═══════════════════════════════════════════════════════════════════════════════"
+log_info "✅ DEPENDENCY_VALIDATION: Package dependencies validated and synchronized"
+log_info "✅ DOCKER_IMAGE_BUILD: Image built successfully (localhost:32000/my-ag-ui-app:latest)"
+log_info "✅ MICROK8S_REGISTRY_SETUP: Local registry enabled and verified accessible"
+log_info "✅ DOCKER_REGISTRY_PUSH: Image pushed with comprehensive verification"
+log_info "✅ KUBERNETES_DEPLOYMENT: Manifest applied, deployment restarted"
+log_info "✅ KUBERNETES_VERIFICATION: Pods verified and deployment status confirmed"
+log_info "✅ INGRESS_SETUP: External access configured and tested"
+log "═══════════════════════════════════════════════════════════════════════════════"
+log_info "🚀 DEPLOYMENT STATUS: FULLY COMPLETED"
+log_info "📦 REGISTRY APPROACH: Successfully implemented and verified"
+log_info "🌐 ACCESS: Ready via ingress endpoint (details below)"
 log "═══════════════════════════════════════════════════════════════════════════════"
 log "✅ DEPENDENCY_VALIDATION: Package dependencies validated and synchronized"
 log "✅ DOCKER_IMAGE_BUILD: Image built successfully (localhost:32000/my-ag-ui-app:latest)"
