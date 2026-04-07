@@ -100,6 +100,7 @@ ENV LOGFIRE_TOKEN=$LOGFIRE_TOKEN
 # Copy necessary files from builder - only what's needed for runtime
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/server ./.next/server
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Switch to non-root user

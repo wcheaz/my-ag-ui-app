@@ -8,15 +8,28 @@ The application is a Next.js 16.1.0 application using the App Router with TypeSc
 
 **Health Endpoint Issue:**
 - The `src/app/api/health/route.ts` file exists and correctly returns HTTP 200 with JSON `{"status": "healthy"}`
+- Next.js build output confirms `/api/health` is compiled as a dynamic API route
 - During Kubernetes deployment, pods fail readiness and liveness probes with HTTP 404 responses from `/api/health`
 - Container logs show Next.js starts successfully ("Ready in 115ms") but the health endpoint is unreachable
 - The 404 response is a Next.js-generated 404 page, indicating the route is not being served
+- Accessing endpoint from within container returns 404, suggesting runtime/build configuration issue
+
+**Bash Script Error:**
+- `deploy-to-k8s.sh` has a syntax error on line 800: "local: can only be used in a function"
+- This error prevents deployment from completing successfully
+- Likely cause: `local` variable declaration is outside of a function scope
+
+**Next.js Configuration Warning:**
+- `next.config.ts` uses deprecated `experimental.serverComponentsExternalPackages`
+- Build warning indicates this should be renamed to `serverExternalPackages`
+- The config already has the correct `serverExternalPackages` setting (line 5), but also has the deprecated one
 
 **Root Cause Hypotheses:**
-1. **Build Configuration Issue**: The API routes may not be included in the production build or standalone output
-2. **Runtime Configuration Issue**: The production server may not be configured to serve API routes from the correct location
-3. **Path Mismatch**: The health check probes may be hitting the wrong path (missing `/api` prefix)
-4. **Container Filesystem Mismatch**: The built application structure may not match the expected file layout
+1. **Build Configuration Issue**: The API routes may not be included in the production standalone output despite being compiled
+2. **Runtime Configuration Issue**: The production server may not be configured to serve API routes from the correct location in standalone mode
+3. **Standalone Output Structure**: Next.js 16 standalone build may place API routes in a location not accessible to `node server.js`
+4. **Dockerfile Copy Strategy**: The Dockerfile copies `.next/standalone` but may be missing additional files needed for API routes
+5. **Bash Script Syntax**: The `local` declaration on line 800 is outside of function scope due to missing brace or quote issue
 
 ### Constraints
 
@@ -25,6 +38,9 @@ The application is a Next.js 16.1.0 application using the App Router with TypeSc
 - Must maintain backward compatibility with existing deployments
 - Health endpoint must respond within 1 second to satisfy probe timeouts
 - No authentication should be required for the health endpoint
+- **VM Constraint**: Cluster runs inside Multipass VM, cannot access container endpoints directly from host machine
+- Must test health endpoint accessibility from within VM using `multipass exec` commands
+- Cannot run containers on host machine for testing (must test within VM environment)
 
 ### Stakeholders
 
@@ -35,10 +51,13 @@ The application is a Next.js 16.1.0 application using the App Router with TypeSc
 ## Goals / Non-Goals
 
 **Goals:**
-1. Ensure the `/api/health` endpoint is accessible and returns HTTP 200 with JSON status in production
-2. Reduce deployment log verbosity by suppressing unnecessary INFO-level debug output unless explicitly enabled
-3. Maintain fast response time (< 1 second) for health check probes
-4. Enable easier debugging through optional verbose mode flag
+1. Fix bash script syntax error on line 800 of `deploy-to-k8s.sh`
+2. Remove deprecated Next.js configuration option to eliminate build warnings
+3. Ensure the `/api/health` endpoint is accessible and returns HTTP 200 with JSON status in production
+4. Verify standalone build includes API routes and makes them accessible at runtime
+5. Reduce deployment log verbosity by suppressing unnecessary INFO-level debug output unless explicitly enabled
+6. Maintain fast response time (< 1 second) for health check probes
+7. Enable easier debugging through optional verbose mode flag
 
 **Non-Goals:**
 - Redesigning the Next.js application structure or build system
@@ -53,15 +72,17 @@ The application is a Next.js 16.1.0 application using the App Router with TypeSc
 
 **Decision**: Investigate the Next.js build configuration to ensure API routes are included in the production standalone build.
 
-**Rationale**: The health endpoint code exists but is not reachable at runtime. This suggests a build or runtime configuration issue where API routes are not being properly packaged or served. The Dockerfile uses Next.js standalone output mode, which requires specific configuration to include API routes.
+**Rationale**: The health endpoint code exists and is compiled (visible in build output as `/api/health` route), but returns 404 at runtime. This suggests the standalone build may not be including API routes in the correct location for the `node server.js` runtime. Need to verify if additional files or build settings are required for API routes in standalone mode.
 
 **Alternatives Considered:**
 - Modify the health endpoint to be at the root path `/health` instead of `/api/health`
   - Rejected: Would require changing Kubernetes deployment manifest, which is out of scope
 - Switch from standalone build to full build
   - Rejected: Would increase image size and deviate from current optimization approach
-- Add serverless/cloud functions for health endpoint
-  - Rejected: Adds unnecessary complexity and dependencies
+- Copy additional `.next` directories to container
+  - May be required: Next.js standalone may need additional files for API routes
+- Add custom server.js to handle API routes
+  - Rejected: Should work with default Next.js standalone server
 
 ### 2. Runtime Server Configuration Verification
 
@@ -109,7 +130,13 @@ The application is a Next.js 16.1.0 application using the App Router with TypeSc
 ## Risks / Trade-offs
 
 ### Risk: Build configuration changes may break existing deployments
-**Mitigation**: Test build process locally before deploying to production. Verify that the Docker image includes all necessary files and that the application starts correctly.
+**Mitigation**: Test build process locally before deploying to production. Verify that the Docker image includes all necessary files and that the application starts correctly. Maintain previous Docker image tags for rollback capability.
+
+### Risk: Fixing bash script may introduce new syntax errors
+**Mitigation**: Use shellcheck or similar tool to validate bash syntax before deploying. Test script locally with dry-run flags.
+
+### Risk: Removing Next.js config option may break standalone build
+**Mitigation**: Test build after removing deprecated option. Verify API routes still compile and are included in standalone output.
 
 ### Risk: Suppressing logs may hide useful debugging information
 **Mitigation**: Keep VERBOSE flag easily accessible and documented. Ensure ERROR and WARN level messages always appear. Update documentation to explain when to use verbose mode.
@@ -126,16 +153,23 @@ Adding conditional logging increases script complexity slightly, but significant
 ## Migration Plan
 
 ### Phase 1: Investigation and Diagnosis
-1. Examine the Dockerfile to understand build configuration
-2. Check the Next.js configuration files (next.config.js/ts)
-3. Inspect the built Docker image filesystem to verify API routes are included
-4. Test the application locally with production build settings
+1. Fix bash script syntax error on line 800 of `deploy-to-k8s.sh`
+2. Remove deprecated Next.js configuration option from `next.config.ts`
+3. Examine the Dockerfile to understand build configuration and standalone output structure
+4. Check the Next.js configuration files (next.config.js/ts) for API route settings
+5. Inspect the built Docker image filesystem to verify API routes are included in standalone output
+6. Test the application locally with production build settings to verify standalone server works
+7. Test health endpoint from within VM container using `multipass exec` commands
 
 ### Phase 2: Implementation
-1. Modify build configuration if needed to include API routes in standalone output
-2. Update deployment scripts to respect VERBOSE environment variable
-3. Test the updated build process and verify health endpoint accessibility
-4. Deploy to test environment and verify probes pass
+1. Fix bash script syntax error on line 800 of `deploy-to-k8s.sh`
+2. Remove deprecated Next.js configuration option from `next.config.ts`
+3. Verify and potentially modify Dockerfile to ensure `.next/server` directory is copied if needed for API routes
+4. Modify build configuration if needed to include API routes in standalone output
+5. Update deployment scripts to respect VERBOSE environment variable
+6. Test the updated build process and verify health endpoint accessibility
+7. Test health endpoint from within VM container using `multipass exec` commands
+8. Deploy to test environment and verify probes pass
 
 ### Phase 3: Validation
 1. Run deployment with VERBOSE=false to confirm clean log output
