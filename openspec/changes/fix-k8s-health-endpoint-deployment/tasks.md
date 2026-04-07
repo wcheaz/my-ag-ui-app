@@ -52,7 +52,7 @@
 
 - [x] 5.1 Run full deployment pipeline with VERBOSE=false and verify health endpoint probe passes
   - **Done when**: Deployment completes successfully, pods reach Ready state, logs are clean
-- [ ] 5.1.1 Debug health endpoint 404 error in standalone deployment
+- [x] 5.1.1 Debug health endpoint 404 error in standalone deployment
   - **Done when**: Health endpoint returns JSON response instead of 404 HTML page
 - [ ] 5.2 Run full deployment pipeline with VERBOSE=true and verify detailed logging is available
   - **Done when**: Deployment completes successfully, logs include detailed debug information
