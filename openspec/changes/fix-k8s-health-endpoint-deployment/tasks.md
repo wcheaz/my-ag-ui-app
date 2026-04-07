@@ -24,7 +24,7 @@
   - **Done when**: `multipass exec my-ag-ui-app-k8s -- docker exec <container> wget http://localhost:3000/api/health` returns 200
 - [x] 3.4 If API routes not accessible, modify Dockerfile to copy `.next/server` directory
   - **Done when**: Dockerfile includes `COPY --from=builder /app/.next/server ./.next/server`
-- [/] 3.5 Rebuild and retest health endpoint accessibility within VM container
+- [x] 3.5 Rebuild and retest health endpoint accessibility within VM container
   - **Done when**: Health endpoint returns HTTP 200 from within container, accessible to Kubernetes probes
 
 ## 4. Conditional Logging Implementation
