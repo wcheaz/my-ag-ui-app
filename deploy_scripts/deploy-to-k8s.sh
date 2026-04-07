@@ -28,7 +28,7 @@ if [ -f "deploy_scripts/common.sh" ]; then
         
         # Get pod details for deployment failure context
         log "=== POD DETAILS FOR DEPLOYMENT FAILURE ==="
-        local pod_name=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "no-pods-found")
+pod_name=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "no-pods-found")
         if [ "$pod_name" != "no-pods-found" ] && [ -n "$pod_name" ]; then
             log "Pod name: $pod_name"
             log "Pod status:"
@@ -797,7 +797,7 @@ if ! verify_readiness_probe; then
     
     # Get detailed pod information for readiness failure
     log "=== DETAILED POD INFORMATION FOR READINESS FAILURE ==="
-    local pod_name=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "no-pods-found")
+    pod_name=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "no-pods-found")
     if [ "$pod_name" != "no-pods-found" ] && [ -n "$pod_name" ]; then
         log "Failed readiness pod name: $pod_name"
         log "Pod status and readiness details:"
