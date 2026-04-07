@@ -26,7 +26,7 @@
   - **Done when**: common.sh log_info function checks VERBOSE flag and only outputs when VERBOSE=true
 - [x] 3.2 Update deploy-to-k8s.sh to suppress INFO/DEBUG messages unless VERBOSE=true
   - **Done when**: All INFO/DEBUG log statements in deploy-to-k8s.sh are wrapped in VERBOSE check
-- [ ] 3.3 Update setup-k8s-secrets.sh to suppress INFO/DEBUG messages unless VERBOSE=true
+- [x] 3.3 Update setup-k8s-secrets.sh to suppress INFO/DEBUG messages unless VERBOSE=true
   - **Done when**: All log_info DEBUG statements in setup-k8s-secrets.sh respect VERBOSE flag
 - [ ] 3.4 Update setup-microk8s-registry.sh to suppress INFO messages unless VERBOSE=true
   - **Done when**: All log_info statements in setup-microk8s-registry.sh respect VERBOSE flag
