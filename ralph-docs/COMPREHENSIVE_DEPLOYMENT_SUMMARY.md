@@ -122,6 +122,41 @@ This project has successfully implemented a comprehensive deployment system for 
 - ✅ Monitoring and logging in place
 - ✅ All test suites passing
 
+### Deployment Logging and Debugging
+
+#### VERBOSE Flag Support
+
+The deployment system includes comprehensive logging control through the `VERBOSE` environment variable, enabling operators to control deployment output verbosity based on their needs.
+
+**VERBOSE Flag Features:**
+- **Default Mode (VERBOSE=false)**: Clean output showing only ERROR and WARN messages
+- **Verbose Mode (VERBOSE=true)**: Detailed logging including INFO and DEBUG messages
+- **Consistent Implementation**: Applied across all deployment scripts
+- **Production Ready**: Optimized for both automated deployments and manual debugging
+
+**Usage Examples:**
+```bash
+# Normal deployment (clean output)
+./deploy-all.sh
+
+# Debug deployment (detailed output)
+VERBOSE=true ./deploy-all.sh
+
+# Verbose mode for specific scripts
+VERBOSE=true ./deploy_scripts/deploy-to-k8s.sh
+```
+
+**When to Use Verbose Mode:**
+- **Troubleshooting**: Debug deployment failures and intermittent issues
+- **Development**: Understand deployment pipeline behavior during script development
+- **Diagnostics**: Gather detailed information for support requests
+- **Testing**: Verify deployment behavior with full debugging output
+
+**When to Use Default Mode:**
+- **Production**: Clean logs for automated deployments
+- **CI/CD**: Focused output for automated pipelines
+- **Quick Checks**: Fast status verification without debug noise
+
 ### Recommended Deployment Strategy:
 1. **Primary**: Use microk8s registry approach
 2. **Fallback**: VM Docker setup approach if registry unavailable

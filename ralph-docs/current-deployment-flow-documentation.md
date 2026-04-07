@@ -104,9 +104,76 @@ The deployment script successfully executes Docker image tagging and push operat
 - **Supporting**: `deploy.sh` enhanced with VM-based Docker operations
 - **Validation**: Comprehensive testing and verification of registry operations
 
+## Deployment Logging and Debugging
+
+### VERBOSE Flag Usage
+
+The deployment scripts support a `VERBOSE` environment variable that controls the level of detail in deployment logging. This feature helps operators focus on actual errors during normal deployments while providing detailed debugging information when needed.
+
+#### VERBOSE Flag Usage
+
+**Default Behavior (VERBOSE=false or unset)**
+- Shows only ERROR and WARN level messages
+- Suppresses INFO and DEBUG level messages
+- Provides clean, focused output for normal deployments
+- Ideal for production deployments and automated CI/CD pipelines
+
+**Verbose Mode (VERBOSE=true)**
+- Shows all log levels including INFO and DEBUG
+- Provides detailed debugging information
+- Includes environment context and step-by-step execution details
+- Essential for troubleshooting deployment issues
+
+#### When to Use Verbose Mode
+
+**Use VERBOSE=true when:**
+- Troubleshooting deployment failures
+- Investigating intermittent issues
+- Debugging new deployment configurations
+- Understanding deployment pipeline behavior
+- Gathering diagnostic information for support requests
+- Developing or modifying deployment scripts
+
+**Use VERBOSE=false (default) when:**
+- Running regular deployments
+- Automated CI/CD pipeline executions
+- Production deployments
+- Quick deployment status checks
+- When you only care about errors and warnings
+
+#### Examples
+
+**Enable verbose mode for deployment:**
+```bash
+VERBOSE=true ./deploy-all.sh
+```
+
+**Default (non-verbose) mode:**
+```bash
+./deploy-all.sh
+# or explicitly:
+VERBOSE=false ./deploy-all.sh
+```
+
+**Verbose mode for individual deployment phases:**
+```bash
+VERBOSE=true ./deploy_scripts/setup-k8s-secrets.sh
+VERBOSE=true ./deploy_scripts/deploy-to-k8s.sh
+```
+
+#### Troubleshooting with Verbose Mode
+
+When encountering deployment issues, enable verbose mode to:
+
+1. **Identify the failure point**: Look for ERROR messages with detailed context
+2. **Check environment configuration**: Verbose mode shows environment variable values and system state
+3. **Understand timing issues**: Detailed timestamps help identify timeout or performance problems
+4. **Verify resource availability**: See detailed resource checks and connectivity tests
+5. **Debug authentication problems**: Detailed secret and credential handling information
+
 ## Documentation References
 
 For additional details on the registry configuration, see:
 - `REGISTRY_CONFIGURATION.md` - Comprehensive registry setup and configuration
 - `REGISTRY_TROUBLESHOOTING.md` - Troubleshooting guide for registry issues
-- `README.md` - Project overview and deployment instructions
+- `README.md` - Project overview and deployment instructions (with comprehensive VERBOSE flag documentation)
