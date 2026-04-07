@@ -22,13 +22,23 @@
 
 ## 3. Conditional Logging Implementation
 
-- [ ] 3.1 Identify all deployment scripts that emit verbose INFO-level debug messages
-  - **Done when**: List of scripts and specific verbose log statements is documented
-- [ ] 3.2 Add VERBOSE environment variable check to deployment scripts (default: suppress INFO/DEBUG, VERBOSE=true: show all levels)
-  - **Done when**: Scripts are modified with conditional logic based on VERBOSE flag
-- [ ] 3.3 Test deployment scripts with VERBOSE=false to confirm clean log output
+- [ ] 3.1 Add VERBOSE environment variable check to deploy_scripts/common.sh to conditionally suppress log_info output
+  - **Done when**: common.sh log_info function checks VERBOSE flag and only outputs when VERBOSE=true
+- [ ] 3.2 Update deploy-to-k8s.sh to suppress INFO/DEBUG messages unless VERBOSE=true
+  - **Done when**: All INFO/DEBUG log statements in deploy-to-k8s.sh are wrapped in VERBOSE check
+- [ ] 3.3 Update setup-k8s-secrets.sh to suppress INFO/DEBUG messages unless VERBOSE=true
+  - **Done when**: All log_info DEBUG statements in setup-k8s-secrets.sh respect VERBOSE flag
+- [ ] 3.4 Update setup-microk8s-registry.sh to suppress INFO messages unless VERBOSE=true
+  - **Done when**: All log_info statements in setup-microk8s-registry.sh respect VERBOSE flag
+- [ ] 3.5 Update build-docker-image.sh to suppress INFO messages unless VERBOSE=true
+  - **Done when**: All INFO-level log statements in build-docker-image.sh respect VERBOSE flag
+- [ ] 3.6 Update push-docker-image.sh to suppress INFO messages unless VERBOSE=true
+  - **Done when**: All INFO-level log statements in push-docker-image.sh respect VERBOSE flag
+- [ ] 3.7 Update tag-docker-image.sh to suppress INFO messages unless VERBOSE=true
+  - **Done when**: All INFO-level log statements in tag-docker-image.sh respect VERBOSE flag
+- [ ] 3.8 Test deployment scripts with VERBOSE=false to confirm clean log output
   - **Done when**: Dry-run execution shows only ERROR/WARN messages, INFO/DEBUG suppressed
-- [ ] 3.4 Test deployment scripts with VERBOSE=true to verify detailed logging still works
+- [ ] 3.9 Test deployment scripts with VERBOSE=true to verify detailed logging still works
   - **Done when**: Dry-run execution shows all log levels including INFO/DEBUG
 
 ## 4. Validation and Testing
