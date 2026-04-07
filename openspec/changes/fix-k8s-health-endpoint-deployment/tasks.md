@@ -51,7 +51,7 @@
   - **Done when**: curl command with time measurement confirms response under 1000ms threshold
 - [x] 4.4 Verify health endpoint returns HTTP 200 without authentication headers
   - **Done when**: curl without auth headers returns 200 and valid JSON with status "healthy"
-- [ ] 4.5 Verify health endpoint returns appropriate error status (500/503) when explicitly failing
+- [x] 4.5 Verify health endpoint returns appropriate error status (500/503) when explicitly failing
   - **Done when**: curl with `?fail=true` parameter returns 500/503 and JSON with error status
 - [ ] 4.6 Confirm Kubernetes readiness and liveness probes pass consistently
   - **Done when**: `kubectl get pods` shows Ready=1/1 and no Unhealthy probe warnings in events
