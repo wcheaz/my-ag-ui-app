@@ -30,8 +30,11 @@ log() {
 # Info level logging function
 log_info() {
     local message="$1"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    echo "[$timestamp] INFO: $message" | tee -a "$LOG_FILE"
+    # Only output if VERBOSE is explicitly set to true
+    if [[ "${VERBOSE:-false}" == "true" ]]; then
+        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "[$timestamp] INFO: $message" | tee -a "$LOG_FILE"
+    fi
 }
 
 # Warning level logging function
