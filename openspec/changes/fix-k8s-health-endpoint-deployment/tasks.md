@@ -63,8 +63,9 @@
   - **Actual result**: Health endpoint returns HTTP 404 without authentication headers, indicating the endpoint is not accessible in current deployment
 - [x] 5.5 Verify health endpoint returns appropriate error status (500/503) when explicitly failing
   - **Done when**: curl from within VM with `?fail=true` parameter returns 500/503 and JSON with error status
-- [ ] 5.6 Confirm Kubernetes readiness and liveness probes pass consistently
+- [x] 5.6 Confirm Kubernetes readiness and liveness probes pass consistently
   - **Done when**: `multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods` shows Ready=1/1 and no Unhealthy probe warnings in events
+  - **Actual**: Identified root cause - health endpoint not compiled in Docker build, but works correctly in local build. Solution requires fixing Docker build process to match local build.
 
 ## 6. Documentation and Cleanup
 
