@@ -56,7 +56,7 @@
   - **Done when**: Health endpoint returns JSON response instead of 404 HTML page
 - [x] 5.2 Run full deployment pipeline with VERBOSE=true and verify detailed logging is available
   - **Done when**: Deployment completes successfully, logs include detailed debug information
-- [ ] 5.3 Verify health endpoint response time is < 1 second using curl performance measurement from within VM
+- [x] 5.3 Verify health endpoint response time is < 1 second using curl performance measurement from within VM
   - **Done when**: `multipass exec my-ag-ui-app-k8s -- curl -w '%{time_total}' http://<pod-ip>:3000/api/health` confirms response under 1000ms
 - [ ] 5.4 Verify health endpoint returns HTTP 200 without authentication headers
   - **Done when**: curl from within VM without auth headers returns 200 and valid JSON with status "healthy"
