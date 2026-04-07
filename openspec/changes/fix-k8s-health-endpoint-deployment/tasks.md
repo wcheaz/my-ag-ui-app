@@ -28,7 +28,7 @@
   - **Done when**: All INFO/DEBUG log statements in deploy-to-k8s.sh are wrapped in VERBOSE check
 - [x] 3.3 Update setup-k8s-secrets.sh to suppress INFO/DEBUG messages unless VERBOSE=true
   - **Done when**: All log_info DEBUG statements in setup-k8s-secrets.sh respect VERBOSE flag
-- [ ] 3.4 Update setup-microk8s-registry.sh to suppress INFO messages unless VERBOSE=true
+- [x] 3.4 Update setup-microk8s-registry.sh to suppress INFO messages unless VERBOSE=true
   - **Done when**: All log_info statements in setup-microk8s-registry.sh respect VERBOSE flag
 - [ ] 3.5 Update build-docker-image.sh to suppress INFO messages unless VERBOSE=true
   - **Done when**: All INFO-level log statements in build-docker-image.sh respect VERBOSE flag

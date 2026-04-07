@@ -118,7 +118,7 @@ verify_microk8s_registry() {
         if [ -n "$registry_check_output" ]; then
             if [ "${VERBOSE:-false}" = "true" ]; then
                 log_info "Registry response:"
-                echo "$registry_check_output" | tee -a "$LOG_FILE"
+                log_info "$registry_check_output"
             fi
             
             if validate_registry_json_response "$registry_check_output"; then
@@ -134,7 +134,7 @@ verify_microk8s_registry() {
         
         if [ "${VERBOSE:-false}" = "true" ]; then
             log_info "Registry check output:"
-            echo "$registry_check_output" | tee -a "$LOG_FILE"
+            log_info "$registry_check_output"
         fi
         
         # Check if registry service is running
@@ -157,13 +157,13 @@ verify_microk8s_registry() {
         local registry_pod_status
         local registry_service_info
         
-        registry_pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o wide 2>&1 | tee -a "$LOG_FILE")
-        registry_service_info=$(multipass exec "$VM_NAME" -- microk8s kubectl get svc -n container-registry -l app=registry 2>&1 | tee -a "$LOG_FILE")
+        registry_pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o wide 2>&1)
+        registry_service_info=$(multipass exec "$VM_NAME" -- microk8s kubectl get svc -n container-registry -l app=registry 2>&1)
         
         log_info "Registry pod status:"
-        echo "$registry_pod_status" | tee -a "$LOG_FILE"
+        log_info "$registry_pod_status"
         log_info "Registry service info:"
-        echo "$registry_service_info" | tee -a "$LOG_FILE"
+        log_info "$registry_service_info"
     fi
     
     log_info "✅ Registry verification completed successfully"
@@ -202,7 +202,7 @@ verify_registry_before_enable() {
         
         if [ "${VERBOSE:-false}" = "true" ]; then
             log_info "Pre-enablement check output:"
-            echo "$registry_check_output" | tee -a "$LOG_FILE"
+            log_info "$registry_check_output"
         fi
         
         return 0  # Continue with enablement - this is expected behavior
@@ -250,14 +250,14 @@ enable_microk8s_registry() {
         # Log the output if verbose mode is enabled
         if [ "${VERBOSE:-false}" = "true" ] && [ -n "$registry_enable_output" ]; then
             log_info "Registry enablement output:"
-            echo "$registry_enable_output" | tee -a "$LOG_FILE"
+            log_info "$registry_enable_output"
         fi
     else
         log_error "❌ ERROR: Failed to enable microk8s registry (exit code: $registry_enable_exit_code)"
         
         if [ "${VERBOSE:-false}" = "true" ]; then
             log_info "Error output:"
-            echo "$registry_enable_output" | tee -a "$LOG_FILE"
+            log_info "$registry_enable_output"
         fi
         
         # Specific error handling
