@@ -36,7 +36,7 @@
   - **Done when**: All INFO-level log statements in push-docker-image.sh respect VERBOSE flag
 - [x] 3.7 Update tag-docker-image.sh to suppress INFO messages unless VERBOSE=true
   - **Done when**: All INFO-level log statements in tag-docker-image.sh respect VERBOSE flag
-- [ ] 3.8 Test deployment scripts with VERBOSE=false to confirm clean log output
+- [x] 3.8 Test deployment scripts with VERBOSE=false to confirm clean log output
   - **Done when**: Dry-run execution shows only ERROR/WARN messages, INFO/DEBUG suppressed
 - [ ] 3.9 Test deployment scripts with VERBOSE=true to verify detailed logging still works
   - **Done when**: Dry-run execution shows all log levels including INFO/DEBUG
