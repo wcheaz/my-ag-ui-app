@@ -11,7 +11,7 @@
 
 ## 2. Health Endpoint Build Configuration Fix
 
-- [ ] 2.1 Modify Next.js build configuration to ensure API routes are included in standalone output (if required based on investigation)
+- [x] 2.1 Modify Next.js build configuration to ensure API routes are included in standalone output (if required based on investigation)
   - **Done when**: Configuration file is updated and documented with specific changes made
 - [ ] 2.2 Update Dockerfile if needed to ensure API routes are properly copied to production filesystem
   - **Done when**: Dockerfile changes are made and verified with dry-run build
