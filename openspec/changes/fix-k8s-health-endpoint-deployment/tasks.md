@@ -17,7 +17,7 @@
   - **Done when**: Dockerfile changes are made and verified with dry-run build
 - [x] 2.3 Build updated Docker image and verify API route files exist in output
   - **Done when**: Build succeeds and inspection confirms `/api/health` route file is present in image
-- [ ] 2.4 Test health endpoint accessibility from running container
+- [x] 2.4 Test health endpoint accessibility from running container
   - **Done when**: Container starts and curl from inside container to `http://localhost:3000/api/health` returns HTTP 200
 
 ## 3. Conditional Logging Implementation
