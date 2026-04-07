@@ -71,7 +71,7 @@ fi
 
 # Check disk space before Docker build operation
 if ! df . | awk 'NR==2 {gsub(/%/,""); print $5}' | grep -q -E '^[0-9]+$' && [ $(df . | awk 'NR==2 {gsub(/%/,""); print $5}') -gt 90 ]; then
-    log "WARNING: Low disk space for Docker build"
+    log_info "WARNING: Low disk space for Docker build"
 fi
 
 # Build Docker image
@@ -95,16 +95,13 @@ log_info "Docker build completed successfully"
 log_info "Build output:"
 echo "$build_output" | tee -a "$LOG_FILE"
 
-# Show build summary in console if not in verbose mode
-if [ "${VERBOSE:-false}" != "true" ]; then
-    # Extract and show key information from build output (if available)
-    if echo "$build_output" | grep -q -E "(Successfully built|Successfully tagged| => | --->)"; then
-        echo "$build_output" | grep -E "(Successfully built|Successfully tagged| => | --->)" | head -10 | while IFS= read -r line; do
-            [ -n "$line" ] && log_info "Build: $line"
-        done
-    else
-        log_info "Build: Docker image built successfully (no detailed build summary available)"
-    fi
+# Extract and show key information from build output (if available)
+if echo "$build_output" | grep -q -E "(Successfully built|Successfully tagged| => | --->)"; then
+    echo "$build_output" | grep -E "(Successfully built|Successfully tagged| => | --->)" | head -10 | while IFS= read -r line; do
+        [ -n "$line" ] && log_info "Build: $line"
+    done
+else
+    log_info "Build: Docker image built successfully (no detailed build summary available)"
 fi
 
 log_info "Docker image 'my-ag-ui-app:latest' built successfully"

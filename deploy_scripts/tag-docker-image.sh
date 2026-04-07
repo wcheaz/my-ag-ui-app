@@ -72,161 +72,141 @@ fi
 # ===========================
 
 tag_image_for_local_registry() {
-    if [ "$DEBUG" = "all" ]; then
-        log "Starting Docker image tagging for local registry (executing within VM)..."
-        
-        # Track tagging operation start time for performance measurement
-        local TAGGING_START_TIME
-        TAGGING_START_TIME=$(date +%s)
-        log "⏱️  Tagging operation started at: $(date -d "@$TAGGING_START_TIME" '+%Y-%m-%d %H:%M:%S')"
-        
-        # Validate VM accessibility before proceeding
-        log "Validating VM accessibility before Docker operations..."
-        if ! multipass list | grep -q "$VM_NAME"; then
-            log "❌ ERROR: VM '$VM_NAME' is not accessible or does not exist"
-            log "   Cannot perform Docker tagging without VM access"
-            log "RECOVERY STEPS:"
-            log "1. Check VM status: multipass list"
-            log "2. Start VM if needed: multipass start $VM_NAME"
-            log "3. Verify VM is running: multipass info $VM_NAME"
-            return 1
-        fi
-        log "✅ VM is accessible for Docker operations"
-        
-        # Validate Docker daemon availability within VM before checking images
-        log "Validating Docker daemon availability within VM before image existence check..."
-        if ! multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
-            log "❌ ERROR: Docker daemon is not accessible within VM"
-            log "   Cannot validate image existence without Docker daemon access in VM"
-            log "RECOVERY STEPS:"
-            log "1. Start Docker daemon in VM: multipass exec $VM_NAME -- sudo systemctl start docker"
-            log "2. Check Docker daemon status in VM: multipass exec $VM_NAME -- sudo systemctl status docker"
-            log "3. Verify Docker is running in VM: multipass exec $VM_NAME -- docker info"
-            log "4. Restart Docker in VM if needed: multipass exec $VM_NAME -- sudo systemctl restart docker"
-            return 1
-        fi
-        log "✅ Docker daemon is accessible for image validation within VM"
+    log_info "Starting Docker image tagging for local registry (executing within VM)..."
+    
+    # Track tagging operation start time for performance measurement
+    local TAGGING_START_TIME
+    TAGGING_START_TIME=$(date +%s)
+    log_info "⏱️  Tagging operation started at: $(date -d "@$TAGGING_START_TIME" '+%Y-%m-%d %H:%M:%S')"
+    
+    # Validate VM accessibility before proceeding
+    log_info "Validating VM accessibility before Docker operations..."
+    if ! multipass list | grep -q "$VM_NAME"; then
+        log "❌ ERROR: VM '$VM_NAME' is not accessible or does not exist"
+        log "   Cannot perform Docker tagging without VM access"
+        log "RECOVERY STEPS:"
+        log "1. Check VM status: multipass list"
+        log "2. Start VM if needed: multipass start $VM_NAME"
+        log "3. Verify VM is running: multipass info $VM_NAME"
+        return 1
+    fi
+    log_info "✅ VM is accessible for Docker operations"
+    
+    # Validate Docker daemon availability within VM before checking images
+    log_info "Validating Docker daemon availability within VM before image existence check..."
+    if ! multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
+        log "❌ ERROR: Docker daemon is not accessible within VM"
+        log "   Cannot validate image existence without Docker daemon access in VM"
+        log "RECOVERY STEPS:"
+        log "1. Start Docker daemon in VM: multipass exec $VM_NAME -- sudo systemctl start docker"
+        log "2. Check Docker daemon status in VM: multipass exec $VM_NAME -- sudo systemctl status docker"
+        log "3. Verify Docker is running in VM: multipass exec $VM_NAME -- docker info"
+        log "4. Restart Docker in VM if needed: multipass exec $VM_NAME -- sudo systemctl restart docker"
+        return 1
+    fi
+    log_info "✅ Docker daemon is accessible for image validation within VM"
         
         # Comprehensive validation to ensure source image exists within VM before tagging
-        log "Performing comprehensive validation of source image my-ag-ui-app:latest within VM..."
+    log_info "Performing comprehensive validation of source image my-ag-ui-app:latest within VM..."
+    
+    # Method 1: Check exact tag match within VM (primary method)
+    log_info "Method 1: Checking exact tag match for my-ag-ui-app:latest within VM..."
+    local exact_match_result
+    exact_match_result=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || echo "")
+    if echo "$exact_match_result" | grep -q "my-ag-ui-app:latest"; then
+        log_info "✅ Source image found with exact tag match within VM: my-ag-ui-app:latest"
+    else
+        log "⚠️  Exact tag match not found within VM - checking for alternatives..."
         
-        # Method 1: Check exact tag match within VM (primary method)
-        log "Method 1: Checking exact tag match for my-ag-ui-app:latest within VM..."
-        local exact_match_result
-        exact_match_result=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || echo "")
-        if echo "$exact_match_result" | grep -q "my-ag-ui-app:latest"; then
-            log "✅ Source image found with exact tag match within VM: my-ag-ui-app:latest"
+        # Method 2: Check for any my-ag-ui-app image with any tag within VM
+        log_info "Method 2: Checking for any my-ag-ui-app image with any tag within VM..."
+        local any_tag_result
+        any_tag_result=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || echo "")
+        if [ -n "$any_tag_result" ]; then
+            log_info "⚠️  Found my-ag-ui-app images with different tags within VM:"
+            echo "$any_tag_result" | tee -a "$LOG_FILE"
+            log "   But my-ag-ui-app:latest specifically is missing within VM"
+            log "   This may indicate the image was built with a different tag or not loaded into VM"
         else
-            log "⚠️  Exact tag match not found within VM - checking for alternatives..."
-            
-            # Method 2: Check for any my-ag-ui-app image with any tag within VM
-            log "Method 2: Checking for any my-ag-ui-app image with any tag within VM..."
-            local any_tag_result
-            any_tag_result=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app --format "{{.Repository}}:{{.Tag}}" 2>/dev/null || echo "")
-            if [ -n "$any_tag_result" ]; then
-                log "⚠️  Found my-ag-ui-app images with different tags within VM:"
-                echo "$any_tag_result" | tee -a "$LOG_FILE"
-                log "   But my-ag-ui-app:latest specifically is missing within VM"
-                log "   This may indicate the image was built with a different tag or not loaded into VM"
-            else
-                log "⚠️  No my-ag-ui-app images found with any tag within VM"
-            fi
-            
-            # Method 3: Check for images containing "my-ag-ui-app" in repository name within VM
-            log "Method 3: Checking for images containing 'my-ag-ui-app' in repository name within VM..."
-            local similar_images
-            similar_images=$(multipass exec "$VM_NAME" -- docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -i "my-ag-ui-app" || echo "")
-            if [ -n "$similar_images" ]; then
-                log "⚠️  Found similar images that might be related within VM:"
-                echo "$similar_images" | tee -a "$LOG_FILE"
-            else
-                log "⚠️  No images found containing 'my-ag-ui-app' in repository name within VM"
-            fi
-            
-            # Method 4: List all available images within VM for debugging
-            log "Method 4: Listing all available Docker images within VM for debugging..."
-            local all_images
-            all_images=$(multipass exec "$VM_NAME" -- docker images --format "{{.Repository}}:{{.Tag}} {{.Size}} {{.CreatedAt}}" 2>/dev/null | head -20 || echo "")
-            if [ -n "$all_images" ]; then
-                log "Available Docker images within VM (first 20):"
-                echo "$all_images" | tee -a "$LOG_FILE"
-            else
-                log "⚠️  No Docker images found in VM's Docker daemon"
-            fi
-            
-            # Final determination: image does not exist within VM
-            log "❌ ERROR: Source image my-ag-ui-app:latest not found within VM after comprehensive validation"
-            log "   Image existence validation failed using multiple methods within VM"
-            log ""
-            log "REQUIRED ACTION:"
-            log "1. Ensure image was built on host: docker build -t my-ag-ui-app:latest ."
-            log "2. Load image into VM if not present: docker save my-ag-ui-app:latest | multipass exec $VM_NAME -- docker load"
-            log "3. Or rebuild image within VM: multipass exec $VM_NAME -- docker build -t my-ag-ui-app:latest ."
-            log ""
-            log "TROUBLESHOOTING:"
-            log "- Check if image was built on host: docker images | grep my-ag"
-            log "- Check Docker daemon status within VM: multipass exec $VM_NAME -- docker info"
-            log "- Verify image exists within VM: multipass exec $VM_NAME -- docker images | grep my-ag"
-            log "- Ensure Docker build process completed successfully on host"
-            
-            return 1
+            log_info "⚠️  No my-ag-ui-app images found with any tag within VM"
         fi
-        log "✅ Comprehensive validation passed: Source image my-ag-ui-app:latest exists within VM"
+        
+        # Method 3: Check for images containing "my-ag-ui-app" in repository name within VM
+        log_info "Method 3: Checking for images containing 'my-ag-ui-app' in repository name within VM..."
+        local similar_images
+        similar_images=$(multipass exec "$VM_NAME" -- docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -i "my-ag-ui-app" || echo "")
+        if [ -n "$similar_images" ]; then
+            log_info "⚠️  Found similar images that might be related within VM:"
+            echo "$similar_images" | tee -a "$LOG_FILE"
+        else
+            log_info "⚠️  No images found containing 'my-ag-ui-app' in repository name within VM"
+        fi
+        
+        # Method 4: List all available images within VM for debugging
+        log_info "Method 4: Listing all available Docker images within VM for debugging..."
+        local all_images
+        all_images=$(multipass exec "$VM_NAME" -- docker images --format "{{.Repository}}:{{.Tag}} {{.Size}} {{.CreatedAt}}" 2>/dev/null | head -20 || echo "")
+        if [ -n "$all_images" ]; then
+            log_info "Available Docker images within VM (first 20):"
+            echo "$all_images" | tee -a "$LOG_FILE"
+        else
+            log_info "⚠️  No Docker images found in VM's Docker daemon"
+        fi
+        
+        # Final determination: image does not exist within VM
+        log "❌ ERROR: Source image my-ag-ui-app:latest not found within VM after comprehensive validation"
+        log "   Image existence validation failed using multiple methods within VM"
+        log ""
+        log "REQUIRED ACTION:"
+        log "1. Ensure image was built on host: docker build -t my-ag-ui-app:latest ."
+        log "2. Load image into VM if not present: docker save my-ag-ui-app:latest | multipass exec $VM_NAME -- docker load"
+        log "3. Or rebuild image within VM: multipass exec $VM_NAME -- docker build -t my-ag-ui-app:latest ."
+        log ""
+        log "TROUBLESHOOTING:"
+        log "- Check if image was built on host: docker images | grep my-ag"
+        log "- Check Docker daemon status within VM: multipass exec $VM_NAME -- docker info"
+        log "- Verify image exists within VM: multipass exec $VM_NAME -- docker images | grep my-ag"
+        log "- Ensure Docker build process completed successfully on host"
+        
+        return 1
     fi
+    log_info "✅ Comprehensive validation passed: Source image my-ag-ui-app:latest exists within VM"
     
     # Get source image details for logging from within VM
-    if [ "$DEBUG" = "all" ]; then
-        local source_image_details
-        source_image_details=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
-        log "Source image details within VM:"
-        echo "$source_image_details" | tee -a "$LOG_FILE"
-    fi
+    local source_image_details
+    source_image_details=$(multipass exec "$VM_NAME" -- docker images my-ag-ui-app:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
+    log_info "Source image details within VM:"
+    echo "$source_image_details" | tee -a "$LOG_FILE"
     
     # Define the target registry image tag
     local target_image_tag="localhost:32000/my-ag-ui-app:latest"
-    if [ "$DEBUG" = "all" ]; then
-        log "Target registry image tag: $target_image_tag"
-        log "   This tag will be created within VM where localhost:32000 resolves to microk8s registry"
-    fi
+    log_info "Target registry image tag: $target_image_tag"
+    log_info "   This tag will be created within VM where localhost:32000 resolves to microk8s registry"
     
     # Check if target tag already exists within VM to avoid conflicts
-    if [ "$DEBUG" = "all" ]; then
-        log "Checking if target tag already exists within VM..."
-    fi
+    log_info "Checking if target tag already exists within VM..."
     if multipass exec "$VM_NAME" -- docker images "$target_image_tag" --format "{{.Repository}}:{{.Tag}}" | grep -q "$target_image_tag"; then
-        if [ "$DEBUG" = "all" ]; then
-            log "⚠️  WARNING: Target tag $target_image_tag already exists within VM"
-            log "   Removing existing tag to avoid conflicts..."
-        fi
+        log "⚠️  WARNING: Target tag $target_image_tag already exists within VM"
+        log "   Removing existing tag to avoid conflicts..."
         if ! multipass exec "$VM_NAME" -- docker rmi "$target_image_tag" 2>&1 | tee -a "$LOG_FILE"; then
-            if [ "$DEBUG" = "all" ]; then
-                log "⚠️  WARNING: Could not remove existing tag $target_image_tag within VM"
-                log "   This may cause the tagging operation to fail"
-                log "   You can manually remove it: multipass exec $VM_NAME -- docker rmi $target_image_tag"
-            fi
+            log "⚠️  WARNING: Could not remove existing tag $target_image_tag within VM"
+            log "   This may cause the tagging operation to fail"
+            log "   You can manually remove it: multipass exec $VM_NAME -- docker rmi $target_image_tag"
         else
-            if [ "$DEBUG" = "all" ]; then
-                log "✅ Existing tag $target_image_tag removed successfully within VM"
-            fi
+            log_info "✅ Existing tag $target_image_tag removed successfully within VM"
         fi
     else
-        if [ "$DEBUG" = "all" ]; then
-            log "✅ Target tag $target_image_tag does not exist within VM (safe to proceed)"
-        fi
+        log_info "✅ Target tag $target_image_tag does not exist within VM (safe to proceed)"
     fi
     
     # Tag the image with local registry endpoint within VM
-    if [ "$DEBUG" = "all" ]; then
-        log "Tagging image with local registry endpoint within VM..."
-        log "   Command: multipass exec $VM_NAME -- docker tag my-ag-ui-app:latest $target_image_tag"
-        log "   This makes the image addressable by the microk8s local registry within VM"
-        log "   Note: localhost:32000 will resolve to VM's microk8s registry (not host's)"
-    fi
+    log_info "Tagging image with local registry endpoint within VM..."
+    log_info "   Command: multipass exec $VM_NAME -- docker tag my-ag-ui-app:latest $target_image_tag"
+    log_info "   This makes the image addressable by the microk8s local registry within VM"
+    log_info "   Note: localhost:32000 will resolve to VM's microk8s registry (not host's)"
     
     # Pre-flight check: Verify Docker daemon is accessible within VM before tagging operation
-    if [ "$DEBUG" = "all" ]; then
-        log "Performing pre-flight check: Docker daemon accessibility within VM before tagging..."
-    fi
+    log_info "Performing pre-flight check: Docker daemon accessibility within VM before tagging..."
     if ! multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
         log "❌ ERROR: Docker daemon is not accessible within VM"
         log "   Cannot perform Docker tagging without Docker daemon access in VM"
@@ -238,9 +218,7 @@ tag_image_for_local_registry() {
         log "5. Check user permissions in VM: multipass exec $VM_NAME -- groups | grep docker"
         return 1
     fi
-    if [ "$DEBUG" = "all" ]; then
-        log "✅ Docker daemon is accessible for tagging operation within VM"
-    fi
+    log_info "✅ Docker daemon is accessible for tagging operation within VM"
     
     local tag_output
     local tag_exit_code
@@ -248,10 +226,8 @@ tag_image_for_local_registry() {
     # Execute the tagging command with error capture within VM
     if tag_output=$(multipass exec "$VM_NAME" -- docker tag my-ag-ui-app:latest "$target_image_tag" 2>&1); then
         tag_exit_code=0
-        if [ "$DEBUG" = "all" ]; then
-            log "✅ Docker image tagging command completed successfully within VM"
-            log "   Tagging operation: COMPLETED (within VM)"
-        fi
+        log_info "✅ Docker image tagging command completed successfully within VM"
+        log_info "   Tagging operation: COMPLETED (within VM)"
     else
         tag_exit_code=$?
         log "❌ ERROR: Failed to tag Docker image within VM (exit code: $tag_exit_code)"
@@ -345,18 +321,16 @@ tag_image_for_local_registry() {
     fi
     
     # Verify the tagging was successful within VM (mandatory verification)
-    log "Verifying tagged image exists after successful tagging..."
+    log_info "Verifying tagged image exists after successful tagging..."
     if multipass exec "$VM_NAME" -- docker images "$target_image_tag" --format "{{.Repository}}:{{.Tag}}" | grep -q "$target_image_tag"; then
-        log "✅ Image tagging verification successful within VM"
-        log "   Target tag $target_image_tag exists and is accessible within VM"
+        log_info "✅ Image tagging verification successful within VM"
+        log_info "   Target tag $target_image_tag exists and is accessible within VM"
         
         # Get tagged image details for logging from within VM
         local tagged_image_details
         tagged_image_details=$(multipass exec "$VM_NAME" -- docker images "$target_image_tag" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" 2>/dev/null || echo "Failed to get details")
-        if [ "$DEBUG" = "all" ]; then
-            log "Tagged image details within VM:"
-            echo "$tagged_image_details" | tee -a "$LOG_FILE"
-        fi
+        log_info "Tagged image details within VM:"
+        echo "$tagged_image_details" | tee -a "$LOG_FILE"
         
         # Verify that both images (source and tagged) exist and have the same image ID within VM
         local source_image_id
@@ -366,18 +340,14 @@ tag_image_for_local_registry() {
         tagged_image_id=$(multipass exec "$VM_NAME" -- docker images "$target_image_tag" --format "{{.ID}}" 2>/dev/null || echo "unknown")
         
         if [ "$source_image_id" = "$tagged_image_id" ] && [ "$source_image_id" != "unknown" ]; then
-            log "✅ Image ID verification successful - both images reference the same underlying image within VM"
-            if [ "$DEBUG" = "all" ]; then
-                log "   Source image ID: $source_image_id"
-                log "   Tagged image ID: $tagged_image_id"
-            fi
+            log_info "✅ Image ID verification successful - both images reference the same underlying image within VM"
+            log_info "   Source image ID: $source_image_id"
+            log_info "   Tagged image ID: $tagged_image_id"
         else
             log "⚠️  WARNING: Image ID verification failed or IDs are different within VM"
-            if [ "$DEBUG" = "all" ]; then
-                log "   Source image ID: $source_image_id"
-                log "   Tagged image ID: $tagged_image_id"
-                log "   This may indicate the tagging operation didn't work as expected within VM"
-            fi
+            log_info "   Source image ID: $source_image_id"
+            log_info "   Tagged image ID: $tagged_image_id"
+            log_info "   This may indicate the tagging operation didn't work as expected within VM"
         fi
         
     else
@@ -397,20 +367,18 @@ tag_image_for_local_registry() {
         return 1
     fi
     
-    if [ "$DEBUG" = "all" ]; then
-        log "✅ Docker image tagging for local registry completed successfully within VM"
-        log "   Image tagged as: $target_image_tag"
-        log "   Ready for: Push to microk8s local registry at localhost:32000 (within VM)"
-        log "   Next step: Use the registry push function to push this tagged image from within VM"
-        
-        # Calculate and log tagging operation duration
-        local TAGGING_END_TIME
-        TAGGING_END_TIME=$(date +%s)
-        local TAGGING_DURATION
-        TAGGING_DURATION=$((TAGGING_END_TIME - TAGGING_START_TIME))
-        log "⏱️  Tagging operation completed at: $(date -d "@$TAGGING_END_TIME" '+%Y-%m-%d %H:%M:%S')"
-        log "⏱️  Total tagging operation duration: $TAGGING_DURATION seconds"
-    fi
+    log_info "✅ Docker image tagging for local registry completed successfully within VM"
+    log_info "   Image tagged as: $target_image_tag"
+    log_info "   Ready for: Push to microk8s local registry at localhost:32000 (within VM)"
+    log_info "   Next step: Use the registry push function to push this tagged image from within VM"
+    
+    # Calculate and log tagging operation duration
+    local TAGGING_END_TIME
+    TAGGING_END_TIME=$(date +%s)
+    local TAGGING_DURATION
+    TAGGING_DURATION=$((TAGGING_END_TIME - TAGGING_START_TIME))
+    log_info "⏱️  Tagging operation completed at: $(date -d "@$TAGGING_END_TIME" '+%Y-%m-%d %H:%M:%S')"
+    log_info "⏱️  Total tagging operation duration: $TAGGING_DURATION seconds"
     
     return 0
 }

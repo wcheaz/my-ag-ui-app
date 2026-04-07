@@ -99,8 +99,8 @@ fi
 if [ "${DEBUG:-}" != "all" ]; then
     # This is a critical failure phase, so we always keep full debug output
     # but we note that DEBUG=all can be used for explicit debugging
-    log "DEBUG: Running with full verbose output (critical failure phase)"
-    log "DEBUG: Set DEBUG=all for explicit debugging if needed"
+log_info "DEBUG: Running with full verbose output (critical failure phase)"
+log_info "DEBUG: Set DEBUG=all for explicit debugging if needed"
 fi
 
 
@@ -122,14 +122,14 @@ start_phase_timing() {
     local phase_name="$1"
     local start_time=$(date +%s.%N)
     echo "PHASE_START:$phase_name:$start_time" >> "$PERFORMANCE_LOG_FILE"
-    log "Starting phase: $phase_name"
+    log_info "Starting phase: $phase_name"
 }
 
 end_phase_timing() {
     local phase_name="$1"
     local end_time=$(date +%s.%N)
     echo "PHASE_END:$phase_name:$end_time" >> "$PERFORMANCE_LOG_FILE"
-    log "Completed phase: $phase_name"
+    log_info "Completed phase: $phase_name"
 }
 
 # Error handling function (fallback if not sourced from common.sh)
@@ -158,12 +158,12 @@ NETWORK_CONNECTIVITY_TIMEOUT="${NETWORK_CONNECTIVITY_TIMEOUT:-5}"
 start_phase_timing "KUBERNETES_DEPLOYMENT"
 log_info "🚀 STARTING KUBERNETES DEPLOYMENT PHASE"
 log_info "═══════════════════════════════════════════════════════════════════════════════"
-log "📋 DEPLOYMENT DETAILS:"
-log "   • Manifest: k8s/deployment.yaml"
-log "   • Image: localhost:32000/my-ag-ui-app:latest (from local registry)"
-log "   • Strategy: Rolling update with pod restart"
-log "   • Registry: microk8s local registry"
-log ""
+log_info "📋 DEPLOYMENT DETAILS:"
+log_info "   • Manifest: k8s/deployment.yaml"
+log_info "   • Image: localhost:32000/my-ag-ui-app:latest (from local registry)"
+log_info "   • Strategy: Rolling update with pod restart"
+log_info "   • Registry: microk8s local registry"
+log_info ""
 log_info "🔄 STEP 1: Applying deployment manifest..."
 log_info "   • Manifest: k8s/deployment.yaml"
 log_info "   • Image: localhost:32000/my-ag-ui-app:latest (from local registry)"
@@ -294,7 +294,7 @@ fi
 
 # Analyze the kubectl apply result
 if [ $kubectl_apply_exit_code -eq 0 ]; then
-    log "✅ KUBECTL APPLY: Command completed successfully (exit code: 0)"
+    log_info "✅ KUBECTL APPLY: Command completed successfully (exit code: 0)"
     
     # Analyze the output for deployment creation/update details
     if echo "$kubectl_apply_output" | grep -q "deployment.apps/my-ag-ui-app created"; then
@@ -360,7 +360,7 @@ else
     log "   • Full error output logged above"
     
     # Enhanced error analysis with specific recovery guidance
-    log "🔍 ERROR ANALYSIS: Examining kubectl apply failure..."
+    log_info "🔍 ERROR ANALYSIS: Examining kubectl apply failure..."
     
     if echo "$kubectl_apply_output" | grep -q "the server could not find the requested resource"; then
         log "   ERROR TYPE: RESOURCE NOT FOUND"
@@ -451,10 +451,10 @@ else
 
 fi
 
-log "✅ Deployment manifest application process completed"
-log "   • Kubernetes deployment resource processed"
-log "   • Next step: Deployment restart to trigger pod creation"
-log ""
+log_info "✅ Deployment manifest application process completed"
+log_info "   • Kubernetes deployment resource processed"
+log_info "   • Next step: Deployment restart to trigger pod creation"
+log_info ""
 log_info "🔄 STEP 2: Restarting deployment to trigger pod recreation..."
 log_info "   • This will create new pods using the updated registry image"
 log_info "   • Pods will pull image from localhost:32000/my-ag-ui-app:latest"
@@ -463,7 +463,7 @@ if ! multipass exec "$VM_NAME" -- microk8s kubectl rollout restart deployment/my
         "Check if deployment exists: microk8s kubectl get deployment my-ag-ui-app. Ensure deployment is in a state that can be restarted." \
         "DEPLOYMENT_RESTART_FAILURE"
 fi
-log "✅ Deployment restarted successfully"
+log_info "✅ Deployment restarted successfully"
 log_info "   • Rolling update initiated"
 log_info "   • New pods will be created using registry image"
 log_info "   • Expected: Direct pod startup (no ImagePullBackOff with registry approach)"
@@ -822,16 +822,16 @@ log_info "🎯 KUBERNETES DEPLOYMENT PHASE COMPLETED"
 
 # Log deployment progress summary
 log_deployment_progress_summary() {
-    log ""
-    log "📊 DEPLOYMENT PROGRESS SUMMARY:"
-    log "═══════════════════════════════════════════════════════════════════════════════"
-    log "✅ DEPENDENCY_VALIDATION: Package dependencies validated"
-    log "✅ DOCKER_IMAGE_BUILD: Image built successfully (localhost:32000/my-ag-ui-app:latest)"
-    log "✅ MICROK8S_REGISTRY_SETUP: Local registry enabled and accessible"
-    log "✅ DOCKER_REGISTRY_PUSH: Image pushed to registry with verification"
-    log "✅ KUBERNETES_DEPLOYMENT: Manifest applied and deployment restarted"
-    log "🔄 KUBERNETES_VERIFICATION: In progress - verifying pods are ready"
-    log "⏳ INGRESS_SETUP: Pending - will verify external access"
+log_info ""
+log_info "📊 DEPLOYMENT PROGRESS SUMMARY:"
+log "═══════════════════════════════════════════════════════════════════════════════"
+log_info "✅ DEPENDENCY_VALIDATION: Package dependencies validated"
+log_info "✅ DOCKER_IMAGE_BUILD: Image built successfully (localhost:32000/my-ag-ui-app:latest)"
+log_info "✅ MICROK8S_REGISTRY_SETUP: Local registry enabled and accessible"
+log_info "✅ DOCKER_REGISTRY_PUSH: Image pushed to registry with verification"
+log_info "✅ KUBERNETES_DEPLOYMENT: Manifest applied and deployment restarted"
+log_info "🔄 KUBERNETES_VERIFICATION: In progress - verifying pods are ready"
+log_info "⏳ INGRESS_SETUP: Pending - will verify external access"
     log "═══════════════════════════════════════════════════════════════════════════════"
 }
 
@@ -1423,13 +1423,13 @@ log_info "🚀 DEPLOYMENT STATUS: FULLY COMPLETED"
 log_info "📦 REGISTRY APPROACH: Successfully implemented and verified"
 log_info "🌐 ACCESS: Ready via ingress endpoint (details below)"
 log "═══════════════════════════════════════════════════════════════════════════════"
-log "✅ DEPENDENCY_VALIDATION: Package dependencies validated and synchronized"
-log "✅ DOCKER_IMAGE_BUILD: Image built successfully (localhost:32000/my-ag-ui-app:latest)"
-log "✅ MICROK8S_REGISTRY_SETUP: Local registry enabled and verified accessible"
-log "✅ DOCKER_REGISTRY_PUSH: Image pushed with comprehensive verification"
-log "✅ KUBERNETES_DEPLOYMENT: Manifest applied, deployment restarted"
-log "✅ KUBERNETES_VERIFICATION: Pods verified and deployment status confirmed"
-log "✅ INGRESS_SETUP: External access configured and tested"
+log_info "✅ DEPENDENCY_VALIDATION: Package dependencies validated and synchronized"
+log_info "✅ DOCKER_IMAGE_BUILD: Image built successfully (localhost:32000/my-ag-ui-app:latest)"
+log_info "✅ MICROK8S_REGISTRY_SETUP: Local registry enabled and verified accessible"
+log_info "✅ DOCKER_REGISTRY_PUSH: Image pushed with comprehensive verification"
+log_info "✅ KUBERNETES_DEPLOYMENT: Manifest applied, deployment restarted"
+log_info "✅ KUBERNETES_VERIFICATION: Pods verified and deployment status confirmed"
+log_info "✅ INGRESS_SETUP: External access configured and tested"
 log "═══════════════════════════════════════════════════════════════════════════════"
 log_info "🚀 DEPLOYMENT STATUS: FULLY COMPLETED"
 log "📦 REGISTRY APPROACH: Successfully implemented and verified"

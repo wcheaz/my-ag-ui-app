@@ -29,29 +29,31 @@
 
 ## 4. Conditional Logging Implementation
 
-- [ ] 4.1 Add VERBOSE environment variable check to deploy_scripts/common.sh to conditionally suppress log_info output
+- [x] 4.1 Add VERBOSE environment variable check to deploy_scripts/common.sh to conditionally suppress log_info output
   - **Done when**: common.sh log_info function checks VERBOSE flag and only outputs when VERBOSE=true
-- [ ] 4.2 Update deploy-to-k8s.sh to suppress INFO/DEBUG messages unless VERBOSE=true
+- [x] 4.2 Update deploy-to-k8s.sh to suppress INFO/DEBUG messages unless VERBOSE=true
   - **Done when**: All INFO/DEBUG log statements in deploy-to-k8s.sh are wrapped in VERBOSE check
-- [ ] 4.3 Update setup-k8s-secrets.sh to suppress INFO/DEBUG messages unless VERBOSE=true
+- [x] 4.3 Update setup-k8s-secrets.sh to suppress INFO/DEBUG messages unless VERBOSE=true
   - **Done when**: All log_info DEBUG statements in setup-k8s-secrets.sh respect VERBOSE flag
-- [ ] 4.4 Update setup-microk8s-registry.sh to suppress INFO messages unless VERBOSE=true
+- [x] 4.4 Update setup-microk8s-registry.sh to suppress INFO messages unless VERBOSE=true
   - **Done when**: All log_info statements in setup-microk8s-registry.sh respect VERBOSE flag
-- [ ] 4.5 Update build-docker-image.sh to suppress INFO messages unless VERBOSE=true
+- [x] 4.5 Update build-docker-image.sh to suppress INFO messages unless VERBOSE=true
   - **Done when**: All INFO-level log statements in build-docker-image.sh respect VERBOSE flag
-- [ ] 4.6 Update push-docker-image.sh to suppress INFO messages unless VERBOSE=true
+- [x] 4.6 Update push-docker-image.sh to suppress INFO messages unless VERBOSE=true
   - **Done when**: All INFO-level log statements in push-docker-image.sh respect VERBOSE flag
-- [ ] 4.7 Update tag-docker-image.sh to suppress INFO messages unless VERBOSE=true
+- [x] 4.7 Update tag-docker-image.sh to suppress INFO messages unless VERBOSE=true
   - **Done when**: All INFO-level log statements in tag-docker-image.sh respect VERBOSE flag
-- [ ] 4.8 Test deployment scripts with VERBOSE=false to confirm clean log output
+- [x] 4.8 Test deployment scripts with VERBOSE=false to confirm clean log output
   - **Done when**: Dry-run execution shows only ERROR/WARN messages, INFO/DEBUG suppressed
-- [ ] 4.9 Test deployment scripts with VERBOSE=true to verify detailed logging still works
+- [x] 4.9 Test deployment scripts with VERBOSE=true to verify detailed logging still works
   - **Done when**: Dry-run execution shows all log levels including INFO/DEBUG
 
 ## 5. Validation and Testing
 
-- [ ] 5.1 Run full deployment pipeline with VERBOSE=false and verify health endpoint probe passes
+- [x] 5.1 Run full deployment pipeline with VERBOSE=false and verify health endpoint probe passes
   - **Done when**: Deployment completes successfully, pods reach Ready state, logs are clean
+- [ ] 5.1.1 Debug health endpoint 404 error in standalone deployment
+  - **Done when**: Health endpoint returns JSON response instead of 404 HTML page
 - [ ] 5.2 Run full deployment pipeline with VERBOSE=true and verify detailed logging is available
   - **Done when**: Deployment completes successfully, logs include detailed debug information
 - [ ] 5.3 Verify health endpoint response time is < 1 second using curl performance measurement from within VM

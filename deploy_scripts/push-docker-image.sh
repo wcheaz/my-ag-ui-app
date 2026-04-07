@@ -60,11 +60,9 @@ setup_log_file() {
             fi
         fi
         
-        # Log success and output if verbose mode is enabled
+        # Log success and output
         log_info "Command succeeded: $command_description"
-        if [[ "${VERBOSE:-false}" == "true" ]]; then
-            echo "Command output: $output" | tee -a "$LOG_FILE"
-        fi
+        log_info "Command output: $output"
         
         return 0
     }
@@ -76,9 +74,7 @@ fi
 
 # Verify microk8s registry is running and accessible at localhost:32000
 verify_microk8s_registry() {
-    if [ "$DEBUG" = "all" ]; then
-        log_info "Verifying registry is running and accessible at localhost:32000..."
-    fi
+    log_info "Verifying registry is running and accessible at localhost:32000..."
     
     local registry_check_output
     local registry_check_exit_code
@@ -91,39 +87,33 @@ verify_microk8s_registry() {
     local check_duration=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0")
     
     if [ $registry_check_exit_code -eq 0 ]; then
-        if [ "$DEBUG" = "all" ]; then
-            log_info "✅ REGISTRY CONNECTIVITY: SUCCESS"
-            log_info "   Response time: ${check_duration} seconds"
+        log_info "✅ REGISTRY CONNECTIVITY: SUCCESS"
+        log_info "   Response time: ${check_duration} seconds"
+        
+        # Log registry response for verification
+        if [ -n "$registry_check_output" ]; then
+            log_info "Registry response:"
+            echo "$registry_check_output" | tee -a "$LOG_FILE"
             
-            # Log registry response for verification
-            if [ -n "$registry_check_output" ]; then
-                log_info "Registry response:"
-                echo "$registry_check_output" | tee -a "$LOG_FILE"
-                
-                if echo "$registry_check_output" | grep -q '{"repositories":'; then
-                    log_info "✅ REGISTRY RESPONSE FORMAT: VALID JSON"
-                else
-                    log "⚠️  REGISTRY RESPONSE FORMAT: UNEXPECTED"
-                fi
+            if echo "$registry_check_output" | grep -q '{"repositories":'; then
+                log_info "✅ REGISTRY RESPONSE FORMAT: VALID JSON"
+            else
+                log "⚠️  REGISTRY RESPONSE FORMAT: UNEXPECTED"
             fi
         fi
     else
         log "❌ REGISTRY CONNECTIVITY: FAILED"
         log "   Exit code: $registry_check_exit_code"
         
-        if [ "$DEBUG" = "all" ]; then
-            log "Registry check output:"
-            echo "$registry_check_output" | tee -a "$LOG_FILE"
-        fi
+        log_info "Registry check output:"
+        echo "$registry_check_output" | tee -a "$LOG_FILE"
         
         # Check if registry service is running
         local registry_service_status
         registry_service_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "unknown")
         
         if [ "$registry_service_status" = "Running" ]; then
-            if [ "$DEBUG" = "all" ]; then
-                log_info "✅ REGISTRY SERVICE: RUNNING"
-            fi
+            log_info "✅ REGISTRY SERVICE: RUNNING"
         else
             log "❌ REGISTRY SERVICE: NOT RUNNING"
             handle_registry_error 302 "Registry service not running - pod status: $registry_service_status" \
@@ -132,19 +122,17 @@ verify_microk8s_registry() {
         fi
     fi
     
-    if [ "$DEBUG" = "all" ]; then
-        log_info "Getting detailed registry status..."
-        local registry_pod_status
-        local registry_service_info
-        
-        registry_pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o wide 2>&1 | tee -a "$LOG_FILE")
-        registry_service_info=$(multipass exec "$VM_NAME" -- microk8s kubectl get svc -n container-registry -l app=registry 2>&1 | tee -a "$LOG_FILE")
-        
-        log_info "Registry pod status:"
-        echo "$registry_pod_status" | tee -a "$LOG_FILE"
-        log_info "Registry service info:"
-        echo "$registry_service_info" | tee -a "$LOG_FILE"
-    fi
+    log_info "Getting detailed registry status..."
+    local registry_pod_status
+    local registry_service_info
+    
+    registry_pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o wide 2>&1 | tee -a "$LOG_FILE")
+    registry_service_info=$(multipass exec "$VM_NAME" -- microk8s kubectl get svc -n container-registry -l app=registry 2>&1 | tee -a "$LOG_FILE")
+    
+    log_info "Registry pod status:"
+    echo "$registry_pod_status" | tee -a "$LOG_FILE"
+    log_info "Registry service info:"
+    echo "$registry_service_info" | tee -a "$LOG_FILE"
     
     log_info "✅ Registry verification completed successfully"
     log_info "   Registry is accessible at: localhost:32000"
@@ -158,10 +146,8 @@ check_disk_space() {
     local min_required_gb="$2"
     local check_path="${3:-.}"  # Default to current directory
     
-    if [ "$DEBUG" = "all" ]; then
-        log_info "CHECKING DISK SPACE FOR: $operation_name"
-        log_info "Minimum required: ${min_required_gb}GB"
-    fi
+    log_info "CHECKING DISK SPACE FOR: $operation_name"
+    log_info "Minimum required: ${min_required_gb}GB"
     
     # Get disk space information
     local df_output
@@ -202,9 +188,7 @@ check_disk_space() {
     # Ensure we have a numeric value
     available_gb=$(echo "$available_gb" | sed 's/[^0-9.]//g' | awk '{printf "%.1f", $1}')
     
-    if [ "$DEBUG" = "all" ]; then
-        log_info "Available disk space: ${available_gb}GB at $check_path"
-    fi
+    log_info "Available disk space: ${available_gb}GB at $check_path"
     
     # Compare with minimum required
     if [ "$(echo "$available_gb < $min_required_gb" | bc -l 2>/dev/null || echo 1)" -eq 1 ]; then
@@ -229,11 +213,9 @@ check_disk_space() {
             return 0
         fi
     else
-        if [ "$DEBUG" = "all" ]; then
-            local available_diff
-            available_diff=$(echo "scale=1; $available_gb - $min_required_gb" | bc -l 2>/dev/null || echo "$available_gb")
-            log_info "✅ SUFFICIENT DISK SPACE FOR: $operation_name (${available_diff}GB available above minimum)"
-        fi
+        local available_diff
+        available_diff=$(echo "scale=1; $available_gb - $min_required_gb" | bc -l 2>/dev/null || echo "$available_gb")
+        log_info "✅ SUFFICIENT DISK SPACE FOR: $operation_name (${available_diff}GB available above minimum)"
         return 0
     fi
 }
@@ -383,18 +365,14 @@ push_image_to_registry() {
             retry_delay=$(calculate_push_retry_delay $PUSH_ATTEMPT $INITIAL_PUSH_RETRY_DELAY $MAX_PUSH_RETRY_DELAY $PUSH_BACKOFF_FACTOR $PUSH_RETRY_JITTER_MAX)
             log "Push attempt $PUSH_ATTEMPT/$MAX_PUSH_ATTEMPTS (retry delay: ${retry_delay}s - exponential backoff with jitter)..."
         else
-            if [ "$DEBUG" = "all" ]; then
-                log_info "Push attempt $PUSH_ATTEMPT/$MAX_PUSH_ATTEMPTS (initial attempt)..."
-            fi
+            log_info "Push attempt $PUSH_ATTEMPT/$MAX_PUSH_ATTEMPTS (initial attempt)..."
         fi
         
         local push_output
         local push_exit_code
         
         # Execute docker push with error capture and timeout within VM
-        if [ "$DEBUG" = "all" ]; then
-            log_info "   Executing: multipass exec $VM_NAME -- timeout 60 docker push $target_image"
-        fi
+        log_info "   Executing: multipass exec $VM_NAME -- timeout 60 docker push $target_image"
         
         if push_output=$(multipass exec "$VM_NAME" -- timeout 60 docker push "$target_image" 2>&1); then
             push_exit_code=0

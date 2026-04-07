@@ -116,10 +116,8 @@ verify_microk8s_registry() {
         
         # Log registry response for verification
         if [ -n "$registry_check_output" ]; then
-            if [ "${VERBOSE:-false}" = "true" ]; then
-                log_info "Registry response:"
-                log_info "$registry_check_output"
-            fi
+            log_info "Registry response:"
+            log_info "$registry_check_output"
             
             if validate_registry_json_response "$registry_check_output"; then
                 log_info "✅ REGISTRY RESPONSE FORMAT: VALID JSON"
@@ -132,10 +130,8 @@ verify_microk8s_registry() {
         log_error "❌ REGISTRY CONNECTIVITY: FAILED"
         log_error "   Exit code: $registry_check_exit_code"
         
-        if [ "${VERBOSE:-false}" = "true" ]; then
-            log_info "Registry check output:"
-            log_info "$registry_check_output"
-        fi
+        log_info "Registry check output:"
+        log_info "$registry_check_output"
         
         # Check if registry service is running
         local registry_service_status
@@ -152,19 +148,17 @@ verify_microk8s_registry() {
     fi
     
     # Get registry status information
-    if [ "${VERBOSE:-false}" = "true" ]; then
-        log_info "Getting detailed registry status..."
-        local registry_pod_status
-        local registry_service_info
-        
-        registry_pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o wide 2>&1)
-        registry_service_info=$(multipass exec "$VM_NAME" -- microk8s kubectl get svc -n container-registry -l app=registry 2>&1)
-        
-        log_info "Registry pod status:"
-        log_info "$registry_pod_status"
-        log_info "Registry service info:"
-        log_info "$registry_service_info"
-    fi
+    log_info "Getting detailed registry status..."
+    local registry_pod_status
+    local registry_service_info
+    
+    registry_pod_status=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -l app=registry -o wide 2>&1)
+    registry_service_info=$(multipass exec "$VM_NAME" -- microk8s kubectl get svc -n container-registry -l app=registry 2>&1)
+    
+    log_info "Registry pod status:"
+    log_info "$registry_pod_status"
+    log_info "Registry service info:"
+    log_info "$registry_service_info"
     
     log_info "✅ Registry verification completed successfully"
     log_info "   Registry is accessible at: localhost:32000"
@@ -200,10 +194,8 @@ verify_registry_before_enable() {
         log_info "   This is normal when registry is not yet enabled"
         log_info "   Exit code: $registry_check_exit_code"
         
-        if [ "${VERBOSE:-false}" = "true" ]; then
-            log_info "Pre-enablement check output:"
-            log_info "$registry_check_output"
-        fi
+        log_info "Pre-enablement check output:"
+        log_info "$registry_check_output"
         
         return 0  # Continue with enablement - this is expected behavior
     fi
@@ -247,18 +239,16 @@ enable_microk8s_registry() {
     if [ $registry_enable_exit_code -eq 0 ]; then
         log_info "✅ microk8s registry enable command completed successfully"
         
-        # Log the output if verbose mode is enabled
-        if [ "${VERBOSE:-false}" = "true" ] && [ -n "$registry_enable_output" ]; then
+        # Log the output 
+        if [ -n "$registry_enable_output" ]; then
             log_info "Registry enablement output:"
             log_info "$registry_enable_output"
         fi
     else
         log_error "❌ ERROR: Failed to enable microk8s registry (exit code: $registry_enable_exit_code)"
         
-        if [ "${VERBOSE:-false}" = "true" ]; then
-            log_info "Error output:"
-            log_info "$registry_enable_output"
-        fi
+        log_info "Error output:"
+        log_info "$registry_enable_output"
         
         # Specific error handling
         if echo "$registry_enable_output" | grep -q "microk8s is not running"; then
