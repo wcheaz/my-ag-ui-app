@@ -89,3 +89,4 @@ test/kubernetes/
 
 # ralph-docs directory
 ralph-docs
+deploy_log.md
