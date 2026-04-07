@@ -69,11 +69,11 @@
 
 ## 6. Documentation and Cleanup
 
-- [ ] 6.1 Update deployment documentation to explain VERBOSE flag usage and when to use verbose mode
+- [x] 6.1 Update deployment documentation to explain VERBOSE flag usage and when to use verbose mode
   - **Done when**: Documentation includes VERBOSE flag description and troubleshooting guidance
-- [ ] 6.2 Document requirement to test endpoints from within VM (not from host machine)
+- [x] 6.2 Document requirement to test endpoints from within VM (not from host machine)
   - **Done when**: README/docs note cluster runs in Multipass VM and testing requires `multipass exec`
-- [ ] 6.3 Clean up any temporary test artifacts or debug files created during investigation
+- [x] 6.3 Clean up any temporary test artifacts or debug files created during investigation
   - **Done when**: Temporary files are removed and repository is in clean state
 - [ ] 6.4 Commit changes with descriptive commit message referencing this change
   - **Done when**: Git commit is created with message describing bash fix, config cleanup, health endpoint and logging fixes

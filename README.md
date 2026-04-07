@@ -511,6 +511,8 @@ This health check endpoint is used by Kubernetes for:
 
 ### Testing the Endpoint
 
+#### Local Development Testing
+
 You can test the health endpoint locally during development:
 
 ```bash
@@ -520,6 +522,44 @@ curl http://localhost:3000/api/health
 # Expected response:
 # {"status":"healthy"}
 ```
+
+#### Kubernetes Deployment Testing
+
+**Important**: After Kubernetes deployment, the application runs inside a Multipass VM. You cannot access the application endpoints directly from your host machine. All testing must be done from within the VM using `multipass exec`.
+
+The cluster runs in a Multipass VM named `my-ag-ui-app-k8s`. To test endpoints after deployment:
+
+```bash
+# Test health endpoint from within the VM
+multipass exec my-ag-ui-app-k8s -- curl http://localhost:3000/api/health
+
+# Expected response:
+# {"status":"healthy"}
+```
+
+#### Advanced VM Testing
+
+For more detailed testing, you can access individual pods:
+
+```bash
+# Get the pod name
+POD_NAME=$(multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[0].metadata.name}')
+
+# Test health endpoint directly on the pod
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec $POD_NAME -- curl http://localhost:3000/api/health
+
+# Test with response time measurement
+multipass exec my-ag-ui-app-k8s -- curl -w '%{time_total}' http://localhost:3000/api/health
+```
+
+#### Why VM Testing is Required
+
+- **Network Isolation**: The Kubernetes cluster runs inside the VM and is not directly accessible from the host
+- **Security**: Pod endpoints are only accessible within the cluster network
+- **Realistic Testing**: Testing from within the VM provides accurate results that match Kubernetes probe behavior
+- **Debugging**: VM testing allows you to access pod logs and cluster state for troubleshooting
+
+**Note**: Always use `multipass exec` for post-deployment testing and debugging. The application ingress may be accessible from the host (if configured), but direct pod access requires VM execution.
 
 ### Kubernetes Configuration
 
