@@ -22,7 +22,7 @@
   - Done when: Line 4 of Dockerfile reads `FROM node:20.19.0-alpine`
   - Verify by: Running `grep "^FROM node:" Dockerfile` returns `FROM node:20.19.0-alpine`
 
-- [ ] 2.2 Verify Docker build completes without EBADENGINE warnings
+- [x] 2.2 Verify Docker build completes without EBADENGINE warnings
   - Done when: Docker build log contains no "EBADENGINE" or "Unsupported engine" warnings
   - Verify by: Running `docker build -t my-ag-ui-app:latest .` and checking log for warnings
 
