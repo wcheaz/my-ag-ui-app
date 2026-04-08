@@ -30,7 +30,7 @@
   - Done when: Script compares available space against 500MB threshold and fails if insufficient
   - Verify by: Running `grep -A 3 "500" deploy_scripts/build-docker-image.sh` shows space comparison and error message
 
-- [ ] 2.4 Verify deployment succeeds without "no space left on device" errors
+- [x] 2.4 Verify deployment succeeds without "no space left on device" errors
   - Done when: Docker image load completes successfully, deployment continues without disk space errors
   - Verify by: Running `deploy-all.sh` and confirming log contains no "no space left on device" errors
 
