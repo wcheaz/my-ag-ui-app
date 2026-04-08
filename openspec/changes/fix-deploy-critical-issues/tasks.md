@@ -19,7 +19,7 @@
 ## 4. Testing
 
 - [x] 4.1 Test Docker cleanup with stopped containers referencing images to verify no conflict errors
-- [ ] 4.2 Test build script with successful Docker build to verify false negative does not occur
+- [x] 4.2 Test build script with successful Docker build to verify false negative does not occur
 - [ ] 4.3 Test build script with failed Docker build to verify correct error reporting
 - [ ] 4.4 Test backup creation during deployment to verify file is created at correct point
 - [ ] 4.5 Test rollback function with backup present to verify successful state restoration
