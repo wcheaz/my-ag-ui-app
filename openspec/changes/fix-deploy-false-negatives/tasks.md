@@ -19,16 +19,16 @@
 ## 2. VM Disk Space Management
 
 - [x] 2.1 Add disk space verification before Docker image load in deploy_scripts/build-docker-image.sh
-  - Done when: Script checks available space with `multipass exec "$VM_NAME" -- df -h /` before image load
-  - Verify by: Running `grep -A 5 "Checking VM disk space" deploy_scripts/build-docker-image.sh` shows df command
+  - Done when: Script checks available space with `multipass exec "$VM_NAME" -- df -BM /` before image load
+  - Verify by: Running `grep -A 2 "Checking VM disk space" deploy_scripts/build-docker-image.sh` shows df -BM command
 
 - [x] 2.2 Add Docker system prune before image load in deploy_scripts/build-docker-image.sh
   - Done when: Script runs `multipass exec "$VM_NAME" -- docker system prune -f` before loading image
   - Verify by: Running `grep "docker system prune -f" deploy_scripts/build-docker-image.sh` returns the prune command
 
 - [x] 2.3 Add minimum disk space threshold check with 500MB requirement
-  - Done when: Script compares available space against 500MB threshold and fails if insufficient
-  - Verify by: Running `grep -A 3 "500" deploy_scripts/build-docker-image.sh` shows space comparison and error message
+  - Done when: Script compares available space in MB against 500MB threshold using integer comparison
+  - Verify by: Running `grep -A 4 "MIN_SPACE_MB=500" deploy_scripts/build-docker-image.sh` shows integer comparison
 
 - [x] 2.4 Verify deployment succeeds without "no space left on device" errors
   - Done when: Docker image load completes successfully, deployment continues without disk space errors
@@ -64,9 +64,9 @@
   - Done when: `deploy-all.sh` completes successfully without "STEP 2 FAILED" error
   - Verify by: Running `./deploy-all.sh` and confirming all steps complete with success messages
 
-- [ ] 5.2 Verify deployment succeeds without disk space errors
-  - Done when: Multiple deployment runs complete without "no space left on device" errors
-  - Verify by: Running deployment 3 times and confirming Docker image load succeeds each time
+- [x] 5.2 Verify deployment succeeds without disk space errors
+   - Done when: Multiple deployment runs complete without "no space left on device" errors
+   - Verify by: Running deployment 3 times and confirming Docker image load succeeds each time
 
 - [x] 5.3 Verify rollback capability is preserved
   - Done when: Rollback function in deploy-all.sh uses k8s/deployment.yaml.backup and restores state on actual failure

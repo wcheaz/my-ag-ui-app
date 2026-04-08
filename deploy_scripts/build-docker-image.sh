@@ -177,8 +177,8 @@ log "✅ Image transferred to VM"
 
 # Check disk space and cleanup before image load
 log "Checking VM disk space..."
-AVAILABLE_SPACE=$(multipass exec "$VM_NAME" -- df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
-log "Available space: ${AVAILABLE_SPACE}MB"
+AVAILABLE_SPACE_MB=$(multipass exec "$VM_NAME" -- df -BM / | awk 'NR==2 {print $4}')
+log "Available space: ${AVAILABLE_SPACE_MB}MB"
 
 # Prune unused Docker data to free space
 log "Cleaning up unused Docker images and containers..."
@@ -188,12 +188,13 @@ if ! multipass exec "$VM_NAME" -- docker system prune -f 2>&1 | tee -a "$LOG_FIL
 fi
 
 # Verify space again after cleanup
-AVAILABLE_SPACE=$(multipass exec "$VM_NAME" -- df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
-log "Available space after cleanup: ${AVAILABLE_SPACE}MB"
+AVAILABLE_SPACE_MB=$(multipass exec "$VM_NAME" -- df -BM / | awk 'NR==2 {print $4}')
+log "Available space after cleanup: ${AVAILABLE_SPACE_MB}MB"
 
 # Require minimum 500MB
-if [ "$AVAILABLE_SPACE" -lt 500 ]; then
-    log "❌ ERROR: Insufficient disk space on VM (${AVAILABLE_SPACE}MB available, 500MB required)"
+MIN_SPACE_MB=500
+if [ "$AVAILABLE_SPACE_MB" -lt "$MIN_SPACE_MB" ]; then
+    log "❌ ERROR: Insufficient disk space on VM (${AVAILABLE_SPACE_MB}MB available, ${MIN_SPACE_MB}MB required)"
     log "   Free up space or increase VM disk size"
     rm -f "$TAR_FILE"
     exit 1
