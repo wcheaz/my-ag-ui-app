@@ -117,7 +117,7 @@ log_info "Docker image 'my-ag-ui-app:latest' verified successfully"
 log_info "Docker build process completed successfully"
 
 # Transfer Docker image to VM
-log_info "Transferring Docker image to VM..."
+log "=== TRANSFERRING DOCKER IMAGE TO VM ==="
 
 VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
 SOURCE_IMAGE="my-ag-ui-app:latest"
@@ -137,53 +137,71 @@ if ! multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
     exit 1
 fi
 
-# Get the actual image ID from Docker (to handle the docker.io/library naming)
+# List all images to debug
+log "All available Docker images:"
+docker images | head -10 | tee -a "$LOG_FILE"
+
+# Get actual image ID from Docker (to handle docker.io/library naming)
+log "Getting image ID for $SOURCE_IMAGE..."
 IMAGE_ID=$(docker images "$SOURCE_IMAGE" --format "{{.ID}}" 2>/dev/null | head -n1)
 if [ -z "$IMAGE_ID" ]; then
     log "❌ ERROR: Cannot find image ID for $SOURCE_IMAGE"
+    log "   Listing all images to help debug:"
+    docker images | tee -a "$LOG_FILE"
     exit 1
 fi
-log_info "Found image ID: $IMAGE_ID"
+log "Found image ID: $IMAGE_ID"
 
-# Save image to tar file using the image ID
-log_info "Saving image to tar file..."
-if ! docker save "$IMAGE_ID" -o /tmp/my-ag-ui-app.tar; then
+# Save image to tar file using image ID
+log "Saving image to tar file (this may take a moment)..."
+if ! docker save "$IMAGE_ID" -o /tmp/my-ag-ui-app.tar 2>&1 | tee -a "$LOG_FILE"; then
     log "❌ ERROR: Failed to save Docker image"
     exit 1
 fi
-log_info "✅ Image saved to /tmp/my-ag-ui-app.tar"
+
+# Verify tar file was created
+if [ ! -f "/tmp/my-ag-ui-app.tar" ]; then
+    log "❌ ERROR: Tar file was not created"
+    log "   Expected: /tmp/my-ag-ui-app.tar"
+    ls -lh /tmp/ | tee -a "$LOG_FILE"
+    exit 1
+fi
+log "✅ Image saved to /tmp/my-ag-ui-app.tar ($(ls -lh /tmp/my-ag-ui-app.tar | awk '{print $5}'))"
 
 # Transfer tar file to VM
-log_info "Transferring tar file to VM..."
-if ! multipass transfer /tmp/my-ag-ui-app.tar "$VM_NAME:/tmp/"; then
+log "Transferring tar file to VM..."
+transfer_output=""
+if ! transfer_output=$(multipass transfer /tmp/my-ag-ui-app.tar "$VM_NAME:/tmp/" 2>&1); then
     log "❌ ERROR: Failed to transfer image to VM"
+    log "   multipass transfer error:"
+    echo "$transfer_output" | tee -a "$LOG_FILE"
     rm -f /tmp/my-ag-ui-app.tar
     exit 1
 fi
-log_info "✅ Image transferred to VM"
+log "✅ Image transferred to VM"
 
 # Load image in VM
-log_info "Loading image in VM..."
+log "Loading image in VM..."
 if ! multipass exec "$VM_NAME" -- docker load -i /tmp/my-ag-ui-app.tar; then
     log "❌ ERROR: Failed to load image in VM"
     multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
     rm -f /tmp/my-ag-ui-app.tar
     exit 1
 fi
-log_info "✅ Image loaded in VM"
+log "✅ Image loaded in VM"
 
 # Tag image for registry
-log_info "Tagging image for registry..."
+log "Tagging image for registry..."
 if ! multipass exec "$VM_NAME" -- docker tag my-ag-ui-app:latest "$TARGET_IMAGE"; then
     log "❌ ERROR: Failed to tag image in VM"
     multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
     rm -f /tmp/my-ag-ui-app.tar
     exit 1
 fi
-log_info "✅ Image tagged as $TARGET_IMAGE in VM"
+log "✅ Image tagged as $TARGET_IMAGE in VM"
 
 # Verify image in VM
-log_info "Verifying image in VM..."
+log "Verifying image in VM..."
 if ! multipass exec "$VM_NAME" -- docker images "$TARGET_IMAGE" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "$TARGET_IMAGE"; then
     log "❌ ERROR: Image verification failed in VM"
     log "   Expected: $TARGET_IMAGE"
@@ -193,14 +211,14 @@ if ! multipass exec "$VM_NAME" -- docker images "$TARGET_IMAGE" --format "{{.Rep
     rm -f /tmp/my-ag-ui-app.tar
     exit 1
 fi
-log_info "✅ Image verified in VM: $TARGET_IMAGE"
+log "✅ Image verified in VM: $TARGET_IMAGE"
 
 # Cleanup temporary files
-log_info "Cleaning up temporary files..."
+log "Cleaning up temporary files..."
 multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
 rm -f /tmp/my-ag-ui-app.tar
-log_info "✅ Temporary files cleaned up"
+log "✅ Temporary files cleaned up"
 
-log_info "✅ Docker image successfully built and transferred to VM"
-log_info "   Host image: my-ag-ui-app:latest"
-log_info "   VM image: $TARGET_IMAGE"
+log "✅ Docker image successfully built and transferred to VM"
+log "   Host image: my-ag-ui-app:latest"
+log "   VM image: $TARGET_IMAGE"
