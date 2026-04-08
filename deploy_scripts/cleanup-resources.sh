@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -euo pipefail
-
 # Cleanup Resources Script
 # Removes non-running Kubernetes pods and unused Docker images
 # Usage: ./deploy_scripts/cleanup-resources.sh
@@ -19,6 +17,16 @@ else
     exit 1
 fi
 
+# Error handling functions
+log_warning() {
+    echo "WARNING: $1" | tee -a "$LOG_FILE" 2>/dev/null || echo "WARNING: $1"
+}
+
+handle_critical_error() {
+    echo "ERROR: $1" | tee -a "$LOG_FILE" 2>/dev/null || echo "ERROR: $1"
+    exit 1
+}
+
 # Default values
 VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
 
@@ -29,11 +37,27 @@ cleanup_resources() {
     local pods_cleaned=0
     local docker_images_cleaned=0
     
+    # Check if VM is accessible (critical failure)
+    if ! multipass info "${VM_NAME}" >/dev/null 2>&1; then
+        handle_critical_error "VM '${VM_NAME}' is not accessible. Cannot continue with cleanup."
+    fi
+    
+    # Check if Docker daemon is accessible (critical failure)
+    if ! docker info >/dev/null 2>&1; then
+        handle_critical_error "Docker daemon is not accessible. Cannot continue with cleanup."
+    fi
+    
     # Clean up Kubernetes pods that are not running
     log_info "🧹 Cleaning up non-running Kubernetes pods..."
     
     # Get all pods that are not in Running state
     local non_running_pods=$(multipass exec "${VM_NAME}" -- microk8s kubectl get pods -l app=my-ag-ui-app -o jsonpath='{.items[?(@.status.phase!="Running")].metadata.name}' 2>/dev/null)
+    local pod_command_result=$?
+    
+    if [ $pod_command_result -ne 0 ]; then
+        log_warning "Failed to get pod status from Kubernetes. Skipping pod cleanup."
+        non_running_pods=""
+    fi
     
     if [ -n "$non_running_pods" ]; then
         log_info "🧹 Found non-running pods: $non_running_pods"
@@ -42,7 +66,9 @@ cleanup_resources() {
         local evicted_pods=$(multipass exec "${VM_NAME}" -- microk8s kubectl get pods -l app=my-ag-ui-app --field-selector=status.phase==Failed -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
         if [ -n "$evicted_pods" ]; then
             log_info "🧹 Deleting evicted pods..."
-            multipass exec "${VM_NAME}" -- microk8s kubectl delete pods -l app=my-ag-ui-app --field-selector=status.phase==Failed --ignore-not-found=true 2>&1 | tee -a "$LOG_FILE" || true
+            if ! multipass exec "${VM_NAME}" -- microk8s kubectl delete pods -l app=my-ag-ui-app --field-selector=status.phase==Failed --ignore-not-found=true 2>&1 | tee -a "$LOG_FILE"; then
+                log_warning "Failed to delete some evicted pods. Continuing with cleanup."
+            fi
             local evicted_count=$(echo "$evicted_pods" | wc -w)
             pods_cleaned=$((pods_cleaned + evicted_count))
             log_info "✅ Deleted $evicted_count evicted pods"
@@ -52,7 +78,9 @@ cleanup_resources() {
         local pull_error_pods=$(multipass exec "${VM_NAME}" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json 2>/dev/null | grep -o '"reason":"ImagePullBackOff"\|"reason":"ErrImagePull"' | wc -l)
         if [ "$pull_error_pods" -gt 0 ]; then
             log_info "🧹 Deleting pods with image pull errors..."
-            multipass exec "${VM_NAME}" -- microk8s kubectl delete pods -l app=my-ag-ui-app --field-selector=status.phase!=Running --ignore-not-found=true 2>&1 | tee -a "$LOG_FILE" || true
+            if ! multipass exec "${VM_NAME}" -- microk8s kubectl delete pods -l app=my-ag-ui-app --field-selector=status.phase!=Running --ignore-not-found=true 2>&1 | tee -a "$LOG_FILE"; then
+                log_warning "Failed to delete some pods with image pull errors. Continuing with cleanup."
+            fi
             log_info "✅ Deleted pods with image pull errors"
         fi
         
@@ -60,7 +88,9 @@ cleanup_resources() {
         local crash_loop_pods=$(multipass exec "${VM_NAME}" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json 2>/dev/null | grep -o '"reason":"CrashLoopBackOff"' | wc -l)
         if [ "$crash_loop_pods" -gt 0 ]; then
             log_info "🧹 Deleting CrashLoopBackOff pods..."
-            multipass exec "${VM_NAME}" -- microk8s kubectl delete pods -l app=my-ag-ui-app --field-selector=status.phase!=Running --ignore-not-found=true 2>&1 | tee -a "$LOG_FILE" || true
+            if ! multipass exec "${VM_NAME}" -- microk8s kubectl delete pods -l app=my-ag-ui-app --field-selector=status.phase!=Running --ignore-not-found=true 2>&1 | tee -a "$LOG_FILE"; then
+                log_warning "Failed to delete some CrashLoopBackOff pods. Continuing with cleanup."
+            fi
             log_info "✅ Deleted CrashLoopBackOff pods"
         fi
         
@@ -69,7 +99,9 @@ cleanup_resources() {
         if [ -n "$remaining_non_running" ]; then
             local remaining_count=$(echo "$remaining_non_running" | wc -w)
             log_info "🧹 Deleting remaining non-running pods..."
-            multipass exec "${VM_NAME}" -- microk8s kubectl delete pods -l app=my-ag-ui-app --field-selector=status.phase!=Running --ignore-not-found=true 2>&1 | tee -a "$LOG_FILE" || true
+            if ! multipass exec "${VM_NAME}" -- microk8s kubectl delete pods -l app=my-ag-ui-app --field-selector=status.phase!=Running --ignore-not-found=true 2>&1 | tee -a "$LOG_FILE"; then
+                log_warning "Failed to delete some remaining non-running pods. Continuing with cleanup."
+            fi
             pods_cleaned=$((pods_cleaned + remaining_count))
             log_info "✅ Deleted $remaining_count remaining non-running pods"
         fi
@@ -86,7 +118,9 @@ cleanup_resources() {
     if [ -n "$running_containers" ]; then
         local running_count=$(echo "$running_containers" | wc -l)
         log_info "🧹 Stopping $running_count running containers..."
-        docker stop $running_containers 2>&1 | tee -a "$LOG_FILE" || true
+        if ! docker stop $running_containers 2>&1 | tee -a "$LOG_FILE"; then
+            log_warning "Failed to stop some running containers. Continuing with cleanup."
+        fi
         log_info "✅ Stopped $running_count running containers"
     fi
     
@@ -97,7 +131,9 @@ cleanup_resources() {
     if [ -n "$all_containers" ]; then
         local all_count=$(echo "$all_containers" | wc -l)
         log_info "🧹 Removing $all_count stopped containers..."
-        docker rm $all_containers 2>&1 | tee -a "$LOG_FILE" || true
+        if ! docker rm $all_containers 2>&1 | tee -a "$LOG_FILE"; then
+            log_warning "Failed to remove some stopped containers. Continuing with cleanup."
+        fi
         log_info "✅ Removed $all_count stopped containers"
     fi
     
@@ -109,9 +145,12 @@ cleanup_resources() {
     if [ -n "$dangling_images" ]; then
         local dangling_count=$(echo "$dangling_images" | wc -l)
         log_info "🧹 Removing $dangling_count dangling Docker images..."
-        docker rmi $dangling_images 2>&1 | tee -a "$LOG_FILE" || true
-        docker_images_cleaned=$((docker_images_cleaned + dangling_count))
-        log_info "✅ Removed dangling Docker images"
+        if ! docker rmi $dangling_images 2>&1 | tee -a "$LOG_FILE"; then
+            log_warning "Failed to remove some dangling Docker images. Continuing with cleanup."
+        else
+            docker_images_cleaned=$((docker_images_cleaned + dangling_count))
+            log_info "✅ Removed dangling Docker images"
+        fi
     fi
     
     # Remove old my-ag-ui-app images (keep only latest)
@@ -119,15 +158,21 @@ cleanup_resources() {
     if [ -n "$old_app_images" ]; then
         local old_count=$(echo "$old_app_images" | wc -l)
         log_info "🧹 Removing $old_count old my-ag-ui-app images..."
-        docker rmi $old_app_images 2>&1 | tee -a "$LOG_FILE" || true
-        docker_images_cleaned=$((docker_images_cleaned + old_count))
-        log_info "✅ Removed old my-ag-ui-app images"
+        if ! docker rmi $old_app_images 2>&1 | tee -a "$LOG_FILE"; then
+            log_warning "Failed to remove some old my-ag-ui-app images. Continuing with cleanup."
+        else
+            docker_images_cleaned=$((docker_images_cleaned + old_count))
+            log_info "✅ Removed old my-ag-ui-app images"
+        fi
     fi
     
     # Clean up Docker build cache
     log_info "🧹 Cleaning up Docker build cache..."
-    docker builder prune -f 2>&1 | tee -a "$LOG_FILE" || true
-    log_info "✅ Cleaned up Docker build cache"
+    if ! docker builder prune -f 2>&1 | tee -a "$LOG_FILE"; then
+        log_warning "Failed to clean up Docker build cache. Continuing with cleanup."
+    else
+        log_info "✅ Cleaned up Docker build cache"
+    fi
     
     # Cleanup summary
     log_info "🧹 CLEANUP SUMMARY:"
