@@ -77,8 +77,7 @@ fi
 # Build Docker image
 log_info "Starting Docker image build for 'my-ag-ui-app:latest'..."
 
-# Capture Docker build output for debugging
-build_output=""
+# Build Docker image and capture exit code
 docker build -t my-ag-ui-app:latest . 2>&1 | tee "$LOG_FILE"
 docker_build_status=${PIPESTATUS[0]}
 
