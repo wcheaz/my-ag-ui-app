@@ -2,7 +2,7 @@
 
 - [x] 1.1 Modify cleanup-resources.sh to stop containers with label `app=my-ag-ui-app` before image deletion
 - [x] 1.2 Modify cleanup-resources.sh to remove stopped containers before deleting images
-- [ ] 1.3 Modify cleanup-resources.sh to use non-zero exit only for critical failures, warnings for non-critical failures
+- [x] 1.3 Modify cleanup-resources.sh to use non-zero exit only for critical failures, warnings for non-critical failures
 
 ## 2. Build Verification Accuracy
 
