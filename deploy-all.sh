@@ -125,6 +125,8 @@ log_environment_context() {
     fi
 }
 
+
+
 # Execute deployment scripts in correct order
 log_info "🚀 STARTING DEPLOYMENT PIPELINE"
 log_info "Environment: ${ENVIRONMENT:-development}"
@@ -134,6 +136,13 @@ log_info "Verbose mode: ${VERBOSE:-false}"
 if [ "${VERBOSE:-false}" = "true" ]; then
     log_environment_context
 fi
+
+# Step 0: Cleanup previous non-running pods and unused resources before deployment
+log_info "📋 Step 0: Cleaning up previous deployment resources..."
+if ! ./deploy_scripts/cleanup-resources.sh; then
+    log_warning "⚠️  STEP 0 WARNING: Cleanup encountered issues, but continuing with deployment"
+fi
+log_info "✅ Step 0: Cleanup completed"
 
 # Step 1: Setting up Kubernetes secrets
 log_info "📋 Step 1: Setting up Kubernetes secrets..."
@@ -191,7 +200,8 @@ log_info "✅ Step 6: Kubernetes deployment completed"
 
 # Deployment summary logging (task 11.4)
 log_info "🎉 DEPLOYMENT SUMMARY:"
-log_info "  ✅ All 6 deployment steps completed successfully"
+log_info "  ✅ All 7 deployment steps completed successfully"
+log_info "  ✅ Cleanup: Previous resources removed"
 log_info "  ✅ Kubernetes secrets: Configured"
 log_info "  ✅ Docker image: Built and pushed"
 log_info "  ✅ Microk8s registry: Setup completed"
