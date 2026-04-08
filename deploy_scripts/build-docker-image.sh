@@ -197,7 +197,7 @@ log "   $load_output" | tee -a "$LOG_FILE"
 
 # Extract image ID from load output
 # docker load output format: "Loaded image ID: sha256:..."
-VM_IMAGE_ID=$(echo "$load_output" | grep -oP 'Loaded image: |Loaded image ID: ' | sed 's/.*Loaded image: \?sha256://\|.*Loaded image ID: //' | head -n1)
+VM_IMAGE_ID=$(echo "$load_output" | grep -o 'sha256:[a-f0-9]+')
 if [ -z "$VM_IMAGE_ID" ]; then
     log "❌ ERROR: Could not extract image ID from load output"
     log "   Load output: $load_output"
