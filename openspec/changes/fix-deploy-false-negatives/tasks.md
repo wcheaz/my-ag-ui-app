@@ -16,40 +16,62 @@
   - Done when: Manual test with Docker build succeeds, cleanup fails, script exits with code 0
   - Verify by: Running `deploy-all.sh` and confirming "STEP 2 FAILED" does not occur when build succeeds
 
-## 2. Node Version Compliance
+## 2. VM Disk Space Management
+
+- [ ] 2.1 Add disk space verification before Docker image load in deploy_scripts/build-docker-image.sh
+  - Done when: Script checks available space with `multipass exec "$VM_NAME" -- df -h /` before image load
+  - Verify by: Running `grep -A 5 "Checking VM disk space" deploy_scripts/build-docker-image.sh` shows df command
+
+- [ ] 2.2 Add Docker system prune before image load in deploy_scripts/build-docker-image.sh
+  - Done when: Script runs `multipass exec "$VM_NAME" -- docker system prune -f` before loading image
+  - Verify by: Running `grep "docker system prune -f" deploy_scripts/build-docker-image.sh` returns the prune command
+
+- [ ] 2.3 Add minimum disk space threshold check with 500MB requirement
+  - Done when: Script compares available space against 500MB threshold and fails if insufficient
+  - Verify by: Running `grep -A 3 "500" deploy_scripts/build-docker-image.sh` shows space comparison and error message
+
+- [ ] 2.4 Verify deployment succeeds without "no space left on device" errors
+  - Done when: Docker image load completes successfully, deployment continues without disk space errors
+  - Verify by: Running `deploy-all.sh` and confirming log contains no "no space left on device" errors
+
+## 3. Node Version Compliance
 
 - [x] 2.1 Update Dockerfile base image to node:20.19.0-alpine
   - Done when: Line 4 of Dockerfile reads `FROM node:20.19.0-alpine`
   - Verify by: Running `grep "^FROM node:" Dockerfile` returns `FROM node:20.19.0-alpine`
 
-- [x] 2.2 Verify Docker build completes without EBADENGINE warnings
+- [x] 3.2 Verify Docker build completes without EBADENGINE warnings
   - Done when: Docker build log contains no "EBADENGINE" or "Unsupported engine" warnings
   - Verify by: Running `docker build -t my-ag-ui-app:latest .` and checking log for warnings
 
-## 3. Lock File Synchronization
+## 4. Lock File Synchronization
 
-- [x] 3.1 Run `npm install` locally to regenerate package-lock.json
+- [x] 4.1 Run `npm install` locally to regenerate package-lock.json
   - Done when: package-lock.json is updated with React 19 type definitions (@types/react@19.x)
   - Verify by: Running `grep '"@types/react"' package-lock.json | head -1` shows version 19.x.x
 
-- [x] 3.2 Commit updated package-lock.json to repository
+- [x] 4.2 Commit updated package-lock.json to repository
   - Done when: `git status` shows package-lock.json modified, committed with message "Update package-lock.json for React 19 compatibility"
   - Verify by: Running `git log -1 --oneline` shows commit message containing package-lock.json update
 
-- [x] 3.3 Verify npm ci succeeds during Docker build
+- [x] 4.3 Verify npm ci succeeds during Docker build
   - Done when: Docker build log shows "npm ci completed - using reproducible dependencies" without fallback warning
   - Verify by: Running `docker build -t my-ag-ui-app:latest .` and checking build log for successful npm ci
 
-## 4. Integration Testing
+## 5. Integration Testing
 
-- [x] 4.1 Run full deployment pipeline with all fixes
+- [x] 5.1 Run full deployment pipeline with all fixes
   - Done when: `deploy-all.sh` completes successfully without "STEP 2 FAILED" error
   - Verify by: Running `./deploy-all.sh` and confirming all steps complete with success messages
 
-- [x] 4.2 Verify rollback capability is preserved
+- [ ] 5.2 Verify deployment succeeds without disk space errors
+  - Done when: Multiple deployment runs complete without "no space left on device" errors
+  - Verify by: Running deployment 3 times and confirming Docker image load succeeds each time
+
+- [x] 5.3 Verify rollback capability is preserved
   - Done when: Rollback function in deploy-all.sh uses k8s/deployment.yaml.backup and restores state on actual failure
   - Verify by: Checking that rollback is NOT triggered on successful deployment (only on real failures)
 
-- [x] 4.3 Confirm no false negative build failures
+- [x] 5.4 Confirm no false negative build failures
   - Done when: Multiple deployment runs all complete without "STEP 2 FAILED" when Docker build succeeds
   - Verify by: Running deployment 3 times and confirming all succeed with exit code 0

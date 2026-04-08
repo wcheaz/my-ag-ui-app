@@ -1,19 +1,22 @@
 ## Context
 
-Current deployment pipeline uses `deploy-all.sh` which orchestrates several steps including building Docker images via `deploy_scripts/build-docker-image.sh`. The build script has three issues blocking deployments:
+Current deployment pipeline uses `deploy-all.sh` which orchestrates several steps including building Docker images via `deploy_scripts/build-docker-image.sh`. The build script has four issues blocking deployments:
 
-1. **False negative build failure**: After successfully transferring Docker image tar to VM, the script attempts to delete the tar file from the host (line 234), but the file no longer exists there. This causes `rm -f` to fail, and with `set -e` active, the entire script exits with code 1. The parent `deploy-all.sh` interprets this as build failure and triggers rollback, even though the build succeeded.
+1. **False negative build failure**: After successfully transferring Docker image tar to VM, script attempts to delete the tar file from the host (line 234), but file no longer exists there. This causes `rm -f` to fail, and with `set -e` active, entire script exits with code 1. The parent `deploy-all.sh` interprets this as build failure and triggers rollback, even though the build succeeded.
 
-2. **Overly aggressive error propagation**: The script uses `set -e` globally (line 5), causing ANY non-zero exit code to abort the script. This includes non-critical cleanup operations that should not fail the deployment.
+2. **VM disk space exhaustion**: The VM has insufficient disk space to load Docker images (292MB image). When attempting `docker load`, containerd fails with "no space left on device" error in `/var/lib/containerd/io.containerd.content.v1.content/ingest/`. This causes deployment to fail even though Docker build succeeded.
 
-3. **Package lock mismatch**: `package.json` specifies React 19.2.4 but `package-lock.json` expects `@types/react@18.3.28`, causing `npm ci` to fail and fall back to `npm install`, reducing build reproducibility.
+3. **Overly aggressive error propagation**: The script uses `set -e` globally (line 5), causing ANY non-zero exit code to abort the script. This includes non-critical cleanup operations that should not fail the deployment.
 
-4. **Node version incompatibility**: Dockerfile uses Node 20.12.0, but `eslint-visitor-keys@5.0.1` requires Node 20.19.0+.
+4. **Package lock mismatch**: `package.json` specifies React 19.2.4 but `package-lock.json` expects `@types/react@18.3.28`, causing `npm ci` to fail and fall back to `npm install`, reducing build reproducibility.
+
+5. **Node version incompatibility**: Dockerfile uses Node 20.12.0, but `eslint-visitor-keys@5.0.1` requires Node 20.19.0+.
 
 ## Goals / Non-Goals
 
 **Goals:**
 - Fix false negative build failures in deploy_scripts/build-docker-image.sh
+- Ensure VM has sufficient disk space to load Docker images through cleanup and verification
 - Ensure build success/failure is determined by Docker build exit codes, not cleanup operations
 - Synchronize package-lock.json with package.json for React 19 compatibility
 - Update Dockerfile to use Node version that meets all dependency requirements
@@ -43,7 +46,40 @@ rm -f "$TAR_FILE"
 - Add error suppression `|| true` after `rm -f` → rejected because cleanup is unnecessary, better to remove entirely
 - Check file existence before deletion → rejected because adds complexity without value
 
-### 2. Use scoped error handling instead of global `set -e`
+### 2. Add VM disk space cleanup and verification before image load
+
+**Decision**: Before loading Docker image to VM, add cleanup and verification:
+```bash
+# Check disk space and cleanup before image load
+echo "Checking VM disk space..."
+AVAILABLE_SPACE=$(multipass exec "$VM_NAME" -- df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
+echo "Available space: $AVAILABLE_SPACE"
+
+# Prune unused Docker data to free space
+echo "Cleaning up unused Docker images and containers..."
+multipass exec "$VM_NAME" -- docker system prune -f
+
+# Verify space again after cleanup
+AVAILABLE_SPACE=$(multipass exec "$VM_NAME" -- df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
+echo "Available space after cleanup: $AVAILABLE_SPACE"
+
+# Require minimum 500MB (convert from human-readable)
+if [ "$AVAILABLE_SPACE" -lt 500 ]; then
+    echo "ERROR: Insufficient disk space on VM ($AVAILABLE_SPACE MB available, 500MB required)"
+    echo "ERROR: Free up space or increase VM disk size"
+    exit 1
+fi
+```
+
+**Rationale**: The VM disk space exhaustion is blocking deployments. By running `docker system prune -f` before loading images, we free up space from unused images, containers, and build cache. Verifying disk space with a 500MB minimum threshold ensures we fail fast with a clear error message rather than during Docker load, which provides better user feedback and prevents partial deployment state.
+
+**Alternatives considered**:
+- Increase VM disk size → rejected because requires user intervention to recreate VM, not automated
+- Ignore disk space errors → rejected because deployment fails anyway with cryptic error message
+- Use separate disk cleanup script → rejected because cleanup belongs as part of image load preparation
+- Set threshold lower (e.g., 200MB) → rejected because 292MB image size plus buffer needs 500MB minimum
+
+### 3. Use scoped error handling instead of global `set -e`
 
 **Decision**: Replace global `set -e` with scoped error handling for critical operations only:
 
@@ -71,7 +107,7 @@ set +e
 - Keep global `set -e` and add `|| true` to every non-critical command → rejected because verbose and error-prone
 - Remove `set -e` entirely and manually check every command → rejected because increases risk of missing critical failures
 
-### 3. Update package-lock.json by running npm install locally
+### 4. Update package-lock.json by running npm install locally
 
 **Decision**: Run `npm install` locally (not in CI/CD) to regenerate package-lock.json, then commit the updated file.
 
@@ -79,9 +115,9 @@ set +e
 
 **Alternatives considered**:
 - Manually edit package-lock.json → rejected because error-prone and risks inconsistencies
-- Use `npm ci --force` to ignore mismatch → rejected because bypasses the problem rather than fixing it
+- Use `npm ci --force` to ignore mismatch → rejected because bypasses problem rather than fixing it
 
-### 4. Update Dockerfile base image to Node 20.19.0-alpine
+### 5. Update Dockerfile base image to Node 20.19.0-alpine
 
 **Decision**: Change Dockerfile line 4 from:
 ```dockerfile
@@ -96,16 +132,28 @@ FROM node:20.19.0-alpine
 
 **Alternatives considered**:
 - Upgrade to Node 22.x → rejected because larger version jump, potential for more breaking changes
-- Suppress the warning → rejected because doesn't address underlying compatibility issue
+- Suppresses warning → rejected because doesn't address underlying compatibility issue
 - Remove eslint-visitor-keys → rejected because may break ESLint functionality
 
-### 5. Preserve existing rollback capability
+### 6. Preserve existing rollback capability
 
 **Decision**: Do not modify rollback functionality in deploy-all.sh. The backup file creation (k8s/deployment.yaml.backup) works correctly and should continue to be triggered only on actual failures.
 
 **Rationale**: Rollback is currently triggered by the false negative failure from the tar cleanup bug. Once that bug is fixed, rollback will only trigger on genuine failures. No changes needed.
 
 ## Risks / Trade-offs
+
+### Risk: Docker system prune removes images needed for other applications
+
+**Risk**: Running `docker system prune -f` on VM may remove Docker images or containers that are being used by other applications or microservices running on the same VM.
+
+**Mitigation**: The VM is dedicated to this deployment. Other applications should run on separate VMs or use different container namespaces. Verify no other critical services depend on unused images before running prune. The prune only removes unused (dangling) images, not images in use or referenced by containers.
+
+### Risk: Disk space verification threshold is arbitrary
+
+**Risk**: Setting 500MB minimum disk space threshold may be too high or too low depending on image size and VM usage patterns.
+
+**Mitigation**: The current Docker image is 292MB. 500MB provides sufficient buffer for image loading plus overhead. Monitor successful deployments and adjust threshold if needed. The error message clearly indicates the requirement, making it easy for operators to adjust if necessary.
 
 ### Risk: Removing tar cleanup leaves temporary files
 
@@ -140,14 +188,15 @@ FROM node:20.19.0-alpine
 ## Migration Plan
 
 **Deployment Steps**:
-1. Update build-docker-image.sh by removing tar cleanup and adding scoped error handling
+1. Update build-docker-image.sh by removing tar cleanup, adding VM disk space cleanup and verification, and adding scoped error handling
 2. Update Dockerfile to use Node 20.19.0-alpine
 3. Run `npm install` locally to regenerate package-lock.json
 4. Commit changes to repository
 5. Deploy using deploy-all.sh
 6. Verify deployment succeeds without "STEP 2 FAILED" error
-7. Verify npm ci succeeds without lock file mismatch warnings
-8. Verify no Node version warnings in build output
+7. Verify no "no space left on device" errors during image load
+8. Verify npm ci succeeds without lock file mismatch warnings
+9. Verify no Node version warnings in build output
 
 **Rollback Strategy**:
 - Existing rollback in deploy-all.sh remains unchanged and will function correctly
