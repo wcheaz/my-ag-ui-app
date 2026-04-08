@@ -4,7 +4,7 @@
   - Done when: Lines 233-236 are deleted from the file
   - Verify by: Running `grep -n "multipass exec.*rm.*my-ag-ui-app.tar\|rm -f.*TAR_FILE" deploy_scripts/build-docker-image.sh` returns no results
 
-- [ ] 1.2 Replace global `set -e` with scoped error handling in deploy_scripts/build-docker-image.sh
+- [x] 1.2 Replace global `set -e` with scoped error handling in deploy_scripts/build-docker-image.sh
   - Done when: Docker build and image load operations are wrapped in `(set -e ...)` subshell, cleanup uses `set +e`
   - Verify by: Running `grep -A 10 "set -e" deploy_scripts/build-docker-image.sh` shows scoped error handling only around critical operations
 
