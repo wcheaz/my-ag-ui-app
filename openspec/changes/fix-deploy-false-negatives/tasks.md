@@ -50,6 +50,6 @@
   - Done when: Rollback function in deploy-all.sh uses k8s/deployment.yaml.backup and restores state on actual failure
   - Verify by: Checking that rollback is NOT triggered on successful deployment (only on real failures)
 
-- [ ] 4.3 Confirm no false negative build failures
+- [x] 4.3 Confirm no false negative build failures
   - Done when: Multiple deployment runs all complete without "STEP 2 FAILED" when Docker build succeeds
   - Verify by: Running deployment 3 times and confirming all succeed with exit code 0
