@@ -228,11 +228,7 @@ if ! multipass exec "$VM_NAME" -- docker images "$TARGET_IMAGE" --format "{{.Rep
 fi
 log "✅ Image verified in VM: $TARGET_IMAGE"
 
-# Cleanup temporary files
-log "Cleaning up temporary files..."
-multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
-rm -f "$TAR_FILE"
-log "✅ Temporary files cleaned up"
+
 
 log "✅ Docker image successfully built and transferred to VM"
 log "   Host image: my-ag-ui-app:latest"

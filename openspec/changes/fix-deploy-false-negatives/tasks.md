@@ -1,6 +1,6 @@
 ## 1. Build Error Precision
 
-- [ ] 1.1 Remove tar cleanup commands from deploy_scripts/build-docker-image.sh lines 233-236
+- [x] 1.1 Remove tar cleanup commands from deploy_scripts/build-docker-image.sh lines 233-236
   - Done when: Lines 233-236 are deleted from the file
   - Verify by: Running `grep -n "multipass exec.*rm.*my-ag-ui-app.tar\|rm -f.*TAR_FILE" deploy_scripts/build-docker-image.sh` returns no results
 
