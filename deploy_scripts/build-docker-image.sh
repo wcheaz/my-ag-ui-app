@@ -175,6 +175,32 @@ if ! transfer_output=$(multipass transfer "$TAR_FILE" "$VM_NAME:/tmp/" 2>&1); th
 fi
 log "✅ Image transferred to VM"
 
+# Check disk space and cleanup before image load
+log "Checking VM disk space..."
+AVAILABLE_SPACE=$(multipass exec "$VM_NAME" -- df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
+log "Available space: ${AVAILABLE_SPACE}MB"
+
+# Prune unused Docker data to free space
+log "Cleaning up unused Docker images and containers..."
+if ! multipass exec "$VM_NAME" -- docker system prune -f 2>&1 | tee -a "$LOG_FILE"; then
+    log "⚠️  WARNING: Docker system prune failed (non-critical)"
+    # Don't fail deployment, just warn
+fi
+
+# Verify space again after cleanup
+AVAILABLE_SPACE=$(multipass exec "$VM_NAME" -- df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
+log "Available space after cleanup: ${AVAILABLE_SPACE}MB"
+
+# Require minimum 500MB
+if [ "$AVAILABLE_SPACE" -lt 500 ]; then
+    log "❌ ERROR: Insufficient disk space on VM (${AVAILABLE_SPACE}MB available, 500MB required)"
+    log "   Free up space or increase VM disk size"
+    rm -f "$TAR_FILE"
+    exit 1
+fi
+
+log "✅ Sufficient disk space available for image load"
+
 # Load image in VM
 log "Loading image in VM..."
 load_output=""
