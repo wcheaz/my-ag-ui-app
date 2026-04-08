@@ -1,6 +1,6 @@
 {
-  "active": false,
-  "iteration": 13,
+  "active": true,
+  "iteration": 18,
   "minIterations": 1,
   "maxIterations": 50,
   "completionPromise": "COMPLETE",
@@ -11,7 +11,6 @@
   "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-deploy-false-negatives/.ralph/prompt-template.md",
   "noCommit": false,
   "model": "",
-  "startedAt": "2026-04-08T18:16:05.975Z",
-  "resumedAt": null,
-  "completedAt": "2026-04-08T19:16:26.005Z"
+  "startedAt": "2026-04-08T23:40:29.973Z",
+  "resumedAt": "2026-04-08T23:40:29.974Z"
 }

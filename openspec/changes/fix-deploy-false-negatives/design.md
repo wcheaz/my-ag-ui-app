@@ -50,34 +50,38 @@ rm -f "$TAR_FILE"
 
 **Decision**: Before loading Docker image to VM, add cleanup and verification:
 ```bash
-# Check disk space and cleanup before image load
-echo "Checking VM disk space..."
-AVAILABLE_SPACE=$(multipass exec "$VM_NAME" -- df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
-echo "Available space: $AVAILABLE_SPACE"
+# Check disk space before image load (in megabytes as integers)
+log "Checking VM disk space..."
+AVAILABLE_SPACE_MB=$(multipass exec "$VM_NAME" -- df -BM / | awk 'NR==2 {print $4}')
+log "Available space: ${AVAILABLE_SPACE_MB}MB"
 
 # Prune unused Docker data to free space
-echo "Cleaning up unused Docker images and containers..."
+log "Cleaning up unused Docker images and containers..."
 multipass exec "$VM_NAME" -- docker system prune -f
 
 # Verify space again after cleanup
-AVAILABLE_SPACE=$(multipass exec "$VM_NAME" -- df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
-echo "Available space after cleanup: $AVAILABLE_SPACE"
+AVAILABLE_SPACE_MB=$(multipass exec "$VM_NAME" -- df -BM / | awk 'NR==2 {print $4}')
+log "Available space after cleanup: ${AVAILABLE_SPACE_MB}MB"
 
-# Require minimum 500MB (convert from human-readable)
-if [ "$AVAILABLE_SPACE" -lt 500 ]; then
-    echo "ERROR: Insufficient disk space on VM ($AVAILABLE_SPACE MB available, 500MB required)"
-    echo "ERROR: Free up space or increase VM disk size"
+# Require minimum 500MB (both values are integers from df -BM)
+MIN_SPACE_MB=500
+if [ "$AVAILABLE_SPACE_MB" -lt "$MIN_SPACE_MB" ]; then
+    log "❌ ERROR: Insufficient disk space on VM (${AVAILABLE_SPACE_MB}MB available, ${MIN_SPACE_MB}MB required)"
+    log "   Free up space or increase VM disk size"
     exit 1
 fi
 ```
 
 **Rationale**: The VM disk space exhaustion is blocking deployments. By running `docker system prune -f` before loading images, we free up space from unused images, containers, and build cache. Verifying disk space with a 500MB minimum threshold ensures we fail fast with a clear error message rather than during Docker load, which provides better user feedback and prevents partial deployment state.
 
+Using `df -BM` instead of `df -h` provides disk space in megabytes as integers, avoiding floating-point comparison issues that cause bash "integer expression expected" errors when parsing human-readable sizes like "4.8G".
+
 **Alternatives considered**:
 - Increase VM disk size → rejected because requires user intervention to recreate VM, not automated
 - Ignore disk space errors → rejected because deployment fails anyway with cryptic error message
 - Use separate disk cleanup script → rejected because cleanup belongs as part of image load preparation
 - Set threshold lower (e.g., 200MB) → rejected because 292MB image size plus buffer needs 500MB minimum
+- Parse human-readable output with floating-point comparison → rejected because bash `[` test doesn't support floating-point and requires `bc` or `awk`, adding complexity
 
 ### 3. Use scoped error handling instead of global `set -e`
 
