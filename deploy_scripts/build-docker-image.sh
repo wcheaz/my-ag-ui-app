@@ -96,8 +96,8 @@ log_info "Docker build completed successfully (exit code 0)"
 
 log_info "Docker image 'my-ag-ui-app:latest' built successfully"
 
-# Verify Docker image exists using docker images query (second check for reliability)
-if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "my-ag-ui-app:latest"; then
+# Verify Docker image exists using docker images query
+if ! docker images my-ag-ui-app:latest 2>/dev/null | grep -q "my-ag-ui-app"; then
     handle_docker_error 204 "Docker image verification failed" \
         "Docker build succeeded but image not found. Verify: docker images my-ag-ui-app:latest"
     exit 1
