@@ -14,7 +14,7 @@
 
 - [x] 3.1 Modify deploy-all.sh to create backup of k8s/deployment.yaml at k8s/deployment.yaml.backup after Step 3 (tagging) and before Step 4 (registry setup)
 - [x] 3.2 Modify deploy-all.sh to overwrite existing backup file silently
-- [ ] 3.3 Add verification in deploy-all.sh to confirm backup file exists and content matches original before proceeding
+- [x] 3.3 Add verification in deploy-all.sh to confirm backup file exists and content matches original before proceeding
 
 ## 4. Testing
 

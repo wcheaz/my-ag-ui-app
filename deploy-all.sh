@@ -180,7 +180,22 @@ if [ -f "k8s/deployment.yaml" ]; then
         rollback_deployment
         exit 1
     }
-    log_info "✅ Step 3.5: Deployment manifest backup created at k8s/deployment.yaml.backup"
+    
+    # Verify backup file exists
+    if [ ! -f "k8s/deployment.yaml.backup" ]; then
+        log_error "❌ STEP 3.5 FAILED: Backup file was not created successfully"
+        rollback_deployment
+        exit 1
+    fi
+    
+    # Verify backup file content matches original
+    if ! cmp -s "k8s/deployment.yaml" "k8s/deployment.yaml.backup"; then
+        log_error "❌ STEP 3.5 FAILED: Backup file content does not match original"
+        rollback_deployment
+        exit 1
+    fi
+    
+    log_info "✅ Step 3.5: Deployment manifest backup created and verified at k8s/deployment.yaml.backup"
 else
     log_error "❌ STEP 3.5 FAILED: k8s/deployment.yaml not found - cannot create backup"
     rollback_deployment
