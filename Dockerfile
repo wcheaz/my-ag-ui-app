@@ -9,6 +9,9 @@ ENV NODE_ENV=production
 # Install build dependencies
 COPY package.json package-lock.json ./
 
+# Update npm to match local environment for consistent behavior
+RUN npm install -g npm@11.8.0
+
 # Dependency installation with fallback mechanism
 # 
 # This Dockerfile implements a two-step dependency installation strategy:

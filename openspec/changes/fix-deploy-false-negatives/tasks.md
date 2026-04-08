@@ -36,7 +36,7 @@
   - Done when: `git status` shows package-lock.json modified, committed with message "Update package-lock.json for React 19 compatibility"
   - Verify by: Running `git log -1 --oneline` shows commit message containing package-lock.json update
 
-- [ ] 3.3 Verify npm ci succeeds during Docker build
+- [x] 3.3 Verify npm ci succeeds during Docker build
   - Done when: Docker build log shows "npm ci completed - using reproducible dependencies" without fallback warning
   - Verify by: Running `docker build -t my-ag-ui-app:latest .` and checking build log for successful npm ci
 
