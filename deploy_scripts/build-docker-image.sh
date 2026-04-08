@@ -79,42 +79,33 @@ log_info "Starting Docker image build for 'my-ag-ui-app:latest'..."
 
 # Capture Docker build output for debugging
 build_output=""
-if ! build_output=$(docker build -t my-ag-ui-app:latest . 2>&1); then
-    # Log build output on failure
-    log_error "Docker build failed"
-    log_error "Build output:"
-    echo "$build_output" | tee -a "$LOG_FILE"
-    
+docker build -t my-ag-ui-app:latest . 2>&1 | tee "$LOG_FILE"
+docker_build_status=${PIPESTATUS[0]}
+
+# Check Docker build exit code for success determination
+if [ $docker_build_status -ne 0 ]; then
+    # Docker build failed - use exit code as authority
+    log_error "Docker build failed with exit code $docker_build_status"
     handle_docker_error 203 "Failed to build Docker image" \
         "Check Dockerfile and project structure. Ensure all required files are present."
-    exit 1
+    exit $docker_build_status
 fi
 
-# Log build output on success (full output in log file, summary in console)
-log_info "Docker build completed successfully"
-log_info "Build output:"
-echo "$build_output" | tee -a "$LOG_FILE"
-
-# Extract and show key information from build output (if available)
-if echo "$build_output" | grep -q -E "(Successfully built|Successfully tagged| => | --->)"; then
-    echo "$build_output" | grep -E "(Successfully built|Successfully tagged| => | --->)" | head -10 | while IFS= read -r line; do
-        [ -n "$line" ] && log_info "Build: $line"
-    done
-else
-    log_info "Build: Docker image built successfully (no detailed build summary available)"
-fi
+# Docker build succeeded (exit code 0) - now verify image exists
+log_info "Docker build completed successfully (exit code 0)"
 
 log_info "Docker image 'my-ag-ui-app:latest' built successfully"
 
-# Verify Docker image was built successfully
+# Verify Docker image exists using docker images query (second check for reliability)
 if ! docker images my-ag-ui-app:latest --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "my-ag-ui-app:latest"; then
     handle_docker_error 204 "Docker image verification failed" \
-        "Verify the image was built correctly: docker images my-ag-ui-app:latest"
+        "Docker build succeeded but image not found. Verify: docker images my-ag-ui-app:latest"
     exit 1
 fi
 
+# Both Docker build exit code (0) and image existence verification passed
 log_info "Docker image 'my-ag-ui-app:latest' verified successfully"
-log_info "Docker build process completed successfully"
+log_info "Docker build process completed successfully (exit code: 0, image verified)"
 
 # Transfer Docker image to VM
 log "=== TRANSFERRING DOCKER IMAGE TO VM ==="
