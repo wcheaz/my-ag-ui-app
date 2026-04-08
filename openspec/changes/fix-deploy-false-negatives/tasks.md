@@ -46,7 +46,7 @@
   - Done when: `deploy-all.sh` completes successfully without "STEP 2 FAILED" error
   - Verify by: Running `./deploy-all.sh` and confirming all steps complete with success messages
 
-- [ ] 4.2 Verify rollback capability is preserved
+- [x] 4.2 Verify rollback capability is preserved
   - Done when: Rollback function in deploy-all.sh uses k8s/deployment.yaml.backup and restores state on actual failure
   - Verify by: Checking that rollback is NOT triggered on successful deployment (only on real failures)
 
