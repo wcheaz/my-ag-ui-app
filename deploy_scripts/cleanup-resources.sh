@@ -78,6 +78,29 @@ cleanup_resources() {
         log_info "✅ No non-running pods found - all pods are healthy"
     fi
     
+    # Stop and remove containers with label app=my-ag-ui-app before image deletion
+    log_info "🧹 Stopping containers with label app=my-ag-ui-app..."
+    
+    # Get running containers with the app label
+    local running_containers=$(docker ps -q -f "label=app=my-ag-ui-app" 2>/dev/null || echo "")
+    if [ -n "$running_containers" ]; then
+        local running_count=$(echo "$running_containers" | wc -l)
+        log_info "🧹 Stopping $running_count running containers..."
+        docker stop $running_containers 2>&1 | tee -a "$LOG_FILE" || true
+        log_info "✅ Stopped $running_count running containers"
+    fi
+    
+    log_info "🧹 Removing stopped containers with label app=my-ag-ui-app..."
+    
+    # Get all containers (including stopped) with the app label
+    local all_containers=$(docker ps -a -q -f "label=app=my-ag-ui-app" 2>/dev/null || echo "")
+    if [ -n "$all_containers" ]; then
+        local all_count=$(echo "$all_containers" | wc -l)
+        log_info "🧹 Removing $all_count stopped containers..."
+        docker rm $all_containers 2>&1 | tee -a "$LOG_FILE" || true
+        log_info "✅ Removed $all_count stopped containers"
+    fi
+    
     # Clean up unused Docker images
     log_info "🧹 Cleaning up unused Docker images..."
     
