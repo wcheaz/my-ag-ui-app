@@ -32,7 +32,7 @@
   - Done when: package-lock.json is updated with React 19 type definitions (@types/react@19.x)
   - Verify by: Running `grep '"@types/react"' package-lock.json | head -1` shows version 19.x.x
 
-- [ ] 3.2 Commit updated package-lock.json to repository
+- [x] 3.2 Commit updated package-lock.json to repository
   - Done when: `git status` shows package-lock.json modified, committed with message "Update package-lock.json for React 19 compatibility"
   - Verify by: Running `git log -1 --oneline` shows commit message containing package-lock.json update
 
