@@ -171,6 +171,22 @@ if ! ./deploy_scripts/tag-docker-image.sh; then
 fi
 log_info "✅ Step 3: Docker image tagging completed"
 
+# Step 3.5: Create backup of deployment manifest before registry setup
+log_info "📋 Step 3.5: Creating backup of deployment manifest..."
+if [ -f "k8s/deployment.yaml" ]; then
+    # Create backup, overwriting existing silently
+    cp -f "k8s/deployment.yaml" "k8s/deployment.yaml.backup" 2>/dev/null || {
+        log_error "❌ STEP 3.5 FAILED: Could not create backup of deployment manifest"
+        rollback_deployment
+        exit 1
+    }
+    log_info "✅ Step 3.5: Deployment manifest backup created at k8s/deployment.yaml.backup"
+else
+    log_error "❌ STEP 3.5 FAILED: k8s/deployment.yaml not found - cannot create backup"
+    rollback_deployment
+    exit 1
+fi
+
 # Step 4: Setting up Microk8s registry
 log_info "📋 Step 4: Setting up Microk8s registry..."
 if ! ./deploy_scripts/setup-microk8s-registry.sh; then
