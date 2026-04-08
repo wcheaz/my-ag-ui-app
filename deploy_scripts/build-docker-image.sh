@@ -120,6 +120,7 @@ log_info "Docker build process completed successfully"
 log_info "Transferring Docker image to VM..."
 
 VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
+SOURCE_IMAGE="my-ag-ui-app:latest"
 TARGET_IMAGE="localhost:32000/my-ag-ui-app:latest"
 
 # Pre-flight check: Verify VM exists
@@ -136,9 +137,17 @@ if ! multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
     exit 1
 fi
 
-# Save image to tar file
+# Get the actual image ID from Docker (to handle the docker.io/library naming)
+IMAGE_ID=$(docker images "$SOURCE_IMAGE" --format "{{.ID}}" 2>/dev/null | head -n1)
+if [ -z "$IMAGE_ID" ]; then
+    log "❌ ERROR: Cannot find image ID for $SOURCE_IMAGE"
+    exit 1
+fi
+log_info "Found image ID: $IMAGE_ID"
+
+# Save image to tar file using the image ID
 log_info "Saving image to tar file..."
-if ! docker save my-ag-ui-app:latest -o /tmp/my-ag-ui-app.tar; then
+if ! docker save "$IMAGE_ID" -o /tmp/my-ag-ui-app.tar; then
     log "❌ ERROR: Failed to save Docker image"
     exit 1
 fi
