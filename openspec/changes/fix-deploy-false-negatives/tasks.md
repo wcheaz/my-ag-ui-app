@@ -18,15 +18,15 @@
 
 ## 2. VM Disk Space Management
 
-- [ ] 2.1 Add disk space verification before Docker image load in deploy_scripts/build-docker-image.sh
+- [x] 2.1 Add disk space verification before Docker image load in deploy_scripts/build-docker-image.sh
   - Done when: Script checks available space with `multipass exec "$VM_NAME" -- df -h /` before image load
   - Verify by: Running `grep -A 5 "Checking VM disk space" deploy_scripts/build-docker-image.sh` shows df command
 
-- [ ] 2.2 Add Docker system prune before image load in deploy_scripts/build-docker-image.sh
+- [x] 2.2 Add Docker system prune before image load in deploy_scripts/build-docker-image.sh
   - Done when: Script runs `multipass exec "$VM_NAME" -- docker system prune -f` before loading image
   - Verify by: Running `grep "docker system prune -f" deploy_scripts/build-docker-image.sh` returns the prune command
 
-- [ ] 2.3 Add minimum disk space threshold check with 500MB requirement
+- [x] 2.3 Add minimum disk space threshold check with 500MB requirement
   - Done when: Script compares available space against 500MB threshold and fails if insufficient
   - Verify by: Running `grep -A 3 "500" deploy_scripts/build-docker-image.sh` shows space comparison and error message
 
