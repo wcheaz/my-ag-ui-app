@@ -8,7 +8,7 @@
   - Done when: Docker build and image load operations are wrapped in `(set -e ...)` subshell, cleanup uses `set +e`
   - Verify by: Running `grep -A 10 "set -e" deploy_scripts/build-docker-image.sh` shows scoped error handling only around critical operations
 
-- [ ] 1.3 Add explicit exit code checking for Docker build in deploy_scripts/build-docker-image.sh
+- [x] 1.3 Add explicit exit code checking for Docker build in deploy_scripts/build-docker-image.sh
   - Done when: Script captures `docker_build_status=${PIPESTATUS[0]}` and exits with `$docker_build_status` on build failure
   - Verify by: Running `grep -A 5 "PIPESTATUS\[" deploy_scripts/build-docker-image.sh` shows exit code capture and check
 
