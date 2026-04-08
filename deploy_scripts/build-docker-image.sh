@@ -115,3 +115,83 @@ fi
 
 log_info "Docker image 'my-ag-ui-app:latest' verified successfully"
 log_info "Docker build process completed successfully"
+
+# Transfer Docker image to VM
+log_info "Transferring Docker image to VM..."
+
+VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
+TARGET_IMAGE="localhost:32000/my-ag-ui-app:latest"
+
+# Pre-flight check: Verify VM exists
+if ! multipass list | grep -q "$VM_NAME"; then
+    log "❌ ERROR: VM '$VM_NAME' not found"
+    log "   Cannot transfer image without VM"
+    exit 1
+fi
+
+# Pre-flight check: Verify Docker daemon in VM
+if ! multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
+    log "❌ ERROR: Docker daemon not accessible in VM"
+    log "   Cannot transfer image without Docker in VM"
+    exit 1
+fi
+
+# Save image to tar file
+log_info "Saving image to tar file..."
+if ! docker save my-ag-ui-app:latest -o /tmp/my-ag-ui-app.tar; then
+    log "❌ ERROR: Failed to save Docker image"
+    exit 1
+fi
+log_info "✅ Image saved to /tmp/my-ag-ui-app.tar"
+
+# Transfer tar file to VM
+log_info "Transferring tar file to VM..."
+if ! multipass transfer /tmp/my-ag-ui-app.tar "$VM_NAME:/tmp/"; then
+    log "❌ ERROR: Failed to transfer image to VM"
+    rm -f /tmp/my-ag-ui-app.tar
+    exit 1
+fi
+log_info "✅ Image transferred to VM"
+
+# Load image in VM
+log_info "Loading image in VM..."
+if ! multipass exec "$VM_NAME" -- docker load -i /tmp/my-ag-ui-app.tar; then
+    log "❌ ERROR: Failed to load image in VM"
+    multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
+    rm -f /tmp/my-ag-ui-app.tar
+    exit 1
+fi
+log_info "✅ Image loaded in VM"
+
+# Tag image for registry
+log_info "Tagging image for registry..."
+if ! multipass exec "$VM_NAME" -- docker tag my-ag-ui-app:latest "$TARGET_IMAGE"; then
+    log "❌ ERROR: Failed to tag image in VM"
+    multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
+    rm -f /tmp/my-ag-ui-app.tar
+    exit 1
+fi
+log_info "✅ Image tagged as $TARGET_IMAGE in VM"
+
+# Verify image in VM
+log_info "Verifying image in VM..."
+if ! multipass exec "$VM_NAME" -- docker images "$TARGET_IMAGE" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "$TARGET_IMAGE"; then
+    log "❌ ERROR: Image verification failed in VM"
+    log "   Expected: $TARGET_IMAGE"
+    log "   Found:"
+    multipass exec "$VM_NAME" -- docker images | grep my-ag-ui-app | tee -a "$LOG_FILE"
+    multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
+    rm -f /tmp/my-ag-ui-app.tar
+    exit 1
+fi
+log_info "✅ Image verified in VM: $TARGET_IMAGE"
+
+# Cleanup temporary files
+log_info "Cleaning up temporary files..."
+multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
+rm -f /tmp/my-ag-ui-app.tar
+log_info "✅ Temporary files cleaned up"
+
+log_info "✅ Docker image successfully built and transferred to VM"
+log_info "   Host image: my-ag-ui-app:latest"
+log_info "   VM image: $TARGET_IMAGE"
