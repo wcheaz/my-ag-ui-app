@@ -154,51 +154,76 @@ log "Found image ID: $IMAGE_ID"
 
 # Save image to tar file using image ID
 log "Saving image to tar file (this may take a moment)..."
-if ! docker save "$IMAGE_ID" -o /tmp/my-ag-ui-app.tar 2>&1 | tee -a "$LOG_FILE"; then
+TAR_FILE="./my-ag-ui-app.tar"
+if ! docker save "$IMAGE_ID" -o "$TAR_FILE" 2>&1 | tee -a "$LOG_FILE"; then
     log "❌ ERROR: Failed to save Docker image"
     exit 1
 fi
 
 # Verify tar file was created
-if [ ! -f "/tmp/my-ag-ui-app.tar" ]; then
+if [ ! -f "$TAR_FILE" ]; then
     log "❌ ERROR: Tar file was not created"
-    log "   Expected: /tmp/my-ag-ui-app.tar"
-    ls -lh /tmp/ | tee -a "$LOG_FILE"
+    log "   Expected: $TAR_FILE"
+    ls -lh ./ | tee -a "$LOG_FILE"
     exit 1
 fi
-log "✅ Image saved to /tmp/my-ag-ui-app.tar ($(ls -lh /tmp/my-ag-ui-app.tar | awk '{print $5}'))"
+log "✅ Image saved to $TAR_FILE ($(ls -lh "$TAR_FILE" | awk '{print $5}'))"
 
 # Transfer tar file to VM
 log "Transferring tar file to VM..."
 transfer_output=""
-if ! transfer_output=$(multipass transfer /tmp/my-ag-ui-app.tar "$VM_NAME:/tmp/" 2>&1); then
+if ! transfer_output=$(multipass transfer "$TAR_FILE" "$VM_NAME:/tmp/" 2>&1); then
     log "❌ ERROR: Failed to transfer image to VM"
     log "   multipass transfer error:"
     echo "$transfer_output" | tee -a "$LOG_FILE"
-    rm -f /tmp/my-ag-ui-app.tar
+    rm -f "$TAR_FILE"
     exit 1
 fi
 log "✅ Image transferred to VM"
 
 # Load image in VM
 log "Loading image in VM..."
-if ! multipass exec "$VM_NAME" -- docker load -i /tmp/my-ag-ui-app.tar; then
+load_output=""
+if ! load_output=$(multipass exec "$VM_NAME" -- docker load -i /tmp/my-ag-ui-app.tar 2>&1); then
     log "❌ ERROR: Failed to load image in VM"
+    log "   docker load error:"
+    echo "$load_output" | tee -a "$LOG_FILE"
     multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
-    rm -f /tmp/my-ag-ui-app.tar
+    rm -f "$TAR_FILE"
     exit 1
 fi
 log "✅ Image loaded in VM"
+log "   $load_output" | tee -a "$LOG_FILE"
+
+# Extract image ID from load output
+# docker load output format: "Loaded image ID: sha256:..."
+VM_IMAGE_ID=$(echo "$load_output" | grep -oP 'Loaded image: |Loaded image ID: ' | sed 's/.*Loaded image: \?sha256://\|.*Loaded image ID: //' | head -n1)
+if [ -z "$VM_IMAGE_ID" ]; then
+    log "❌ ERROR: Could not extract image ID from load output"
+    log "   Load output: $load_output"
+    multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
+    rm -f "$TAR_FILE"
+    exit 1
+fi
+log "Loaded image ID: $VM_IMAGE_ID"
 
 # Tag image for registry
 log "Tagging image for registry..."
-if ! multipass exec "$VM_NAME" -- docker tag my-ag-ui-app:latest "$TARGET_IMAGE"; then
+if ! multipass exec "$VM_NAME" -- docker tag "$VM_IMAGE_ID" "$TARGET_IMAGE" 2>&1 | tee -a "$LOG_FILE"; then
     log "❌ ERROR: Failed to tag image in VM"
     multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
-    rm -f /tmp/my-ag-ui-app.tar
+    rm -f "$TAR_FILE"
     exit 1
 fi
 log "✅ Image tagged as $TARGET_IMAGE in VM"
+
+# Also tag as my-ag-ui-app:latest for consistency
+log "Tagging image as my-ag-ui-app:latest..."
+if ! multipass exec "$VM_NAME" -- docker tag "$VM_IMAGE_ID" my-ag-ui-app:latest 2>&1 | tee -a "$LOG_FILE"; then
+    log "⚠️  WARNING: Failed to tag image as my-ag-ui-app:latest (non-critical)"
+    # Don't fail deployment, just warn
+fi
+log "✅ Image also tagged as my-ag-ui-app:latest"
 
 # Verify image in VM
 log "Verifying image in VM..."
@@ -208,7 +233,7 @@ if ! multipass exec "$VM_NAME" -- docker images "$TARGET_IMAGE" --format "{{.Rep
     log "   Found:"
     multipass exec "$VM_NAME" -- docker images | grep my-ag-ui-app | tee -a "$LOG_FILE"
     multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
-    rm -f /tmp/my-ag-ui-app.tar
+    rm -f "$TAR_FILE"
     exit 1
 fi
 log "✅ Image verified in VM: $TARGET_IMAGE"
@@ -216,7 +241,7 @@ log "✅ Image verified in VM: $TARGET_IMAGE"
 # Cleanup temporary files
 log "Cleaning up temporary files..."
 multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
-rm -f /tmp/my-ag-ui-app.tar
+rm -f "$TAR_FILE"
 log "✅ Temporary files cleaned up"
 
 log "✅ Docker image successfully built and transferred to VM"
