@@ -28,7 +28,7 @@
 
 ## 3. Lock File Synchronization
 
-- [ ] 3.1 Run `npm install` locally to regenerate package-lock.json
+- [x] 3.1 Run `npm install` locally to regenerate package-lock.json
   - Done when: package-lock.json is updated with React 19 type definitions (@types/react@19.x)
   - Verify by: Running `grep '"@types/react"' package-lock.json | head -1` shows version 19.x.x
 
