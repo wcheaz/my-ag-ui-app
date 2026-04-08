@@ -166,68 +166,62 @@ log "✅ Image saved to $TAR_FILE ($(ls -lh "$TAR_FILE" | awk '{print $5}'))"
 # Transfer tar file to VM
 log "Transferring tar file to VM..."
 transfer_output=""
-(
-    set -e
-    if ! transfer_output=$(multipass transfer "$TAR_FILE" "$VM_NAME:/tmp/" 2>&1); then
-        log "❌ ERROR: Failed to transfer image to VM"
-        log "   multipass transfer error:"
-        echo "$transfer_output" | tee -a "$LOG_FILE"
-        rm -f "$TAR_FILE"
-        exit 1
-    fi
-    log "✅ Image transferred to VM"
+if ! transfer_output=$(multipass transfer "$TAR_FILE" "$VM_NAME:/tmp/" 2>&1); then
+    log "❌ ERROR: Failed to transfer image to VM"
+    log "   multipass transfer error:"
+    echo "$transfer_output" | tee -a "$LOG_FILE"
+    rm -f "$TAR_FILE"
+    exit 1
+fi
+log "✅ Image transferred to VM"
 
-    # Load image in VM
-    log "Loading image in VM..."
-    load_output=""
-    if ! load_output=$(multipass exec "$VM_NAME" -- docker load -i /tmp/my-ag-ui-app.tar 2>&1); then
-        log "❌ ERROR: Failed to load image in VM"
-        log "   docker load error:"
-        echo "$load_output" | tee -a "$LOG_FILE"
-        multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
-        rm -f "$TAR_FILE"
-        exit 1
-    fi
-)
+# Load image in VM
+log "Loading image in VM..."
+load_output=""
+if ! load_output=$(multipass exec "$VM_NAME" -- docker load -i /tmp/my-ag-ui-app.tar 2>&1); then
+    log "❌ ERROR: Failed to load image in VM"
+    log "   docker load error:"
+    echo "$load_output" | tee -a "$LOG_FILE"
+    multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
+    rm -f "$TAR_FILE"
+    exit 1
+fi
 log "✅ Image loaded in VM"
 log "   $load_output" | tee -a "$LOG_FILE"
 
 # Extract image ID from load output and complete image operations
-(
-    set -e
-    # docker load output format: "Loaded image ID: sha256:..."
-    VM_IMAGE_ID=$(echo "$load_output" | grep -o 'sha256:[a-f0-9]+')
-    if [ -z "$VM_IMAGE_ID" ]; then
-        log "❌ ERROR: Could not extract image ID from load output"
-        log "   Load output: $load_output"
-        multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
-        rm -f "$TAR_FILE"
-        exit 1
-    fi
-    log "Loaded image ID: $VM_IMAGE_ID"
+# docker load output format: "Loaded image ID: sha256:..."
+VM_IMAGE_ID=$(echo "$load_output" | grep -o 'sha256:[a-f0-9]\+')
+if [ -z "$VM_IMAGE_ID" ]; then
+    log "❌ ERROR: Could not extract image ID from load output"
+    log "   Load output: $load_output"
+    multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
+    rm -f "$TAR_FILE"
+    exit 1
+fi
+log "Loaded image ID: $VM_IMAGE_ID"
 
-    # Tag image for registry
-    log "Tagging image for registry..."
-    if ! multipass exec "$VM_NAME" -- docker tag "$VM_IMAGE_ID" "$TARGET_IMAGE" 2>&1 | tee -a "$LOG_FILE"; then
-        log "❌ ERROR: Failed to tag image in VM"
-        multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
-        rm -f "$TAR_FILE"
-        exit 1
-    fi
-    log "✅ Image tagged as $TARGET_IMAGE in VM"
+# Tag image for registry
+log "Tagging image for registry..."
+if ! multipass exec "$VM_NAME" -- docker tag "$VM_IMAGE_ID" "$TARGET_IMAGE" 2>&1 | tee -a "$LOG_FILE"; then
+    log "❌ ERROR: Failed to tag image in VM"
+    multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
+    rm -f "$TAR_FILE"
+    exit 1
+fi
+log "✅ Image tagged as $TARGET_IMAGE in VM"
 
-    # Verify image in VM
-    log "Verifying image in VM..."
-    if ! multipass exec "$VM_NAME" -- docker images "$TARGET_IMAGE" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "$TARGET_IMAGE"; then
-        log "❌ ERROR: Image verification failed in VM"
-        log "   Expected: $TARGET_IMAGE"
-        log "   Found:"
-        multipass exec "$VM_NAME" -- docker images | grep my-ag-ui-app | tee -a "$LOG_FILE"
-        multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
-        rm -f "$TAR_FILE"
-        exit 1
-    fi
-)
+# Verify image in VM
+log "Verifying image in VM..."
+if ! multipass exec "$VM_NAME" -- docker images "$TARGET_IMAGE" --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -q "$TARGET_IMAGE"; then
+    log "❌ ERROR: Image verification failed in VM"
+    log "   Expected: $TARGET_IMAGE"
+    log "   Found:"
+    multipass exec "$VM_NAME" -- docker images | grep my-ag-ui-app | tee -a "$LOG_FILE"
+    multipass exec "$VM_NAME" -- rm -f /tmp/my-ag-ui-app.tar
+    rm -f "$TAR_FILE"
+    exit 1
+fi
 log "✅ Image verified in VM: $TARGET_IMAGE"
 
 # Also tag as my-ag-ui-app:latest for consistency (non-critical)
@@ -244,3 +238,7 @@ log "✅ Image also tagged as my-ag-ui-app:latest"
 log "✅ Docker image successfully built and transferred to VM"
 log "   Host image: my-ag-ui-app:latest"
 log "   VM image: $TARGET_IMAGE"
+
+# Ensure script exits with code 0 on successful build
+set +e
+exit 0

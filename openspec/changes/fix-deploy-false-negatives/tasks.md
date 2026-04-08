@@ -12,7 +12,7 @@
   - Done when: Script captures `docker_build_status=${PIPESTATUS[0]}` and exits with `$docker_build_status` on build failure
   - Verify by: Running `grep -A 5 "PIPESTATUS\[" deploy_scripts/build-docker-image.sh` shows exit code capture and check
 
-- [ ] 1.4 Verify build script exits with code 0 on successful build despite cleanup failures
+- [x] 1.4 Verify build script exits with code 0 on successful build despite cleanup failures
   - Done when: Manual test with Docker build succeeds, cleanup fails, script exits with code 0
   - Verify by: Running `deploy-all.sh` and confirming "STEP 2 FAILED" does not occur when build succeeds
 
