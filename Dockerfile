@@ -1,5 +1,5 @@
 # Build stage - includes all build dependencies
-FROM node:20.12.0-alpine AS builder
+FROM node:20.19.0-alpine AS builder
 
 WORKDIR /app
 
@@ -64,7 +64,7 @@ COPY . .
 RUN npm run build
 
 # Runtime stage - lightweight image with only runtime dependencies
-FROM node:20.12.0-alpine AS runner
+FROM node:20.19.0-alpine AS runner
 
 WORKDIR /app
 

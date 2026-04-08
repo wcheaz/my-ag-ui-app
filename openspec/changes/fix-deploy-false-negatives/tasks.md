@@ -18,7 +18,7 @@
 
 ## 2. Node Version Compliance
 
-- [ ] 2.1 Update Dockerfile base image to node:20.19.0-alpine
+- [x] 2.1 Update Dockerfile base image to node:20.19.0-alpine
   - Done when: Line 4 of Dockerfile reads `FROM node:20.19.0-alpine`
   - Verify by: Running `grep "^FROM node:" Dockerfile` returns `FROM node:20.19.0-alpine`
 
