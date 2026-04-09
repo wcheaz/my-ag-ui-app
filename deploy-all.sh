@@ -4,9 +4,19 @@ set -euo pipefail
 
 # Deploy-all.sh - Orchestrator for modular deployment scripts
 # This script executes all modular deployment scripts in sequence
-# Usage: ./deploy-all.sh
+# Usage: ./deploy-all.sh [--format]
 
-# Source common error handling functions
+# Parse command line arguments
+FORMAT_FLAG=""
+for arg in "$@"; do
+    case "$arg" in
+        --format)
+            FORMAT_FLAG="--format"
+            ;;
+        *)
+            ;;
+    esac
+done
 if [ -f "deploy_scripts/common.sh" ]; then
     source "deploy_scripts/common.sh"
 else
@@ -139,14 +149,14 @@ fi
 
 # Step 0: Cleanup previous non-running pods and unused resources before deployment
 log_info "📋 Step 0: Cleaning up previous deployment resources..."
-if ! ./deploy_scripts/cleanup-resources.sh; then
+if ! ./deploy_scripts/cleanup-resources.sh $FORMAT_FLAG; then
     log_warning "⚠️  STEP 0 WARNING: Cleanup encountered issues, but continuing with deployment"
 fi
 log_info "✅ Step 0: Cleanup completed"
 
 # Step 1: Setting up Kubernetes secrets
 log_info "📋 Step 1: Setting up Kubernetes secrets..."
-if ! ./deploy_scripts/setup-k8s-secrets.sh; then
+if ! ./deploy_scripts/setup-k8s-secrets.sh $FORMAT_FLAG; then
     log_error "❌ STEP 1 FAILED: Failed to set up Kubernetes secrets"
     rollback_deployment
     exit 1
@@ -155,7 +165,7 @@ log_info "✅ Step 1: Kubernetes secrets setup completed"
 
 # Step 2: Building Docker image
 log_info "📋 Step 2: Building Docker image..."
-if ! ./deploy_scripts/build-docker-image.sh; then
+if ! ./deploy_scripts/build-docker-image.sh $FORMAT_FLAG; then
     log_error "❌ STEP 2 FAILED: Failed to build Docker image"
     rollback_deployment
     exit 1
@@ -164,7 +174,7 @@ log_info "✅ Step 2: Docker image build completed"
 
 # Step 3: Tagging Docker image
 log_info "📋 Step 3: Tagging Docker image..."
-if ! ./deploy_scripts/tag-docker-image.sh; then
+if ! ./deploy_scripts/tag-docker-image.sh $FORMAT_FLAG; then
     log_error "❌ STEP 3 FAILED: Failed to tag Docker image"
     rollback_deployment
     exit 1
@@ -204,7 +214,7 @@ fi
 
 # Step 4: Setting up Microk8s registry
 log_info "📋 Step 4: Setting up Microk8s registry..."
-if ! ./deploy_scripts/setup-microk8s-registry.sh; then
+if ! ./deploy_scripts/setup-microk8s-registry.sh $FORMAT_FLAG; then
     log_error "❌ STEP 4 FAILED: Failed to set up Microk8s registry"
     rollback_deployment
     exit 1
@@ -213,7 +223,7 @@ log_info "✅ Step 4: Microk8s registry setup completed"
 
 # Step 5: Pushing Docker image
 log_info "📋 Step 5: Pushing Docker image..."
-if ! ./deploy_scripts/push-docker-image.sh; then
+if ! ./deploy_scripts/push-docker-image.sh $FORMAT_FLAG; then
     log_error "❌ STEP 5 FAILED: Failed to push Docker image"
     rollback_deployment
     exit 1
@@ -222,7 +232,7 @@ log_info "✅ Step 5: Docker image push completed"
 
 # Step 6: Deploying to Kubernetes
 log_info "📋 Step 6: Deploying to Kubernetes..."
-if ! ./deploy_scripts/deploy-to-k8s.sh; then
+if ! ./deploy_scripts/deploy-to-k8s.sh $FORMAT_FLAG; then
     log_error "❌ STEP 6 FAILED: Failed to deploy to Kubernetes"
     rollback_deployment
     exit 1

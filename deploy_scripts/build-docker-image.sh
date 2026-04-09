@@ -177,7 +177,7 @@ log "✅ Image transferred to VM"
 
 # Check disk space and cleanup before image load
 log "Checking VM disk space..."
-AVAILABLE_SPACE_MB=$(multipass exec "$VM_NAME" -- df -BM / | awk 'NR==2 {print $4}')
+AVAILABLE_SPACE_MB=$(multipass exec "$VM_NAME" -- df -BM / | awk 'NR==2 {sub(/M$/,"",$4); print $4}')
 log "Available space: ${AVAILABLE_SPACE_MB}MB"
 
 # Prune unused Docker data to free space
@@ -188,7 +188,7 @@ if ! multipass exec "$VM_NAME" -- docker system prune -f 2>&1 | tee -a "$LOG_FIL
 fi
 
 # Verify space again after cleanup
-AVAILABLE_SPACE_MB=$(multipass exec "$VM_NAME" -- df -BM / | awk 'NR==2 {print $4}')
+AVAILABLE_SPACE_MB=$(multipass exec "$VM_NAME" -- df -BM / | awk 'NR==2 {sub(/M$/,"",$4); print $4}')
 log "Available space after cleanup: ${AVAILABLE_SPACE_MB}MB"
 
 # Require minimum 500MB
