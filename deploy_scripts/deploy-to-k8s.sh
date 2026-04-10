@@ -617,20 +617,21 @@ poll_pod_status() {
         local pod_status="Unknown"
         
         if [ -n "$pod_status_json" ]; then
-            # Check if ANY pod is Running (not just .items[0])
-            if echo "$pod_status_json" | grep -q '"phase":"Running"'; then
+            # Check if ANY pod is Running using jq for more reliable parsing
+            local running_pod=$(echo "$pod_status_json" | jq -r '.items[] | select(.status.phase=="Running") | .metadata.name' 2>/dev/null || echo "")
+            
+            if [ -n "$running_pod" ]; then
                 pod_status="Running"
+                log_info "✅ Pod reached Running state successfully (pod: $running_pod)"
+                pod_running=true
+                break
             else
                 # Extract first pod status for logging
-                pod_status=$(echo "$pod_status_json" | grep -o '"phase":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "Unknown")
+                pod_status=$(echo "$pod_status_json" | jq -r '.items[0].status.phase // "Unknown"' 2>/dev/null || echo "Unknown")
             fi
         fi
         
-        if [ "$pod_status" = "Running" ]; then
-            log_info "✅ Pod reached Running state successfully"
-            pod_running=true
-            break
-        else
+        if [ "$pod_status" != "Running" ]; then
             log_info "Pod status: $pod_status (waiting for ANY pod to reach Running state)"
             
             # Log ALL pod details for debugging (not just first pod)
@@ -723,25 +724,25 @@ verify_readiness_probe() {
             fi
             
             # Check if pod is ready (readiness probe passed) - extract from latest pod
-            local ready_status=$(echo "$latest_pod_json" | grep -o '"ready":true' || echo "")
+            local ready_status=$(echo "$latest_pod_json" | jq -r 'select(.status.containerStatuses[].ready==true) | .metadata.name' 2>/dev/null || echo "")
             
             if [ -n "$ready_status" ]; then
-                log_info "✅ Readiness probe verification: PASSED"
+                log_info "✅ Readiness probe verification: PASSED (pod: $ready_status)"
                 readiness_passed=true
                 break
             else
-                # Log detailed readiness status for debugging
-                local container_statuses=$(echo "$pod_details" | grep -o '"containerStatuses":\[[^]]*\]' || echo "")
+                # Log detailed readiness status for debugging using jq
+                local container_statuses=$(echo "$latest_pod_json" | jq -r '.status.containerStatuses[]? | {ready, state}' 2>/dev/null || echo "Unknown")
                 log_info "Readiness probe not yet ready. Container status: $container_statuses"
                 
                 # Check for specific readiness issues
-                if echo "$pod_details" | grep -q '"lastState":{"terminated"'; then
+                if echo "$pod_details" | jq -e '.status.containerStatuses[].lastState.terminated' >/dev/null 2>&1; then
                     log_warning "Container terminated unexpectedly - checking container logs..."
                     multipass exec "$VM_NAME" -- microk8s kubectl logs -l app=my-ag-ui-app --tail=20 2>&1 | tee -a "$LOG_FILE" || true
                 fi
                 
                 # Check readiness probe details if available
-                local readiness_details=$(echo "$pod_details" | grep -o '"lastProbeTime":"[^"]*"' | head -1 || echo "")
+                local readiness_details=$(echo "$pod_details" | jq -r '.status.containerStatuses[].lastProbeTime // empty' 2>/dev/null | head -1)
                 if [ -n "$readiness_details" ]; then
                     log_info "Last readiness probe time: $readiness_details"
                 fi
@@ -792,10 +793,10 @@ verify_readiness_probe() {
         # Log final readiness status - check all pods
         local pod_details=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json 2>/dev/null || echo "")
         if [ -n "$pod_details" ]; then
-            # Count ready and total containers across all pods
-            local ready_true_count=$(echo "$pod_details" | grep -o '"ready":true' | wc -l || echo "0")
-            local ready_false_count=$(echo "$pod_details" | grep -o '"ready":false' | wc -l || echo "0")
-            local total_containers=$(echo "$pod_details" | grep -o '"name":"my-ag-ui-app"' | wc -l || echo "0")
+            # Count ready and total containers across all pods using jq
+            local ready_true_count=$(echo "$pod_details" | jq -r '.items[].status.containerStatuses[].ready | select(.==true)' 2>/dev/null | wc -l || echo "0")
+            local ready_false_count=$(echo "$pod_details" | jq -r '.items[].status.containerStatuses[].ready | select(.==false)' 2>/dev/null | wc -l || echo "0")
+            local total_containers=$(echo "$pod_details" | jq -r '.items[].status.containerStatuses | length' 2>/dev/null | awk '{s+=$1} END {print s}' || echo "0")
             
             log_info "Final readiness status: $ready_true_count ready, $ready_false_count not ready, $total_containers total containers"
             
@@ -884,8 +885,8 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
     POD_STATUS_JSON=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json 2>/dev/null || echo "")
     
     if [ -n "$POD_STATUS_JSON" ]; then
-        # Container state change logging (Creating, Running, Terminated)
-        CURRENT_CONTAINER_STATE=$(echo "$POD_STATUS_JSON" | grep -o '"phase":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "Unknown")
+        # Container state change logging (Creating, Running, Terminated) using jq
+        CURRENT_CONTAINER_STATE=$(echo "$POD_STATUS_JSON" | jq -r '.items[0].status.phase // "Unknown"' 2>/dev/null || echo "Unknown")
         
         # Log container state changes
         if [ "$CURRENT_CONTAINER_STATE" != "$PREVIOUS_CONTAINER_STATE" ] && [ -n "$PREVIOUS_CONTAINER_STATE" ]; then
@@ -894,7 +895,7 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
         
         # Detailed container state logging
         case "$CURRENT_CONTAINER_STATE" in
-            "Pending")
+            "Pending"|"ContainerCreating")
                 log_info "🔄 Container state: Pending (being scheduled/created)"
                 ;;
             "Running")
@@ -922,9 +923,21 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
             SAW_IMAGE_PULL_BACK_OFF=true
         fi
         
-        # Check for Running status
-        POD_PHASE=$(echo "$POD_STATUS_JSON" | grep -o '"phase":"Running"' || echo "")
-        POD_READY=$(echo "$POD_STATUS_JSON" | grep -o '"ready":true' || echo "")
+        # Check for Running status using jq for more reliable parsing
+        # Get the latest pod (by creation timestamp) and check both phase and ready status on the same pod
+        LATEST_POD_NAME=$(echo "$POD_STATUS_JSON" | jq -r '.items | sort_by(.metadata.creationTimestamp) | reverse | .[0].metadata.name' 2>/dev/null || echo "")
+        POD_PHASE=""
+        POD_READY=""
+        
+        if [ -n "$LATEST_POD_NAME" ]; then
+            # Get latest pod's status directly
+            LATEST_POD_STATUS=$(echo "$POD_STATUS_JSON" | jq -r --arg pod "$LATEST_POD_NAME" '.items[] | select(.metadata.name==$pod)' 2>/dev/null || echo "")
+            
+            if [ -n "$LATEST_POD_STATUS" ]; then
+                POD_PHASE=$(echo "$LATEST_POD_STATUS" | jq -r 'select(.status.phase=="Running") | .metadata.name' 2>/dev/null || echo "")
+                POD_READY=$(echo "$LATEST_POD_STATUS" | jq -r 'select(.status.containerStatuses[].ready==true) | .metadata.name' 2>/dev/null || echo "")
+            fi
+        fi
         
         # Container startup verification - check container doesn't exit with code 0
         verify_container_startup() {
@@ -936,9 +949,9 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
             local container_waiting_state=$(echo "$pod_status_json" | grep -o '"lastState":{"waiting"' || echo "")
             local container_running_state=$(echo "$pod_status_json" | grep -o '"lastState":{"running"' || echo "")
             
-            # Get container state for logging
-            local container_phase=$(echo "$pod_status_json" | grep -o '"phase":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "Unknown")
-            local container_ready=$(echo "$pod_status_json" | grep -o '"ready":true' || echo "")
+            # Get container state for logging using jq
+            local container_phase=$(echo "$pod_status_json" | jq -r '.items[0].status.phase // "Unknown"' 2>/dev/null || echo "Unknown")
+            local container_ready=$(echo "$pod_status_json" | jq -r '.items[0].status.containerStatuses[].ready | select(.==true) // empty' 2>/dev/null || echo "")
             
             # Log container state changes (Creating, Running, Terminated)
             if [ -n "$container_phase" ]; then
@@ -1034,12 +1047,13 @@ while [ $POD_WAIT_ATTEMPT -le $MAX_POD_WAIT_ATTEMPTS ]; do
         fi
         
         if [ -n "$POD_PHASE" ] && [ -n "$POD_READY" ]; then
-            log "✓ Pod status changed to Running - verification successful"
+            log "✓ Pod status changed to Running - verification successful (pod: $LATEST_POD_NAME)"
+            break
         else
             log "Pod not yet running. Current status:"
             multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app 2>&1 | tee -a "$LOG_FILE" || true
             
-            # If we haven't seen ImagePullBackOff and this is the first check, wait a bit more
+            # If we haven't seen ImagePullBackOff and this is first check, wait a bit more
             if [ "$SAW_IMAGE_PULL_BACK_OFF" = false ] && [ "$INITIAL_STATUS_CHECK" = true ]; then
                 log "Waiting for pod status change from ImagePullBackOff to Running..."
                 INITIAL_STATUS_CHECK=false
@@ -1127,13 +1141,13 @@ while [ $PROBE_WAIT_ATTEMPT -le $MAX_PROBE_WAIT_ATTEMPTS ]; do
         # Get LATEST pod to avoid checking old/terminating pods
         LATEST_POD=$(echo "$POD_DETAILS" | jq -r '.items | sort_by(.metadata.creationTimestamp) | reverse | .[0]' 2>/dev/null || echo "$POD_DETAILS")
         
-        # Check readiness probe status - check LATEST pod
-        READY=$(echo "$LATEST_POD" | grep -o '"ready":true' || echo "")
+        # Check readiness probe status - check LATEST pod using jq
+        READY=$(echo "$LATEST_POD" | jq -r 'select(.status.containerStatuses[].ready==true) | .metadata.name' 2>/dev/null || echo "")
         
         # Check liveness probe status by checking if pod is running and ready
         # (liveness probe failures would typically cause pod restarts or failures)
-        POD_PHASE=$(echo "$LATEST_POD" | grep -o '"phase":"Running"' || echo "")
-        RESTART_COUNT=$(echo "$LATEST_POD" | grep -o '"restartCount":[0-9]*' | head -1 | cut -d':' -f2 || echo "0")
+        POD_PHASE=$(echo "$LATEST_POD" | jq -r 'select(.status.phase=="Running") | .metadata.name' 2>/dev/null || echo "")
+        RESTART_COUNT=$(echo "$LATEST_POD" | jq -r '.status.containerStatuses[0].restartCount // "0"' 2>/dev/null || echo "0")
         
 if [ -n "$READY" ] && [ -n "$POD_PHASE" ]; then
         log "✓ Readiness probe: PASSED"
@@ -1141,7 +1155,7 @@ if [ -n "$READY" ] && [ -n "$POD_PHASE" ]; then
         log "✓ Pod restart count: $RESTART_COUNT"
         
         # Get detailed probe information if available - use LATEST pod
-        local latest_pod_name=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json | jq -r '.items | sort_by(.metadata.creationTimestamp) | reverse | .[0].metadata.name' 2>/dev/null || echo "")
+        latest_pod_name=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -l app=my-ag-ui-app -o json | jq -r '.items | sort_by(.metadata.creationTimestamp) | reverse | .[0].metadata.name' 2>/dev/null || echo "")
         if [ -n "$latest_pod_name" ]; then
             PROBE_DETAILS=$(multipass exec "$VM_NAME" -- microk8s kubectl get pod "$latest_pod_name" -o jsonpath='{.status.containerStatuses[0].state}' 2>/dev/null || echo "")
         else
