@@ -258,3 +258,49 @@ fi
 
 log_info "🚀 DEPLOYMENT PIPELINE COMPLETED SUCCESSFULLY!"
 
+# Display application access information
+echo ""
+echo "═══════════════════════════════════════════════════════════════════════════════"
+echo "🌐 APPLICATION ACCESS INFORMATION"
+echo "═══════════════════════════════════════════════════════════════════════════════"
+
+if [ -f "/tmp/my-ag-ui-app-access-url.txt" ]; then
+    ACCESS_URL=$(cat /tmp/my-ag-ui-app-access-url.txt)
+    echo "✅ Primary Access URL: $ACCESS_URL"
+    echo ""
+    echo "To access your application:"
+    echo "  1. Open the following URL in your browser:"
+    echo "     $ACCESS_URL"
+    echo ""
+    echo "  2. Alternative access options:"
+    echo "     - Check deployment status: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl get ingress"
+    echo "     - View application logs: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl logs -l app=my-ag-ui-app"
+else
+    echo "⚠️  Access URL file not found. Getting access information..."
+    
+    VM_NAME="${VM_NAME:-my-ag-ui-app-k8s}"
+    VM_IP=$(multipass info "$VM_NAME" | grep -E "IPv4:" | awk '{print $2}' | cut -d',' -f1 | head -n1 || echo "")
+    
+    if [ -n "$VM_IP" ]; then
+        echo "✅ Application is accessible via your VM's IP address"
+        echo ""
+        echo "To access your application:"
+        echo "  1. Open the following URL in your browser:"
+        echo "     http://$VM_IP"
+        echo ""
+        echo "  2. If hostname-based routing is configured, add this to /etc/hosts:"
+        echo "     $VM_IP    my-ag-ui-app.local"
+        echo "     Then access: http://my-ag-ui-app.local"
+    else
+        echo "❌ Unable to determine VM IP address"
+        echo "   Please run: multipass info ${VM_NAME:-my-ag-ui-app-k8s}"
+    fi
+fi
+
+echo ""
+echo "Troubleshooting:"
+echo "  - If URL is not accessible, wait 2-3 minutes for ingress to be fully ready"
+echo "  - Check pod status: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl get pods"
+echo "  - Check ingress status: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl get ingress"
+echo "═══════════════════════════════════════════════════════════════════════════════"
+

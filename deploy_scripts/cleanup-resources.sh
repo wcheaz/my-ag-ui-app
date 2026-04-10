@@ -46,6 +46,26 @@ cleanup_resources() {
     if ! docker info >/dev/null 2>&1; then
         handle_critical_error "Docker daemon is not accessible. Cannot continue with cleanup."
     fi
+
+    # Clean up orphaned "modified" deployment and pods
+    log_info "🧹 Cleaning up orphaned 'modified' deployments and pods..."
+    
+    # Check for any deployment named "my-ag-ui-app-modified"
+    local modified_deployment=$(multipass exec "${VM_NAME}" -- microk8s kubectl get deployment my-ag-ui-app-modified -o name 2>/dev/null || echo "")
+    
+    if [ -n "$modified_deployment" ]; then
+        log_info "🧹 Found 'modified' deployment: $modified_deployment"
+        
+        # Delete the 'modified' deployment (this will also delete its pods)
+        log_info "🧹 Deleting 'modified' deployment..."
+        if ! multipass exec "${VM_NAME}" -- microk8s kubectl delete deployment my-ag-ui-app-modified --ignore-not-found=true 2>&1 | tee -a "$LOG_FILE"; then
+            log_warning "Failed to delete 'modified' deployment. Continuing with cleanup."
+        else
+            log_info "✅ Deleted 'modified' deployment and its pods"
+        fi
+    else
+        log_info "✅ No 'modified' deployment found"
+    fi
     
     # Clean up Kubernetes pods that are not running
     log_info "🧹 Cleaning up non-running Kubernetes pods..."

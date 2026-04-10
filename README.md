@@ -450,9 +450,68 @@ For advanced use cases, you can customize the microk8s registry behavior:
 
 ### Accessing the Application
 
-After successful deployment, the application will be accessible via:
-- **HTTP**: `http://localhost` (if ingress is properly configured)
-- **Alternative**: Check the deployment script output for the specific ingress endpoint
+After successful deployment, the deployment script will display the access URL automatically. The application runs inside a Multipass VM named `my-ag-ui-app-k8s` and is accessible via the VM's IP address.
+
+#### Automatic Access Information
+
+After running `./deploy-all.sh`, the script will output:
+
+```
+═══════════════════════════════════════════════════════════════════════════════
+🌐 APPLICATION ACCESS INFORMATION
+═══════════════════════════════════════════════════════════════════════════════
+✅ Primary Access URL: http://<VM-IP-ADDRESS>
+
+To access your application:
+  1. Open the following URL in your browser:
+     http://<VM-IP-ADDRESS>
+```
+
+#### Manual Access Instructions
+
+If you need to find the access URL manually:
+
+**Option 1: Get VM IP Address**
+```bash
+multipass info my-ag-ui-app-k8s | grep IPv4
+```
+
+Access the application at: `http://<VM-IP>`
+
+**Option 2: Check from Within VM**
+```bash
+# Get the VM IP
+multipass exec my-ag-ui-app-k8s -- hostname -I | awk '{print $1}'
+```
+
+**Option 3: Check Ingress Status**
+```bash
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl get ingress
+```
+
+#### Hostname-Based Access (Optional)
+
+The ingress is configured with hostname `my-ag-ui-app.local`. To use this hostname:
+
+1. Add the following to your `/etc/hosts` file:
+   ```bash
+   sudo sh -c "echo '<VM-IP> my-ag-ui-app.local' >> /etc/hosts"
+   ```
+
+2. Access the application at: `http://my-ag-ui-app.local`
+
+#### Troubleshooting Access
+
+**If the URL is not accessible:**
+- Wait 2-3 minutes for the ingress to be fully ready
+- Check pod status: `multipass exec my-ag-ui-app-k8s -- microk8s kubectl get pods`
+- Check ingress status: `multipass exec my-ag-ui-app-k8s -- microk8s kubectl get ingress`
+- Verify the VM is running: `multipass list`
+
+**Check application logs:**
+```bash
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl logs -l app=my-ag-ui-app
+```
 
 ### Cleanup
 
