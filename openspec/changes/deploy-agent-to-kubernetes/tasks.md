@@ -31,7 +31,7 @@ When creating test files or documentation files, follow these rules:
 
 ## 1. Agent Deployment Manifest
 
-- [ ] 1.1 Create `k8s/agent-deployment.yaml` — a Kubernetes Deployment named `agent` in namespace `default` with 1 replica, image `localhost:32000/agent:latest`, container port 8000, label `app: agent`, `envFrom` referencing `my-ag-ui-app-secrets` Secret and `my-ag-ui-app-config` ConfigMap, liveness and readiness probes on `GET /api/health` port 8000 (initialDelaySeconds: 10, periodSeconds: 15, failureThreshold: 3, timeoutSeconds: 5), and resource requests/limits (memory requests 256Mi, memory limits 512Mi, CPU requests 100m, CPU limits 500m).
+- [x] 1.1 Create `k8s/agent-deployment.yaml` — a Kubernetes Deployment named `agent` in namespace `default` with 1 replica, image `localhost:32000/agent:latest`, container port 8000, label `app: agent`, `envFrom` referencing `my-ag-ui-app-secrets` Secret and `my-ag-ui-app-config` ConfigMap, liveness and readiness probes on `GET /api/health` port 8000 (initialDelaySeconds: 10, periodSeconds: 15, failureThreshold: 3, timeoutSeconds: 5), and resource requests/limits (memory requests 256Mi, memory limits 512Mi, CPU requests 100m, CPU limits 500m).
   - **Done when**: `k8s/agent-deployment.yaml` exists and contains all of the above fields. Verify with: `grep -c 'agent-deployment\|agent\|localhost:32000/agent\|8000\|envFrom\|livenessProbe\|readinessProbe\|/api/health\|256Mi\|512Mi' k8s/agent-deployment.yaml` returning at least 10 matches.
 
 ## 2. Agent Service Manifest
