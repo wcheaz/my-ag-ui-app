@@ -16,6 +16,19 @@ When creating test files or documentation files, follow these rules:
 
 ---
 
+## 0. Fix Secret and ConfigMap Key Names (Prerequisite)
+
+- [ ] 0.1 Update `k8s/setup-secrets.sh` — rename all Secret keys from kebab-case to SCREAMING_SNAKE_CASE: `openai-api-key` → `OPENAI_API_KEY`, `openai-base-url` → `OPENAI_BASE_URL`, `openai-model` → `OPENAI_MODEL`, `embedding-model` → `EMBEDDING_MODEL`, `logfire-token` → `LOGFIRE_TOKEN`. Also rename ConfigMap keys: `llm-max-tokens` → `LLM_MAX_TOKENS`, `llm-context-window` → `LLM_CONTEXT_WINDOW`.
+  - **Done when**: `grep -cE 'OPENAI_API_KEY|OPENAI_BASE_URL|OPENAI_MODEL|EMBEDDING_MODEL|LOGFIRE_TOKEN|LLM_MAX_TOKENS|LLM_CONTEXT_WINDOW' k8s/setup-secrets.sh` returns at least 7 matches and no kebab-case key names remain in the generated YAML template section.
+
+- [ ] 0.2 Regenerate `k8s/secrets.yaml` — run `bash k8s/setup-secrets.sh` (or `deploy_scripts/setup-k8s-secrets.sh`) to regenerate the file with SCREAMING_SNAKE_CASE keys.
+  - **Done when**: `grep -cE 'OPENAI_API_KEY|OPENAI_BASE_URL|OPENAI_MODEL|EMBEDDING_MODEL|LOGFIRE_TOKEN|LLM_MAX_TOKENS|LLM_CONTEXT_WINDOW' k8s/secrets.yaml` returns at least 7 matches and `grep -cE 'openai-api-key|openai-base-url|openai-model|embedding-model|logfire-token|llm-max-tokens|llm-context-window' k8s/secrets.yaml` returns 0 matches.
+
+- [ ] 0.3 Re-apply secrets to the cluster — `multipass transfer k8s/secrets.yaml my-ag-ui-app-k8s:/home/ubuntu/secrets.yaml && multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/secrets.yaml`
+  - **Done when**: `multipass exec my-ag-ui-app-k8s -- microk8s kubectl get secret my-ag-ui-app-secrets -o jsonpath='{.data}'` shows keys in SCREAMING_SNAKE_CASE format.
+
+---
+
 ## 1. Agent Deployment Manifest
 
 - [ ] 1.1 Create `k8s/agent-deployment.yaml` — a Kubernetes Deployment named `agent` in namespace `default` with 1 replica, image `localhost:32000/agent:latest`, container port 8000, label `app: agent`, `envFrom` referencing `my-ag-ui-app-secrets` Secret and `my-ag-ui-app-config` ConfigMap, liveness and readiness probes on `GET /api/health` port 8000 (initialDelaySeconds: 10, periodSeconds: 15, failureThreshold: 3, timeoutSeconds: 5), and resource requests/limits (memory requests 256Mi, memory limits 512Mi, CPU requests 100m, CPU limits 500m).
@@ -33,49 +46,77 @@ When creating test files or documentation files, follow these rules:
 
 ## 4. Manifest Validation
 
-- [ ] 4.1 Validate all three manifests pass `kubectl --dry-run=client` validation. Run `microk8s kubectl apply --dry-run=client -f k8s/agent-deployment.yaml && microk8s kubectl apply --dry-run=client -f k8s/agent-service.yaml && microk8s kubectl apply --dry-run=client -f k8s/deployment.yaml` and confirm all three return `created (dry run)` or `configured (dry run)` with no errors.
+- [ ] 4.1 Validate all three manifests pass `kubectl --dry-run=client` validation. Transfer each manifest to the VM and run dry-run validation there. Run: `multipass transfer k8s/agent-deployment.yaml my-ag-ui-app-k8s:/tmp/agent-deployment.yaml && multipass transfer k8s/agent-service.yaml my-ag-ui-app-k8s:/tmp/agent-service.yaml && multipass transfer k8s/deployment.yaml my-ag-ui-app-k8s:/tmp/deployment.yaml && multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply --dry-run=client -f /tmp/agent-deployment.yaml && multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply --dry-run=client -f /tmp/agent-service.yaml && multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply --dry-run=client -f /tmp/deployment.yaml` and confirm all three return `created (dry run)` or `configured (dry run)` with no errors.
   - **Done when**: All three dry-run commands exit with code 0 and produce no error output.
 
 ---
 
 ## Human Handoff (NOT for autonomous execution)
 
+All `microk8s kubectl` commands must be run through the Multipass VM. VM name: `my-ag-ui-app-k8s`.
+
 The following steps require human action after the manifests are validated:
 
-1. **Build and push agent image**:
+1. **Fix Secret key names (if not already done by Task 0)**:
+   The existing `k8s/secrets.yaml` uses kebab-case keys (`openai-api-key`) but the agent code expects SCREAMING_SNAKE_CASE (`OPENAI_API_KEY`). If this rename was not done as part of Task 0, it must be done now:
    ```bash
-   docker build -t localhost:32000/agent:latest ./agent
-   docker push localhost:32000/agent:latest
+   # Update k8s/setup-secrets.sh key names, then regenerate and re-apply
+   bash k8s/setup-secrets.sh
+   multipass transfer k8s/secrets.yaml my-ag-ui-app-k8s:/home/ubuntu/secrets.yaml
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/secrets.yaml
    ```
 
-2. **Verify secrets are current**:
+2. **Build the agent image on the host**:
    ```bash
-   microk8s kubectl get secret my-ag-ui-app-secrets -o yaml
-   # If stale or missing: update k8s/secrets.yaml and re-apply
+   docker build -t agent:latest ./agent
    ```
 
-3. **Apply agent manifests**:
+3. **Transfer image to the Multipass VM** (following `deploy_scripts/build-docker-image.sh` pattern):
    ```bash
-   microk8s kubectl apply -f k8s/agent-deployment.yaml
-   microk8s kubectl apply -f k8s/agent-service.yaml
+   IMAGE_ID=$(docker images agent:latest --format "{{.ID}}" | head -n1)
+   docker save "$IMAGE_ID" -o ./agent.tar
+   multipass transfer ./agent.tar my-ag-ui-app-k8s:/tmp/
+   multipass exec my-ag-ui-app-k8s -- docker load -i /tmp/agent.tar
    ```
 
-4. **Apply updated frontend**:
+4. **Tag and push in the VM**:
    ```bash
-   microk8s kubectl apply -f k8s/deployment.yaml
-   microk8s kubectl rollout restart deployment/my-ag-ui-app
+   VM_IMAGE_ID=$(multipass exec my-ag-ui-app-k8s -- docker images --format "{{.ID}}" | head -n1)
+   multipass exec my-ag-ui-app-k8s -- docker tag "$VM_IMAGE_ID" localhost:32000/agent:latest
+   multipass exec my-ag-ui-app-k8s -- docker push localhost:32000/agent:latest
    ```
 
-5. **Verify rollout**:
+5. **Verify secrets are current**:
    ```bash
-   microk8s kubectl rollout status deployment/agent
-   microk8s kubectl rollout status deployment/my-ag-ui-app
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl get secret my-ag-ui-app-secrets -o yaml
+   # If stale or missing: re-run deploy_scripts/setup-k8s-secrets.sh
    ```
 
-6. **End-to-end test**: Open `http://my-ag-ui-app.local/`, submit a chat prompt, confirm a response is received.
-
-7. **Rollback** (if needed):
+6. **Transfer and apply agent manifests**:
    ```bash
-   microk8s kubectl rollout undo deployment/agent
-   microk8s kubectl rollout undo deployment/my-ag-ui-app
+   multipass transfer k8s/agent-deployment.yaml my-ag-ui-app-k8s:/home/ubuntu/agent-deployment.yaml
+   multipass transfer k8s/agent-service.yaml my-ag-ui-app-k8s:/home/ubuntu/agent-service.yaml
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/agent-deployment.yaml
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/agent-service.yaml
+   ```
+
+7. **Transfer and apply updated frontend**:
+   ```bash
+   multipass transfer k8s/deployment.yaml my-ag-ui-app-k8s:/home/ubuntu/deployment.yaml
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/deployment.yaml
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout restart deployment/my-ag-ui-app
+   ```
+
+8. **Verify rollout**:
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout status deployment/agent
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout status deployment/my-ag-ui-app
+   ```
+
+9. **End-to-end test**: Open `http://my-ag-ui-app.local/`, submit a chat prompt, confirm a response is received.
+
+10. **Rollback** (if needed):
+   ```bash
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout undo deployment/agent
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout undo deployment/my-ag-ui-app
    ```

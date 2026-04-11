@@ -22,7 +22,7 @@ The system SHALL configure environment variables for the application using Kuber
 #### Scenario: Frontend pod receives secrets at runtime
 - **WHEN** a frontend pod is running
 - **THEN** the environment contains `AGENT_URL` equal to `http://agent-service:8000/`
-- **AND** the environment contains `openai-api-key`, `openai-base-url`, `openai-model` from the mounted Secret
+- **AND** the environment contains `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL` from the mounted Secret (keys MUST be in SCREAMING_SNAKE_CASE)
 
 #### Scenario: .env.example is available as reference
 - **WHEN** .env.example file is examined

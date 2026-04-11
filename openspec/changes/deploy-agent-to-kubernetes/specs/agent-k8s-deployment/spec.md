@@ -28,8 +28,8 @@ The agent Deployment SHALL mount all keys from `my-ag-ui-app-secrets` Secret and
 
 #### Scenario: Agent pod receives required env vars at runtime
 - **WHEN** an agent pod is running
-- **THEN** the environment contains `openai-api-key`, `openai-base-url`, `openai-model`, `embedding-model`, `logfire-token`
-- **AND** the environment contains `llm-max-tokens`, `llm-context-window`
+- **THEN** the environment contains `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, `EMBEDDING_MODEL`, `LOGFIRE_TOKEN`
+- **AND** the environment contains `LLM_MAX_TOKENS`, `LLM_CONTEXT_WINDOW`
 
 ### Requirement: Agent deployment must include health probes
 The agent Deployment SHALL configure liveness and readiness probes targeting `GET /api/health` on port 8000, with `initialDelaySeconds: 10`, `periodSeconds: 15`, `failureThreshold: 3`, and `timeoutSeconds: 5`.
