@@ -36,7 +36,7 @@ When creating test files or documentation files, follow these rules:
 
 ## 2. Agent Service Manifest
 
-- [ ] 2.1 Create `k8s/agent-service.yaml` — a Kubernetes ClusterIP Service named `agent-service` in namespace `default`, selecting pods with label `app: agent`, mapping port 8000 to targetPort 8000, protocol TCP.
+- [x] 2.1 Create `k8s/agent-service.yaml` — a Kubernetes ClusterIP Service named `agent-service` in namespace `default`, selecting pods with label `app: agent`, mapping port 8000 to targetPort 8000, protocol TCP.
   - **Done when**: `k8s/agent-service.yaml` exists with `type: ClusterIP`, selector `app: agent`, and port mapping `8000:8000`. Verify with: `grep -c 'agent-service\|ClusterIP\|app: agent\|port: 8000\|targetPort: 8000' k8s/agent-service.yaml` returning at least 5 matches.
 
 ## 3. Frontend Deployment Update
