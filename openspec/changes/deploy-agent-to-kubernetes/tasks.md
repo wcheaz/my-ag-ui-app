@@ -24,7 +24,7 @@ When creating test files or documentation files, follow these rules:
 - [x] 0.2 Regenerate `k8s/secrets.yaml` — run `bash k8s/setup-secrets.sh` (or `deploy_scripts/setup-k8s-secrets.sh`) to regenerate the file with SCREAMING_SNAKE_CASE keys.
   - **Done when**: `grep -cE 'OPENAI_API_KEY|OPENAI_BASE_URL|OPENAI_MODEL|EMBEDDING_MODEL|LOGFIRE_TOKEN|LLM_MAX_TOKENS|LLM_CONTEXT_WINDOW' k8s/secrets.yaml` returns at least 7 matches and `grep -cE 'openai-api-key|openai-base-url|openai-model|embedding-model|logfire-token|llm-max-tokens|llm-context-window' k8s/secrets.yaml` returns 0 matches.
 
-- [ ] 0.3 Re-apply secrets to the cluster — `multipass transfer k8s/secrets.yaml my-ag-ui-app-k8s:/home/ubuntu/secrets.yaml && multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/secrets.yaml`
+- [x] 0.3 Re-apply secrets to the cluster — `multipass transfer k8s/secrets.yaml my-ag-ui-app-k8s:/home/ubuntu/secrets.yaml && multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/secrets.yaml`
   - **Done when**: `multipass exec my-ag-ui-app-k8s -- microk8s kubectl get secret my-ag-ui-app-secrets -o jsonpath='{.data}'` shows keys in SCREAMING_SNAKE_CASE format.
 
 ---
