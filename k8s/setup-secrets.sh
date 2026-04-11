@@ -204,11 +204,11 @@ metadata:
 type: Opaque
 data:
   # Base64 encoded values for sensitive environment variables
-  openai-api-key: $OPENAI_API_KEY_BASE64
-  openai-base-url: $OPENAI_BASE_URL_BASE64
-  openai-model: $OPENAI_MODEL_BASE64
-  embedding-model: $EMBEDDING_MODEL_BASE64
-  logfire-token: $LOGFIRE_TOKEN_BASE64
+  OPENAI_API_KEY: $OPENAI_API_KEY_BASE64
+  OPENAI_BASE_URL: $OPENAI_BASE_URL_BASE64
+  OPENAI_MODEL: $OPENAI_MODEL_BASE64
+  EMBEDDING_MODEL: $EMBEDDING_MODEL_BASE64
+  LOGFIRE_TOKEN: $LOGFIRE_TOKEN_BASE64
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -219,8 +219,8 @@ metadata:
     app: my-ag-ui-app
 data:
   # Non-sensitive configuration values
-  llm-max-tokens: "$LLM_MAX_TOKENS"
-  llm-context-window: "$LLM_CONTEXT_WINDOW"
+  LLM_MAX_TOKENS: "$LLM_MAX_TOKENS"
+  LLM_CONTEXT_WINDOW: "$LLM_CONTEXT_WINDOW"
 EOF
 then
     handle_error 11 "Failed to write secrets file to $OUTPUT_FILE" \
