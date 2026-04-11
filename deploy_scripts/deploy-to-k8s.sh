@@ -261,9 +261,18 @@ log_info "   • First validating deployment manifest with dry-run..."
 log_info "   • Command: multipass exec '$VM_NAME' -- microk8s kubectl apply --dry-run=server -f k8s/deployment.yaml"
 log_info "   • Expected: Validation against Kubernetes API server"
 
+# Transfer deployment manifest to VM before validation and application
+log_info "📤 Transferring deployment manifest to VM..."
+if ! multipass transfer k8s/deployment.yaml "${VM_NAME}:/home/ubuntu/deployment.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+    log_error "❌ Failed to transfer deployment manifest to VM"
+    log_error "   Could not copy k8s/deployment.yaml to ${VM_NAME}:/home/ubuntu/deployment.yaml"
+    exit 1
+fi
+log_info "✅ Deployment manifest transferred to VM: /home/ubuntu/deployment.yaml"
+
 # Validate deployment manifest using dry-run=server before applying
 log_info "Starting deployment manifest validation using kubectl apply --dry-run=server..."
-if ! multipass exec "$VM_NAME" -- microk8s kubectl apply --dry-run=server -f k8s/deployment.yaml 2>&1 | tee -a "$LOG_FILE"; then
+if ! multipass exec "$VM_NAME" -- microk8s kubectl apply --dry-run=server -f /home/ubuntu/deployment.yaml 2>&1 | tee -a "$LOG_FILE"; then
     log_error "❌ DEPLOYMENT MANIFEST VALIDATION FAILED"
     log_error "   The deployment manifest contains errors that would prevent successful deployment"
     log_error "   Please fix the validation errors before proceeding"
@@ -273,16 +282,12 @@ fi
 log_info "✅ Deployment manifest validation successful"
 
 log_info "   • Validation passed, proceeding with actual deployment..."
-log_info "   • Command: multipass exec '$VM_NAME' -- microk8s kubectl apply -f k8s/deployment.yaml"
+log_info "   • Command: multipass exec '$VM_NAME' -- microk8s kubectl apply -f /home/ubuntu/deployment.yaml"
 log_info "   • Expected: Deployment resource creation/update"
 log_info "   • Output will be captured and analyzed below..."
 
-# Capture kubectl apply output for detailed analysis
-kubectl_apply_output=""
-kubectl_apply_exit_code=0
-
 # Execute kubectl apply with output capture
-kubectl_apply_output=$(multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/deployment.yaml 2>&1)
+kubectl_apply_output=$(multipass exec "$VM_NAME" -- microk8s kubectl apply -f /home/ubuntu/deployment.yaml 2>&1)
 kubectl_apply_exit_code=$?
 
 # Log the full kubectl apply output for debugging
@@ -1216,18 +1221,36 @@ done
 
 log "✓ Pod readiness and liveness probes verification completed successfully"
 
+# Transfer service manifest to VM before applying
+log "Transferring service manifest to VM..."
+if ! multipass transfer k8s/service.yaml "${VM_NAME}:/home/ubuntu/service.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_deployment_error "Failed to transfer service manifest to VM" \
+        "Could not copy k8s/service.yaml to ${VM_NAME}:/home/ubuntu/service.yaml" \
+        "SERVICE_MANIFEST_TRANSFER_FAILURE"
+fi
+log "Service manifest transferred to VM: /home/ubuntu/service.yaml"
+
 # Apply service manifest
 log "Applying service manifest..."
-if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
+if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /home/ubuntu/service.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_deployment_error "Failed to apply service manifest" \
         "Check the service file: k8s/service.yaml. Ensure it references the correct deployment." \
         "SERVICE_MANIFEST_FAILURE"
 fi
 log "Service manifest applied successfully"
 
+# Transfer ingress manifest to VM before applying
+log "Transferring ingress manifest to VM..."
+if ! multipass transfer k8s/ingress.yaml "${VM_NAME}:/home/ubuntu/ingress.yaml" 2>&1 | tee -a "$LOG_FILE"; then
+    handle_deployment_error "Failed to transfer ingress manifest to VM" \
+        "Could not copy k8s/ingress.yaml to ${VM_NAME}:/home/ubuntu/ingress.yaml" \
+        "INGRESS_MANIFEST_TRANSFER_FAILURE"
+fi
+log "Ingress manifest transferred to VM: /home/ubuntu/ingress.yaml"
+
 # Apply ingress manifest
 log "Applying ingress manifest..."
-if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f k8s/ingress.yaml 2>&1 | tee -a "$LOG_FILE"; then
+if ! multipass exec "$VM_NAME" -- microk8s kubectl apply -f /home/ubuntu/ingress.yaml 2>&1 | tee -a "$LOG_FILE"; then
     handle_deployment_error "Failed to apply ingress manifest" \
         "Check the ingress file: k8s/ingress.yaml. Ensure ingress controller is enabled in microk8s." \
         "INGRESS_MANIFEST_FAILURE"

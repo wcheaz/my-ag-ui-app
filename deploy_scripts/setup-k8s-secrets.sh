@@ -91,7 +91,7 @@ log_info "All required environment variables are set"
 
 # Run the secrets setup script to generate the YAML file
 log_info "Running secrets setup script to generate YAML file..."
-if ! bash k8s/setup-secrets.sh 2>&1 | tee -a "$LOG_FILE"; then
+if ! SKIP_VALIDATION=1 bash k8s/setup-secrets.sh 2>&1 | tee -a "$LOG_FILE"; then
     log_error "Failed to generate Kubernetes secrets YAML file"
     log_structured_error "KUBERNETES SECRETS GENERATION FAILED" \
         "The setup-secrets.sh script failed to generate a valid Kubernetes secrets YAML file" \
@@ -115,7 +115,10 @@ log_info "Secrets file copied to VM successfully"
 
 # Validate the generated secrets file using Kubernetes API server
 log_info "Validating secrets YAML against Kubernetes API server..."
-if ! multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply --dry-run=server -f /home/ubuntu/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
+VALIDATION_OUTPUT=$(multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply --dry-run=server -f /home/ubuntu/secrets.yaml 2>&1)
+VALIDATION_EXIT_CODE=${PIPESTATUS[0]}
+echo "$VALIDATION_OUTPUT" | tee -a "$LOG_FILE"
+if [ $VALIDATION_EXIT_CODE -ne 0 ]; then
     log_error "Secrets YAML validation failed against Kubernetes API server"
     log_structured_error "KUBERNETES SECRETS VALIDATION FAILURE" \
         "Generated secrets YAML file is invalid or incompatible with Kubernetes API server" \
@@ -127,7 +130,10 @@ log_info "Secrets YAML validation passed"
 
 # Apply the validated secrets to Kubernetes
 log_info "Applying secrets to Kubernetes cluster..."
-if ! multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply -f /home/ubuntu/secrets.yaml 2>&1 | tee -a "$LOG_FILE"; then
+APPLY_OUTPUT=$(multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply -f /home/ubuntu/secrets.yaml 2>&1)
+APPLY_EXIT_CODE=${PIPESTATUS[0]}
+echo "$APPLY_OUTPUT" | tee -a "$LOG_FILE"
+if [ $APPLY_EXIT_CODE -ne 0 ]; then
     log_error "Failed to apply secrets to Kubernetes cluster"
     log_structured_error "KUBERNETES SECRETS APPLICATION FAILED" \
         "The kubectl apply command failed to apply the validated secrets YAML to the Kubernetes cluster" \

@@ -231,15 +231,20 @@ then
 fi
 
 # Validate generated YAML file with Kubernetes API server
-log "Validating generated secrets file against Kubernetes API server..."
-if ! multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply --dry-run=server -f "$OUTPUT_FILE" 2>/dev/null; then
-    handle_error 12 "Secrets YAML validation failed against Kubernetes API server" \
-        "1. Check the generated file for syntax errors: cat $OUTPUT_FILE\n" \
-        "2. Verify all base64 values are properly encoded\n" \
-        "3. Ensure no special characters broke the YAML format\n" \
-        "4. Check Kubernetes cluster connectivity: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl cluster-info\n" \
-        "5. Verify you have necessary permissions: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl auth can-i create secret\n" \
-        "6. Try regenerating the file after fixing environment variables"
+# Skip validation if we're generating on host (validation happens in deploy_scripts/setup-k8s-secrets.sh)
+if [ -z "${SKIP_VALIDATION:-}" ]; then
+    log "Validating generated secrets file against Kubernetes API server..."
+    if ! multipass exec "${VM_NAME:-my-ag-ui-app-k8s}" -- microk8s kubectl apply --dry-run=server -f "$OUTPUT_FILE" 2>/dev/null; then
+        handle_error 12 "Secrets YAML validation failed against Kubernetes API server" \
+            "1. Check generated file for syntax errors: cat $OUTPUT_FILE\n" \
+            "2. Verify all base64 values are properly encoded\n" \
+            "3. Ensure no special characters broke YAML format\n" \
+            "4. Check Kubernetes cluster connectivity: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl cluster-info\n" \
+            "5. Verify you have necessary permissions: multipass exec ${VM_NAME:-my-ag-ui-app-k8s} -- microk8s kubectl auth can-i create secret\n" \
+            "6. Try regenerating file after fixing environment variables"
+    fi
+else
+    log "Skipping validation (will be done in deployment script)"
 fi
 
 log "✅ Kubernetes secrets file generated successfully: $OUTPUT_FILE"
