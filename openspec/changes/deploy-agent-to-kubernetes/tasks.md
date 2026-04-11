@@ -41,7 +41,7 @@ When creating test files or documentation files, follow these rules:
 
 ## 3. Frontend Deployment Update
 
-- [ ] 3.1 Update `k8s/deployment.yaml` — add `env` entry `AGENT_URL=http://agent-service:8000/` and add `envFrom` entries referencing `my-ag-ui-app-secrets` Secret and `my-ag-ui-app-config` ConfigMap. Preserve all existing fields (replicas: 3, image, ports, labels).
+- [x] 3.1 Update `k8s/deployment.yaml` — add `env` entry `AGENT_URL=http://agent-service:8000/` and add `envFrom` entries referencing `my-ag-ui-app-secrets` Secret and `my-ag-ui-app-config` ConfigMap. Preserve all existing fields (replicas: 3, image, ports, labels).
   - **Done when**: `k8s/deployment.yaml` contains `name: AGENT_URL`, `value: "http://agent-service:8000/"`, `secretRef` referencing `my-ag-ui-app-secrets`, and `configMapRef` referencing `my-ag-ui-app-config`. Verify with: `grep -c 'AGENT_URL\|agent-service:8000\|my-ag-ui-app-secrets\|my-ag-ui-app-config' k8s/deployment.yaml` returning at least 4 matches.
 
 ## 4. Manifest Validation
