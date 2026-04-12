@@ -1,0 +1,17 @@
+[
+  {
+    "timestamp": "2026-04-12T22:23:42.688Z",
+    "iteration": 1,
+    "duration": 89555,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [
+      "openspec/changes/fix-k8s-agent-streaming/.ralph/"
+    ],
+    "exitCode": 0,
+    "completedTasks": [
+      "1.1 Collect current cluster state — create script `test/check_k8s_cluster_state.sh` that runs through `multipass exec my-ag-ui-app-k8s` and captures: (a) `microk8s kubectl get pods -o wide` for all pods, (b) `microk8s kubectl describe deployment agent` and `microk8s kubectl describe deployment my-ag-ui-app`, (c) `microk8s kubectl get ingress -o yaml` to verify SSE annotations are present, (d) `microk8s kubectl logs <agent-pod> --tail=50` for recent agent logs, (e) `microk8s kubectl logs -n ingress <ingress-controller-pod> --tail=50` for ingress controller logs, (f) `microk8s kubectl describe pod <agent-pod>` to check for OOMKilled or restart events. Output all results to a single report."
+    ]
+  }
+]
