@@ -4,7 +4,8 @@ WORKDIR /app
 
 # Create non-root user for security
 RUN addgroup --system --gid 1001 appgroup && \
-    adduser --system --uid 1001 appuser
+    adduser --system --uid 1001 appuser && \
+    mkdir -p /home/appuser && chown appuser:appgroup /home/appuser
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
@@ -23,6 +24,7 @@ RUN uv sync --frozen && \
     chown -R appuser:appgroup /app
 
 # Switch to non-root user
+ENV HOME=/home/appuser
 USER appuser
 
 EXPOSE 8000

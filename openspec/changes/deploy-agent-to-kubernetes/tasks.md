@@ -55,23 +55,20 @@ When creating test files or documentation files, follow these rules:
 
 All `microk8s kubectl` commands must be run through the Multipass VM. VM name: `my-ag-ui-app-k8s`.
 
-The following steps require human action after the manifests are validated:
+Task 0 (secret key rename) is already complete. The following steps deploy the agent service:
 
-1. **Fix Secret key names (if not already done by Task 0)**:
-   The existing `k8s/secrets.yaml` uses kebab-case keys (`openai-api-key`) but the agent code expects SCREAMING_SNAKE_CASE (`OPENAI_API_KEY`). If this rename was not done as part of Task 0, it must be done now:
+1. **Regenerate and apply secrets** (validates against the cluster via stdin, then applies):
    ```bash
-   # Update k8s/setup-secrets.sh key names, then regenerate and re-apply
-   bash k8s/setup-secrets.sh
-   multipass transfer k8s/secrets.yaml my-ag-ui-app-k8s:/home/ubuntu/secrets.yaml
-   multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/secrets.yaml
+   bash k8s/setup-secrets.sh --apply
    ```
+   This single command generates `k8s/secrets.yaml`, validates it against the Kubernetes API server via `multipass exec` stdin piping, and applies it. No manual `multipass transfer` is needed.
 
-2. **Build the agent image on the host**:
+2. **Build the agent image on the host** (Python/uv Dockerfile in `agent/`):
    ```bash
    docker build -t agent:latest ./agent
    ```
 
-3. **Transfer image to the Multipass VM** (following `deploy_scripts/build-docker-image.sh` pattern):
+3. **Transfer image to the Multipass VM**:
    ```bash
    IMAGE_ID=$(docker images agent:latest --format "{{.ID}}" | head -n1)
    docker save "$IMAGE_ID" -o ./agent.tar
@@ -86,10 +83,10 @@ The following steps require human action after the manifests are validated:
    multipass exec my-ag-ui-app-k8s -- docker push localhost:32000/agent:latest
    ```
 
-5. **Verify secrets are current**:
+5. **Verify secrets and config are current on the cluster**:
    ```bash
-   multipass exec my-ag-ui-app-k8s -- microk8s kubectl get secret my-ag-ui-app-secrets -o yaml
-   # If stale or missing: re-run deploy_scripts/setup-k8s-secrets.sh
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl get secret my-ag-ui-app-secrets -o jsonpath='{.data}' | grep -o 'OPENAI_API_KEY'
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl get configmap my-ag-ui-app-config -o yaml
    ```
 
 6. **Transfer and apply agent manifests**:
@@ -116,7 +113,13 @@ The following steps require human action after the manifests are validated:
 9. **End-to-end test**: Open `http://my-ag-ui-app.local/`, submit a chat prompt, confirm a response is received.
 
 10. **Rollback** (if needed):
-   ```bash
-   multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout undo deployment/agent
-   multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout undo deployment/my-ag-ui-app
-   ```
+    ```bash
+    multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout undo deployment/agent
+    multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout undo deployment/my-ag-ui-app
+    ```
+
+11. **Cleanup** (remove temporary tar files):
+    ```bash
+    rm -f ./agent.tar
+    multipass exec my-ag-ui-app-k8s -- rm -f /tmp/agent.tar
+    ```
