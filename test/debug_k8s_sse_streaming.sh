@@ -29,119 +29,31 @@ echo "Agent pod: $AGENT_POD (IP: $AGENT_POD_IP)"
 echo "Frontend pod: $FRONTEND_POD"
 echo ""
 
-# Test 1: Agent pod health directly using Python's built-in urllib
+# Test 1: Agent pod health directly using curl
 echo "1. Testing agent pod health directly (HTTP to pod IP):"
 echo "========================================================"
-if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i "$AGENT_POD" -- python3 -c "
-import urllib.request
-import urllib.error
-import json
-import sys
-try:
-    req = urllib.request.Request('http://localhost:8000/api/health')
-    with urllib.request.urlopen(req, timeout=5) as response:
-        if response.status == 200:
-            data = json.loads(response.read().decode())
-            print('Status:', response.status)
-            print('Response:', data)
-            print('PASS: Agent health endpoint accessible')
-            sys.exit(0)
-        else:
-            print('FAIL: Agent health endpoint returned', response.status)
-            sys.exit(1)
-except Exception as e:
-    print('FAIL: Agent health endpoint error:', str(e))
-    sys.exit(1)
-"; then
-    echo "PASS: Agent pod health endpoint is accessible from within agent"
+if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i "$FRONTEND_POD" -- curl -s "http://$AGENT_POD_IP:8000/api/health" | grep -q "ok\|healthy\|ready"; then
+    echo "PASS: Agent pod health endpoint is accessible via pod IP"
 else
-    echo "FAIL: Agent pod health endpoint is not accessible from within agent"
+    echo "FAIL: Agent pod health endpoint is not accessible via pod IP"
 fi
 echo ""
 
-# Test 2: Agent service from frontend pod using Node.js
+# Test 2: Agent service from frontend pod using curl
 echo "2. Testing agent service from frontend pod:"
 echo "=========================================="
-if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i "$FRONTEND_POD" -- node -e "
-const http = require('http');
-const options = {
-  hostname: 'agent-service',
-  port: 8000,
-  path: '/api/health',
-  method: 'GET',
-  timeout: 5000
-};
-const req = http.request(options, (res) => {
-  console.log('Status:', res.statusCode);
-  if (res.statusCode === 200) {
-    console.log('PASS: Agent service accessible from frontend');
-    process.exit(0);
-  } else {
-    console.log('FAIL: Agent service returned non-200');
-    process.exit(1);
-  }
-});
-req.on('error', (e) => {
-  console.log('FAIL: Agent service error:', e.message);
-  process.exit(1);
-});
-req.on('timeout', () => {
-  console.log('FAIL: Agent service timeout');
-  req.destroy();
-  process.exit(1);
-});
-req.end();
-"; then
+if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i "$FRONTEND_POD" -- curl -s -N --max-time 10 "http://agent-service:8000/api/health" | grep -q "ok\|healthy\|ready"; then
     echo "PASS: Agent service is accessible from frontend pod"
 else
     echo "FAIL: Agent service is not accessible from frontend pod"
 fi
 echo ""
 
-# Test 3: SSE stream connection to agent service (basic connectivity)
+# Test 3: SSE stream connection to agent service using curl
 echo "3. Testing SSE stream connection to agent service:"
 echo "=================================================="
-if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i "$FRONTEND_POD" -- node -e "
-const http = require('http');
-const data = JSON.stringify({
-  messages: [{ role: 'user', content: 'hello' }],
-  threadId: 'test-123'
-});
-const options = {
-  hostname: 'agent-service',
-  port: 8000,
-  path: '/',
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'text/event-stream',
-    'Content-Length': data.length
-  },
-  timeout: 10000
-};
-const req = http.request(options, (res) => {
-  console.log('Status:', res.statusCode);
-  console.log('Headers:', JSON.stringify(res.headers, null, 2));
-  if ([200, 422].includes(res.statusCode)) {
-    // 200 or 422 means we connected (422 likely means invalid format but connection works)
-    console.log('PASS: Agent SSE endpoint connected');
-    process.exit(0);
-  } else {
-    console.log('FAIL: Agent SSE endpoint returned', res.statusCode);
-    process.exit(1);
-  }
-});
-req.on('error', (e) => {
-  console.log('FAIL: Agent SSE connection error:', e.message);
-  process.exit(1);
-});
-req.on('timeout', () => {
-  console.log('FAIL: Agent SSE connection timeout');
-  req.destroy();
-  process.exit(1);
-});
-req.write(data);
-req.end();
+if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i "$FRONTEND_POD" -- bash -c "
+echo '{\"messages\": [{\"role\": \"user\", \"content\": \"hello\"}], \"threadId\": \"test-123\"}' | curl -s -N -H 'Content-Type: application/json' -H 'Accept: text/event-stream' -X POST http://agent-service:8000/ --max-time 10 | head -c 100 | grep -q 'event:\|data:'
 "; then
     echo "PASS: Agent SSE endpoint is connectable"
 else
@@ -149,50 +61,11 @@ else
 fi
 echo ""
 
-# Test 4: CopilotKit SSE connection from frontend pod
+# Test 4: CopilotKit SSE connection from frontend pod using curl
 echo "4. Testing CopilotKit SSE connection from frontend pod:"
 echo "======================================================"
-if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i "$FRONTEND_POD" -- node -e "
-const http = require('http');
-const data = JSON.stringify({
-  messages: [{ role: 'user', content: 'hello' }],
-  threadId: 'test-123'
-});
-const options = {
-  hostname: 'localhost',
-  port: 3000,
-  path: '/api/copilotkit',
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'text/event-stream',
-    'Content-Length': data.length
-  },
-  timeout: 10000
-};
-const req = http.request(options, (res) => {
-  console.log('Status:', res.statusCode);
-  console.log('Headers:', JSON.stringify(res.headers, null, 2));
-  if ([200, 400, 422].includes(res.statusCode)) {
-    // 200, 400, or 422 means we connected (errors likely mean invalid format but connection works)
-    console.log('PASS: CopilotKit SSE endpoint connected');
-    process.exit(0);
-  } else {
-    console.log('FAIL: CopilotKit SSE endpoint returned', res.statusCode);
-    process.exit(1);
-  }
-});
-req.on('error', (e) => {
-  console.log('FAIL: CopilotKit SSE connection error:', e.message);
-  process.exit(1);
-});
-req.on('timeout', () => {
-  console.log('FAIL: CopilotKit SSE connection timeout');
-  req.destroy();
-  process.exit(1);
-});
-req.write(data);
-req.end();
+if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i "$FRONTEND_POD" -- bash -c "
+echo '{\"messages\": [{\"role\": \"user\", \"content\": \"hello\"}], \"threadId\": \"test-123\"}' | curl -s -N -H 'Content-Type: application/json' -H 'Accept: text/event-stream' -X POST http://localhost:3000/api/copilotkit --max-time 10 | head -c 100 | grep -q 'event:\|data:'
 "; then
     echo "PASS: CopilotKit SSE endpoint is connectable"
 else
@@ -200,7 +73,7 @@ else
 fi
 echo ""
 
-# Test 5: Full external path through ingress
+# Test 5: Full external path through ingress using curl
 echo "5. Testing full external path through ingress:"
 echo "=============================================="
 # Create a test request file
@@ -216,7 +89,7 @@ cat > /tmp/test_agui_request.json << 'EOF'
 }
 EOF
 
-if curl -s -N -H 'Content-Type: application/json' -H 'Accept: text/event-stream' -X POST http://my-ag-ui-app.local/api/copilotkit -d @/tmp/test_agui_request.json --max-time 30 -w "HTTP Status: %{http_code}\n" | head -c 200; then
+if curl -s -N -H 'Content-Type: application/json' -H 'Accept: text/event-stream' -X POST http://my-ag-ui-app.local/api/copilotkit -d @/tmp/test_agui_request.json --max-time 30 | head -c 100 | grep -q 'event:\|data:'; then
     echo "PASS: Full external path through ingress is connectable"
 else
     echo "FAIL: Full external path through ingress is not connectable"
