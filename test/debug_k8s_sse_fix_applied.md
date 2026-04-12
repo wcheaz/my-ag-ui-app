@@ -12,7 +12,7 @@ The investigation revealed:
 ## Files Changed
 
 ### 1. next.config.ts
-Enhanced existing streaming configuration for proper SSE response handling:
+Added missing streaming configuration for proper SSE response handling:
 
 ```diff
  const nextConfig: NextConfig = {
@@ -23,32 +23,22 @@ Enhanced existing streaming configuration for proper SSE response handling:
    // Disable source maps in production for security and performance
    productionBrowserSourceMaps: false,
    
-   // Configure HTTP agent for keep-alive connections (SSE fix)
-   httpAgentOptions: {
-     keepAlive: true,
-   },
++  // Configure HTTP agent for keep-alive connections (SSE fix)
++  httpAgentOptions: {
++    keepAlive: true,
++  },
    // Disable compression for SSE streaming
    compress: false,
  };
 ```
 
 **Changes made:**
-- The `httpAgentOptions` with `keepAlive: true` and `compress: false` were already present and are critical for SSE streaming
-- No additional changes were needed as the configuration was already properly set up for streaming
+- **Added `httpAgentOptions` with `keepAlive: true`**: This ensures HTTP connections remain persistent during SSE streaming operations, preventing premature disconnection
+- **Kept `compress: false`**: This was already present and is critical for SSE streaming as it prevents response buffering
 
-### 2. agent/Dockerfile
-Added curl for debugging capabilities:
-
-```diff
- # Install dependencies
--RUN uv sync --frozen --no-install-project
-+RUN apt-get update && apt-get install -y curl && \
-+    uv sync --frozen --no-install-project
-```
-
-**Changes made:**
-- Added curl installation to enable future connectivity diagnostics from within the agent container
-- This addresses the secondary issue of missing debugging tools in containers
+**Files Changed:**
+1. `next.config.ts` - Added HTTP agent keep-alive configuration
+2. No changes were made to agent Dockerfile or other files
 
 ## Expected Impact
 
