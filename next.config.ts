@@ -8,6 +8,13 @@ const nextConfig: NextConfig = {
   // Disable source maps in production for security and performance
   productionBrowserSourceMaps: false,
   
+  // Enable experimental streaming for SSE (critical fix)
+  ...(process.env.NEXT_ENABLE_STREAMING === 'true' ? {
+    experimental: {
+      streaming: true,
+    } as any
+  } : {}),
+  
   // Configure HTTP agent for keep-alive connections (SSE fix)
   httpAgentOptions: {
     keepAlive: true,

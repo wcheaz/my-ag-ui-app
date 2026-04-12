@@ -83,6 +83,7 @@ ENV HOSTNAME=0.0.0.0
 # Streaming configuration for SSE
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_ENABLE_STREAMING=true
 
 # OpenAI Configuration (build-time args with runtime env defaults)
 ARG OPENAI_API_KEY=""
