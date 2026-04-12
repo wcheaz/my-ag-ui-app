@@ -1,0 +1,52 @@
+=== SSE Connectivity Diagnostic Report ===
+Generated at: Sun Apr 12 06:28:47 PM EDT 2026
+
+Agent pod: agent-5d8dd457dc-xmmtx (IP: 10.1.217.12)
+Frontend pod: my-ag-ui-app-688cc6967c-4x2fl
+
+1. Testing agent pod health directly (HTTP to pod IP):
+========================================================
+Status: 200
+Response: {'status': 'healthy', 'message': 'Application is running'}
+PASS: Agent health endpoint accessible
+PASS: Agent pod health endpoint is accessible from within agent
+
+2. Testing agent service from frontend pod:
+==========================================
+Status: 200
+PASS: Agent service accessible from frontend
+PASS: Agent service is accessible from frontend pod
+
+3. Testing SSE stream connection to agent service:
+==================================================
+Status: 422
+Headers: {
+  "date": "Sun, 12 Apr 2026 22:28:48 GMT",
+  "server": "uvicorn",
+  "content-length": "1120",
+  "content-type": "application/json"
+}
+PASS: Agent SSE endpoint connected
+PASS: Agent SSE endpoint is connectable
+
+4. Testing CopilotKit SSE connection from frontend pod:
+======================================================
+Status: 400
+Headers: {
+  "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+  "access-control-allow-origin": "*",
+  "content-type": "application/json",
+  "date": "Sun, 12 Apr 2026 22:28:49 GMT",
+  "connection": "keep-alive",
+  "keep-alive": "timeout=5",
+  "transfer-encoding": "chunked"
+}
+PASS: CopilotKit SSE endpoint connected
+PASS: CopilotKit SSE endpoint is connectable
+
+5. Testing full external path through ingress:
+==============================================
+{"error":"invalid_request","message":"Missing method field"}HTTP Status: 400
+PASS: Full external path through ingress is connectable
+
+=== End of Diagnostic Report ===
