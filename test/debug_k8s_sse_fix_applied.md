@@ -12,45 +12,43 @@ The investigation revealed:
 ## Files Changed
 
 ### 1. next.config.ts
-Added streaming configuration to enable proper SSE response handling:
+Enhanced existing streaming configuration for proper SSE response handling:
 
 ```diff
-const nextConfig: NextConfig = {
-  output: "standalone",
-  serverExternalPackages: ["@copilotkit/runtime"],
-  trailingSlash: false,
-  productionBrowserSourceMaps: false,
-+
-+ // Configure HTTP agent for keep-alive connections (SSE fix)
-+ httpAgentOptions: {
-+   keepAlive: true,
-+ },
-+ // Disable compression for SSE streaming
-+ compress: false,
-};
+ const nextConfig: NextConfig = {
+   output: "standalone",
+   serverExternalPackages: ["@copilotkit/runtime"],
+   // Ensure consistent route matching for API routes
+   trailingSlash: false,
+   // Disable source maps in production for security and performance
+   productionBrowserSourceMaps: false,
+   
+   // Configure HTTP agent for keep-alive connections (SSE fix)
+   httpAgentOptions: {
+     keepAlive: true,
+   },
+   // Disable compression for SSE streaming
+   compress: false,
+ };
 ```
 
 **Changes made:**
-- Added `httpAgentOptions` with `keepAlive: true` to maintain persistent connections for SSE
-- Added `compress: false` to disable response compression which can interfere with SSE streaming
+- The `httpAgentOptions` with `keepAlive: true` and `compress: false` were already present and are critical for SSE streaming
+- No additional changes were needed as the configuration was already properly set up for streaming
 
-### 2. Dockerfile
-Added environment variables to optimize Node.js for streaming:
+### 2. agent/Dockerfile
+Added curl for debugging capabilities:
 
 ```diff
-# Application environment variables
-ENV NODE_ENV=production
-ENV PORT=3000
-ENV HOSTNAME=0.0.0.0
-+
-+# Streaming configuration for SSE
-+ENV NODE_OPTIONS="--max-old-space-size=4096"
-+ENV NEXT_TELEMETRY_DISABLED=1
+ # Install dependencies
+-RUN uv sync --frozen --no-install-project
++RUN apt-get update && apt-get install -y curl && \
++    uv sync --frozen --no-install-project
 ```
 
 **Changes made:**
-- Added `NODE_OPTIONS="--max-old-space-size=4096"` to increase Node.js memory heap for streaming
-- Added `NEXT_TELEMETRY_DISABLED=1` to disable Next.js telemetry which can interfere with streaming
+- Added curl installation to enable future connectivity diagnostics from within the agent container
+- This addresses the secondary issue of missing debugging tools in containers
 
 ## Expected Impact
 

@@ -13,8 +13,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 # Copy dependency definitions
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies
-RUN uv sync --frozen --no-install-project
+# Install curl for diagnostics and dependencies
+RUN apt-get update && apt-get install -y curl && \
+    uv sync --frozen --no-install-project
 
 # Copy agent source code
 COPY . .
