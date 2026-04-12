@@ -1,27 +1,27 @@
 === SSE Connectivity Diagnostic Report ===
-Generated at: Sun Apr 12 06:38:45 PM EDT 2026
+Generated at: Sun Apr 12 06:40:01 PM EDT 2026
 
 Agent pod: agent-5d8dd457dc-xmmtx (IP: 10.1.217.12)
 Frontend pod: my-ag-ui-app-688cc6967c-4x2fl
 
 1. Testing agent pod health directly (HTTP to pod IP):
-========================================================
-error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "bc26239646fe4f2e49e9291642af7e893ade53482622dceb65ddafe6d84da7a0": OCI runtime exec failed: exec failed: unable to start container process: exec: "curl": executable file not found in $PATH: unknown
+=======================================================
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "33f39dc92739b454b781d533a5b10e4a6a2fd6f72a62f9e881a8b96c75584e86": OCI runtime exec failed: exec failed: unable to start container process: exec: "curl": executable file not found in $PATH: unknown
 FAIL: Agent pod health endpoint is not accessible via pod IP
 
 2. Testing agent service from frontend pod:
 ==========================================
-error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "3b1242afd5609326877e22e0f0e654ed5078257def8b8e091a58daa6872cc37b": OCI runtime exec failed: exec failed: unable to start container process: exec: "curl": executable file not found in $PATH: unknown
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "3aad839719ffae6d47665f2249480214d84c74be4fa921e053a86f25ba22f697": OCI runtime exec failed: exec failed: unable to start container process: exec: "curl": executable file not found in $PATH: unknown
 FAIL: Agent service is not accessible from frontend pod
 
 3. Testing SSE stream connection to agent service:
 ==================================================
-error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "29907ba943543ec54697a30b4d2280f2e111bc1a78c1adcea1d22e5ba9dd4327": OCI runtime exec failed: exec failed: unable to start container process: exec: "bash": executable file not found in $PATH: unknown
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "00885ddc2b66a7044c07fd3825f764e4a1a891bbf811566b0fb8b6acc640e477": OCI runtime exec failed: exec failed: unable to start container process: exec: "bash": executable file not found in $PATH: unknown
 FAIL: Agent SSE endpoint is not connectable
 
 4. Testing CopilotKit SSE connection from frontend pod:
 ======================================================
-error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "4aef88bf10e75327206713fc17360dcdbdcccac51d9bb2bda900c733cf326caa": OCI runtime exec failed: exec failed: unable to start container process: exec: "bash": executable file not found in $PATH: unknown
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "f63f30c47550127c4142df0b2b984f0c1a63fe8f5501c1e961ff733c5e489220": OCI runtime exec failed: exec failed: unable to start container process: exec: "bash": executable file not found in $PATH: unknown
 FAIL: CopilotKit SSE endpoint is not connectable
 
 5. Testing full external path through ingress:

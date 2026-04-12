@@ -13,5 +13,51 @@
     "completedTasks": [
       "1.1 Collect current cluster state — create script `test/check_k8s_cluster_state.sh` that runs through `multipass exec my-ag-ui-app-k8s` and captures: (a) `microk8s kubectl get pods -o wide` for all pods, (b) `microk8s kubectl describe deployment agent` and `microk8s kubectl describe deployment my-ag-ui-app`, (c) `microk8s kubectl get ingress -o yaml` to verify SSE annotations are present, (d) `microk8s kubectl logs <agent-pod> --tail=50` for recent agent logs, (e) `microk8s kubectl logs -n ingress <ingress-controller-pod> --tail=50` for ingress controller logs, (f) `microk8s kubectl describe pod <agent-pod>` to check for OOMKilled or restart events. Output all results to a single report."
     ]
+  },
+  {
+    "timestamp": "2026-04-12T22:30:21.576Z",
+    "iteration": 2,
+    "duration": 398874,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [],
+    "exitCode": 0,
+    "completedTasks": []
+  },
+  {
+    "timestamp": "2026-04-12T22:35:16.217Z",
+    "iteration": 3,
+    "duration": 294639,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [],
+    "exitCode": 0,
+    "completedTasks": [
+      "2.1 Create diagnostic script `test/debug_k8s_sse_streaming.sh` that tests SSE connectivity at each hop. The script MUST: (a) Get agent pod IP and test `curl -s http://<agent-pod-ip>:8000/api/health` directly, (b) Test `curl -s -N --max-time 10 http://agent-service:8000/api/health` from within a frontend pod via `kubectl exec`, (c) Test SSE stream from agent by sending a minimal AG-UI protocol request to `agent-service:8000` from within a frontend pod, (d) Test the CopilotKit route by sending a POST to `http://localhost:3000/api/copilotkit` from within a frontend pod, (e) Test the full external path by sending a request through the ingress at `http://my-ag-ui-app.local/api/copilotkit` from the host. Each test MUST report PASS/FAIL with relevant details. All `kubectl` commands go through `multipass exec my-ag-ui-app-k8s -- microk8s kubectl`."
+    ]
+  },
+  {
+    "timestamp": "2026-04-12T22:38:07.415Z",
+    "iteration": 4,
+    "duration": 171198,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [],
+    "exitCode": 0,
+    "completedTasks": []
+  },
+  {
+    "timestamp": "2026-04-12T22:39:53.383Z",
+    "iteration": 5,
+    "duration": 105967,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [],
+    "exitCode": 0,
+    "completedTasks": []
   }
 ]

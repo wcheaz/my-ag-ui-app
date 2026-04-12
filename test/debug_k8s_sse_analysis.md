@@ -8,11 +8,11 @@ Based on the diagnostic results, **ALL hops are failing** due to a common root c
 
 | Hop | Status | Details |
 |-----|--------|---------|
-| 1. Agent pod health | ❌ FAIL | curl not found in container |
-| 2. Agent service from frontend | ❌ FAIL | curl not found in container |
-| 3. Agent SSE endpoint | ❌ FAIL | bash not found in container |
-| 4. CopilotKit SSE endpoint | ❌ FAIL | bash not found in container |
-| 5. External path through ingress | ❌ FAIL | Unable to test external connectivity |
+| 1. Agent pod health | ❌ FAIL | curl not found in container (OCI runtime exec failed: exec "curl": executable file not found in $PATH) |
+| 2. Agent service from frontend | ❌ FAIL | curl not found in container (OCI runtime exec failed: exec "curl": executable file not found in $PATH) |
+| 3. Agent SSE endpoint | ❌ FAIL | bash not found in container (OCI runtime exec failed: exec "bash": executable file not found in $PATH) |
+| 4. CopilotKit SSE endpoint | ❌ FAIL | bash not found in container (OCI runtime exec failed: exec "bash": executable file not found in $PATH) |
+| 5. External path through ingress | ❌ FAIL | Unable to test external connectivity (due to inability to exec into containers) |
 
 ## Root Cause Analysis
 
