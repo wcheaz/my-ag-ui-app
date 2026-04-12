@@ -80,6 +80,10 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
+# Streaming configuration for SSE
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NEXT_TELEMETRY_DISABLED=1
+
 # OpenAI Configuration (build-time args with runtime env defaults)
 ARG OPENAI_API_KEY=""
 ARG OPENAI_BASE_URL=""

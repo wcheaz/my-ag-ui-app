@@ -7,6 +7,13 @@ const nextConfig: NextConfig = {
   trailingSlash: false,
   // Disable source maps in production for security and performance
   productionBrowserSourceMaps: false,
+  
+  // Configure HTTP agent for keep-alive connections (SSE fix)
+  httpAgentOptions: {
+    keepAlive: true,
+  },
+  // Disable compression for SSE streaming
+  compress: false,
 };
 
 export default nextConfig;
