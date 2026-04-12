@@ -49,7 +49,7 @@ When creating test files or documentation files, follow these rules:
 
 ## 4. Implement Fix
 
-- [ ] 4.1 Based on the root cause identified in tasks 2.2 and 3.x, implement the fix. The fix target depends on the diagnosed root cause:
+- [x] 4.1 Based on the root cause identified in tasks 2.2 and 3.x, implement the fix. The fix target depends on the diagnosed root cause:
   - **If NGINX ingress**: Update `k8s/ingress.yaml` with corrected or additional annotations, then apply via `multipass transfer` + `microk8s kubectl apply`.
   - **If CopilotKit/Next.js streaming**: Update `src/app/api/copilotkit/route.ts` or `next.config.ts` with streaming configuration, then rebuild and redeploy the frontend image.
   - **If agent uvicorn**: Update `agent/Dockerfile` CMD or `k8s/agent-deployment.yaml` with uvicorn flags, then rebuild and redeploy the agent image.
