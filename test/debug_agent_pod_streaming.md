@@ -61,25 +61,41 @@ Based on the logs, the agent is:
 ## Root Cause Hypothesis
 The issue appears to be NOT in the agent pod's resource usage or memory limits. The agent is running healthy and processing requests without OOM issues.
 
-The 422 Unprocessable Entity responses suggest:
+Based on the latest analysis:
+1. The agent pod is not OOMKilled and has 0 restarts
+2. Memory and CPU limits appear adequate (2Gi memory, 1 CPU)
+3. The metrics server is not available, so we can't see exact resource usage
+4. Test requests from the host are returning "Missing method field" errors
+
+The 422 Unprocessable Entity responses and "Missing method field" errors suggest:
 1. The agent is receiving malformed requests
-2. Or there's a mismatch in the expected request format between the frontend and agent
-3. Or the CopilotKit runtime is not properly formatting requests before sending to the agent
+2. There's a mismatch in the expected request format between the frontend and agent
+3. The CopilotKit runtime may not be properly formatting requests before sending to the agent
 
 ## Memory and Resource Status
 - **No OOM events**: The agent has not been killed due to memory exhaustion
-- **No restarts**: The pod has been stable without unexpected restarts
+- **No restarts**: The pod has been stable without unexpected restarts (Restart Count: 0)
 - **Memory limits adequate**: 2Gi memory limit appears sufficient for current operations
 - **CPU limits adequate**: 1 CPU limit appears sufficient for current operations
+- **Metrics server**: Not available or not ready (cannot get exact resource usage)
+
+## Agent Request Processing
+The agent is:
+1. Successfully handling health check requests (GET /api/health returns 200 OK)
+2. Running in a stable state (State: Running, Ready: True)
+3. Not experiencing resource exhaustion
+4. But returning 422 errors for POST requests, indicating request format issues
 
 ## Recommendations
-1. **Focus on request format**: Investigate why the agent is returning 422 Unprocessable Entity for many POST requests
+1. **Focus on request format**: Investigate why the agent is returning 422 Unprocessable Entity and "Missing method field" errors
 2. **Check CopilotKit runtime**: Examine how requests are being formatted by the CopilotKit runtime before being sent to the agent
 3. **Verify SSE headers**: Ensure the proper SSE headers are being sent with requests
 4. **Compare with local dev**: Compare the request format between working local dev and K8s deployment
+5. **Capture actual browser requests**: Use browser dev tools to see the exact request format sent by the CopilotKit frontend
 
 ## Next Steps
 The agent pod itself is not the bottleneck for SSE streaming. The issue is likely in the request format or the communication between frontend and agent. Focus investigation on:
 1. The CopilotKit runtime's request formatting
 2. The HTTP headers being sent to the agent
 3. The exact payload being sent vs. what the agent expects
+4. The differences between browser-sent requests and manual test requests
