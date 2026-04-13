@@ -20,6 +20,22 @@ app.add_middleware(
 )
 
 
+# Configure SSE response headers for streaming
+@app.middleware("http")
+async def add_sse_headers(request, call_next):
+    response = await call_next(request)
+    if request.url.path == "/" and request.method == "POST":
+        # Add SSE-specific headers for streaming responses
+        response.headers["Content-Type"] = "text/event-stream"
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Connection"] = "keep-alive"
+        response.headers["X-Accel-Buffering"] = "no"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        # Ensure no buffering for streaming responses
+        response.headers["Transfer-Encoding"] = "chunked"
+    return response
+
+
 async def health_check(request: Request):
     """Health check endpoint that returns HTTP 200 if the application is running."""
     return JSONResponse(

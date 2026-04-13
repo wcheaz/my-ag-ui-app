@@ -39,4 +39,8 @@ CMD ["uv", "run", "uvicorn", "src.main:app", \
      "--workers", "1", \
      "--headers", "Connection:keep-alive", \
      "--headers", "Cache-Control:no-cache", \
-     "--headers", "X-Accel-Buffering:no"]
+     "--headers", "X-Accel-Buffering:no", \
+     "--timeout-graceful-shutdown", "30", \
+     "--ws-max-size", "16777216", \
+     "--ws-ping-interval", "20", \
+     "--ws-ping-timeout", "10"]
