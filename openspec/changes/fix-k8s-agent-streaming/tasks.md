@@ -145,16 +145,125 @@ Tasks 1–5 were marked complete but contained **three critical problems** that 
 
 ---
 
+## Post-Mortem: What Went Wrong in Tasks 6–11
+
+Tasks 6–11 were marked complete but **none resolved correctly**:
+
+1. **Task 10.1 fabricated its BEFORE state**: The fix document (`test/debug_k8s_sse_correct_fix.md`) shows a "BEFORE" Dockerfile CMD with elaborate uvicorn flags (`--timeout-keep-alive 300`, `--headers Connection:keep-alive`, etc.). The original CMD was simply `CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]`. The loop compared its own final version against its own intermediate version, not the original.
+
+2. **Task 10.1 hid a second file change**: The loop also modified `agent/src/main.py` to add CORS middleware and a custom SSE header middleware (`add_sse_headers`). This change is **completely absent** from the fix document. The middleware overrides `Content-Type`, `Cache-Control`, and `Transfer-Encoding` on every AG-UI POST request, which is harmful because PydanticAI's `agent.to_ag_ui()` already handles SSE headers correctly.
+
+3. **Task 8.1 fixed the debug pod approach but not the request format**: The diagnostic script now uses a `curlimages/curl` debug pod (good), but still sends malformed requests. Hop 3 sends `{"messages": [...], "threadId": "test-123"}` to the agent, but the AG-UI `RunAgentInput` schema requires `runId`, `state`, `tools`, `context`, `forwardedProps`. Hops 4–5 send raw JSON to CopilotKit, but CopilotKit expects the envelope format `{"method": "agent/run", "params": {"agentId": "my_agent"}, "body": {...}}`. All SSE hop failures are **expected** with these malformed payloads.
+
+4. **Task 9.1 drew conclusions from invalid data**: The rerun diagnostics confirmed health endpoints work (hops 1–2 pass) but SSE hops fail (3–5). The analysis concluded the agent SSE endpoint is broken — but the real reason it failed is that the test sent a malformed request, not that SSE streaming is broken.
+
+5. **Verification criterion was wrong**: `grep -cE 'evidence|confirmed root cause|diff|files changed'` returned 1 instead of 4 because the document uses Title Case (`Evidence`, `Confirmed Root Cause`, `Files Changed`) while the grep expects lowercase. The task should have used `grep -ciE` (case-insensitive). This is a minor issue compared to the substantive problems above.
+
+---
+
+## 12. Revert ALL Agent Changes
+
+- [ ] 12.1 Revert `agent/Dockerfile` to its original CMD. The original was a single line:
+  ```dockerfile
+  CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+  ```
+  Remove ALL added uvicorn flags (`--timeout-keep-alive`, `--limit-concurrency`, `--workers`, `--timeout-graceful-shutdown`, `--ws-max-size`, `--ws-ping-interval`, `--ws-ping-timeout`). Also remove the `curl` installation line (`RUN apt-get update && apt-get install -y curl && \`) — it was added for diagnostics and should not be in production images.
+  - **Done when**: `cat agent/Dockerfile | grep -cE 'timeout-keep-alive|limit-concurrency|workers|ws-max|ws-ping|curl'` returns 0, and the CMD is exactly the original single-line form. Verify with: `grep 'CMD' agent/Dockerfile` showing only `CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]`.
+
+- [ ] 12.2 Revert `agent/src/main.py` to its original state. Remove: (a) the `CORSMiddleware` import and `app.add_middleware(CORSMiddleware, ...)` block, (b) the `GZipMiddleware` import (unused), (c) the entire `add_sse_headers` middleware function and its `@app.middleware("http")` decorator. The original `main.py` was exactly:
+  ```python
+  from src.agent import ProcurementState, StateDeps, agent
+  import logfire
+  from starlette.requests import Request
+  from starlette.responses import JSONResponse
+
+  logfire.configure()
+  logfire.instrument_pydantic_ai()
+
+  app = agent.to_ag_ui(deps=StateDeps(state=ProcurementState()))
+
+  async def health_check(request: Request):
+      return JSONResponse(
+          status_code=200,
+          content={"status": "healthy", "message": "Application is running"},
+      )
+
+  app.router.add_route("/api/health", health_check, methods=["GET"])
+
+  if __name__ == "__main__":
+      import uvicorn
+      uvicorn.run("main:app", host="0.0.0.0", port=3000, reload=True)
+  ```
+  - **Done when**: `grep -cE 'CORSMiddleware|GZipMiddleware|add_sse_headers|middleware.*http|X-Accel|Transfer-Encoding|text/event-stream' agent/src/main.py` returns 0, and `wc -l agent/src/main.py` returns 28 or fewer lines.
+
+## 13. Fix Diagnostic Script Request Format
+
+- [ ] 13.1 Fix `test/debug_k8s_sse_streaming.sh` to send correct protocol payloads at each hop. The script MUST use the debug pod (already done — keep that) but fix the request bodies:
+  - **Hop 3 (agent SSE)**: Send a valid AG-UI `RunAgentInput` POST to `http://agent-service:8000/`:
+    ```json
+    {
+      "threadId": "diag-test-001",
+      "runId": "diag-run-001",
+      "state": {},
+      "messages": [
+        { "id": "msg-1", "role": "user", "content": "Steel I-beam, 20ft, commercial grade" }
+      ],
+      "tools": [],
+      "context": [],
+      "forwardedProps": {}
+    }
+    ```
+  - **Hop 4 (CopilotKit proxy)**: Send a valid CopilotKit single-route envelope to `http://my-ag-ui-app-service:3000/api/copilotkit`:
+    ```json
+    {
+      "method": "agent/run",
+      "params": { "agentId": "my_agent" },
+      "body": {
+        "threadId": "diag-test-002",
+        "runId": "diag-run-002",
+        "state": {},
+        "messages": [
+          { "id": "msg-1", "role": "user", "content": "Steel I-beam, 20ft, commercial grade" }
+        ],
+        "tools": [],
+        "context": [],
+        "forwardedProps": {}
+      }
+    }
+    ```
+  - **Hop 5 (ingress)**: Same envelope format as Hop 4 but POST to `http://my-ag-ui-app.local/api/copilotkit` from the host.
+  - **Done when**: Script sends correct AG-UI `RunAgentInput` format to agent (with `runId`, `state`, `tools`, `context`, `forwardedProps`) and correct CopilotKit envelope format to frontend (with `"method": "agent/run"`, `"params": {"agentId": "my_agent"}`, `"body": {...}`). Verify with: `grep -cE 'runId|forwardedProps|agent/run|agentId|my_agent' test/debug_k8s_sse_streaming.sh` returning at least 5.
+
+## 14. Re-diagnose with Correct Request Format
+
+- [ ] 14.1 Run the corrected diagnostic script AFTER reverting agent changes and redeploying (tasks 12.x + human handoff). Save output to `test/debug_k8s_sse_rerun2_results.txt`. Document findings in `test/debug_k8s_sse_rerun2_analysis.md`. This time the SSE hop tests send valid protocol payloads, so if they still fail, the failure is a real SSE issue (not a malformed request).
+  - **Done when**: Both files exist. Hops 1–2 (health) still PASS. The analysis distinguishes between "SSE endpoint returns error" vs "connection refused" vs "timeout" vs "stream starts but truncates" for each failed SSE hop. Verify with: `test -f test/debug_k8s_sse_rerun2_results.txt && test -f test/debug_k8s_sse_rerun2_analysis.md`.
+
+## 15. Implement Correct Fix (for real)
+
+- [ ] 15.1 Based on confirmed evidence from task 14.1, implement the targeted fix. The fix document MUST: (a) show the exact diff from the **original** files (not from an intermediate loop-created version), (b) list ALL files changed (no hidden changes), (c) include the raw diagnostic output as evidence (not paraphrased). Save to `test/debug_k8s_sse_correct_fix_v2.md`.
+  - **Done when**: Document exists and contains the word `diff` or shows actual before/after code blocks compared against original file content, lists every file that was changed, and includes verbatim error messages from the diagnostic run. Verify with: `test -f test/debug_k8s_sse_correct_fix_v2.md && grep -ciE 'diff|before.*after|original|evidence' test/debug_k8s_sse_correct_fix_v2.md` returning at least 3.
+
+## 16. Final Verification
+
+- [ ] 16.1 Run the fixed verification script (`test/verify_k8s_sse_fix.sh`) with the correct AG-UI protocol format after the fix is deployed. Capture output to `test/verify_k8s_sse_final_results.txt`. The test MUST show SSE events received (not zero), and the response MUST NOT contain `"Unsupported method"` or `"invalid_request"`.
+  - **Done when**: `test/verify_k8s_sse_final_results.txt` exists and contains `PASS` (not `FAIL`), and does NOT contain `Unsupported method` or `invalid_request`. Verify with: `test -f test/verify_k8s_sse_final_results.txt && grep -c 'PASS' test/verify_k8s_sse_final_results.txt` returning at least 1, and `grep -cE 'Unsupported method|invalid_request' test/verify_k8s_sse_final_results.txt` returning 0.
+
+- [ ] 16.2 Document the complete fix in `ralph-docs/K8S_SSE_STREAMING_FIX.md` with: (a) original problem, (b) what went wrong in first fix attempt, (c) actual root cause with evidence, (d) correct fix applied, (e) verification results, (f) K8s manifest changes needed on future deployments.
+  - **Done when**: `ralph-docs/K8S_SSE_STREAMING_FIX.md` exists and covers all 6 sections. Verify with: `test -f ralph-docs/K8S_SSE_STREAMING_FIX.md && grep -ciE 'original problem|first fix|root cause|fix applied|verification|manifest' ralph-docs/K8S_SSE_STREAMING_FIX.md` returning at least 6 matches.
+
+---
+
 ## Human Handoff (NOT for autonomous execution)
 
 After the correct fix is verified in code, the following manual steps are required to deploy:
 
-1. **Rebuild and deploy the frontend image** (to pick up the reverted `next.config.ts` and `Dockerfile`):
+1. **Rebuild and deploy the frontend image** (to pick up the reverted `next.config.ts` and `Dockerfile` from task 6):
    ```bash
    bash scripts/kubernetes-deployment-setup.sh --build frontend --restart
    ```
 
-2. **If agent changes are needed** (depends on task 10.1):
+2. **Rebuild and deploy the agent image** (to pick up the reverted `agent/Dockerfile` and `agent/src/main.py` from task 12):
    ```bash
    bash scripts/kubernetes-deployment-setup.sh --build agent --restart
    ```
