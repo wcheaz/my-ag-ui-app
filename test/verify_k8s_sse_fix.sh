@@ -20,17 +20,18 @@ else
 fi
 
 # Create a CopilotKit-compatible request payload
-# Based on CopilotKit protocol, we need proper structure with method field
+# Use the correct format for CopilotKit
 cat > /tmp/procurement_request.json << 'EOF'
 {
-  "method": "text",
+  "method": "POST",
   "messages": [
     {
       "role": "user",
       "content": "I need a procurement plan for an ergonomic office chair with adjustable lumbar support, breathable mesh back, and memory foam cushion. The chair should be suitable for 8+ hours of daily use and support users up to 300 pounds."
     }
   ],
-  "threadId": "verification-test-$(date +%s)"
+  "threadId": "verification-test-$(date +%s)",
+  "agentName": "my_agent"
 }
 EOF
 
@@ -69,6 +70,10 @@ fi
 # Count the number of SSE events
 SSE_EVENTS=$(grep -c "^event:" /tmp/sse_response.txt 2>/dev/null || echo "0")
 DATA_EVENTS=$(grep -c "^data:" /tmp/sse_response.txt 2>/dev/null || echo "0")
+
+# Trim any whitespace/newlines
+SSE_EVENTS=$(echo "$SSE_EVENTS" | tr -d '[:space:]')
+DATA_EVENTS=$(echo "$DATA_EVENTS" | tr -d '[:space:]')
 
 echo "SSE events received: $SSE_EVENTS"
 echo "Data events received: $DATA_EVENTS"
