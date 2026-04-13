@@ -23,20 +23,6 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
-# Add SSE streaming middleware
-@app.middleware("http")
-async def add_sse_headers(request, call_next):
-    response = await call_next(request)
-
-    # Add SSE-specific headers for streaming responses
-    if request.url.path.startswith("/"):
-        response.headers["X-Accel-Buffering"] = "no"  # Prevent nginx buffering
-        response.headers["Cache-Control"] = "no-cache"
-        response.headers["Connection"] = "keep-alive"
-
-    return response
-
-
 async def health_check(request: Request):
     """Health check endpoint that returns HTTP 200 if the application is running."""
     return JSONResponse(
