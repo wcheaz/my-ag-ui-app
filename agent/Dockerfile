@@ -30,5 +30,13 @@ USER appuser
 
 EXPOSE 8000
 
-# Run the agent
-CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the agent with SSE streaming configuration
+CMD ["uv", "run", "uvicorn", "src.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--timeout-keep-alive", "300", \
+     "--limit-concurrency", "100", \
+     "--workers", "1", \
+     "--headers", "Connection:keep-alive", \
+     "--headers", "Cache-Control:no-cache", \
+     "--headers", "X-Accel-Buffering:no"]

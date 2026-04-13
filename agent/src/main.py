@@ -2,11 +2,39 @@ from src.agent import ProcurementState, StateDeps, agent
 import logfire
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 logfire.configure()
 logfire.instrument_pydantic_ai()
 
 app = agent.to_ag_ui(deps=StateDeps(state=ProcurementState()))
+
+# Configure CORS for SSE streaming
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Configure GZip middleware (helps with streaming performance)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+# Add SSE streaming middleware
+@app.middleware("http")
+async def add_sse_headers(request, call_next):
+    response = await call_next(request)
+
+    # Add SSE-specific headers for streaming responses
+    if request.url.path.startswith("/"):
+        response.headers["X-Accel-Buffering"] = "no"  # Prevent nginx buffering
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["Connection"] = "keep-alive"
+
+    return response
 
 
 async def health_check(request: Request):
