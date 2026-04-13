@@ -82,10 +82,10 @@ Tasks 1–5 were marked complete but contained **three critical problems** that 
 
 ## 6. Revert Harmful Changes
 
-- [ ] 6.1 Revert `next.config.ts` to its pre-fix state — remove the `experimental.streaming` conditional block, `httpAgentOptions: { keepAlive: true }`, and `compress: false`. The file MUST contain only the original four config keys: `output`, `serverExternalPackages`, `trailingSlash`, `productionBrowserSourceMaps`.
+- [x] 6.1 Revert `next.config.ts` to its pre-fix state — remove the `experimental.streaming` conditional block, `httpAgentOptions: { keepAlive: true }`, and `compress: false`. The file MUST contain only the original four config keys: `output`, `serverExternalPackages`, `trailingSlash`, `productionBrowserSourceMaps`.
   - **Done when**: `next.config.ts` matches the original working config exactly: `grep -cE 'experimental|keepAlive|compress|streaming|NEXT_ENABLE' next.config.ts` returns 0 matches, and `grep -cE 'output|serverExternalPackages|trailingSlash|productionBrowserSourceMaps' next.config.ts` returns 4 matches.
 
-- [ ] 6.2 Revert `Dockerfile` SSE-related additions — remove `ENV NODE_OPTIONS="--max-old-space-size=4096"` and `ENV NEXT_ENABLE_STREAMING=true`. Keep `ENV NEXT_TELEMETRY_DISABLED=1` if it was there before. Do NOT remove any pre-existing lines (build args, health checks, etc.).
+- [x] 6.2 Revert `Dockerfile` SSE-related additions — remove `ENV NODE_OPTIONS="--max-old-space-size=4096"` and `ENV NEXT_ENABLE_STREAMING=true`. Keep `ENV NEXT_TELEMETRY_DISABLED=1` if it was there before. Do NOT remove any pre-existing lines (build args, health checks, etc.).
   - **Done when**: `grep -cE 'NEXT_ENABLE_STREAMING|max-old-space-size' Dockerfile` returns 0 matches.
 
 ## 7. Fix Verification Script
