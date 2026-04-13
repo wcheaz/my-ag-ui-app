@@ -20,18 +20,28 @@ else
 fi
 
 # Create a CopilotKit-compatible request payload
-# Use the correct format for CopilotKit
+# Use the correct AG-UI protocol format for CopilotKit
 cat > /tmp/procurement_request.json << 'EOF'
 {
-  "method": "POST",
-  "messages": [
-    {
-      "role": "user",
-      "content": "I need a procurement plan for an ergonomic office chair with adjustable lumbar support, breathable mesh back, and memory foam cushion. The chair should be suitable for 8+ hours of daily use and support users up to 300 pounds."
-    }
-  ],
-  "threadId": "verification-test-$(date +%s)",
-  "agentName": "my_agent"
+  "method": "agent/run",
+  "params": {
+    "agentId": "my_agent"
+  },
+  "body": {
+    "threadId": "verification-test-$(date +%s)",
+    "runId": "verification-run-$(date +%s)",
+    "state": {},
+    "messages": [
+      {
+        "id": "msg-1",
+        "role": "user",
+        "content": "I need a procurement plan for an ergonomic office chair with adjustable lumbar support, breathable mesh back, and memory foam cushion. The chair should be suitable for 8+ hours of daily use and support users up to 300 pounds."
+      }
+    ],
+    "tools": [],
+    "context": [],
+    "forwardedProps": {}
+  }
 }
 EOF
 

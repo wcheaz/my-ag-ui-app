@@ -90,7 +90,7 @@ Tasks 1–5 were marked complete but contained **three critical problems** that 
 
 ## 7. Fix Verification Script
 
-- [ ] 7.1 Fix `test/verify_k8s_sse_fix.sh` to use the correct CopilotKit AG-UI protocol format. The POST body sent to `/api/copilotkit` MUST use the CopilotKit single-route envelope format:
+- [x] 7.1 Fix `test/verify_k8s_sse_fix.sh` to use the correct CopilotKit AG-UI protocol format. The POST body sent to `/api/copilotkit` MUST use the CopilotKit single-route envelope format:
   ```json
   {
     "method": "agent/run",
