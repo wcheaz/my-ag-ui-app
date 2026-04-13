@@ -70,14 +70,13 @@ CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "800
 
 #### AFTER (Fixed):
 ```dockerfile
-CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--timeout-keep-alive", "300", "--limit-concurrency", "100", "--timeout-graceful-shutdown", "30", "--workers", "1"]
+CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--timeout-keep-alive", "300", "--limit-concurrency", "100", "--workers", "1"]
 ```
 
 ### Detailed Changes Explained:
 1. `--timeout-keep-alive 300`: Sets the keep-alive timeout to 300 seconds (5 minutes), which is crucial for SSE streaming connections that need to remain open for extended periods.
 2. `--limit-concurrency 100`: Limits the maximum number of concurrent connections to prevent overload while still allowing reasonable capacity.
-3. `--timeout-graceful-shutdown 30`: Gives the server 30 seconds to complete ongoing requests (including SSE streams) when shutting down.
-4. `--workers 1`: Forces uvicorn to use a single worker process, which is recommended for SSE streaming to avoid connection routing issues between multiple workers.
+3. `--workers 1`: Forces uvicorn to use a single worker process, which is recommended for SSE streaming to avoid connection routing issues between multiple workers.
 
 ## Why This Fix Addresses the Root Cause
 

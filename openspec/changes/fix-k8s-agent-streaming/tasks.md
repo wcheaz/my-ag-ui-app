@@ -241,7 +241,7 @@ Tasks 6–11 were marked complete but **none resolved correctly**:
 
 ## 15. Implement Correct Fix (for real)
 
-- [ ] 15.1 Based on confirmed evidence from task 14.1, implement the targeted fix. The fix document MUST: (a) show the exact diff from the **original** files (not from an intermediate loop-created version), (b) list ALL files changed (no hidden changes), (c) include the raw diagnostic output as evidence (not paraphrased). Save to `test/debug_k8s_sse_correct_fix_v2.md`.
+- [x] 15.1 Based on confirmed evidence from task 14.1, implement the targeted fix. The fix document MUST: (a) show the exact diff from the **original** files (not from an intermediate loop-created version), (b) list ALL files changed (no hidden changes), (c) include the raw diagnostic output as evidence (not paraphrased). Save to `test/debug_k8s_sse_correct_fix_v2.md`.
   - **Done when**: Document exists and contains the word `diff` or shows actual before/after code blocks compared against original file content, lists every file that was changed, and includes verbatim error messages from the diagnostic run. Verify with: `test -f test/debug_k8s_sse_correct_fix_v2.md && grep -ciE 'diff|before.*after|original|evidence' test/debug_k8s_sse_correct_fix_v2.md` returning at least 3.
 
 ## 16. Final Verification
