@@ -198,7 +198,7 @@ Tasks 6–11 were marked complete but **none resolved correctly**:
 
 ## 13. Fix Diagnostic Script Request Format
 
-- [ ] 13.1 Fix `test/debug_k8s_sse_streaming.sh` to send correct protocol payloads at each hop. The script MUST use the debug pod (already done — keep that) but fix the request bodies:
+- [x] 13.1 Fix `test/debug_k8s_sse_streaming.sh` to send correct protocol payloads at each hop. The script MUST use the debug pod (already done — keep that) but fix the request bodies:
   - **Hop 3 (agent SSE)**: Send a valid AG-UI `RunAgentInput` POST to `http://agent-service:8000/`:
     ```json
     {

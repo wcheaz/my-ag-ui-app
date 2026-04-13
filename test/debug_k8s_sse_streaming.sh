@@ -61,7 +61,7 @@ echo ""
 echo "3. Testing SSE stream connection to agent service:"
 echo "=================================================="
 if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i debug-sse -- sh -c "
-echo '{\"messages\": [{\"role\": \"user\", \"content\": \"hello\"}], \"threadId\": \"test-123\"}' | curl -s -N -H 'Content-Type: application/json' -H 'Accept: text/event-stream' -X POST http://agent-service:8000/ --max-time 10 | head -c 100 | grep -q 'event:\|data:'
+echo '{\"threadId\": \"diag-test-001\", \"runId\": \"diag-run-001\", \"state\": {}, \"messages\": [{\"id\": \"msg-1\", \"role\": \"user\", \"content\": \"Steel I-beam, 20ft, commercial grade\"}], \"tools\": [], \"context\": [], \"forwardedProps\": {}}' | curl -s -N -H 'Content-Type: application/json' -H 'Accept: text/event-stream' -X POST http://agent-service:8000/ --max-time 10 | head -c 100 | grep -q 'event:\|data:'
 "; then
     echo "PASS: Agent SSE endpoint is connectable"
 else
@@ -73,7 +73,7 @@ echo ""
 echo "4. Testing CopilotKit SSE connection from frontend pod:"
 echo "======================================================"
 if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i debug-sse -- sh -c "
-echo '{\"messages\": [{\"role\": \"user\", \"content\": \"hello\"}], \"threadId\": \"test-123\"}' | curl -s -N -H 'Content-Type: application/json' -H 'Accept: text/event-stream' -X POST http://my-ag-ui-app-service:3000/api/copilotkit --max-time 10 | head -c 100 | grep -q 'event:\|data:'
+echo '{\"method\": \"agent/run\", \"params\": {\"agentId\": \"my_agent\"}, \"body\": {\"threadId\": \"diag-test-002\", \"runId\": \"diag-run-002\", \"state\": {}, \"messages\": [{\"id\": \"msg-1\", \"role\": \"user\", \"content\": \"Steel I-beam, 20ft, commercial grade\"}], \"tools\": [], \"context\": [], \"forwardedProps\": {}}}' | curl -s -N -H 'Content-Type: application/json' -H 'Accept: text/event-stream' -X POST http://my-ag-ui-app-service:3000/api/copilotkit --max-time 10 | head -c 100 | grep -q 'event:\|data:'
 "; then
     echo "PASS: CopilotKit SSE endpoint is connectable"
 else
@@ -87,13 +87,25 @@ echo "=============================================="
 # Create a test request file
 cat > /tmp/test_agui_request.json << 'EOF'
 {
-  "messages": [
-    {
-      "role": "user",
-      "content": "hello"
-    }
-  ],
-  "threadId": "test-123"
+  "method": "agent/run",
+  "params": {
+    "agentId": "my_agent"
+  },
+  "body": {
+    "threadId": "diag-test-003",
+    "runId": "diag-run-003",
+    "state": {},
+    "messages": [
+      {
+        "id": "msg-1",
+        "role": "user",
+        "content": "Steel I-beam, 20ft, commercial grade"
+      }
+    ],
+    "tools": [],
+    "context": [],
+    "forwardedProps": {}
+  }
 }
 EOF
 
