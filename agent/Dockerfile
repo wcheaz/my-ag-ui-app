@@ -13,9 +13,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 # Copy dependency definitions
 COPY pyproject.toml uv.lock ./
 
-# Install curl for diagnostics and dependencies
-RUN apt-get update && apt-get install -y curl && \
-    uv sync --frozen --no-install-project
+# Install dependencies
+RUN uv sync --frozen --no-install-project
 
 # Copy agent source code
 COPY . .
@@ -30,14 +29,4 @@ USER appuser
 
 EXPOSE 8000
 
-# Run the agent with SSE streaming configuration
-CMD ["uv", "run", "uvicorn", "src.main:app", \
-     "--host", "0.0.0.0", \
-     "--port", "8000", \
-     "--timeout-keep-alive", "5", \
-     "--limit-concurrency", "100", \
-     "--workers", "1", \
-     "--timeout-graceful-shutdown", "30", \
-     "--ws-max-size", "16777216", \
-     "--ws-ping-interval", "20", \
-     "--ws-ping-timeout", "10"]
+CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
