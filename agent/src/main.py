@@ -19,9 +19,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure GZip middleware (helps with streaming performance)
-app.add_middleware(GZipMiddleware, minimum_size=1000)
-
 
 async def health_check(request: Request):
     """Health check endpoint that returns HTTP 200 if the application is running."""

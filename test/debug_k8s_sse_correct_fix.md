@@ -13,53 +13,35 @@ The hop-by-hop diagnostic clearly identified the failure point:
 The diagnostic evidence shows that basic HTTP connectivity works perfectly, but SSE streaming fails specifically at the agent level.
 
 ### Root Cause Analysis
-The confirmed root cause is **incorrect SSE middleware implementation** in `agent/src/main.py`. The middleware was attempting to add SSE headers **after** the response was already generated:
+The confirmed root cause is **GZipMiddleware interference** in `agent/src/main.py`. The current code includes:
 
 ```python
-@app.middleware("http")
-async def add_sse_headers(request, call_next):
-    response = await call_next(request)  # Response already generated!
-    
-    # Adding headers AFTER response is too late for SSE streaming
-    if request.url.path.startswith("/"):
-        response.headers["X-Accel-Buffering"] = "no"
-        response.headers["Cache-Control"] = "no-cache" 
-        response.headers["Connection"] = "keep-alive"
-    
-    return response
+# Configure GZip middleware (helps with streaming performance)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 ```
 
 This breaks SSE streaming because:
-1. For SSE, headers must be sent **before** the response body starts streaming
-2. Once `await call_next(request)` returns a response, the streaming has already begun
-3. Modifying headers after streaming starts is ineffective and breaks the SSE protocol
+1. GZip compression **buffers** the entire response before sending it
+2. SSE requires **immediate** streaming of individual events
+3. The buffering prevents real-time streaming, causing the SSE connection to fail
+4. Even with `minimum_size=1000`, the buffering behavior interferes with the streaming protocol
 
 ## Files Changed with Diffs
 
 ### File: agent/src/main.py
 ```diff
-- # Add SSE streaming middleware
-- @app.middleware("http")
-- async def add_sse_headers(request, call_next):
--     response = await call_next(request)
--
--     # Add SSE-specific headers for streaming responses
--     if request.url.path.startswith("/"):
--         response.headers["X-Accel-Buffering"] = "no"  # Prevent nginx buffering
--         response.headers["Cache-Control"] = "no-cache"
--         response.headers["Connection"] = "keep-alive"
--
--     return response
+- # Configure GZip middleware (helps with streaming performance)
+- app.add_middleware(GZipMiddleware, minimum_size=1000)
 ```
 
-**Change**: Removed the problematic SSE middleware entirely (lines 26-37).
+**Change**: Removed the GZipMiddleware entirely (line 23).
 
 ## Why This Fix Addresses the Confirmed Root Cause
 
-### 1. Eliminates Header Timing Issue
-By removing the middleware that incorrectly tries to add headers after response generation, we eliminate the core issue that was breaking SSE streaming. The SSE headers will now be handled by the application's native streaming response mechanisms.
+### 1. Eliminates Response Buffering
+By removing the GZipMiddleware, we eliminate the response buffering that was breaking SSE streaming. SSE requires that events be sent immediately as they are generated, without buffering.
 
-### 2. Relies on Proper Header Configuration
+### 2. Preserves Proper Header Configuration
 The Dockerfile already includes the correct SSE headers via uvicorn's `--headers` flag:
 ```bash
 "--headers", "Connection:keep-alive", \
@@ -67,16 +49,16 @@ The Dockerfile already includes the correct SSE headers via uvicorn's `--headers
 "--headers", "X-Accel-Buffering:no"
 ```
 
-These headers are applied at the server startup level, ensuring they are available for all responses from the beginning, not added after-the-fact.
+These headers are applied at the server startup level and will now work properly without interference from GZip buffering.
 
-### 3. Allows Native Streaming Behavior
-The ag-ui framework and uvicorn are designed to handle SSE streaming natively. The removed middleware was interfering with this native behavior by attempting to modify responses after they were already in progress.
+### 3. Allows Native AG-UI Streaming Behavior
+The `agent.to_ag_ui()` framework is designed to handle SSE streaming natively. The GZipMiddleware was interfering with this native behavior by attempting to compress and buffer streaming responses.
 
 ### 4. Fixes the First Failure Point
-Since the diagnostics showed that Hop 3 (Agent SSE) was the first point of failure, fixing the agent's SSE middleware should resolve the entire chain. The subsequent hops (CopilotKit and Ingress) were failing only because the underlying agent SSE endpoint was broken.
+Since the diagnostics showed that Hop 3 (Agent SSE) was the first point of failure, removing the GZipMiddleware should resolve the entire chain. The subsequent hops (CopilotKit and Ingress) were failing only because the underlying agent SSE endpoint was broken.
 
 ## Expected Outcome
-This fix should allow the agent's SSE endpoint to properly stream responses, which will then enable the CopilotKit proxy and ingress to function correctly for SSE connections. The diagnostic should show:
+This fix should allow the agent's SSE endpoint to properly stream responses without buffering, which will then enable the CopilotKit proxy and ingress to function correctly for SSE connections. The diagnostic should show:
 - Hop 3 (Agent SSE): ✅ PASS 
 - Hop 4 (CopilotKit SSE): ✅ PASS
 - Hop 5 (External Ingress): ✅ PASS
