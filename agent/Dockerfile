@@ -34,12 +34,9 @@ EXPOSE 8000
 CMD ["uv", "run", "uvicorn", "src.main:app", \
      "--host", "0.0.0.0", \
      "--port", "8000", \
-     "--timeout-keep-alive", "300", \
+     "--timeout-keep-alive", "5", \
      "--limit-concurrency", "100", \
      "--workers", "1", \
-     "--headers", "Connection:keep-alive", \
-     "--headers", "Cache-Control:no-cache", \
-     "--headers", "X-Accel-Buffering:no", \
      "--timeout-graceful-shutdown", "30", \
      "--ws-max-size", "16777216", \
      "--ws-ping-interval", "20", \
