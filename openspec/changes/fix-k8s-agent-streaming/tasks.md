@@ -236,7 +236,7 @@ Tasks 6–11 were marked complete but **none resolved correctly**:
 
 ## 14. Re-diagnose with Correct Request Format
 
-- [ ] 14.1 Run the corrected diagnostic script AFTER reverting agent changes and redeploying (tasks 12.x + human handoff). Save output to `test/debug_k8s_sse_rerun2_results.txt`. Document findings in `test/debug_k8s_sse_rerun2_analysis.md`. This time the SSE hop tests send valid protocol payloads, so if they still fail, the failure is a real SSE issue (not a malformed request).
+- [x] 14.1 Run the corrected diagnostic script AFTER reverting agent changes and redeploying (tasks 12.x + human handoff). Save output to `test/debug_k8s_sse_rerun2_results.txt`. Document findings in `test/debug_k8s_sse_rerun2_analysis.md`. This time the SSE hop tests send valid protocol payloads, so if they still fail, the failure is a real SSE issue (not a malformed request).
   - **Done when**: Both files exist. Hops 1–2 (health) still PASS. The analysis distinguishes between "SSE endpoint returns error" vs "connection refused" vs "timeout" vs "stream starts but truncates" for each failed SSE hop. Verify with: `test -f test/debug_k8s_sse_rerun2_results.txt && test -f test/debug_k8s_sse_rerun2_analysis.md`.
 
 ## 15. Implement Correct Fix (for real)

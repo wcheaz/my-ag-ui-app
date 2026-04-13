@@ -1,5 +1,5 @@
 === SSE Connectivity Diagnostic Report ===
-Generated at: Mon Apr 13 05:45:17 PM EDT 2026
+Generated at: Mon Apr 13 05:46:49 PM EDT 2026
 
 Agent pod: agent-5d8dd457dc-ntgpr (IP: 10.1.217.21)
 Frontend pod: my-ag-ui-app-688cc6967c-5xxqd
@@ -30,7 +30,7 @@ FAIL: CopilotKit SSE endpoint is not connectable
 
 5. Testing full external path through ingress:
 ==============================================
-PASS: Full external path through ingress is connectable
+FAIL: Full external path through ingress is not connectable
 
 Cleaning up debug pod...
 Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
