@@ -127,7 +127,7 @@ Tasks 1–5 were marked complete but contained **three critical problems** that 
 
 ## 9. Re-diagnose with Fixed Tools
 
-- [ ] 9.1 Run the fixed diagnostic script (`test/debug_k8s_sse_streaming.sh`) AFTER reverting changes and redeploying (tasks 6.x). Save output to `test/debug_k8s_sse_rerun_results.txt`. Document findings in `test/debug_k8s_sse_rerun_analysis.md`. The analysis MUST identify which hop in the SSE chain actually fails: (a) agent health → agent pod responds to GET /api/health, (b) agent SSE → agent pod responds to POST / with AG-UI RunAgentInput, (c) agent service → same test via service DNS, (d) CopilotKit proxy → POST /api/copilotkit from within cluster, (e) ingress → POST /api/copilotkit from host.
+- [x] 9.1 Run the fixed diagnostic script (`test/debug_k8s_sse_streaming.sh`) AFTER reverting changes and redeploying (tasks 6.x). Save output to `test/debug_k8s_sse_rerun_results.txt`. Document findings in `test/debug_k8s_sse_rerun_analysis.md`. The analysis MUST identify which hop in the SSE chain actually fails: (a) agent health → agent pod responds to GET /api/health, (b) agent SSE → agent pod responds to POST / with AG-UI RunAgentInput, (c) agent service → same test via service DNS, (d) CopilotKit proxy → POST /api/copilotkit from within cluster, (e) ingress → POST /api/copilotkit from host.
   - **Done when**: Both files exist and at least one hop shows PASS (proving the diagnostic actually works). The analysis identifies a specific failing hop with error details. Verify with: `test -f test/debug_k8s_sse_rerun_results.txt && test -f test/debug_k8s_sse_rerun_analysis.md && grep -cE 'PASS|FAIL' test/debug_k8s_sse_rerun_results.txt` returning at least 5 matches.
 
 ## 10. Implement Correct Fix
