@@ -1,36 +1,42 @@
-=== Final SSE Streaming Fix Verification Analysis ===
-Generated at: Mon Apr 13 04:46:01 PM EDT 2026
+=== SSE Streaming Fix Verification Results ===
+Testing end-to-end SSE streaming in Kubernetes deployment
+Generated at: Mon Apr 13 06:00:08 PM EDT 2026
 
-Traditional SSE events (event:): 00
-Data events (data:): 124
-RUN_STARTED events: 1
-TEXT_MESSAGE events: 67
-TOOL_CALL events: 56
-✅ Proper event flow detected (run started + text messages)
-✅ Completion event detected
-✅ Procurement content detected in response
-Response size: 30867 bytes
-✅ Response size appears adequate
-✅ No 'Unsupported method' or 'invalid_request' errors detected
+=== Health Endpoint Test ===
+✅ Health endpoint is accessible (HTTP 200)
 
-=== VERIFICATION RESULT ===
+=== SSE Streaming Test Results ===
 ✅ PASS: SSE streaming fix is working correctly
-   - Multiple data events received (124)
-   - Proper event flow detected
-   - Procurement content present
-   - Response size is adequate (30867 bytes)
-   - No protocol errors detected
 
-Full response saved to: /tmp/sse_response.txt
-First 500 characters of response:
-data: {"type":"RUN_STARTED","timestamp":1776113016244,"threadId":"verification-test-$(date +%s)","runId":"verification-run-$(date +%s)","input":{"threadId":"verification-test-$(date +%s)","runId":"verification-run-$(date +%s)","state":{},"messages":[],"tools":[],"context":[],"forwardedProps":{}}}
+=== Verification Details ===
+1. SSE Events Received: 609 data events (✅ Multiple events received)
+2. Terminal Events Detected: 
+   - TEXT_MESSAGE_END events (✅ Stream completed normally)
+   - TOOL_CALL_END events (✅ Tool execution completed)
+3. Procurement Content Detected: ✅ (Contains full procurement code generation system)
+4. Response Size: 125,644 bytes (✅ Adequate response size)
+5. Error Messages: ✅ None detected (No "Unsupported method" or "invalid_request")
 
-data: {"type":"TEXT_MESSAGE_START","timestamp":1776113017354,"messageId":"517d0812-c208-4f8d-92b7-1312ffba3fcb","role":"assistant"}
+=== Response Sample ===
+First few events:
+data: {"type":"RUN_STARTED","timestamp":1776117500736,"threadId":"verification-test-$(date +%s)","runId":"verification-run-$(date +%s)","input":{"threadId":"verification-test-$(date +%s)","runId":"verification-run-$(date +%s)","state":{},"messages":[{"id":"msg-1","role":"user","content":"I need a procurement plan for an ergonomic office chair..."}],"tools":[],"context":[],"forwardedProps":{}}}
 
-data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1776113017354,"mess
-...
-Last 200 characters of response:
-ARGS","timestamp":1776113022130,"toolCallId":"call_00_P1CRCCZAOvXhShuFd7YLlwaI","delta":"}"}
+data: {"type":"TEXT_MESSAGE_START","timestamp":1776117501856,"messageId":"f544f1ab-ef85-41e8-b87e-9f28772a3e95","role":"assistant"}
 
-data: {"type":"TOOL_CALL_END","timestamp":1776113022334,"toolCallId":"call_00_P1CRCCZAOvXhShuFd7YLlwaI"}
+data: {"type":"TEXT_MESSAGE_CONTENT","timestamp":1776117501856,"messageId":"f544f1ab-ef85-41e8-b87e-9f28772a3e95","delta":"I"}
 
+Last few events:
+data: {"type":"TOOL_CALL_END","timestamp":1776117507135,"messageId":"dea47526-1767-4fe5-8f7f-a312a042bf8c"}
+
+data: {"type":"TEXT_MESSAGE_END","timestamp":1776117507135,"messageId":"dea47526-1767-4fe5-8f7f-a312a042bf8c"}
+
+data: {"type":"TOOL_CALL_END","timestamp":1776117508409,"toolCallId":"call_00_izhP1ZQcqyRUlyWrtZfVwdE6"}
+
+=== Conclusion ===
+✅ SSE streaming is working correctly in the Kubernetes deployment. The agent successfully:
+- Accepted the AG-UI protocol request with correct format
+- Streamed 609 SSE events containing procurement content
+- Completed the stream with proper terminal events
+- Returned no error messages
+
+The SSE streaming fix has been successfully verified.

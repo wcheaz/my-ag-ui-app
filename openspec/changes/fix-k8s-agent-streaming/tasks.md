@@ -246,7 +246,7 @@ Tasks 6–11 were marked complete but **none resolved correctly**:
 
 ## 16. Final Verification
 
-- [ ] 16.1 Run the fixed verification script (`test/verify_k8s_sse_fix.sh`) with the correct AG-UI protocol format after the fix is deployed. Capture output to `test/verify_k8s_sse_final_results.txt`. The test MUST show SSE events received (not zero), and the response MUST NOT contain `"Unsupported method"` or `"invalid_request"`.
+- [x] 16.1 Run the fixed verification script (`test/verify_k8s_sse_fix.sh`) with the correct AG-UI protocol format after the fix is deployed. Capture output to `test/verify_k8s_sse_final_results.txt`. The test MUST show SSE events received (not zero), and the response MUST NOT contain `"Unsupported method"` or `"invalid_request"`.
   - **Done when**: `test/verify_k8s_sse_final_results.txt` exists and contains `PASS` (not `FAIL`), and does NOT contain `Unsupported method` or `invalid_request`. Verify with: `test -f test/verify_k8s_sse_final_results.txt && grep -c 'PASS' test/verify_k8s_sse_final_results.txt` returning at least 1, and `grep -cE 'Unsupported method|invalid_request' test/verify_k8s_sse_final_results.txt` returning 0.
 
 - [ ] 16.2 Document the complete fix in `ralph-docs/K8S_SSE_STREAMING_FIX.md` with: (a) original problem, (b) what went wrong in first fix attempt, (c) actual root cause with evidence, (d) correct fix applied, (e) verification results, (f) K8s manifest changes needed on future deployments.
