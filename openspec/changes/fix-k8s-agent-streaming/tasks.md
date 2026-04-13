@@ -68,52 +68,114 @@ When creating test files or documentation files, follow these rules:
 
 ---
 
+## Post-Mortem: What Went Wrong (Tasks 1–5)
+
+Tasks 1–5 were marked complete but contained **three critical problems** that prevented successful diagnosis and fix:
+
+1. **Diagnostics never actually ran**: The hop-by-hop script (`test/debug_k8s_sse_streaming.sh`) tried to `exec curl` and `exec bash` inside containers, but both the frontend (Alpine-based) and agent (python:3.12-slim) containers lack these tools. All 5 hops reported FAIL for the wrong reason (missing tooling, not actual SSE failure). The root cause was never identified.
+
+2. **Verification script used wrong protocol format**: `test/verify_k8s_sse_fix.sh` sent `"method": "POST"` in the JSON body, but the CopilotKit single-route endpoint expects AG-UI protocol methods: `"agent/run"`, `"agent/connect"`, etc. The validation code in `@copilotkit/runtime` rejects unknown methods with exactly the error seen: `{"error":"invalid_request","message":"Unsupported method 'POST'"}`. The verification always failed for the wrong reason — it never actually tested SSE streaming.
+
+3. **The fix was speculative and harmful**: Task 4.1 added `experimental.streaming` to `next.config.ts` — but this is **not a valid Next.js config option** (confirmed by searching `next/dist/server/config-shared.js`). It also added `compress: false` and `httpAgentOptions: { keepAlive: true }` which change global Next.js behavior. In the Dockerfile, `NODE_OPTIONS="--max-old-space-size=4096"` and `NEXT_ENABLE_STREAMING=true` were added. These changes were deployed via `scripts/kubernetes-deployment-setup.sh` and likely broke the frontend's ability to proxy agent requests, which is why the agent now gives **no response at all** (worse than the original partial-response issue).
+
+---
+
+## 6. Revert Harmful Changes
+
+- [ ] 6.1 Revert `next.config.ts` to its pre-fix state — remove the `experimental.streaming` conditional block, `httpAgentOptions: { keepAlive: true }`, and `compress: false`. The file MUST contain only the original four config keys: `output`, `serverExternalPackages`, `trailingSlash`, `productionBrowserSourceMaps`.
+  - **Done when**: `next.config.ts` matches the original working config exactly: `grep -cE 'experimental|keepAlive|compress|streaming|NEXT_ENABLE' next.config.ts` returns 0 matches, and `grep -cE 'output|serverExternalPackages|trailingSlash|productionBrowserSourceMaps' next.config.ts` returns 4 matches.
+
+- [ ] 6.2 Revert `Dockerfile` SSE-related additions — remove `ENV NODE_OPTIONS="--max-old-space-size=4096"` and `ENV NEXT_ENABLE_STREAMING=true`. Keep `ENV NEXT_TELEMETRY_DISABLED=1` if it was there before. Do NOT remove any pre-existing lines (build args, health checks, etc.).
+  - **Done when**: `grep -cE 'NEXT_ENABLE_STREAMING|max-old-space-size' Dockerfile` returns 0 matches.
+
+## 7. Fix Verification Script
+
+- [ ] 7.1 Fix `test/verify_k8s_sse_fix.sh` to use the correct CopilotKit AG-UI protocol format. The POST body sent to `/api/copilotkit` MUST use the CopilotKit single-route envelope format:
+  ```json
+  {
+    "method": "agent/run",
+    "params": { "agentId": "my_agent" },
+    "body": {
+      "threadId": "<unique-id>",
+      "runId": "<unique-id>",
+      "state": {},
+      "messages": [
+        { "id": "msg-1", "role": "user", "content": "<test prompt>" }
+      ],
+      "tools": [],
+      "context": [],
+      "forwardedProps": {}
+    }
+  }
+  ```
+  Valid `method` values are: `"agent/run"`, `"agent/connect"`, `"agent/stop"`, `"info"`, `"transcribe"`. Any other value triggers `"Unsupported method '...'"`. The `"agentId"` in `params` MUST match the agent key registered in `CopilotRuntime` (currently `"my_agent"` in `route.ts`).
+  - **Done when**: The script sends `"method": "agent/run"` (not `"method": "POST"`), wraps messages inside `"body"` with the `RunAgentInput` schema, and uses `agentId: "my_agent"` in `params`. Verify with: `grep -cE 'agent/run|agentId|RunAgentInput|threadId.*runId' test/verify_k8s_sse_fix.sh` returning at least 3 matches.
+
+## 8. Fix Diagnostic Script
+
+- [ ] 8.1 Fix `test/debug_k8s_sse_streaming.sh` to work without curl/bash in containers. Instead of `kubectl exec` into frontend/agent pods, use a **temporary debug pod** with curl pre-installed:
+  ```bash
+  multipass exec my-ag-ui-app-k8s -- microk8s kubectl run debug-sse --image=curlimages/curl --restart=Never -- sleep 600
+  # Wait for debug pod to be ready
+  multipass exec my-ag-ui-app-k8s -- microk8s kubectl wait --for=condition=Ready pod/debug-sse --timeout=60s
+  ```
+  Then use `kubectl exec debug-sse` for intra-cluster tests (agent pod health, agent service, SSE to agent). For the external test (through ingress), use `curl` from the host. Clean up the debug pod after tests:
+  ```bash
+  multipass exec my-ag-ui-app-k8s -- microk8s kubectl delete pod debug-sse --force
+  ```
+  - **Done when**: Script does NOT use `kubectl exec` on frontend or agent pods. Uses a `curlimages/curl` debug pod for all intra-cluster tests. Verify with: `grep -cE 'kubectl exec.*my-ag-ui-app|kubectl exec.*agent' test/debug_k8s_sse_streaming.sh` returning 0, and `grep -cE 'debug-sse|curlimages' test/debug_k8s_sse_streaming.sh` returning at least 2.
+
+## 9. Re-diagnose with Fixed Tools
+
+- [ ] 9.1 Run the fixed diagnostic script (`test/debug_k8s_sse_streaming.sh`) AFTER reverting changes and redeploying (tasks 6.x). Save output to `test/debug_k8s_sse_rerun_results.txt`. Document findings in `test/debug_k8s_sse_rerun_analysis.md`. The analysis MUST identify which hop in the SSE chain actually fails: (a) agent health → agent pod responds to GET /api/health, (b) agent SSE → agent pod responds to POST / with AG-UI RunAgentInput, (c) agent service → same test via service DNS, (d) CopilotKit proxy → POST /api/copilotkit from within cluster, (e) ingress → POST /api/copilotkit from host.
+  - **Done when**: Both files exist and at least one hop shows PASS (proving the diagnostic actually works). The analysis identifies a specific failing hop with error details. Verify with: `test -f test/debug_k8s_sse_rerun_results.txt && test -f test/debug_k8s_sse_rerun_analysis.md && grep -cE 'PASS|FAIL' test/debug_k8s_sse_rerun_results.txt` returning at least 5 matches.
+
+## 10. Implement Correct Fix
+
+- [ ] 10.1 Based on the confirmed root cause from task 9.1, implement the targeted fix. The fix MUST address the specific hop that fails, not make speculative changes to unrelated config. Document the change in `test/debug_k8s_sse_correct_fix.md` with: (a) confirmed root cause with evidence from diagnostics, (b) exact files changed with diffs, (c) why this fix addresses the confirmed root cause.
+  - **Done when**: The fix is in the relevant file(s) and documented. The documentation includes evidence from the diagnostic run (not a hypothesis). Verify with: `test -f test/debug_k8s_sse_correct_fix.md && grep -cE 'evidence|confirmed root cause|diff|files changed' test/debug_k8s_sse_correct_fix.md` returning at least 4 matches.
+
+## 11. Final Verification
+
+- [ ] 11.1 Run the fixed verification script (`test/verify_k8s_sse_fix.sh`) with the correct AG-UI protocol format after the fix is deployed. Capture output to `test/verify_k8s_sse_final_results.txt`. The test MUST show SSE events received (not zero), and the response MUST NOT contain `"Unsupported method"` or `"invalid_request"`.
+  - **Done when**: `test/verify_k8s_sse_final_results.txt` exists and contains `PASS` (not `FAIL`), and does NOT contain `Unsupported method` or `invalid_request`. Verify with: `test -f test/verify_k8s_sse_final_results.txt && grep -c 'PASS' test/verify_k8s_sse_final_results.txt` returning at least 1, and `grep -cE 'Unsupported method|invalid_request' test/verify_k8s_sse_final_results.txt` returning 0.
+
+- [ ] 11.2 Document the complete fix in `ralph-docs/K8S_SSE_STREAMING_FIX.md` with: (a) original problem, (b) what went wrong in first fix attempt, (c) actual root cause with evidence, (d) correct fix applied, (e) verification results, (f) K8s manifest changes needed on future deployments.
+  - **Done when**: `ralph-docs/K8S_SSE_STREAMING_FIX.md` exists and covers all 6 sections. Verify with: `test -f ralph-docs/K8S_SSE_STREAMING_FIX.md && grep -cE 'original problem|first fix|root cause|fix applied|verification|manifest' ralph-docs/K8S_SSE_STREAMING_FIX.md` returning at least 6 matches.
+
+---
+
 ## Human Handoff (NOT for autonomous execution)
 
-After the fix is verified in code and diagnostics, the following manual steps are required to deploy:
+After the correct fix is verified in code, the following manual steps are required to deploy:
 
-1. **Rebuild affected images**: If source code changed (frontend and/or agent), rebuild Docker images on the host:
+1. **Rebuild and deploy the frontend image** (to pick up the reverted `next.config.ts` and `Dockerfile`):
    ```bash
-   # If frontend changed:
-   docker build -t my-ag-ui-app:latest .
-   # If agent changed:
-   docker build -t agent:latest ./agent
+   bash scripts/kubernetes-deployment-setup.sh --build frontend --restart
    ```
 
-2. **Transfer images to VM** (follow existing pattern in `deploy_scripts/build-docker-image.sh`):
+2. **If agent changes are needed** (depends on task 10.1):
    ```bash
-   IMAGE_ID=$(docker images <image-name>:latest --format "{{.ID}}" | head -n1)
-   docker save "$IMAGE_ID" -o ./<image-name>.tar
-   multipass transfer ./<image-name>.tar my-ag-ui-app-k8s:/tmp/
-   multipass exec my-ag-ui-app-k8s -- docker load -i /tmp/<image-name>.tar
-   VM_IMAGE_ID=$(multipass exec my-ag-ui-app-k8s -- docker images --format "{{.ID}}" | head -n1)
-   multipass exec my-ag-ui-app-k8s -- docker tag "$VM_IMAGE_ID" localhost:32000/<image-name>:latest
-   multipass exec my-ag-ui-app-k8s -- docker push localhost:32000/<image-name>:latest
+   bash scripts/kubernetes-deployment-setup.sh --build agent --restart
    ```
 
-3. **Apply updated K8s manifests** (if any changed):
+3. **If K8s manifests changed**, apply them:
    ```bash
-   multipass transfer k8s/<manifest>.yaml my-ag-ui-app-k8s:/home/ubuntu/<manifest>.yaml
-   multipass exec my-ag-ui-app-k8s -- microk8s kubectl apply -f /home/ubuntu/<manifest>.yaml
+   bash scripts/kubernetes-deployment-setup.sh --manifest k8s/<changed-manifest>.yaml --restart
    ```
 
-4. **Restart affected deployments**:
-   ```bash
-   multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout restart deployment/<deployment-name>
-   multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout status deployment/<deployment-name>
-   ```
-
-5. **Run end-to-end verification**:
+4. **Run end-to-end verification**:
    ```bash
    bash test/verify_k8s_sse_fix.sh
    ```
 
-6. **Rollback** (if needed):
+5. **Rollback** (if needed):
    ```bash
-   multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout undo deployment/<deployment-name>
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout undo deployment/my-ag-ui-app
+   multipass exec my-ag-ui-app-k8s -- microk8s kubectl rollout undo deployment/agent
    ```
 
-7. **Cleanup temporary files**:
+6. **Cleanup**:
    ```bash
    rm -f ./*.tar
    multipass exec my-ag-ui-app-k8s -- rm -f /tmp/*.tar
