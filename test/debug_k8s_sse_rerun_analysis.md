@@ -1,7 +1,7 @@
-# SSE Streaming Diagnostic Analysis (Re-run)
+# SSE Connectivity Rerun Analysis
 
 ## Test Results Summary
-- **Test Date**: Mon Apr 13 03:55:38 PM EDT 2026
+- **Test Date**: Mon Apr 13 03:58:01 PM EDT 2026
 - **Agent Pod**: agent-5d8dd457dc-ntgpr (IP: 10.1.217.21)
 - **Frontend Pod**: my-ag-ui-app-688cc6967c-4x2fl
 
@@ -50,13 +50,20 @@ The diagnostics clearly show that the issue is specifically with **Server-Sent E
 - The agent pod health endpoint (GET /api/health) works fine, proving the agent is running and accessible
 - The agent service DNS resolution works fine, proving Kubernetes networking is correct
 - The failure occurs specifically when trying to establish an SSE stream via POST to the agent endpoint
+- Both SSE connection attempts terminate with "command terminated with exit code 1"
 
 ### Likely Root Cause:
 The agent's SSE endpoint (POST /) is not properly handling SSE connections or is returning errors. This could be due to:
 1. Agent uvicorn configuration not properly supporting streaming responses
-2. Agent endpoint rejecting the request format or headers
+2. Agent endpoint rejecting the request format or headers  
 3. Agent not properly implementing the SSE protocol
+4. Agent missing proper SSE response headers
 
-## Next Steps
+## Recommended Fix
 
-The fix should target the agent's SSE endpoint specifically, not the frontend, CopilotKit, or ingress components, since those are dependent on the agent working correctly first.
+The fix should target the agent's SSE endpoint specifically, not the frontend, CopilotKit, or ingress components, since those are dependent on the agent working correctly first. Focus on:
+1. Ensuring the agent's uvicorn server is configured for SSE streaming
+2. Verifying the agent's SSE response headers are correct
+3. Checking if the agent needs specific configuration for long-running SSE connections
+
+The fix should NOT involve Next.js configuration (as the previous incorrect attempt did), since the failure occurs at the agent level before reaching Next.js/CopilotKit.
