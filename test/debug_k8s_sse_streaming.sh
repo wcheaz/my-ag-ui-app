@@ -29,10 +29,18 @@ echo "Agent pod: $AGENT_POD (IP: $AGENT_POD_IP)"
 echo "Frontend pod: $FRONTEND_POD"
 echo ""
 
+# Create debug pod with curl
+echo "Creating debug pod with curl..."
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl run debug-sse --image=curlimages/curl --restart=Never -- sleep 600
+echo "Waiting for debug pod to be ready..."
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl wait --for=condition=Ready pod/debug-sse --timeout=60s
+echo "Debug pod is ready"
+echo ""
+
 # Test 1: Agent pod health directly using curl
 echo "1. Testing agent pod health directly (HTTP to pod IP):"
 echo "========================================================"
-if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i "$FRONTEND_POD" -- curl -s "http://$AGENT_POD_IP:8000/api/health" | grep -q "ok\|healthy\|ready"; then
+if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i debug-sse -- curl -s "http://$AGENT_POD_IP:8000/api/health" | grep -q "ok\|healthy\|ready"; then
     echo "PASS: Agent pod health endpoint is accessible via pod IP"
 else
     echo "FAIL: Agent pod health endpoint is not accessible via pod IP"
@@ -42,7 +50,7 @@ echo ""
 # Test 2: Agent service from frontend pod using curl
 echo "2. Testing agent service from frontend pod:"
 echo "=========================================="
-if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i "$FRONTEND_POD" -- curl -s -N --max-time 10 "http://agent-service:8000/api/health" | grep -q "ok\|healthy\|ready"; then
+if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i debug-sse -- curl -s -N --max-time 10 "http://agent-service:8000/api/health" | grep -q "ok\|healthy\|ready"; then
     echo "PASS: Agent service is accessible from frontend pod"
 else
     echo "FAIL: Agent service is not accessible from frontend pod"
@@ -52,7 +60,7 @@ echo ""
 # Test 3: SSE stream connection to agent service using curl
 echo "3. Testing SSE stream connection to agent service:"
 echo "=================================================="
-if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i "$FRONTEND_POD" -- bash -c "
+if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i debug-sse -- sh -c "
 echo '{\"messages\": [{\"role\": \"user\", \"content\": \"hello\"}], \"threadId\": \"test-123\"}' | curl -s -N -H 'Content-Type: application/json' -H 'Accept: text/event-stream' -X POST http://agent-service:8000/ --max-time 10 | head -c 100 | grep -q 'event:\|data:'
 "; then
     echo "PASS: Agent SSE endpoint is connectable"
@@ -64,8 +72,8 @@ echo ""
 # Test 4: CopilotKit SSE connection from frontend pod using curl
 echo "4. Testing CopilotKit SSE connection from frontend pod:"
 echo "======================================================"
-if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i "$FRONTEND_POD" -- bash -c "
-echo '{\"messages\": [{\"role\": \"user\", \"content\": \"hello\"}], \"threadId\": \"test-123\"}' | curl -s -N -H 'Content-Type: application/json' -H 'Accept: text/event-stream' -X POST http://localhost:3000/api/copilotkit --max-time 10 | head -c 100 | grep -q 'event:\|data:'
+if multipass exec my-ag-ui-app-k8s -- microk8s kubectl exec -i debug-sse -- sh -c "
+echo '{\"messages\": [{\"role\": \"user\", \"content\": \"hello\"}], \"threadId\": \"test-123\"}' | curl -s -N -H 'Content-Type: application/json' -H 'Accept: text/event-stream' -X POST http://my-ag-ui-app-service:3000/api/copilotkit --max-time 10 | head -c 100 | grep -q 'event:\|data:'
 "; then
     echo "PASS: CopilotKit SSE endpoint is connectable"
 else
@@ -97,6 +105,12 @@ fi
 
 # Clean up
 rm -f /tmp/test_agui_request.json
+echo ""
+
+# Remove debug pod
+echo "Cleaning up debug pod..."
+multipass exec my-ag-ui-app-k8s -- microk8s kubectl delete pod debug-sse --force
+echo "Debug pod removed"
 echo ""
 
 echo "=== End of Diagnostic Report ==="

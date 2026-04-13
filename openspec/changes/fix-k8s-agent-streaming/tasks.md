@@ -113,7 +113,7 @@ Tasks 1–5 were marked complete but contained **three critical problems** that 
 
 ## 8. Fix Diagnostic Script
 
-- [ ] 8.1 Fix `test/debug_k8s_sse_streaming.sh` to work without curl/bash in containers. Instead of `kubectl exec` into frontend/agent pods, use a **temporary debug pod** with curl pre-installed:
+- [x] 8.1 Fix `test/debug_k8s_sse_streaming.sh` to work without curl/bash in containers. Instead of `kubectl exec` into frontend/agent pods, use a **temporary debug pod** with curl pre-installed:
   ```bash
   multipass exec my-ag-ui-app-k8s -- microk8s kubectl run debug-sse --image=curlimages/curl --restart=Never -- sleep 600
   # Wait for debug pod to be ready
