@@ -170,7 +170,7 @@ Tasks 6–11 were marked complete but **none resolved correctly**:
   Remove ALL added uvicorn flags (`--timeout-keep-alive`, `--limit-concurrency`, `--workers`, `--timeout-graceful-shutdown`, `--ws-max-size`, `--ws-ping-interval`, `--ws-ping-timeout`). Also remove the `curl` installation line (`RUN apt-get update && apt-get install -y curl && \`) — it was added for diagnostics and should not be in production images.
   - **Done when**: `cat agent/Dockerfile | grep -cE 'timeout-keep-alive|limit-concurrency|workers|ws-max|ws-ping|curl'` returns 0, and the CMD is exactly the original single-line form. Verify with: `grep 'CMD' agent/Dockerfile` showing only `CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]`.
 
-- [ ] 12.2 Revert `agent/src/main.py` to its original state. Remove: (a) the `CORSMiddleware` import and `app.add_middleware(CORSMiddleware, ...)` block, (b) the `GZipMiddleware` import (unused), (c) the entire `add_sse_headers` middleware function and its `@app.middleware("http")` decorator. The original `main.py` was exactly:
+- [x] 12.2 Revert `agent/src/main.py` to its original state. Remove: (a) the `CORSMiddleware` import and `app.add_middleware(CORSMiddleware, ...)` block, (b) the `GZipMiddleware` import (unused), (c) the entire `add_sse_headers` middleware function and its `@app.middleware("http")` decorator. The original `main.py` was exactly:
   ```python
   from src.agent import ProcurementState, StateDeps, agent
   import logfire
