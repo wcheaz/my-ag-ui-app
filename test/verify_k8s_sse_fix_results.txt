@@ -1,11 +1,14 @@
 === SSE Streaming Fix Verification ===
 Testing end-to-end SSE streaming in Kubernetes deployment
-Generated at: Sun Apr 12 07:23:56 PM EDT 2026
+Generated at: Sun Apr 12 08:53:54 PM EDT 2026
 
+=== Testing Health Endpoint ===
+✅ Health endpoint is accessible (HTTP 200)
 === Testing SSE Streaming ===
 Sending procurement request to http://my-ag-ui-app.local/api/copilotkit...
 Request payload:
 {
+  "method": "text",
   "messages": [
     {
       "role": "user",
@@ -26,21 +29,21 @@ Data events received: 0
 0
 ⚠️  No terminal event detected (stream may be incomplete)
 ⚠️  No procurement content detected in response
-Response size: 60 bytes
+Response size: 65 bytes
 ⚠️  Response size seems small for a complete procurement
 
 === VERIFICATION RESULT ===
-test/verify_k8s_sse_fix.sh: line 99: [: 0
+test/verify_k8s_sse_fix.sh: line 110: [: 0
 0: integer expression expected
 ❌ FAIL: SSE streaming fix needs further investigation
-test/verify_k8s_sse_fix.sh: line 109: [: 0
+test/verify_k8s_sse_fix.sh: line 120: [: 0
 0: integer expression expected
-test/verify_k8s_sse_fix.sh: line 113: [: 0
+test/verify_k8s_sse_fix.sh: line 124: [: 0
 0: integer expression expected
    - Issue: No terminal event detected
    - Issue: No procurement content in response
-   - Issue: Response too small (60 bytes)
+   - Issue: Response too small (65 bytes)
 
 Full response saved to: /tmp/sse_response.txt
 First 500 characters of response:
-{"error":"invalid_request","message":"Missing method field"}
+{"error":"invalid_request","message":"Unsupported method 'text'"}

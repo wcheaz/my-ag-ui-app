@@ -10,9 +10,20 @@ echo "Testing end-to-end SSE streaming in Kubernetes deployment"
 echo "Generated at: $(date)"
 echo ""
 
-# Create a realistic procurement request payload
+# First, test the health endpoint
+echo "=== Testing Health Endpoint ==="
+HEALTH_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://my-ag-ui-app.local/api/copilotkit)
+if [ "$HEALTH_RESPONSE" = "200" ]; then
+    echo "✅ Health endpoint is accessible (HTTP $HEALTH_RESPONSE)"
+else
+    echo "⚠️  Health endpoint returned HTTP $HEALTH_RESPONSE"
+fi
+
+# Create a CopilotKit-compatible request payload
+# Based on CopilotKit protocol, we need proper structure with method field
 cat > /tmp/procurement_request.json << 'EOF'
 {
+  "method": "text",
   "messages": [
     {
       "role": "user",
