@@ -140,7 +140,7 @@ Tasks 1–5 were marked complete but contained **three critical problems** that 
 - [x] 11.1 Run the fixed verification script (`test/verify_k8s_sse_fix.sh`) with the correct AG-UI protocol format after the fix is deployed. Capture output to `test/verify_k8s_sse_final_results.txt`. The test MUST show SSE events received (not zero), and the response MUST NOT contain `"Unsupported method"` or `"invalid_request"`.
   - **Done when**: `test/verify_k8s_sse_final_results.txt` exists and contains `PASS` (not `FAIL`), and does NOT contain `Unsupported method` or `invalid_request`. Verify with: `test -f test/verify_k8s_sse_final_results.txt && grep -c 'PASS' test/verify_k8s_sse_final_results.txt` returning at least 1, and `grep -cE 'Unsupported method|invalid_request' test/verify_k8s_sse_final_results.txt` returning 0.
 
-- [ ] 11.2 Document the complete fix in `ralph-docs/K8S_SSE_STREAMING_FIX.md` with: (a) original problem, (b) what went wrong in first fix attempt, (c) actual root cause with evidence, (d) correct fix applied, (e) verification results, (f) K8s manifest changes needed on future deployments.
+- [x] 11.2 Document the complete fix in `ralph-docs/K8S_SSE_STREAMING_FIX.md` with: (a) original problem, (b) what went wrong in first fix attempt, (c) actual root cause with evidence, (d) correct fix applied, (e) verification results, (f) K8s manifest changes needed on future deployments.
   - **Done when**: `ralph-docs/K8S_SSE_STREAMING_FIX.md` exists and covers all 6 sections. Verify with: `test -f ralph-docs/K8S_SSE_STREAMING_FIX.md && grep -cE 'original problem|first fix|root cause|fix applied|verification|manifest' ralph-docs/K8S_SSE_STREAMING_FIX.md` returning at least 6 matches.
 
 ---
