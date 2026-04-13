@@ -163,7 +163,7 @@ Tasks 6–11 were marked complete but **none resolved correctly**:
 
 ## 12. Revert ALL Agent Changes
 
-- [ ] 12.1 Revert `agent/Dockerfile` to its original CMD. The original was a single line:
+- [x] 12.1 Revert `agent/Dockerfile` to its original CMD. The original was a single line:
   ```dockerfile
   CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
   ```

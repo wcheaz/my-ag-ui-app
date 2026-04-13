@@ -1,8 +1,8 @@
 {
-  "active": false,
-  "iteration": 49,
+  "active": true,
+  "iteration": 52,
   "minIterations": 1,
-  "maxIterations": 75,
+  "maxIterations": 100,
   "completionPromise": "COMPLETE",
   "taskPromise": "READY_FOR_NEXT_TASK",
   "tasksMode": true,
@@ -11,7 +11,6 @@
   "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-agent-streaming/.ralph/prompt-template.md",
   "noCommit": false,
   "model": "",
-  "startedAt": "2026-04-13T19:46:27.648Z",
-  "resumedAt": "2026-04-13T19:46:27.659Z",
-  "completedAt": "2026-04-13T20:50:53.895Z"
+  "startedAt": "2026-04-13T21:38:28.283Z",
+  "resumedAt": "2026-04-13T21:38:28.284Z"
 }
