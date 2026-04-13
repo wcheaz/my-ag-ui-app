@@ -455,5 +455,127 @@
     "completedTasks": [
       "9.1 Run the fixed diagnostic script (`test/debug_k8s_sse_streaming.sh`) AFTER reverting changes and redeploying (tasks 6.x). Save output to `test/debug_k8s_sse_rerun_results.txt`. Document findings in `test/debug_k8s_sse_rerun_analysis.md`. The analysis MUST identify which hop in the SSE chain actually fails: (a) agent health → agent pod responds to GET /api/health, (b) agent SSE → agent pod responds to POST / with AG-UI RunAgentInput, (c) agent service → same test via service DNS, (d) CopilotKit proxy → POST /api/copilotkit from within cluster, (e) ingress → POST /api/copilotkit from host."
     ]
+  },
+  {
+    "timestamp": "2026-04-13T20:05:49.132Z",
+    "iteration": 36,
+    "duration": 79816,
+    "completionDetected": false,
+    "taskDetected": false,
+    "toolUsage": [],
+    "filesChanged": [
+      "agent/Dockerfile",
+      "test/debug_k8s_sse_correct_fix.md"
+    ],
+    "exitCode": 0,
+    "completedTasks": []
+  },
+  {
+    "timestamp": "2026-04-13T20:09:52.635Z",
+    "iteration": 37,
+    "duration": 243502,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [
+      "agent/Dockerfile",
+      "test/debug_k8s_sse_correct_fix.md"
+    ],
+    "exitCode": 0,
+    "completedTasks": []
+  },
+  {
+    "timestamp": "2026-04-13T20:12:37.948Z",
+    "iteration": 38,
+    "duration": 165312,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [],
+    "exitCode": 0,
+    "completedTasks": []
+  },
+  {
+    "timestamp": "2026-04-13T20:15:19.859Z",
+    "iteration": 39,
+    "duration": 161910,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [
+      {
+        "tool": "Task",
+        "count": 1
+      }
+    ],
+    "filesChanged": [],
+    "exitCode": 0,
+    "completedTasks": []
+  },
+  {
+    "timestamp": "2026-04-13T20:19:45.177Z",
+    "iteration": 40,
+    "duration": 265317,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [
+      "agent/src/main.py",
+      "test/debug_k8s_sse_correct_fix.md",
+      "COMMIT_MSG.md",
+      "test/debug_agent_sse_endpoint.sh"
+    ],
+    "exitCode": 0,
+    "completedTasks": []
+  },
+  {
+    "timestamp": "2026-04-13T20:22:32.923Z",
+    "iteration": 41,
+    "duration": 167745,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [
+      "agent/src/main.py",
+      "test/debug_k8s_sse_correct_fix.md"
+    ],
+    "exitCode": 0,
+    "completedTasks": []
+  },
+  {
+    "timestamp": "2026-04-13T20:26:08.159Z",
+    "iteration": 42,
+    "duration": 215234,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [
+      {
+        "tool": "Task",
+        "count": 1
+      }
+    ],
+    "filesChanged": [
+      "agent/Dockerfile",
+      "agent/src/main.py",
+      "test/debug_k8s_sse_correct_fix.md"
+    ],
+    "exitCode": 0,
+    "completedTasks": []
+  },
+  {
+    "timestamp": "2026-04-13T20:30:52.386Z",
+    "iteration": 43,
+    "duration": 284227,
+    "completionDetected": false,
+    "taskDetected": true,
+    "toolUsage": [],
+    "filesChanged": [
+      "openspec/changes/fix-k8s-agent-streaming/tasks.md",
+      "agent/Dockerfile",
+      "test/debug_k8s_sse_correct_fix.md"
+    ],
+    "exitCode": 0,
+    "completedTasks": [
+      "10.1 Based on the confirmed root cause from task 9.1, implement the targeted fix. The fix MUST address the specific hop that fails, not make speculative changes to unrelated config. Document the change in `test/debug_k8s_sse_correct_fix.md` with: (a) confirmed root cause with evidence from diagnostics, (b) exact files changed with diffs, (c) why this fix addresses the confirmed root cause."
+    ]
   }
 ]

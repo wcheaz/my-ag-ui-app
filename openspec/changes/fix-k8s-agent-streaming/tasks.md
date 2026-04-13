@@ -132,7 +132,7 @@ Tasks 1–5 were marked complete but contained **three critical problems** that 
 
 ## 10. Implement Correct Fix
 
-- [ ] 10.1 Based on the confirmed root cause from task 9.1, implement the targeted fix. The fix MUST address the specific hop that fails, not make speculative changes to unrelated config. Document the change in `test/debug_k8s_sse_correct_fix.md` with: (a) confirmed root cause with evidence from diagnostics, (b) exact files changed with diffs, (c) why this fix addresses the confirmed root cause.
+- [x] 10.1 Based on the confirmed root cause from task 9.1, implement the targeted fix. The fix MUST address the specific hop that fails, not make speculative changes to unrelated config. Document the change in `test/debug_k8s_sse_correct_fix.md` with: (a) confirmed root cause with evidence from diagnostics, (b) exact files changed with diffs, (c) why this fix addresses the confirmed root cause.
   - **Done when**: The fix is in the relevant file(s) and documented. The documentation includes evidence from the diagnostic run (not a hypothesis). Verify with: `test -f test/debug_k8s_sse_correct_fix.md && grep -cE 'evidence|confirmed root cause|diff|files changed' test/debug_k8s_sse_correct_fix.md` returning at least 4 matches.
 
 ## 11. Final Verification

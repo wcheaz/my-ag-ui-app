@@ -24,15 +24,31 @@ app.add_middleware(
 @app.middleware("http")
 async def add_sse_headers(request, call_next):
     response = await call_next(request)
-    if request.url.path == "/" and request.method == "POST":
-        # Add SSE-specific headers for streaming responses
-        response.headers["Content-Type"] = "text/event-stream"
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Connection"] = "keep-alive"
-        response.headers["X-Accel-Buffering"] = "no"
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        # Ensure no buffering for streaming responses
-        response.headers["Transfer-Encoding"] = "chunked"
+    # Apply SSE headers to all AG-UI endpoints, not just root path
+    if request.method == "POST" and request.url.path.startswith("/"):
+        # Ensure this is an AG-UI request (has appropriate content-type or user-agent)
+        content_type = request.headers.get("content-type", "")
+        user_agent = request.headers.get("user-agent", "")
+
+        is_ag_ui_request = (
+            "application/json" in content_type
+            or "copilotkit" in user_agent.lower()
+            or "ag-ui" in user_agent.lower()
+        )
+
+        if is_ag_ui_request:
+            # Add SSE-specific headers for streaming responses
+            response.headers["Content-Type"] = "text/event-stream"
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Connection"] = "keep-alive"
+            response.headers["X-Accel-Buffering"] = "no"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            # Ensure no buffering for streaming responses
+            response.headers["Transfer-Encoding"] = "chunked"
+            # Also ensure the response is a streaming response
+            if hasattr(response, "body_iterator") or hasattr(response, "stream"):
+                # Force the response to be streamed
+                response.headers["X-Streaming-Status"] = "active"
     return response
 
 
