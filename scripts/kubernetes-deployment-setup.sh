@@ -37,9 +37,15 @@
 # Usage examples:
 #   scripts/kubernetes-deployment-setup.sh --build all --manifest k8s/ingress.yaml --restart --verify
 #   scripts/kubernetes-deployment-setup.sh --build frontend --manifest k8s/deployment.yaml --restart
+#   scripts/kubernetes-deployment-setup.sh --build agent --restart --delete-old
 #
 # Environment variables:
 #   VM_NAME: Name of the Multipass VM (default: my-ag-ui-app-k8s)
+#
+# Disk space management:
+#   - Without --delete-old: Script checks available disk space and fails if insufficient
+#   - With --delete-old: Cleans up old Docker images and registry storage before deployment
+#   - Use --delete-old when experiencing disk pressure, rollout loops, or eviction issues
 ################################################################################
 
 set -e
@@ -80,6 +86,7 @@ usage() {
     echo "  -m, --manifest FILE        K8s manifest to apply (can be specified multiple times)"
     echo "  -r, --restart              Restart deployments after applying manifests"
     echo "  -v, --verify               Run verification script after deployment"
+    echo "  -d, --delete-old           Delete old image data before deployment (cleans disk space)"
     echo "  -h, --help                 Show this help message"
     echo ""
     echo "Environment Variables:"
@@ -88,7 +95,211 @@ usage() {
     echo "Examples:"
     echo "  $0 --build all --manifest k8s/ingress.yaml --restart --verify"
     echo "  $0 --build frontend --manifest k8s/deployment.yaml --restart"
+    echo "  $0 --build agent --restart --delete-old"
+    echo ""
+    echo "Notes:"
+    echo "  - Use --delete-old when experiencing disk pressure or rollout loops"
+    echo "  - Without --delete-old, script checks disk space and fails if insufficient"
     exit 1
+}
+
+# Function to check disk space on VM
+check_disk_space() {
+    log_info "Checking disk space on VM..."
+
+    # Get available disk space in KB
+    AVAILABLE_KB=$(multipass exec "$VM_NAME" -- df --output=avail / | tail -n1)
+    if [ -z "$AVAILABLE_KB" ]; then
+        log_error "Failed to get disk space from VM"
+        exit 1
+    fi
+
+    # Convert to GB
+    AVAILABLE_GB=$((AVAILABLE_KB / 1024 / 1024))
+
+    log_info "Available disk space: ${AVAILABLE_GB}GB"
+
+    # Calculate required space based on build type
+    REQUIRED_GB=0
+    if [[ "$BUILD_TYPE" == "frontend" || "$BUILD_TYPE" == "all" ]]; then
+        REQUIRED_GB=$((REQUIRED_GB + 1))  # Frontend is ~300MB, reserve 1GB
+    fi
+    if [[ "$BUILD_TYPE" == "agent" || "$BUILD_TYPE" == "all" ]]; then
+        REQUIRED_GB=$((REQUIRED_GB + 5))  # Agent is ~4.2GB, reserve 5GB
+    fi
+
+    # Add safety margin (2GB)
+    REQUIRED_GB=$((REQUIRED_GB + 2))
+
+    log_info "Required disk space: ${REQUIRED_GB}GB"
+
+    if [ "$AVAILABLE_GB" -lt "$REQUIRED_GB" ]; then
+        log_error "Insufficient disk space on VM!"
+        log_error "Available: ${AVAILABLE_GB}GB, Required: ${REQUIRED_GB}GB"
+        log_error ""
+        log_error "To free up space, run with --delete-old flag:"
+        log_error "  $0 --build $BUILD_TYPE --restart --delete-old"
+        log_error ""
+        log_error "Or manually clean up:"
+        log_error "  multipass exec $VM_NAME -- docker image prune -a -f"
+        log_error "  multipass exec $VM_NAME -- df -h /"
+        exit 1
+    fi
+
+    log_info "✅ Disk space check passed"
+}
+
+# Function to clean up old image data
+cleanup_old_images() {
+    log_warn "Cleaning up old image data..."
+
+    # Prune unused Docker images in VM
+    log_info "Pruning unused Docker images..."
+    RECLAIMED=$(multipass exec "$VM_NAME" -- docker image prune -a -f 2>&1 | grep "Total reclaimed space" || echo "0B")
+    log_info "Docker images reclaimed: $RECLAIMED"
+
+    # Clean up registry storage
+    log_info "Cleaning up registry storage..."
+
+    # First, delete the registry pod if it exists
+    REGISTRY_POD=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -o name 2>/dev/null || echo "")
+    if [ -n "$REGISTRY_POD" ]; then
+        log_info "Deleting registry pod: $REGISTRY_POD"
+        multipass exec "$VM_NAME" -- microk8s kubectl delete "$REGISTRY_POD" -n container-registry --grace-period=5 >/dev/null 2>&1 || true
+
+        # Wait for pod to be deleted (max 30 seconds)
+        log_info "Waiting for registry pod to be deleted..."
+        for i in {1..6}; do
+            POD_EXISTS=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry -o name 2>/dev/null || echo "")
+            if [ -z "$POD_EXISTS" ]; then
+                log_info "✅ Registry pod deleted"
+                break
+            fi
+            if [ $i -eq 6 ]; then
+                log_warn "Registry pod not deleted after 30 seconds, forcing deletion..."
+                multipass exec "$VM_NAME" -- microk8s kubectl delete "$REGISTRY_POD" -n container-registry --force --grace-period=0 >/dev/null 2>&1 || true
+                sleep 2
+            fi
+            sleep 5
+        done
+    fi
+
+        # Find and delete registry PVC
+        REGISTRY_PVC=$(multipass exec "$VM_NAME" -- microk8s kubectl get pvc -n container-registry -o name 2>/dev/null | grep registry-claim || true)
+
+        if [ -n "$REGISTRY_PVC" ]; then
+            log_info "Deleting registry PVC: $REGISTRY_PVC"
+
+            # Try to remove PVC finalizer if it's stuck
+            log_info "Removing PVC finalizer if present..."
+            multipass exec "$VM_NAME" -- microk8s kubectl patch "$REGISTRY_PVC" -n container-registry --type merge -p '{"metadata":{"finalizers":[]}}' >/dev/null 2>&1 || true
+            sleep 2
+
+            multipass exec "$VM_NAME" -- microk8s kubectl delete "$REGISTRY_PVC" -n container-registry --grace-period=5 >/dev/null 2>&1 || true
+
+        # Wait for PVC to be deleted (max 30 seconds)
+        log_info "Waiting for registry PVC to be deleted..."
+        for i in {1..6}; do
+            PVC_EXISTS=$(multipass exec "$VM_NAME" -- microk8s kubectl get pvc -n container-registry -o name 2>/dev/null | grep registry-claim || echo "")
+            if [ -z "$PVC_EXISTS" ]; then
+                log_info "✅ Registry PVC deleted"
+                break
+            fi
+            if [ $i -eq 6 ]; then
+                log_warn "Registry PVC not deleted after 30 seconds, continuing anyway..."
+                break
+            fi
+            sleep 5
+        done
+
+        # Find and delete the PV
+        PV_NAME=$(multipass exec "$VM_NAME" -- microk8s kubectl get pv -o name | grep pvc- || true)
+        if [ -n "$PV_NAME" ]; then
+            log_info "Deleting registry PV: $PV_NAME"
+
+            # First, try to remove the protection finalizer if PV is stuck
+            log_info "Removing PV protection finalizer if present..."
+            multipass exec "$VM_NAME" -- microk8s kubectl patch "$PV_NAME" --type merge -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain","claimRef":null},"metadata":{"finalizers":[]}}' >/dev/null 2>&1 || true
+            sleep 2
+
+            multipass exec "$VM_NAME" -- microk8s kubectl delete "$PV_NAME" --grace-period=5 >/dev/null 2>&1 || true
+
+            # Wait for PV to be deleted (max 30 seconds)
+            for i in {1..6}; do
+                PV_EXISTS=$(multipass exec "$VM_NAME" -- microk8s kubectl get pv -o name | grep "$PV_NAME" || echo "")
+                if [ -z "$PV_EXISTS" ]; then
+                    log_info "✅ Registry PV deleted"
+                    break
+                fi
+                if [ $i -eq 6 ]; then
+                    log_warn "Registry PV not deleted after 30 seconds, continuing anyway..."
+                    break
+                fi
+                sleep 5
+            done
+        fi
+
+        # Remove storage directory if it still exists
+        STORAGE_DIR=$(multipass exec "$VM_NAME" -- ls -d /var/snap/microk8s/common/default-storage/container-registry-registry-claim-pvc-* 2>/dev/null || true)
+        if [ -n "$STORAGE_DIR" ]; then
+            log_info "Removing registry storage directory..."
+            multipass exec "$VM_NAME" -- sudo rm -rf "$STORAGE_DIR" 2>/dev/null || true
+            log_info "✅ Storage directory removed"
+        fi
+
+        # Try to remove PVC finalizer if it's still stuck
+        PVC_STUCK=$(multipass exec "$VM_NAME" -- microk8s kubectl get pvc -n container-registry -o name 2>/dev/null | grep registry-claim || echo "")
+        if [ -n "$PVC_STUCK" ]; then
+            log_info "Removing stuck PVC finalizer..."
+            multipass exec "$VM_NAME" -- microk8s kubectl patch "$PVC_STUCK" -n container-registry --type merge -p '{"metadata":{"finalizers":[]}}' >/dev/null 2>&1 || true
+            sleep 2
+        fi
+    fi
+
+    # Recreate the registry PVC
+    log_info "Recreating registry PVC..."
+    multipass exec "$VM_NAME" -- bash -c 'cat <<EOF | microk8s kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: registry-claim
+  namespace: container-registry
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: microk8s-hostpath
+EOF
+' >/dev/null 2>&1
+
+    # Wait for new registry pod to be created
+    log_info "Waiting for new registry pod to be created..."
+
+    # Wait for registry pod to be created and running (max 120 seconds)
+    log_info "Waiting for registry pod to be ready..."
+    for i in {1..24}; do
+        READY_COUNT=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry 2>/dev/null | grep -c "1/1 *Running" 2>/dev/null || echo "0")
+        READY_COUNT=${READY_COUNT//[$'\n']/}  # Remove any newlines
+        READY_COUNT=${READY_COUNT// /}  # Remove any trailing spaces
+
+        if [ "$READY_COUNT" -ge 1 ]; then
+            log_info "✅ Registry is ready"
+            break
+        fi
+        if [ $i -eq 24 ]; then
+            log_warn "Registry not ready after 120 seconds, continuing anyway..."
+        fi
+        sleep 5
+    done
+
+    # Check final disk usage
+    AVAILABLE_KB=$(multipass exec "$VM_NAME" -- df --output=avail / | tail -n1)
+    AVAILABLE_GB=$((AVAILABLE_KB / 1024 / 1024))
+    log_info "Available disk space after cleanup: ${AVAILABLE_GB}GB"
+
+    log_info "✅ Cleanup completed"
 }
 
 # Parse arguments
@@ -96,6 +307,7 @@ BUILD_TYPE="all"
 MANIFESTS=()
 RESTART_DEPLOYMENTS=false
 RUN_VERIFICATION=false
+DELETE_OLD_IMAGES=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -113,6 +325,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -v|--verify)
             RUN_VERIFICATION=true
+            shift
+            ;;
+        -d|--delete-old)
+            DELETE_OLD_IMAGES=true
             shift
             ;;
         -h|--help)
@@ -157,6 +373,14 @@ if ! multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
 fi
 
 log_info "✅ Pre-flight checks passed"
+
+# Cleanup old images if requested
+if [ "$DELETE_OLD_IMAGES" = true ]; then
+    cleanup_old_images
+else
+    # Check disk space before proceeding
+    check_disk_space
+fi
 
 # Function to build and transfer image
 build_and_transfer_image() {
