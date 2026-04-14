@@ -280,11 +280,10 @@ EOF
     # Wait for registry pod to be created and running (max 120 seconds)
     log_info "Waiting for registry pod to be ready..."
     for i in {1..24}; do
-        READY_COUNT=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry 2>/dev/null | grep -c "1/1 *Running" 2>/dev/null || echo "0")
-        READY_COUNT=${READY_COUNT//[$'\n']/}  # Remove any newlines
-        READY_COUNT=${READY_COUNT// /}  # Remove any trailing spaces
+        READY_COUNT=$(multipass exec "$VM_NAME" -- microk8s kubectl get pods -n container-registry 2>/dev/null | grep -c "1/1.*Running" 2>/dev/null || true)
+        READY_COUNT=$(echo "$READY_COUNT" | tr -d '[:space:]')
 
-        if [ "$READY_COUNT" -ge 1 ]; then
+        if [ "$READY_COUNT" -ge 1 ] 2>/dev/null; then
             log_info "✅ Registry is ready"
             break
         fi
@@ -373,6 +372,61 @@ if ! multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
 fi
 
 log_info "✅ Pre-flight checks passed"
+
+# Configure Docker in VM to use insecure registry
+# The MicroK8s registry is HTTP-only on localhost:32000, but Docker defaults
+# to HTTPS and may resolve localhost to IPv6 [::1], causing connection refused.
+log_info "Configuring Docker in VM for insecure registry..."
+NEEDS_DOCKER_RESTART=false
+DAEMON_JSON_EXISTS=$(multipass exec "$VM_NAME" -- test -f /etc/docker/daemon.json && echo "yes" || echo "no")
+
+if [ "$DAEMON_JSON_EXISTS" = "no" ]; then
+    multipass exec "$VM_NAME" -- sudo mkdir -p /etc/docker
+    multipass exec "$VM_NAME" -- sudo bash -c "cat > /etc/docker/daemon.json <<'DEOF'
+{
+  \"insecure-registries\": [\"localhost:32000\"]
+}
+DEOF"
+    NEEDS_DOCKER_RESTART=true
+    log_info "Created /etc/docker/daemon.json"
+else
+    # Check if insecure-registries already includes our registry
+    HAS_INSECURE=$(multipass exec "$VM_NAME" -- grep -c "localhost:32000" /etc/docker/daemon.json 2>/dev/null || echo "0")
+    if [ "$HAS_INSECURE" -eq 0 ]; then
+        log_info "Adding localhost:32000 to insecure-registries in existing daemon.json..."
+        multipass exec "$VM_NAME" -- sudo python3 -c "
+import json, sys
+with open('/etc/docker/daemon.json') as f:
+    config = json.load(f)
+ir = config.get('insecure-registries', [])
+if 'localhost:32000' not in ir:
+    ir.append('localhost:32000')
+config['insecure-registries'] = ir
+with open('/etc/docker/daemon.json', 'w') as f:
+    json.dump(config, f, indent=2)
+"
+        NEEDS_DOCKER_RESTART=true
+    fi
+fi
+
+if [ "$NEEDS_DOCKER_RESTART" = true ]; then
+    log_info "Restarting Docker in VM..."
+    multipass exec "$VM_NAME" -- sudo systemctl restart docker
+    # Wait for Docker to be ready
+    for i in {1..12}; do
+        if multipass exec "$VM_NAME" -- docker info >/dev/null 2>&1; then
+            log_info "✅ Docker in VM restarted and ready"
+            break
+        fi
+        if [ $i -eq 12 ]; then
+            log_error "Docker in VM not ready after 60 seconds"
+            exit 1
+        fi
+        sleep 5
+    done
+else
+    log_info "✅ Docker in VM already configured for insecure registry"
+fi
 
 # Cleanup old images if requested
 if [ "$DELETE_OLD_IMAGES" = true ]; then
