@@ -1,6 +1,0 @@
-apiVersion: apps/v999
-kind: Deployment
-metadata:
-  name: my-ag-ui-app
-spec:
-  replicas: 1

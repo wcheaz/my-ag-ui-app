@@ -1,3 +1,0 @@
-/opsx-new.md 
-
-Please help me create a new openspec proposal. Please refer to hidden/OPENSPEC-RALPH-BP.md for best practices to help make the proposal ralph-loop friendly. 
