@@ -44,7 +44,7 @@ When creating test files or documentation files, follow these rules:
 
 ## 3. Matching Engine
 
-- [ ] **Extract `matching.py` into the new package**
+- [x] **Extract `matching.py` into the new package**
   - Scope: `agent/src/agent/matching.py` (new)
   - Change: The component matching/extraction logic is in its own file, importing from `models.py` only.
   - Done when:
