@@ -1,0 +1,13 @@
+# Kilocode ignore patterns
+# Files listed here will not be read by the system
+
+# Environment files (contain sensitive data)
+.env
+.env.local
+.env.production
+.env.development
+
+# Other sensitive files
+*.pem
+*.key
+*.secret

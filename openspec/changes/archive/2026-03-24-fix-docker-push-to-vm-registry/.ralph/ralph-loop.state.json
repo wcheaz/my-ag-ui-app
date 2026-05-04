@@ -1,0 +1,17 @@
+{
+  "active": false,
+  "iteration": 6,
+  "minIterations": 1,
+  "maxIterations": 100,
+  "completionPromise": "COMPLETE",
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "tasksMode": true,
+  "tasksFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-docker-push-to-vm-registry/tasks.md",
+  "promptFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-docker-push-to-vm-registry/.ralph/PRD.md",
+  "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-docker-push-to-vm-registry/.ralph/prompt-template.md",
+  "noCommit": false,
+  "model": "",
+  "startedAt": "2026-03-24T02:22:09.293Z",
+  "resumedAt": "2026-03-24T02:22:09.293Z",
+  "completedAt": "2026-03-24T02:23:42.442Z"
+}

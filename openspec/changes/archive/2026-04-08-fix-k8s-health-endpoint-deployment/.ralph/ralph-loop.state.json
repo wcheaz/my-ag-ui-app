@@ -1,0 +1,17 @@
+{
+  "active": false,
+  "iteration": 43,
+  "minIterations": 1,
+  "maxIterations": 100,
+  "completionPromise": "COMPLETE",
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "tasksMode": true,
+  "tasksFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-health-endpoint-deployment/tasks.md",
+  "promptFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-health-endpoint-deployment/.ralph/PRD.md",
+  "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-health-endpoint-deployment/.ralph/prompt-template.md",
+  "noCommit": false,
+  "model": "",
+  "startedAt": "2026-04-07T18:23:02.181Z",
+  "resumedAt": "2026-04-07T18:23:02.181Z",
+  "completedAt": "2026-04-07T21:54:45.447Z"
+}

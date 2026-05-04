@@ -1,0 +1,17 @@
+{
+  "active": false,
+  "iteration": 42,
+  "minIterations": 1,
+  "maxIterations": 50,
+  "completionPromise": "COMPLETE",
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "tasksMode": true,
+  "tasksFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-yaml-copy-bug/tasks.md",
+  "promptFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-yaml-copy-bug/.ralph/PRD.md",
+  "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-yaml-copy-bug/.ralph/prompt-template.md",
+  "noCommit": false,
+  "model": "",
+  "startedAt": "2026-03-22T01:26:07.088Z",
+  "resumedAt": "2026-03-22T01:26:07.088Z",
+  "completedAt": "2026-03-22T01:29:16.453Z"
+}

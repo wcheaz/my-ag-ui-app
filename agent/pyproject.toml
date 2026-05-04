@@ -1,13 +1,30 @@
 [project]
 name = "agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "Procurement Agent"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "llama-index-core",
+    "llama-index-readers-file",
+    "llama-index-embeddings-huggingface",
+    "llama-index-llms-deepseek",
     "uvicorn",
-    "pydantic-ai-slim[ag-ui]",
-    "pydantic-ai-slim[openai]",
+    "fastapi",
+    "pydantic-ai",
+    "logfire>=4.19.0",
+    "torch",
     "python-dotenv",
-    "logfire>=4.10.0",
 ]
+
+[tool.uv]
+package = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]

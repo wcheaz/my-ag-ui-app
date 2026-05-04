@@ -1,0 +1,1 @@
+/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-docker-push-to-vm-registry/tasks.md

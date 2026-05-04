@@ -1,0 +1,37 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ag-ui-app-ingress
+  labels:
+    app: my-ag-ui-app
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - localhost
+    - 127.0.0.1
+    secretName: my-ag-ui-app-tls-secret
+  rules:
+  - host: localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-ag-ui-app-service
+            port:
+              number: 80
+  - host: 127.0.0.1
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-ag-ui-app-service
+            port:
+              number: 80

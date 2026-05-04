@@ -1,0 +1,17 @@
+{
+  "active": false,
+  "iteration": 20,
+  "minIterations": 1,
+  "maxIterations": 50,
+  "completionPromise": "COMPLETE",
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "tasksMode": true,
+  "tasksFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-kubernetes-deployment-issues/tasks.md",
+  "promptFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-kubernetes-deployment-issues/.ralph/PRD.md",
+  "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-kubernetes-deployment-issues/.ralph/prompt-template.md",
+  "noCommit": false,
+  "model": "",
+  "startedAt": "2026-03-23T21:20:34.080Z",
+  "resumedAt": "2026-03-23T21:20:34.081Z",
+  "completedAt": "2026-03-23T21:28:21.374Z"
+}

@@ -17,8 +17,11 @@ fi
 
 # Run the agent using uv if found, otherwise fall back to pip
 if [ -n "$UV_CMD" ]; then
+    # Kill any process running on port 8000
+    fuser -k 8000/tcp || true
+    
     echo "Running agent using uv..."
-    $UV_CMD run src/main.py
+    $UV_CMD run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 else
     echo "uv not found, falling back to pip..."
     
@@ -26,7 +29,12 @@ else
     if [ -d "venv" ]; then
         source venv/bin/activate
     else
-        echo "Error: Virtual environment not found. Please run setup-agent.sh first."
+        echo "Error: Virtual environment not found."
+        echo "RECOVERY STEPS:"
+        echo "1. Run setup-agent.sh to create virtual environment"
+        echo "2. Check if venv directory exists in current location"
+        echo "3. Verify you're in the correct project directory"
+        echo "4. Ensure you have Python installed"
         exit 1
     fi
     

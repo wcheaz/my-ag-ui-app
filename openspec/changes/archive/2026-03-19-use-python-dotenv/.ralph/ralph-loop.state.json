@@ -1,0 +1,17 @@
+{
+  "active": false,
+  "iteration": 204,
+  "minIterations": 1,
+  "maxIterations": 250,
+  "completionPromise": "COMPLETE",
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "tasksMode": true,
+  "tasksFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/use-python-dotenv/tasks.md",
+  "promptFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/use-python-dotenv/.ralph/PRD.md",
+  "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/use-python-dotenv/.ralph/prompt-template.md",
+  "noCommit": false,
+  "model": "",
+  "startedAt": "2026-03-19T02:31:51.527Z",
+  "resumedAt": "2026-03-19T02:31:51.527Z",
+  "completedAt": "2026-03-19T02:42:24.925Z"
+}

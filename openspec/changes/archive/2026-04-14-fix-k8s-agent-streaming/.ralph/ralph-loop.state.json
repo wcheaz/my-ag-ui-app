@@ -1,0 +1,17 @@
+{
+  "active": false,
+  "iteration": 61,
+  "minIterations": 1,
+  "maxIterations": 100,
+  "completionPromise": "COMPLETE",
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "tasksMode": true,
+  "tasksFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-agent-streaming/tasks.md",
+  "promptFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-agent-streaming/.ralph/PRD.md",
+  "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-agent-streaming/.ralph/prompt-template.md",
+  "noCommit": false,
+  "model": "",
+  "startedAt": "2026-04-13T21:38:28.283Z",
+  "resumedAt": "2026-04-13T21:38:28.284Z",
+  "completedAt": "2026-04-13T22:10:25.538Z"
+}

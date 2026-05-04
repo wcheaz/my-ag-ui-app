@@ -1,9 +1,24 @@
-from agent import ProverbsState, StateDeps, agent
+from src.agent import ProcurementState, StateDeps, agent
+import logfire
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
-app = agent.to_ag_ui(deps=StateDeps(ProverbsState()))
+logfire.configure()
+logfire.instrument_pydantic_ai()
+
+app = agent.to_ag_ui(deps=StateDeps(state=ProcurementState()))
+
+
+async def health_check(request: Request):
+    return JSONResponse(
+        status_code=200,
+        content={"status": "healthy", "message": "Application is running"},
+    )
+
+
+app.router.add_route("/api/health", health_check, methods=["GET"])
 
 if __name__ == "__main__":
-    # run the app
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=3000, reload=True)

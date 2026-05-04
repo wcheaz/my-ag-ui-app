@@ -1,0 +1,17 @@
+{
+  "active": false,
+  "iteration": 68,
+  "minIterations": 1,
+  "maxIterations": 100,
+  "completionPromise": "COMPLETE",
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "tasksMode": true,
+  "tasksFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-deployment-registry-image/tasks.md",
+  "promptFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-deployment-registry-image/.ralph/PRD.md",
+  "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-k8s-deployment-registry-image/.ralph/prompt-template.md",
+  "noCommit": false,
+  "model": "",
+  "startedAt": "2026-03-25T20:51:10.578Z",
+  "resumedAt": "2026-03-25T20:51:10.578Z",
+  "completedAt": "2026-03-25T21:00:49.159Z"
+}

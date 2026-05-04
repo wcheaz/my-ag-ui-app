@@ -1,0 +1,17 @@
+# Ignore third-party libraries and dependencies
+.venv/**
+agent/.venv/**
+node_modules/**
+dist/**
+build/**
+out/**
+*.min.js
+*.min.css
+
+# Ignore generated files
+.next/**
+*.log
+.env
+.env.local
+.env.production.local
+.env.local

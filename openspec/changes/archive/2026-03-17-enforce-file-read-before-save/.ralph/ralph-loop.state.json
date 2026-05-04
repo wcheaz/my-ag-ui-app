@@ -1,0 +1,17 @@
+{
+  "active": false,
+  "iteration": 31,
+  "minIterations": 1,
+  "maxIterations": 50,
+  "completionPromise": "COMPLETE",
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "tasksMode": true,
+  "tasksFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/enforce-file-read-before-save/tasks.md",
+  "promptFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/enforce-file-read-before-save/.ralph/PRD.md",
+  "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/enforce-file-read-before-save/.ralph/prompt-template.md",
+  "noCommit": false,
+  "model": "",
+  "startedAt": "2026-03-16T21:51:50.550Z",
+  "resumedAt": null,
+  "completedAt": "2026-03-16T23:11:43.835Z"
+}

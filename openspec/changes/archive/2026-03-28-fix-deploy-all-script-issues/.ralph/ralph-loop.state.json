@@ -1,0 +1,17 @@
+{
+  "active": false,
+  "iteration": 86,
+  "minIterations": 1,
+  "maxIterations": 175,
+  "completionPromise": "COMPLETE",
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "tasksMode": true,
+  "tasksFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-deploy-all-script-issues/tasks.md",
+  "promptFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-deploy-all-script-issues/.ralph/PRD.md",
+  "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-deploy-all-script-issues/.ralph/prompt-template.md",
+  "noCommit": false,
+  "model": "",
+  "startedAt": "2026-03-27T21:47:41.418Z",
+  "resumedAt": "2026-03-27T21:47:41.418Z",
+  "completedAt": "2026-03-27T22:24:10.040Z"
+}

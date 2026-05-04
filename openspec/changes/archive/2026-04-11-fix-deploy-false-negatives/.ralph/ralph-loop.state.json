@@ -1,0 +1,17 @@
+{
+  "active": false,
+  "iteration": 18,
+  "minIterations": 1,
+  "maxIterations": 50,
+  "completionPromise": "COMPLETE",
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "tasksMode": true,
+  "tasksFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-deploy-false-negatives/tasks.md",
+  "promptFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-deploy-false-negatives/.ralph/PRD.md",
+  "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-deploy-false-negatives/.ralph/prompt-template.md",
+  "noCommit": false,
+  "model": "",
+  "startedAt": "2026-04-08T23:40:29.973Z",
+  "resumedAt": "2026-04-08T23:40:29.974Z",
+  "completedAt": "2026-04-08T23:54:57.197Z"
+}

@@ -1,0 +1,17 @@
+{
+  "active": false,
+  "iteration": 10,
+  "minIterations": 1,
+  "maxIterations": 50,
+  "completionPromise": "COMPLETE",
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "tasksMode": true,
+  "tasksFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/deploy-agent-to-kubernetes/tasks.md",
+  "promptFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/deploy-agent-to-kubernetes/.ralph/PRD.md",
+  "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/deploy-agent-to-kubernetes/.ralph/prompt-template.md",
+  "noCommit": false,
+  "model": "",
+  "startedAt": "2026-04-11T19:22:21.667Z",
+  "resumedAt": null,
+  "completedAt": "2026-04-11T19:39:57.874Z"
+}

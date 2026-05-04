@@ -1,0 +1,17 @@
+{
+  "active": false,
+  "iteration": 61,
+  "minIterations": 1,
+  "maxIterations": 100,
+  "completionPromise": "COMPLETE",
+  "taskPromise": "READY_FOR_NEXT_TASK",
+  "tasksMode": true,
+  "tasksFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-vm-docker-daemon/tasks.md",
+  "promptFile": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-vm-docker-daemon/.ralph/PRD.md",
+  "promptTemplate": "/home/ncheaz/git/my-ag-ui-app/openspec/changes/fix-vm-docker-daemon/.ralph/prompt-template.md",
+  "noCommit": false,
+  "model": "",
+  "startedAt": "2026-03-23T14:52:31.696Z",
+  "resumedAt": "2026-03-23T14:52:31.697Z",
+  "completedAt": "2026-03-23T14:57:02.353Z"
+}
