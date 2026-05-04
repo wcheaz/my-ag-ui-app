@@ -1767,6 +1767,43 @@ def find_component_matches(
 
     # Sort matches by combined score (descending)
     matches.sort(key=lambda x: x["score"], reverse=True)
+
+    # EXACT NAME MATCH OVERRIDE:
+    # When the user's description contains a term that exactly matches a rulebook entry's
+    # name, treat it as a definitive (1-1) match. This prevents the system from flagging
+    # clearly-specified rulebook terms as ambiguous just because semantically similar
+    # alternatives also score above the threshold.
+    #
+    # When multiple exact name matches are found (e.g., "Industrial Standard" and
+    # "Standard" both match because "standard" appears inside "industrial standard"),
+    # check whether the longer match's name CONTAINS the shorter match's name as a
+    # substring. If so, the shorter match is a subset of the longer one and the longer
+    # (more specific) match wins. If the names are independent (neither contains the
+    # other), both are legitimate matches and ambiguity is preserved.
+    if matches:
+        exact_name_matches = []
+        for match in matches:
+            name_lower = match["name"].lower().strip()
+            if name_lower:
+                pattern = r"\b" + re.escape(name_lower) + r"\b"
+                if re.search(pattern, description_lower):
+                    exact_name_matches.append(match)
+
+        if len(exact_name_matches) >= 1:
+            max_name_len = max(len(m["name"]) for m in exact_name_matches)
+            longest_matches = [
+                m for m in exact_name_matches if len(m["name"]) == max_name_len
+            ]
+            if len(longest_matches) == 1:
+                longest_name_lower = longest_matches[0]["name"].lower().strip()
+                all_shorter_are_subsets = all(
+                    m["name"].lower().strip() in longest_name_lower
+                    for m in exact_name_matches
+                    if m is not longest_matches[0]
+                )
+                if all_shorter_are_subsets:
+                    matches = longest_matches
+
     return matches
 
 
