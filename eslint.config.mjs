@@ -17,6 +17,8 @@ const eslintConfig = [
       "*.min.css",
       "*.log",
       ".env*",
+      "openspec/**/*.md",
+      "ralph-docs/**/*.md",
     ],
   },
 ];
