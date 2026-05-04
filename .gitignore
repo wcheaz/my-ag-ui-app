@@ -22,6 +22,7 @@
 
 # misc
 *.pem
+*.key
 .DS_Store
 
 # debug
@@ -86,6 +87,16 @@ test/kubernetes/
 *.tar
 
 # ralph-docs directory
-ralph-docs
+ralph-docs/
 deploy_log.md
 deploy_log_explanation.md
+
+# Scratch / one-off files
+COMMIT_MSG.md
+health-patch.yaml
+verification-result-*.txt
+proposal_start.txt
+
+# Debug result captures in test/
+test/debug_*_results.txt
+test/verify_*_results.txt
