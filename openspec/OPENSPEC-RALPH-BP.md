@@ -18,6 +18,7 @@ Every `- [ ]` checkbox must follow this shape:
 ```
 
 Enforced rules:
+
 - Title is one outcome, not a list. If you need "and" twice, split.
 - Scope names files so the loop does not hunt.
 - `Done when` bullets are observable or runnable. No soft verbs (`ensure`, `support`, `validate`, `keep`) without attached evidence.
@@ -37,17 +38,20 @@ Do not make the agent infer dependencies. Order checkboxes in execution order. M
 ## Sizing and splitting
 
 For each candidate task, count:
+
 - V = independent verification clusters
 - S = independent subsystems or file clusters
 - C = clean stopping points (repo stays reviewable)
 - P = unresolved policy questions
 
 Rules:
+
 - P > 0 → stop. Fix design.md first.
 - V, S, or C > 1 → split. Target subtasks = max(V, C).
 - Stop splitting when a child has no standalone verifier.
 
 **Medium profile** (strong model, familiar repo): 1 outcome, 2–5 files, 1–2 verifiers, 3–7 `Done when` bullets.
+
 **Lightweight profile** (smaller model, unfamiliar repo): 1 outcome, 1–3 files, 1 verifier, 2–5 `Done when` bullets.
 
 Split test: if the loop stopped halfway, would the repo be clean and reviewable? If yes and there's a verifier for each half, split. If no half is meaningful alone, don't split.
@@ -60,6 +64,7 @@ Split test: if the loop stopped halfway, would the repo be clean and reviewable?
 - Explicitly distinguish known-broken validators (document and continue) from required-clean validators (hard stop). If only one is named, the loop generalizes permissively.
 
 Pre-flight template:
+
 ```markdown
 - [ ] **Pre-flight: record quality gate baselines**
   - Scope: no code edits
@@ -84,11 +89,13 @@ Pre-flight template:
 ## Examples
 
 **Bad** — vague, no verifier:
+
 ```markdown
 - [ ] Ensure support for tenant-scoped promotion
 ```
 
 **Good** — outcome, verifier, stop condition:
+
 ```markdown
 - [ ] **Refuse promotion when staged tenant has missing required rows**
   - Scope: `src/ingestion/promote.py`, `tests/unit/test_promote.py`
@@ -100,11 +107,13 @@ Pre-flight template:
 ```
 
 **Bad** — too large, three contracts in one:
+
 ```markdown
 - [ ] Freeze the bootstrap contract in code, tests, and docs
 ```
 
 **Good** — split into one task per contract:
+
 ```markdown
 - [ ] **Freeze Atmosphere CSS ownership**
   - Scope: `src/styles/atmosphere/*`, `tailwind.config.*`
@@ -124,12 +133,14 @@ Pre-flight template:
 ```
 
 **Bad** — too small, file chores:
+
 ```markdown
 - [ ] Add `import { formatDate } from './date'` to `ReleaseCard.tsx`
 - [ ] Use `formatDate` in the `ReleaseCard` publish timestamp
 ```
 
 **Good** — merged into one coherent outcome:
+
 ```markdown
 - [ ] **Format ReleaseCard timestamp via shared `formatDate` helper**
   - Scope: `src/components/ReleaseCard.tsx`
@@ -143,6 +154,7 @@ Pre-flight template:
 ## Artifact requirements
 
 Before writing tasks, confirm:
+
 - `proposal.md` has scope, non-goals, rollout boundaries
 - `design.md` resolves all policy (no "may be X or Y")
 - Specs are deterministic (two implementers would make the same choices)

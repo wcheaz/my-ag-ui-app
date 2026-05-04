@@ -638,7 +638,6 @@ def format_guess_notification(guessed_components: list[dict]) -> str:
 
     FORMATTING APPROACH:
     - Uses markdown formatting for readability
-    - Includes visual indicators (🎯, 💡) for better user experience
     - Structures information hierarchically for easy scanning
     - Provides actionable information for user follow-up
 
@@ -669,7 +668,7 @@ def format_guess_notification(guessed_components: list[dict]) -> str:
         return ""
 
     notification_lines = [
-        "🎯 **I've made the following guesses based on your permission:**",
+        "**I've made the following guesses based on your permission:**",
         "",
     ]
 
@@ -684,7 +683,7 @@ def format_guess_notification(guessed_components: list[dict]) -> str:
 
     notification_lines.extend(
         [
-            '💡 **Note**: These guesses are based on your explicit permission (e.g., "I don\'t know", "whatever", "you choose").',
+            '**Note**: These guesses are based on your explicit permission (e.g., "I don\'t know", "whatever", "you choose").',
             "If you'd like to change any of these guesses, please let me know which component you'd like to clarify.",
             "",
         ]
@@ -1003,6 +1002,7 @@ def reset_conversation(ctx: RunContext[StateDeps[ProcurementState]]) -> str:
 
         # Iterate backwards looking for the last UserPromptPart
         # We search from the second-to-last message
+        target_user_msg = None
         for i in range(len(ctx.messages) - 2, -1, -1):
             msg = ctx.messages[i]
             # Check for UserPromptPart by name to avoid import dependencies

@@ -1,9 +1,11 @@
 # Project Context
 
 ## Purpose
+
 This project implements an AI agent using Pydantic AI, designed to be served via a UI. The **Procurement Agent** is tasked with suggesting procurement codes based on user input.
 
 ## Tech Stack
+
 - Python 3.12+
 - Pydantic AI (with `ag-ui` and `openai` extras)
 - Uvicorn (ASGI server)
@@ -14,12 +16,14 @@ This project implements an AI agent using Pydantic AI, designed to be served via
 ## Project Conventions
 
 ### Code Style
+
 - **Formatting**: Adhere to PEP 8 standards.
 - **Typing**: Enforce strict typing. Use Pydantic models for state and data validation.
 - **Imports**: Group imports logically (standard library, third-party, local).
 - **Naming**: Use names related to "procurement code agents" for functions and classes.
 
 ### Architecture Patterns
+
 - **Agentic Design**: Use `pydantic_ai.Agent` for defining agent behavior.
 - **State Management**: Use Pydantic models to define and track agent state.
 - **Dependency Injection**: Use `RunContext` to inject state and dependencies into tools.
@@ -27,6 +31,7 @@ This project implements an AI agent using Pydantic AI, designed to be served via
 - **RAG**: Use LlamaIndex for Retrieval-Augmented Generation.
 
 ### Testing Strategy
+
 All development and testing files must be placed in the `test/` directory located at the project root. This includes:
 
 - **Test files**: Files matching `test*.py` pattern (e.g., `test_agent_tools.py`, `test_complete_workflow.py`)
@@ -38,6 +43,7 @@ All development and testing files must be placed in the `test/` directory locate
 - **Validate files**: Files matching `validate*.py` pattern (e.g., `validate_similarity_threshold.py`)
 
 **Naming Conventions:**
+
 - Test files: Use `test_*.py` prefix
 - Debug files: Use `debug_*.py` prefix
 - Check files: Use `check_*.py` prefix
@@ -47,6 +53,7 @@ All development and testing files must be placed in the `test/` directory locate
 - Validate files: Use `validate_*.py` prefix
 
 **Running Tests:**
+
 When running test files from the `test/` directory, ensure proper import paths. Most files can be run directly with `python test/your_test_file.py` from the project root, or by navigating to the `test/` directory first.
 
 ### OpenSpec Development Workflow
@@ -62,20 +69,26 @@ Development through OpenSpec is driven by Ralph loops (automated AI-driven devel
 **Goal**: Enable Ralph loops to implement changes end-to-end with minimal human oversight, accelerating development while maintaining quality.
 
 ### Git Workflow
-[Describe your branching strategy and commit conventions]
+
+TODO: Describe your branching strategy and commit conventions.
 
 ## Domain Context
+
 The current domain involves:
+
 - **Procurement Codes**: The agent suggests appropriate procurement codes.
-- **.env.copy**: Check instead of ".env" for env structure. 
+- **.env.copy**: Check instead of ".env" for env structure.
 
 ## Existing Code
+
 - `agent/src/agent.py`: Defines the `agent` instance and its tools. It uses OpenAI's model (defaulting to `deepseek-chat`).
 - `agent/src/main.py`: Entry point that converts the agent to an ASGI app and runs it with Uvicorn.
 - `agent/pyproject.toml`: Project configuration and dependencies.
 
 ## Important Constraints
+
 - **Environment Variables**: Requires `OPENAI_API_KEY`, `OPENAI_BASE_URL` (optional), and `OPENAI_MODEL` (optional) to be set.
 
 ## External Dependencies
+
 - **DeepSeek API**: The primary LLM provider (using `deepseek-chat`), accessed via the OpenAI client compatibility layer (`OPENAI_BASE_URL`).
