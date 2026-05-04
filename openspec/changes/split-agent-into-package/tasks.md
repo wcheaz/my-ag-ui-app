@@ -67,7 +67,7 @@ When creating test files or documentation files, follow these rules:
 
 ## 5. Agent Instantiation Wire-Up
 
-- [ ] **Extract `model.py` and finalize `__init__.py` re-exports**
+- [x] **Extract `model.py` and finalize `__init__.py` re-exports**
   - Scope: `agent/src/agent/model.py` (new), `agent/src/agent/__init__.py` (update)
   - Change: The `LoggingOpenAIModel`, `model` instance, and `agent` instance are wired in `model.py`. The `__init__.py` re-exports `agent` so `from src.agent import agent` resolves.
   - Done when:
