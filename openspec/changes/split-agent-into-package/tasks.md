@@ -78,7 +78,7 @@ When creating test files or documentation files, follow these rules:
 
 ## 6. Delete Old File and Clean Cache
 
-- [ ] **Delete `agent/src/agent.py` and clean `__pycache__`**
+- [x] **Delete `agent/src/agent.py` and clean `__pycache__`**
   - Scope: `agent/src/agent.py` (delete), `agent/src/__pycache__/` (delete contents)
   - Change: The old monolithic file is gone; only the package directory `agent/src/agent/` exists. Stale bytecode is removed.
   - Done when:
