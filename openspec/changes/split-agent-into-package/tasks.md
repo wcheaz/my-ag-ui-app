@@ -55,7 +55,7 @@ When creating test files or documentation files, follow these rules:
 
 ## 4. Agent Tools
 
-- [ ] **Extract `tools.py` into the new package**
+- [x] **Extract `tools.py` into the new package**
   - Scope: `agent/src/agent/tools.py` (new)
   - Change: All agent tool functions are in their own file, importing from `models.py`, `matching.py`, and `metrics.py`.
   - Done when:
