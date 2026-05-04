@@ -29,7 +29,7 @@ When creating test files or documentation files, follow these rules:
 
 ## 2. Shared Contracts — Data Models and Prompt
 
-- [ ] **Extract `models.py`, `prompt.py`, and `metrics.py` into the new package**
+- [x] **Extract `models.py`, `prompt.py`, and `metrics.py` into the new package**
   - Scope: `agent/src/agent/models.py` (new), `agent/src/agent/prompt.py` (new), `agent/src/agent/metrics.py` (new), `agent/src/agent/__init__.py` (new)
   - Change: The four leaf submodules with no intra-package imports are created inside `agent/src/agent/`. The `__init__.py` re-exports `ProcurementState` and `StateDeps` so downstream imports resolve immediately.
   - Done when:
