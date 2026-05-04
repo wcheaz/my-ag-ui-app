@@ -85,7 +85,7 @@ from src.rag.settings import init_settings
 from src.rag.citation import enable_citation, CITATION_SYSTEM_PROMPT
 from src.rag.query import get_query_engine_tool
 
-load_dotenv(dotenv_path="../.env")
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 # Set up logging for disambiguation events
 logging.basicConfig(level=logging.INFO)
@@ -3199,7 +3199,7 @@ base_url = os.environ.get("OPENAI_BASE_URL")
 print(f"DEBUG: initializing LoggingOpenAIModel with env vars")
 
 model = LoggingOpenAIModel(
-    "deepseek-chat",
+    os.environ.get("OPENAI_MODEL", "deepseek-chat"),
 )
 
 

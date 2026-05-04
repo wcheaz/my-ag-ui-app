@@ -15,6 +15,7 @@ dependencies = [
     "logfire>=4.19.0",
     "torch",
     "python-dotenv",
+    "starlette<1",
 ]
 
 [tool.uv]
