@@ -90,7 +90,7 @@ When creating test files or documentation files, follow these rules:
 
 ## 7. Final Integrated Quality Gate
 
-- [ ] **Verify application starts and health check passes**
+- [x] **Verify application starts and health check passes**
   - Scope: no code edits; runtime verification only
   - Change: Confirm the application starts and serves requests with the new package structure.
   - Done when:
