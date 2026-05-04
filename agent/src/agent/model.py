@@ -60,12 +60,16 @@ class LoggingOpenAIModel(OpenAIModel):
                     if hasattr(msg, "parts"):
                         parts_content = []
                         for part in msg.parts:
-                            if hasattr(part, "content"):
-                                parts_content.append(str(part.content))
-                            elif hasattr(part, "args"):
-                                parts_content.append(
-                                    f"Tool Call: {part.tool_name}({part.args})"
-                                )
+                            content = getattr(part, "content", None)
+                            if content is not None:
+                                parts_content.append(str(content))
+                            else:
+                                tool_name = getattr(part, "tool_name", None)
+                                args = getattr(part, "args", None)
+                                if tool_name is not None and args is not None:
+                                    parts_content.append(
+                                        f"Tool Call: {tool_name}({args})"
+                                    )
                         content_str = "\n".join(parts_content)
                     else:
                         content_str = str(msg)

@@ -1,36 +1,52 @@
 ## Why
 
-`agent/src/agent.py` is 3254 lines and growing. It contains data models, business logic, agent tools, system prompt, model initialization, disambiguation metrics, and component matching — all in one flat file. This makes navigation slow, diffs noisy, and targeted testing impossible. Splitting it into a Python package preserves all existing behavior while making each concern independently maintainable and testable.
+`agent/src/agent.py` is a 3,254-line single file containing the entire procurement agent: data models, agent tools, component matching logic, disambiguation metrics, system prompt, and agent instantiation. This makes navigation, code review, and targeted testing difficult. The file has grown organically through iterative feature additions (disambiguation workflow, RAG integration, guess-permission handling) that each added hundreds of lines to an already large module.
+
+Splitting into a package lets each concern live in its own file, improving readability without changing any runtime behavior.
 
 ## What Changes
 
-- Convert `agent/src/agent.py` (single module) into `agent/src/agent/` (Python package directory) with focused submodules
-- `__init__.py` re-exports `ProcurementState`, `StateDeps`, and `agent` so `from src.agent import ProcurementState, StateDeps, agent` continues to work identically
-- Move each logical group (models, tools, matching logic, metrics, system prompt, model wrapper) into its own module within the package
-- Delete the original `agent.py` file — Python resolves `src.agent` to the package's `__init__.py`
-
-## Non-goals
-
-- No behavioral changes to any agent tool, prompt, or workflow
-- No new public API surface — only internal reorganization
-- No changes to `main.py`, Dockerfile, or deployment configuration
-- No renaming of symbols or refactoring of function signatures
-- No addition of new tests beyond verifying the import contract
+- Convert `agent/src/agent.py` (single 3,254-line module) into `agent/src/agent/` (a package directory) with six focused submodules: `models.py`, `matching.py`, `tools.py`, `metrics.py`, `prompt.py`, `model.py`
+- Add `agent/src/agent/__init__.py` that re-exports the three public symbols (`ProcurementState`, `StateDeps`, `agent`) so that `from src.agent import ...` works unchanged
+- Delete `agent/src/agent.py` and clean `agent/src/__pycache__/`
 
 ## Capabilities
 
 ### New Capabilities
 
-- `agent-package-structure`: Defines the module layout, import contract (`from src.agent import ProcurementState, StateDeps, agent`), and the rule that all symbols previously importable from `src.agent` remain importable after the split.
+- `agent-package-structure`: A structural capability defining the package layout, submodule contents, import contract, and no-circular-import requirement for the `agent/src/agent/` package
 
 ### Modified Capabilities
 
-_(None — no spec-level behavior changes.)_
+_(none — no behavioral changes to any existing capability)_
 
 ## Impact
 
-- **`agent/src/agent.py`**: Deleted and replaced by `agent/src/agent/` package directory
-- **`agent/src/main.py`**: No changes needed — import path `from src.agent import ...` is preserved by `__init__.py` re-exports
-- **Internal imports**: Submodules within the new package import from each other (e.g., `tools.py` imports `ProcurementState` from `models.py`)
-- **Tests**: Any test importing from `src.agent` continues to work; a smoke test verifies the import contract
-- **Docker / deployment**: No impact — the Dockerfile copies `agent/src/` recursively, which covers both file and directory forms
+- **Agent source**: `agent/src/agent.py` deleted; six new files created under `agent/src/agent/`
+- **Public import API**: Unchanged — `from src.agent import ProcurementState, StateDeps, agent` resolves identically via `__init__.py` re-exports
+- **Tests**: Existing test files import from `agent` module; all continue working unchanged
+- **Deployment**: No changes to `main.py`, Dockerfile, or configuration
+
+## Scope
+
+- **In scope**: Structural split of `agent/src/agent.py` into `agent/src/agent/` package; `__init__.py` re-exports; `__pycache__` cleanup
+- **Out of scope (non-goals)**:
+  - No behavioral changes to tools, prompts, or workflow logic
+  - No refactoring of function signatures or class methods
+  - No changes to `main.py`, `Dockerfile`, or deployment configuration
+  - No renaming of public or private symbols
+  - No changes to the `rag/` subpackage
+  - No new tests beyond a structural import verification test
+
+## First-Rollout Boundaries
+
+This change has a single rollout with no phases:
+
+1. Create the package directory and all six submodules
+2. Write `__init__.py` with re-exports
+3. Delete `agent/src/agent.py`
+4. Clean `agent/src/__pycache__/`
+5. Verify: `from src.agent import ProcurementState, StateDeps, agent` succeeds
+6. Verify: `uvicorn main:app` starts and `/api/health` returns 200
+
+**Rollback**: `git revert` restores the single-file `agent.py`.
