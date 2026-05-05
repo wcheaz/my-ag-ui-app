@@ -14,7 +14,7 @@ import Papa from "papaparse";
 import { read, utils } from "xlsx";
 
 export default function CopilotKitPage() {
-  const [themeColor, setThemeColor] = useState("#363636ff");
+  const [themeColor, setThemeColor] = useState("#dc2626");
 
   // 🪁 Frontend Actions: https://docs.copilotkit.ai/pydantic-ai/frontend-actions
   useFrontendTool({
@@ -202,19 +202,19 @@ function CustomInput(props: InputProps) {
   };
 
   return (
-    <div className="relative w-full p-4 bg-[#252526] border-t border-[#454545]">
+    <div className="relative w-full p-4 bg-[#111111] border-t border-[#2a2a2a]">
       {/* File Previews */}
       {attachedFiles.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">
           {attachedFiles.map((file, index) => (
-            <div key={index} className="flex items-center gap-2 p-2 bg-[#2d2d2d] border border-[#454545] rounded-md w-fit animate-in fade-in slide-in-from-bottom-1 duration-200">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-[#007fd4]">
+            <div key={index} className="flex items-center gap-2 p-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md w-fit animate-in fade-in slide-in-from-bottom-1 duration-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-[#dc2626]">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
               </svg>
-              <span className="text-sm text-[#d4d4d4] font-medium truncate max-w-[150px]">{file.name}</span>
+              <span className="text-sm text-[#e0e0e0] font-medium truncate max-w-[150px]">{file.name}</span>
               <button
                 onClick={() => removeFile(index)}
-                className="ml-1 text-[#858585] hover:text-[#d4d4d4] focus:outline-none"
+                className="ml-1 text-[#666666] hover:text-[#e0e0e0] focus:outline-none"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                   <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
@@ -225,12 +225,22 @@ function CustomInput(props: InputProps) {
         </div>
       )}
 
-      <div className="relative flex items-center w-full border border-[#454545] rounded-lg focus-within:ring-2 focus-within:ring-[#007fd4] overflow-hidden bg-[#3c3c3c]">
+      {props.inProgress && (
+        <div className="flex items-center gap-2 mb-2 px-1 text-sm text-[#e0e0e0] animate-pulse">
+          <svg className="w-3.5 h-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <span>Processing your request<span className="text-[#dc2626]">...</span></span>
+        </div>
+      )}
+
+      <div className="relative flex items-center w-full border border-[#2a2a2a] rounded-lg focus-within:ring-2 focus-within:ring-[#dc2626] overflow-hidden bg-[#0a0a0a]">
 
         {/* Upload Button */}
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="p-3 text-[#d4d4d4] hover:text-[#007fd4] transition-colors border-r border-[#454545]"
+          className="p-3 text-[#e0e0e0] hover:text-[#dc2626] transition-colors border-r border-[#2a2a2a]"
           title="Upload Context"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -245,23 +255,32 @@ function CustomInput(props: InputProps) {
           onKeyDown={handleKeyDown}
           placeholder="Type a message..."
           disableBranding
-          className="flex-1 w-full max-h-40 overflow-y-auto overflow-x-hidden bg-transparent border-none focus:ring-0 p-3 resize-none outline-none text-base text-[#d4d4d4] placeholder-[#858585]"
+          className="flex-1 w-full max-h-40 overflow-y-auto overflow-x-hidden bg-transparent border-none focus:ring-0 p-3 resize-none outline-none text-base text-[#e0e0e0] placeholder-[#666666]"
           autosuggestionsConfig={{
             textareaPurpose: "Provide details for procurement code generation.",
             chatApiConfigs: {}
           }}
         />
 
-        {/* Send Button */}
-        <button
-          onClick={handleSend}
-          disabled={props.inProgress || (!text.trim() && attachedFiles.length === 0)}
-          className={`p-3 transition-colors ${props.inProgress || (!text.trim() && attachedFiles.length === 0) ? "text-[#5b5b5b]" : "text-[#007fd4] hover:bg-[#2d2d2d]"}`}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-            <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
-          </svg>
-        </button>
+        {/* Send / Spinner Button */}
+        {props.inProgress ? (
+          <div className="p-3 flex items-center justify-center">
+            <svg className="w-5 h-5 animate-spin text-[#dc2626]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+          </div>
+        ) : (
+          <button
+            onClick={handleSend}
+            disabled={!text.trim() && attachedFiles.length === 0}
+            className={`p-3 transition-colors ${(!text.trim() && attachedFiles.length === 0) ? "text-[#2a2a2a]" : "text-[#dc2626] hover:bg-[#1a1a1a]"}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+              <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 60.517 60.517 60.517 0 0 0 3.478 2.404Z" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <input

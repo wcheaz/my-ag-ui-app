@@ -1,22 +1,35 @@
 @import "tailwindcss";
 
 :root {
-  --background: #1e1e1e;
-  --foreground: #d4d4d4;
+  --background: #0a0a0a;
+  --foreground: #e8e8e8;
 
-  /* CopilotKit Dark Theme Variables (VS Code Style) */
-  --copilot-kit-primary-color: #007fd4 !important;
+  --color-black: #000000;
+  --color-bg: #0a0a0a;
+  --color-surface: #111111;
+  --color-card: #1a1a1a;
+  --color-border: #2a2a2a;
+  --color-muted: #666666;
+  --color-text: #e0e0e0;
+
+  --color-red-primary: #dc2626;
+  --color-red-bright: #ef4444;
+  --color-red-dark: #991b1b;
+  --color-red-950: #450a0a;
+  --color-red-glow: rgba(220, 38, 38, 0.15);
+  --color-red-subtle: rgba(220, 38, 38, 0.08);
+
+  --copilot-kit-primary-color: var(--color-red-primary) !important;
   --copilot-kit-contrast-color: #ffffff !important;
-  --copilot-kit-background-color: #252526 !important;
-  --copilot-kit-secondary-color: #000000 !important;
-  --copilot-kit-secondary-contrast-color: #d4d4d4 !important;
-  --copilot-kit-separator-color: #454545 !important;
-  --copilot-kit-muted-color: #858585 !important;
-  --copilot-kit-scrollbar-color: #424242 !important;
+  --copilot-kit-background-color: var(--color-surface) !important;
+  --copilot-kit-secondary-color: var(--color-black) !important;
+  --copilot-kit-secondary-contrast-color: var(--color-text) !important;
+  --copilot-kit-separator-color: var(--color-border) !important;
+  --copilot-kit-muted-color: var(--color-muted) !important;
+  --copilot-kit-scrollbar-color: var(--color-border) !important;
   --copilot-kit-response-button-color: #ffffff !important;
-  --copilot-kit-response-button-background-color: #007fd4 !important;
+  --copilot-kit-response-button-background-color: var(--color-red-primary) !important;
 }
-
 
 body {
   background: var(--background);
@@ -24,25 +37,54 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* CopilotKit Header Override */
+::selection {
+  background: rgba(220, 38, 38, 0.3);
+  color: #ffffff;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #dc2626;
+}
+
 .copilotKitHeader {
-  background-color: #252526 !important;
-  color: #cccccc !important;
+  background-color: #111111 !important;
+  color: #e0e0e0 !important;
+  border-bottom: 1px solid #2a2a2a !important;
+  position: relative !important;
 }
 
-/* 
- * Safe Markdown Text Color Override 
- * We target the element specifically to avoid affecting container backgrounds.
- */
+.copilotKitHeader::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 2px !important;
+  background: linear-gradient(90deg, transparent, #dc2626, transparent) !important;
+}
+
 .copilotKitMarkdown {
-  color: #d4d4d4 !important;
-  /* Matches VS Code foreground */
+  color: #e0e0e0 !important;
 }
 
-/* Ensure code blocks don't inherit the general markdown color if they need to be distinct */
 .copilotKitMarkdown code {
-  color: #ff0000 !important;
-  /* VS Code string color style for contrast */
+  color: #ef4444 !important;
+  background-color: rgba(220, 38, 38, 0.1) !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
 }
 
 body,
@@ -50,7 +92,6 @@ html {
   height: 100%;
 }
 
-/* CopilotKit Sidebar Override - Preserving user layout preference */
 @media (min-width: 640px) {
   .copilotKitSidebar .copilotKitWindow {
     width: 50vw !important;
