@@ -93,6 +93,17 @@
   padding-right: 2rem;
 }
 
+.pc-id-badge {
+  font-family: monospace;
+  font-weight: 600;
+  font-size: 0.75rem;
+  background-color: rgba(100, 100, 100, 0.25);
+  color: var(--color-muted);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  margin-right: 0.5rem;
+}
+
 .pc-code-badge {
   font-family: monospace;
   font-weight: 700;

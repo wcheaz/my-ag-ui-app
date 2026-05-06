@@ -102,15 +102,16 @@ export function ProcurementCodes({ state, setState }: ProcurementCodesProps) {
             <hr className="pc-divider" />
             <div className="pc-list">
                 {state.procurement_codes?.map((item, index) => (
-                    <div key={index} className="pc-item">
+                    <div key={item.id ?? index} className="pc-item">
                         <div className="pc-item-inner">
+                            <span className="pc-id-badge">#{item.id}</span>
                             <span className="pc-code-badge">{item.code}</span>
                             <span>{item.description}</span>
                         </div>
                         <button
                             onClick={() => setState({
                                 ...state,
-                                procurement_codes: state.procurement_codes?.filter((_, i) => i !== index),
+                                procurement_codes: state.procurement_codes?.filter((c) => c.id !== item.id),
                             })}
                             className="pc-delete-btn"
                         >

@@ -26,7 +26,7 @@
 
 ## 4. UI Component Updates
 
-- [ ] 4.1 Update `src/components/procurement-codes.tsx` to display ID badges, use ID-based delete, and use stable React keys
+- [x] 4.1 Update `src/components/procurement-codes.tsx` to display ID badges, use ID-based delete, and use stable React keys
   - Change `key={index}` to `key={item.id ?? index}` in the map
   - Add an ID badge `<span>` before the code badge in each item (e.g., `<span className="pc-id-badge">#{item.id}</span>`)
   - Change delete handler from `filter((_, i) => i !== index)` to `filter((c) => c.id !== item.id)`
