@@ -1,6 +1,6 @@
 ## 1. Type Models
 
-- [ ] 1.1 Add `id: number` field to `ProcurementCode` in `src/lib/types.ts` and add `id: int = 0` field to `ProcurementCode` in `agent/src/agent/models.py`
+- [x] 1.1 Add `id: number` field to `ProcurementCode` in `src/lib/types.ts` and add `id: int = 0` field to `ProcurementCode` in `agent/src/agent/models.py`
   - TypeScript: `id: number` (required, no default)
   - Python: `id: int = 0` (defaults to 0, backfilled at runtime)
   - Done when: both type definitions compile without errors and existing code still type-checks (`npx tsc --noEmit` for TS, `python -c "from agent.models import ProcurementCode"` for Python)

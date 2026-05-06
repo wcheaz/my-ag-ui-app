@@ -1,6 +1,7 @@
 // State of the agent, make sure this aligns with your agent's state.
 // State of the agent, make sure this aligns with your agent's state.
 export type ProcurementCode = {
+  id: number;
   code: string;
   description: string;
 };

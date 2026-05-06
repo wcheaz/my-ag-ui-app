@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class ProcurementCode(BaseModel):
+    id: int = 0
     code: str
     description: str
 
