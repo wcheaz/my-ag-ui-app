@@ -1120,7 +1120,8 @@ async def save_procurement_code(
         # Handle ambiguous components with detailed error information
         return f"ERROR: Cannot save code with unresolved components: {str(e)}"
 
-    new_code = ProcurementCode(code=code, description=description)
+    new_id = max((c.id for c in ctx.deps.state.procurement_codes), default=0) + 1
+    new_code = ProcurementCode(id=new_id, code=code, description=description)
     ctx.deps.state.procurement_codes.append(new_code)
 
     # Log successful code generation and save after disambiguation

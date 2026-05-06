@@ -8,7 +8,7 @@
 
 ## 2. Backend ID Assignment
 
-- [ ] 2.1 Update `save_procurement_code` in `agent/src/agent/tools.py` to assign stable IDs to newly created codes
+- [x] 2.1 Update `save_procurement_code` in `agent/src/agent/tools.py` to assign stable IDs to newly created codes
   - Before the existing `ProcurementCode(code=code, description=description)` call at line ~1123, compute `new_id = max((c.id for c in ctx.deps.state.procurement_codes), default=0) + 1`
   - Pass `id=new_id` to the `ProcurementCode` constructor
   - Do NOT change any enforcement logic, validation, or disambiguation checks
