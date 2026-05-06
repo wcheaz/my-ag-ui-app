@@ -9,7 +9,7 @@ import {
 } from "@copilotkit/react-core";
 import { CopilotKitCSSProperties, CopilotSidebar, InputProps } from "@copilotkit/react-ui";
 import { CopilotTextarea } from "@copilotkit/react-textarea";
-import { useState, useRef, ChangeEvent } from "react";
+import { useState, useRef, ChangeEvent, useMemo } from "react";
 import Papa from "papaparse";
 import { read, utils } from "xlsx";
 
@@ -311,9 +311,71 @@ function YourMainContent({
     },
   });
 
+  const codesWithIds = useMemo(() => {
+    const codes = state.procurement_codes ?? [];
+    const needsBackfill = codes.some((c) => c.id == null || c.id === 0);
+    if (!needsBackfill) return codes;
+    let nextId = Math.max(0, ...codes.map((c) => c.id ?? 0));
+    const backfilled = codes.map((c) => {
+      if (c.id == null || c.id === 0) {
+        nextId += 1;
+        return { ...c, id: nextId };
+      }
+      return c;
+    });
+    setState((prev: AgentState | undefined) => ({
+      ...(prev ?? { procurement_codes: [] }),
+      procurement_codes: backfilled,
+    }));
+    return backfilled;
+  }, [state.procurement_codes, setState]);
+
+  useFrontendTool({
+    name: "modify_procurement_code",
+    parameters: [
+      {
+        name: "code_id",
+        description: "The stable ID of the procurement code to modify (required)",
+        required: true,
+      },
+      {
+        name: "new_code",
+        description: "The new code string (optional - at least one of new_code or new_description must be provided)",
+        required: false,
+      },
+      {
+        name: "new_description",
+        description: "The new description (optional - at least one of new_code or new_description must be provided)",
+        required: false,
+      },
+    ],
+    handler({ code_id, new_code, new_description }) {
+      if (!new_code && !new_description) {
+        return "Error: at least one of new_code or new_description must be provided.";
+      }
+      const numericId = Number(code_id);
+      const index = codesWithIds.findIndex((c) => c.id === numericId);
+      if (index === -1) {
+        const validIds = codesWithIds.map((c) => c.id).join(", ");
+        return `Error: code_id ${code_id} not found. Valid IDs: [${validIds}].`;
+      }
+      const updated = [...codesWithIds];
+      updated[index] = {
+        ...updated[index],
+        ...(new_code ? { code: new_code } : {}),
+        ...(new_description ? { description: new_description } : {}),
+      };
+      setState((prev: AgentState | undefined) => ({
+        ...(prev ?? { procurement_codes: [] }),
+        procurement_codes: updated,
+      }));
+      return `Procurement code #${code_id} updated successfully.`;
+    },
+  });
+
   useCopilotReadable({
-    description: "The list of generated procurement codes",
-    value: JSON.stringify(state.procurement_codes ?? []),
+    description: "The list of generated procurement codes with their stable IDs",
+    value: JSON.stringify(codesWithIds ?? []),
   });
 
   return (

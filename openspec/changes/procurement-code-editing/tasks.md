@@ -16,7 +16,7 @@
 
 ## 3. Frontend Backfill, Modify Tool, and State Visibility
 
-- [ ] 3.1 In `src/app/page.tsx` inside `YourMainContent`, add ID backfill `useMemo`, add `modify_procurement_code` frontend tool via `useFrontendTool`, and update `useCopilotReadable` to serialize backfilled codes
+- [x] 3.1 In `src/app/page.tsx` inside `YourMainContent`, add ID backfill `useMemo`, add `modify_procurement_code` frontend tool via `useFrontendTool`, and update `useCopilotReadable` to serialize backfilled codes
   - **Backfill `useMemo`**: Compute `codesWithIds` from `state.procurement_codes` — detect codes with `id == null || id === 0`, assign `max(existing_ids, default=0) + 1` to each, return backfilled array. Auto-correct state if backfill was needed.
   - **`modify_procurement_code` frontend tool**: Parameters: `code_id` (required, number), `new_code` (optional, string), `new_description` (optional, string). Lookup by ID in `codesWithIds`. Return error if not found (list valid IDs) or if neither field provided. On success: spread array, replace target entry, `setState`. Return success/error string.
   - **`useCopilotReadable`**: Change `value` from `JSON.stringify(state.procurement_codes ?? [])` to `JSON.stringify(codesWithIds ?? [])`. Update description to mention IDs.
