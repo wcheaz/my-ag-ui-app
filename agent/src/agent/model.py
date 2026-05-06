@@ -115,6 +115,7 @@ class LoggingOpenAIModel(OpenAIModel):
         # Write the full message array to hidden/prompt_log.txt and
         # hidden/basic_prompt_log.txt for debugging.
         self._log_messages(messages)
+        self._strip_thinking_parts(messages)
 
         # Delegate to the parent OpenAIModel.request() which:
         #   1. Serializes the pydantic-ai ModelMessage list into the

@@ -8,7 +8,7 @@
   - Done when: method exists on the class, accepts `list[ModelMessage]`, mutates in-place, returns `None`.
   - Verify by: running `python -c "from src.agent.model import LoggingOpenAIModel; print(hasattr(LoggingOpenAIModel, '_strip_thinking_parts'))"` from `agent/` — must print `True`.
 
-- [ ] 1.3 Call `self._strip_thinking_parts(messages)` in `LoggingOpenAIModel.request()` after `self._log_messages(messages)` (line 113) and before `return await super().request(...)` (line 122).
+- [x] 1.3 Call `self._strip_thinking_parts(messages)` in `LoggingOpenAIModel.request()` after `self._log_messages(messages)` (line 113) and before `return await super().request(...)` (line 122).
   - Done when: call order in `request()` is system-prompt guard → log → strip → super().
   - Verify by: reading `agent/src/agent/model.py` and confirming the call site.
 
