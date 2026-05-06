@@ -80,12 +80,19 @@ class LoggingOpenAIModel(OpenAIModel):
         except Exception as e:
             print(f"FAILED TO LOG BASIC PROMPTS: {e}")
 
+    # Non-streaming path: pydantic-ai calls this when the agent needs a single
+    # LLM response (e.g. during tool-call loops). The full conversation history
+    # is passed in as `messages` — a list of ModelRequest/ModelResponse objects
+    # that represent the back-and-forth between user and model.
     async def request(
         self,
         messages: list[ModelMessage],
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
     ) -> ModelResponse:
+        # Ensure the system prompt is present. pydantic-ai *usually* injects it
+        # automatically, but in some edge-cases (e.g. after a conversation reset)
+        # the first message may not contain a SystemPromptPart.
         has_system = False
         if messages and isinstance(messages[0], ModelRequest):
             for part in messages[0].parts:
@@ -93,15 +100,31 @@ class LoggingOpenAIModel(OpenAIModel):
                     has_system = True
                     break
 
+        # If no system prompt was found, prepend one so the model always
+        # receives its instructions. This mutates the list in-place.
         if not has_system:
             sys_req = ModelRequest(
                 parts=[SystemPromptPart(content=STATIC_SYSTEM_PROMPT)]
             )
             messages.insert(0, sys_req)
 
+        # Write the full message array to hidden/prompt_log.txt and
+        # hidden/basic_prompt_log.txt for debugging.
         self._log_messages(messages)
+
+        # Delegate to the parent OpenAIModel.request() which:
+        #   1. Serializes the pydantic-ai ModelMessage list into the
+        #      OpenAI-compatible JSON format (role/content arrays)
+        #   2. Makes the HTTP POST to the DeepSeek (or OpenAI) chat/completions endpoint
+        #   3. Deserializes the JSON response back into a ModelResponse object
+        # The returned ModelResponse contains the model's text, any tool calls,
+        # and (for reasoning models) ThinkingPart with reasoning_content.
         return await super().request(messages, model_settings, model_request_parameters)
 
+    # Streaming path: pydantic-ai calls this when the agent streams its response
+    # token-by-token to the frontend (the normal path for user-visible replies).
+    # Instead of returning a complete ModelResponse, it yields a StreamedResponse
+    # that emits deltas as they arrive from the LLM.
     @asynccontextmanager
     async def request_stream(
         self,
@@ -110,6 +133,7 @@ class LoggingOpenAIModel(OpenAIModel):
         model_request_parameters: ModelRequestParameters,
         run_context: Any | None = None,
     ) -> AsyncIterator[StreamedResponse]:
+        # Same system-prompt guard as request() above.
         has_system = False
         if messages and isinstance(messages[0], ModelRequest):
             for part in messages[0].parts:
@@ -124,6 +148,14 @@ class LoggingOpenAIModel(OpenAIModel):
             messages.insert(0, sys_req)
 
         self._log_messages(messages)
+
+        # Delegate to the parent OpenAIModel.request_stream() which:
+        #   1. Serializes messages and opens an SSE connection to the
+        #      DeepSeek chat/completions endpoint (stream=true)
+        #   2. Returns a StreamedResponse that yields incremental deltas
+        #      as the model generates tokens
+        # The async-context-manager pattern ensures the SSE connection is
+        # properly opened before yielding and closed when the caller is done.
         async with super().request_stream(
             messages, model_settings, model_request_parameters, run_context
         ) as stream:
