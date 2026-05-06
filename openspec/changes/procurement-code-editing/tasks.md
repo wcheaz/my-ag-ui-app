@@ -36,7 +36,7 @@
 
 ## 5. Agent Prompt
 
-- [ ] 5.1 Add `## MODIFYING EXISTING CODES` section to `agent/src/agent/prompt.py` documenting the `modify_procurement_code` tool
+- [x] 5.1 Add `## MODIFYING EXISTING CODES` section to `agent/src/agent/prompt.py` documenting the `modify_procurement_code` tool
   - Document tool name, parameters (`code_id` required, `new_code` optional, `new_description` optional), and the constraint that at least one of `new_code`/`new_description` must be provided
   - Explicitly distinguish from `save_procurement_code`: modify updates existing code by ID, save appends a new code
   - State that the agent should only modify the specific code requested, not others
