@@ -12,7 +12,7 @@
   - Done when: call order in `request()` is system-prompt guard → log → strip → super().
   - Verify by: reading `agent/src/agent/model.py` and confirming the call site.
 
-- [ ] 1.4 Call `self._strip_thinking_parts(messages)` in `LoggingOpenAIModel.request_stream()` after `self._log_messages(messages)` (line 150) and before `async with super().request_stream(...)` (line 159).
+- [x] 1.4 Call `self._strip_thinking_parts(messages)` in `LoggingOpenAIModel.request_stream()` after `self._log_messages(messages)` (line 150) and before `async with super().request_stream(...)` (line 159).
   - Done when: call order in `request_stream()` is system-prompt guard → log → strip → super().
   - Verify by: reading `agent/src/agent/model.py` and confirming the call site.
 

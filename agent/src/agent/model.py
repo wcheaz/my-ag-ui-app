@@ -153,6 +153,7 @@ class LoggingOpenAIModel(OpenAIModel):
             messages.insert(0, sys_req)
 
         self._log_messages(messages)
+        self._strip_thinking_parts(messages)
 
         # Delegate to the parent OpenAIModel.request_stream() which:
         #   1. Serializes messages and opens an SSE connection to the
