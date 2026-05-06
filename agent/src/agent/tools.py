@@ -15,6 +15,7 @@ from src.agent.matching import (
     DEFAULT_SIMILARITY_THRESHOLD,
     MINIMUM_SIMILARITY_THRESHOLD,
     MAXIMUM_SIMILARITY_THRESHOLD,
+    COMPONENT_CONFIDENCE_THRESHOLDS,
 )
 from src.agent.metrics import disambiguation_metrics, disambiguation_logger
 
@@ -486,6 +487,8 @@ def clarify_components(
             ),
             "options_presented": len(response["ambiguous_components"])
             + len(response["unambiguous_components"]),
+            # Expose the active gap thresholds so callers/UI can see what auto-resolve rules were applied
+            "confidence_gap_thresholds": COMPONENT_CONFIDENCE_THRESHOLDS,
         }
 
         # Log the completion of this clarification round
