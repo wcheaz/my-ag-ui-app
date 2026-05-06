@@ -79,6 +79,11 @@ class LoggingOpenAIModel(OpenAIModel):
         except Exception as e:
             print(f"FAILED TO LOG BASIC PROMPTS: {e}")
 
+    def _strip_thinking_parts(self, messages: list[ModelMessage]) -> None:
+        for msg in messages:
+            if isinstance(msg, ModelResponse):
+                msg.parts = [p for p in msg.parts if not isinstance(p, ThinkingPart)]
+
     # Non-streaming path: pydantic-ai calls this when the agent needs a single
     # LLM response (e.g. during tool-call loops). The full conversation history
     # is passed in as `messages` — a list of ModelRequest/ModelResponse objects

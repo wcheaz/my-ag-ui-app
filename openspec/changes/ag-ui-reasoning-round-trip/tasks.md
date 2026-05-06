@@ -4,7 +4,7 @@
   - Done when: `ThinkingPart` is importable from the module and `python -c "from src.agent.model import LoggingOpenAIModel"` succeeds from the `agent/` directory.
   - Stop and hand off if: import fails with `ImportError` (pydantic-ai version may not export `ThinkingPart`).
 
-- [ ] 1.2 Add `_strip_thinking_parts(self, messages: list[ModelMessage]) -> None` method to `LoggingOpenAIModel` in `agent/src/agent/model.py`. The method SHALL iterate all messages, and for each `ModelResponse`, replace `msg.parts` with a filtered list excluding `ThinkingPart` entries: `msg.parts = [p for p in msg.parts if not isinstance(p, ThinkingPart)]`.
+- [x] 1.2 Add `_strip_thinking_parts(self, messages: list[ModelMessage]) -> None` method to `LoggingOpenAIModel` in `agent/src/agent/model.py`. The method SHALL iterate all messages, and for each `ModelResponse`, replace `msg.parts` with a filtered list excluding `ThinkingPart` entries: `msg.parts = [p for p in msg.parts if not isinstance(p, ThinkingPart)]`.
   - Done when: method exists on the class, accepts `list[ModelMessage]`, mutates in-place, returns `None`.
   - Verify by: running `python -c "from src.agent.model import LoggingOpenAIModel; print(hasattr(LoggingOpenAIModel, '_strip_thinking_parts'))"` from `agent/` — must print `True`.
 
