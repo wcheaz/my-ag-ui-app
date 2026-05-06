@@ -1,5 +1,7 @@
+import json
 import os
 import re
+import datetime
 
 import numpy as np
 from llama_index.core import Settings
@@ -9,6 +11,211 @@ DEFAULT_SIMILARITY_THRESHOLD = 0.3
 MINIMUM_SIMILARITY_THRESHOLD = 0.1
 MAXIMUM_SIMILARITY_THRESHOLD = 0.8
 KEYWORD_ONLY_THRESHOLD = 0.0
+
+# Per-component confidence gap thresholds for auto-resolving ambiguous matches.
+#
+# When multiple matches pass the inclusion filter, the system computes a "gap ratio"
+# between the top two scores: gap_ratio = (top_score - second_score) / top_score.
+# If this gap exceeds the component's threshold AND the top score is strong enough,
+# the component is auto-resolved to the top match instead of asking the user.
+#
+# gap_ratio:     How dominant the top match must be relative to the second.
+#                Lower = more aggressive auto-resolve (fewer questions asked).
+#                0.3 means the top match only needs to be 30% ahead of the second.
+#                0.6 means the top match needs to be 60% ahead — much more conservative.
+#
+# min_top_score: Absolute floor the top match must exceed to be eligible for auto-resolve.
+#                Prevents auto-resolving when ALL scores are weak (e.g., top=1.5, second=0.2).
+#
+# Rationale for values:
+#   size_category (0.3):        Numeric ranges are objective — a small score gap is sufficient.
+#   object_shape (0.4):         Shape terms are moderately distinct.
+#   major_category (0.5):       Industry categories overlap more, needs clearer dominance.
+#   manufacturing_method (0.5): Similar overlap to major_category.
+#   material_type (0.5):        Keywords like "aluminum" are strong discriminators.
+#   quality_grade (0.6):        22 overlapping options with subjective descriptions — most conservative.
+DEFAULT_CONFIDENCE_GAP_CONFIG = {
+    "size_category": {"gap_ratio": 0.3, "min_top_score": 3.0},
+    "major_category": {"gap_ratio": 0.5, "min_top_score": 4.0},
+    "manufacturing_method": {"gap_ratio": 0.5, "min_top_score": 4.0},
+    "object_shape": {"gap_ratio": 0.4, "min_top_score": 4.0},
+    "material_type": {"gap_ratio": 0.5, "min_top_score": 4.0},
+    "quality_grade": {"gap_ratio": 0.6, "min_top_score": 3.0},
+}
+
+
+# Load confidence gap config from env var (JSON string) or fall back to defaults above.
+# Set COMPONENT_CONFIDENCE_THRESHOLDS in .env to override per-component thresholds at deploy time.
+def _load_confidence_gap_config() -> dict:
+    env_val = os.getenv("COMPONENT_CONFIDENCE_THRESHOLDS", "")
+    if env_val:
+        try:
+            return json.loads(env_val)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return dict(DEFAULT_CONFIDENCE_GAP_CONFIG)
+
+
+COMPONENT_CONFIDENCE_THRESHOLDS = _load_confidence_gap_config()
+
+
+# Determines whether a set of matches should be auto-resolved to a single best match
+# instead of being flagged as "ambiguous" (which would trigger a clarification question).
+#
+# How it works:
+#   1. If there's 0 or 1 match, it's trivially decided (no match → False, 1 match → True).
+#   2. For 2+ matches, compute gap_ratio = (top_score - second_score) / max(top_score, 1.0).
+#      This measures how dominant the #1 match is vs. the runner-up.
+#   3. Look up the per-component threshold (e.g., size_category allows 0.3, quality_grade requires 0.6).
+#   4. Auto-resolve only if BOTH conditions hold:
+#      - top_score >= min_top_score (the top match is strong enough in absolute terms)
+#      - gap_ratio >= threshold's gap_ratio (the top match is dominant enough relative to #2)
+#
+# Example: size_category with scores [12.0, 3.0]:
+#   gap_ratio = (12.0 - 3.0) / 12.0 = 0.75, which exceeds the 0.3 threshold → auto-resolve.
+#   The agent skips asking "Would Oversized or Bulk work?" because 75% gap is clearly decisive.
+SIZE_NUMERIC_RANGES = {
+    "1": (0, 1),        # Micro: Less than 1mm
+    "2": (1, 10),       # Small: 1mm to 10mm
+    "3": (10, 100),     # Medium: 10mm to 100mm
+    "4": (100, 500),    # Large: 100mm to 500mm
+    "5": (500, 1000),   # Extra Large: 500mm to 1m (1000mm)
+    "6": (1000, 5000),  # Bulk: 1m to 5m (1000mm to 5000mm)
+    "7": (5000, None),  # Oversized: Greater than 5m (5000mm)
+}
+
+
+# Parses measurement values from user description text into millimeters.
+# Handles: "150mm", "150 mm", "6.1m", "6.1 m", "20 feet", "20ft", "20'", "2.5cm"
+# Returns a list of float values in mm.
+def _parse_measurements_mm(description: str) -> list[float]:
+    measurements = []
+    desc_lower = description.lower()
+
+    # Match number + unit patterns, ordered from most specific to least
+    patterns = [
+        (r"(\d+(?:\.\d+)?)\s*mm\b", 1.0),
+        (r"(\d+(?:\.\d+)?)\s*cm\b", 10.0),
+        (r"(\d+(?:\.\d+)?)\s*m\b(?!m)", 1000.0),
+        (r"(\d+(?:\.\d+)?)\s*millimeter", 1.0),
+        (r"(\d+(?:\.\d+)?)\s*centimeter", 10.0),
+        (r"(\d+(?:\.\d+)?)\s*meter", 1000.0),
+        (r"(\d+(?:\.\d+)?)\s*(?:feet|foot|ft|')\b", 304.8),
+        (r"(\d+(?:\.\d+)?)\s*(?:inches|inch|in|\")\b", 25.4),
+    ]
+
+    for pattern, multiplier in patterns:
+        for match in re.finditer(pattern, desc_lower):
+            try:
+                value_mm = float(match.group(1)) * multiplier
+                measurements.append(value_mm)
+            except (ValueError, IndexError):
+                continue
+
+    return measurements
+
+
+RESOLVE_LOG_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "hidden",
+    "resolve_log.txt",
+)
+
+
+def _log_resolve_decision(
+    component_key: str,
+    matches: list,
+    resolved: bool,
+    gap_ratio: float,
+    config: dict,
+    reason: str = "",
+) -> None:
+    try:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        lines = [
+            f"\n{'=' * 70}",
+            f"[{timestamp}] RESOLVE CHECK: {component_key}",
+            f"  Matches: {len(matches)}",
+        ]
+
+        for i, m in enumerate(matches[:5]):
+            marker = " <-- TOP" if i == 0 else ""
+            lines.append(
+                f"  #{i + 1}  code={m['code']:<4}  name={m['name']:<30}  "
+                f"score={m['score']:<8.2f}  "
+                f"kw={m.get('keyword_score', 0):<3}  sem={m.get('semantic_score', 0.0):.3f}"
+                f"{marker}"
+            )
+
+        if len(matches) > 5:
+            lines.append(f"  ... and {len(matches) - 5} more matches")
+
+        if len(matches) >= 2:
+            lines.append(
+                f"  Gap: top={matches[0]['score']:.2f}  second={matches[1]['score']:.2f}  "
+                f"gap_ratio={gap_ratio:.4f}  threshold={config['gap_ratio']}  "
+                f"min_top_score={config['min_top_score']}"
+            )
+
+        result_label = "AUTO-RESOLVED → " + matches[0]["name"] if resolved and matches else "KEPT AMBIGUOUS"
+        if reason:
+            result_label += f"  ({reason})"
+        lines.append(f"  Result: {result_label}")
+
+        with open(RESOLVE_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+    except Exception:
+        pass
+
+
+# Determines whether a set of matches should be auto-resolved to a single best match
+# instead of being flagged as "ambiguous" (which would trigger a clarification question).
+#
+# Two resolution paths:
+#
+#   1. SCORE GAP (primary): Compute gap_ratio = (top - second) / top. If both:
+#      - top_score >= min_top_score
+#      - gap_ratio >= component's gap_ratio threshold
+#      → auto-resolve. Works when semantic + keyword combined score clearly separates the top match.
+#
+#   2. KEYWORD DOMINANCE (secondary): If the top match has keyword hits (kw > 0) and the
+#      runner-up has zero keyword hits (kw == 0), the user explicitly named the option while
+#      the others only ride on semantic similarity noise. This handles cases like "aluminum"
+#      where 22 materials all score ~0.6 semantically but only one has the "aluminum" keyword.
+#      Requires top_score >= min_top_score to prevent resolving on weak keyword-only matches.
+#
+# Example: "Aerospace grade aluminum panel" → material_type:
+#   Match #1: Metal (Non-ferrous)  score=9.28  kw=3   sem=0.628
+#   Match #2: Composite            score=6.19  kw=0   sem=0.619
+#   gap_ratio = 0.33 < threshold 0.5  → score gap fails
+#   But kw_dominance (3 > 0, 0 == 0)  → keyword dominance fires → AUTO-RESOLVED
+def should_auto_resolve(
+    matches: list, component_key: str
+) -> bool:
+    if len(matches) < 2:
+        return len(matches) == 1
+
+    config = COMPONENT_CONFIDENCE_THRESHOLDS.get(
+        component_key, {"gap_ratio": 0.5, "min_top_score": 4.0}
+    )
+    top_score = matches[0]["score"]
+    second_score = matches[1]["score"]
+    gap_ratio = (top_score - second_score) / max(top_score, 1.0)
+
+    # Primary: combined score gap exceeds threshold
+    if top_score >= config["min_top_score"] and gap_ratio >= config["gap_ratio"]:
+        _log_resolve_decision(component_key, matches, True, gap_ratio, config, reason="score_gap")
+        return True
+
+    # Secondary: keyword dominance — top match has keywords, runner-up has none
+    top_kw = matches[0].get("keyword_score", 0)
+    second_kw = matches[1].get("keyword_score", 0)
+    if top_kw > 0 and second_kw == 0 and top_score >= config["min_top_score"]:
+        _log_resolve_decision(component_key, matches, True, gap_ratio, config, reason="keyword_dominance")
+        return True
+
+    _log_resolve_decision(component_key, matches, False, gap_ratio, config)
+    return False
 
 
 def calculate_semantic_similarity(text1: str, text2: str) -> float:
@@ -733,6 +940,20 @@ def find_component_matches(
             if re.search(pattern, description_lower):
                 keyword_score += 2
 
+        # Numeric range matching for size_category: if the user provides a measurement
+        # like "150mm" and this size code's range includes 150mm, award keyword points.
+        # This handles cases where the embedding model can't differentiate between
+        # size categories because they all score ~0.60-0.65 semantically.
+        if code in SIZE_NUMERIC_RANGES:
+            range_min, range_max = SIZE_NUMERIC_RANGES[code]
+            for value_mm in _parse_measurements_mm(description):
+                in_range = value_mm >= range_min
+                if range_max is not None:
+                    in_range = in_range and value_mm < range_max
+                if in_range:
+                    keyword_score += 6
+                    break
+
         component_text = f"{rule_info['name']} {rule_info['description']}"
         semantic_score = calculate_semantic_similarity(description, component_text)
 
@@ -864,6 +1085,13 @@ def extract_components_from_description(
         matches = find_component_matches(
             user_description, rules[component_key], similarity_threshold
         )
+
+        # Auto-resolve: if the top match is clearly dominant (per-component gap threshold),
+        # collapse multi-match results to just the top match so it's classified as "unambiguous"
+        # instead of "ambiguous". This is the primary resolution point.
+        if len(matches) > 1 and should_auto_resolve(matches, component_key):
+            matches = [matches[0]]
+
         component_matches[component_key] = {
             "name": component_name,
             "matches": matches,
@@ -911,6 +1139,13 @@ def get_component_extraction_results(
     for component_key, match_info in component_matches.items():
         component_name = match_info["name"]
         matches = match_info["matches"]
+
+        # Defensive re-check: matches were already collapsed by
+        # extract_components_from_description() above, so this is a no-op
+        # in normal flow. Kept as a safety net in case this function is ever
+        # called with pre-built match data that bypasses the initial collapse.
+        if len(matches) > 1 and should_auto_resolve(matches, component_key):
+            matches = [matches[0]]
 
         detail = {
             "component_name": component_name,

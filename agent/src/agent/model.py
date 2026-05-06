@@ -7,13 +7,12 @@ from contextlib import asynccontextmanager
 from pydantic_ai import Agent
 from pydantic_ai.ag_ui import StateDeps
 from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.messages import ModelMessage, ModelRequest, SystemPromptPart
+from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, SystemPromptPart, ThinkingPart
 from pydantic_ai.models import (
     ModelRequestParameters,
     StreamedResponse,
 )
 from pydantic_ai.settings import ModelSettings
-from pydantic_ai.messages import ModelResponse
 from pydantic_ai.providers.deepseek import DeepSeekProvider
 from dotenv import load_dotenv
 
@@ -21,7 +20,6 @@ from src.agent.models import ProcurementState
 from src.agent.prompt import STATIC_SYSTEM_PROMPT
 from src.agent.tools import (
     read_code_generation_file,
-    reset_conversation,
     save_procurement_code,
     clarify_components,
 )
@@ -81,6 +79,20 @@ class LoggingOpenAIModel(OpenAIModel):
         except Exception as e:
             print(f"FAILED TO LOG BASIC PROMPTS: {e}")
 
+    def _ensure_thinking_parts(self, messages: list[ModelMessage]) -> None:
+        for msg in messages:
+            if isinstance(msg, ModelResponse):
+                has_thinking = any(isinstance(p, ThinkingPart) for p in msg.parts)
+                if not has_thinking:
+                    msg.parts = [
+                        *msg.parts,
+                        ThinkingPart(
+                            content="reasoning content from this turn was not preserved",
+                            id="reasoning_content",
+                            provider_name="deepseek",
+                        ),
+                    ]
+
     # Non-streaming path: pydantic-ai calls this when the agent needs a single
     # LLM response (e.g. during tool-call loops). The full conversation history
     # is passed in as `messages` — a list of ModelRequest/ModelResponse objects
@@ -112,6 +124,7 @@ class LoggingOpenAIModel(OpenAIModel):
         # Write the full message array to hidden/prompt_log.txt and
         # hidden/basic_prompt_log.txt for debugging.
         self._log_messages(messages)
+        self._ensure_thinking_parts(messages)
 
         # Delegate to the parent OpenAIModel.request() which:
         #   1. Serializes the pydantic-ai ModelMessage list into the
@@ -149,6 +162,7 @@ class LoggingOpenAIModel(OpenAIModel):
             messages.insert(0, sys_req)
 
         self._log_messages(messages)
+        self._ensure_thinking_parts(messages)
 
         # Delegate to the parent OpenAIModel.request_stream() which:
         #   1. Serializes messages and opens an SSE connection to the
@@ -173,12 +187,15 @@ model = LoggingOpenAIModel(
     provider=DeepSeekProvider(api_key=api_key),
 )
 
+# model = LoggingOpenAIModel(
+#     os.environ.get("OPENAI_MODEL", "deepseek-chat"),
+# )
+
 agent = Agent(
     model,
     deps_type=StateDeps[ProcurementState],
     tools=[
         read_code_generation_file,
-        reset_conversation,
         save_procurement_code,
         clarify_components,
     ],
