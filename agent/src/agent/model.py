@@ -7,13 +7,12 @@ from contextlib import asynccontextmanager
 from pydantic_ai import Agent
 from pydantic_ai.ag_ui import StateDeps
 from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.messages import ModelMessage, ModelRequest, SystemPromptPart
+from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, SystemPromptPart, ThinkingPart
 from pydantic_ai.models import (
     ModelRequestParameters,
     StreamedResponse,
 )
 from pydantic_ai.settings import ModelSettings
-from pydantic_ai.messages import ModelResponse
 from pydantic_ai.providers.deepseek import DeepSeekProvider
 from dotenv import load_dotenv
 

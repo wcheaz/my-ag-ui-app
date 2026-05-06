@@ -1,6 +1,6 @@
 ## 1. Implementation
 
-- [ ] 1.1 Add `ThinkingPart` import to `agent/src/agent/model.py`. Add `from pydantic_ai.messages import ThinkingPart` to the existing imports from `pydantic_ai.messages` (line 10).
+- [x] 1.1 Add `ThinkingPart` import to `agent/src/agent/model.py`. Add `from pydantic_ai.messages import ThinkingPart` to the existing imports from `pydantic_ai.messages` (line 10).
   - Done when: `ThinkingPart` is importable from the module and `python -c "from src.agent.model import LoggingOpenAIModel"` succeeds from the `agent/` directory.
   - Stop and hand off if: import fails with `ImportError` (pydantic-ai version may not export `ThinkingPart`).
 
