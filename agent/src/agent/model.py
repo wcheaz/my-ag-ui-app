@@ -21,7 +21,6 @@ from src.agent.models import ProcurementState
 from src.agent.prompt import STATIC_SYSTEM_PROMPT
 from src.agent.tools import (
     read_code_generation_file,
-    reset_conversation,
     save_procurement_code,
     clarify_components,
 )
@@ -173,12 +172,15 @@ model = LoggingOpenAIModel(
     provider=DeepSeekProvider(api_key=api_key),
 )
 
+# model = LoggingOpenAIModel(
+#     os.environ.get("OPENAI_MODEL", "deepseek-chat"),
+# )
+
 agent = Agent(
     model,
     deps_type=StateDeps[ProcurementState],
     tools=[
         read_code_generation_file,
-        reset_conversation,
         save_procurement_code,
         clarify_components,
     ],
