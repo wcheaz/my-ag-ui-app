@@ -18,7 +18,7 @@
 
 ## 2. Unit Tests
 
-- [ ] 2.1 Create `test/test_thinking_part_strip.py` with unit tests for `_strip_thinking_parts()`. Tests SHALL cover:
+- [x] 2.1 Create `test/test_thinking_part_strip.py` with unit tests for `_strip_thinking_parts()`. Tests SHALL cover:
   - Messages with `ModelResponse` containing both `ThinkingPart` and `TextPart` — after strip, only `TextPart` remains.
   - Messages with `ModelResponse` containing only `ThinkingPart` — after strip, `parts` list is empty but `ModelResponse` stays in list.
   - Messages with no `ThinkingPart` at all (non-reasoning model) — list unchanged.
