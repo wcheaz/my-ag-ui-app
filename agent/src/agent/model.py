@@ -79,10 +79,19 @@ class LoggingOpenAIModel(OpenAIModel):
         except Exception as e:
             print(f"FAILED TO LOG BASIC PROMPTS: {e}")
 
-    def _strip_thinking_parts(self, messages: list[ModelMessage]) -> None:
+    def _ensure_thinking_parts(self, messages: list[ModelMessage]) -> None:
         for msg in messages:
             if isinstance(msg, ModelResponse):
-                msg.parts = [p for p in msg.parts if not isinstance(p, ThinkingPart)]
+                has_thinking = any(isinstance(p, ThinkingPart) for p in msg.parts)
+                if not has_thinking:
+                    msg.parts = [
+                        *msg.parts,
+                        ThinkingPart(
+                            content="reasoning content from this turn was not preserved",
+                            id="reasoning_content",
+                            provider_name="deepseek",
+                        ),
+                    ]
 
     # Non-streaming path: pydantic-ai calls this when the agent needs a single
     # LLM response (e.g. during tool-call loops). The full conversation history
@@ -115,7 +124,7 @@ class LoggingOpenAIModel(OpenAIModel):
         # Write the full message array to hidden/prompt_log.txt and
         # hidden/basic_prompt_log.txt for debugging.
         self._log_messages(messages)
-        self._strip_thinking_parts(messages)
+        self._ensure_thinking_parts(messages)
 
         # Delegate to the parent OpenAIModel.request() which:
         #   1. Serializes the pydantic-ai ModelMessage list into the
@@ -153,7 +162,7 @@ class LoggingOpenAIModel(OpenAIModel):
             messages.insert(0, sys_req)
 
         self._log_messages(messages)
-        self._strip_thinking_parts(messages)
+        self._ensure_thinking_parts(messages)
 
         # Delegate to the parent OpenAIModel.request_stream() which:
         #   1. Serializes messages and opens an SSE connection to the
