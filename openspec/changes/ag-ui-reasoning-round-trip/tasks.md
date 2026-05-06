@@ -27,6 +27,6 @@
 
 ## 3. Manual Verification
 
-- [ ] 3.1 Run a multi-turn conversation with `deepseek-v4-flash` (or whichever DeepSeek v4 model is configured). Send at least 3 messages and confirm no 400 error occurs on turn 2 or turn 3.
+- [x] 3.1 Run a multi-turn conversation with `deepseek-v4-flash` (or whichever DeepSeek v4 model is configured). Send at least 3 messages and confirm no 400 error occurs on turn 2 or turn 3.
   - Done when: conversation completes 3+ turns without HTTP 400.
   - Stop and hand off if: 400 persists — check that `ThinkingPart` import resolves and strip is actually called (add temporary print/logging if needed).
