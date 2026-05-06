@@ -14,6 +14,7 @@ from pydantic_ai.models import (
 )
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.messages import ModelResponse
+from pydantic_ai.providers.deepseek import DeepSeekProvider
 from dotenv import load_dotenv
 
 from src.agent.models import ProcurementState
@@ -165,10 +166,11 @@ class LoggingOpenAIModel(OpenAIModel):
 api_key = os.environ.get("OPENAI_API_KEY")
 base_url = os.environ.get("OPENAI_BASE_URL")
 
-print(f"DEBUG: initializing LoggingOpenAIModel with env vars")
+print(f"DEBUG: initializing LoggingOpenAIModel with DeepSeekProvider")
 
 model = LoggingOpenAIModel(
     os.environ.get("OPENAI_MODEL", "deepseek-chat"),
+    provider=DeepSeekProvider(api_key=api_key),
 )
 
 agent = Agent(

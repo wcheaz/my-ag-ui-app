@@ -802,6 +802,19 @@ def detect_component_ambiguity(
         matches = component_detail["matches"]
         status = component_detail["status"]
 
+        existing = ctx.deps.state.component_ambiguity_status.get(component_name)
+        if existing and existing.status in ("unambiguous", "guessed"):
+            disambiguation_logger.info(
+                f"Skipping already resolved component '{component_name}' - "
+                f"Current status: {existing.status}"
+            )
+            if existing.status == "unambiguous":
+                result["unambiguous_components"].append(component_name)
+            else:
+                result["guessed_components"].append(component_name)
+            result["ambiguity_details"][component_key] = existing
+            continue
+
         # Log individual component processing
         disambiguation_logger.info(
             f"Processing component '{component_name}' - "
