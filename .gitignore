@@ -100,3 +100,5 @@ proposal_start.txt
 # Debug result captures in test/
 test/debug_*_results.txt
 test/verify_*_results.txt
+
+scratch/
